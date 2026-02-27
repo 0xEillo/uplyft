@@ -7,15 +7,16 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    PanResponder,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 
@@ -29,6 +30,7 @@ interface RestTimerOverlayProps {
   onStart: (duration: number) => void
   onStop: () => void
   onAddTime: (seconds: number) => void
+  onAutoRestChange?: (enabled: boolean, duration: number) => void
 }
 
 const CircularProgress = ({
@@ -82,6 +84,7 @@ const CircularProgress = ({
 }
 
 const STORAGE_KEY = 'uplyft_rest_timer_default_duration'
+const AUTO_REST_KEY = 'uplyft_rest_timer_auto_enabled'
 
 export function RestTimerOverlay({
   visible,
@@ -91,6 +94,7 @@ export function RestTimerOverlay({
   onStart,
   onStop,
   onAddTime,
+  onAutoRestChange,
 }: RestTimerOverlayProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -103,20 +107,23 @@ export function RestTimerOverlay({
 
   // Selection state
   const [selectedDuration, setSelectedDuration] = useState(120) // Default 2 minutes
+  const [autoRestEnabled, setAutoRestEnabled] = useState(false)
 
-  // Load persisted duration on mount
+  // Load persisted values on mount
   useEffect(() => {
-    const loadDuration = async () => {
+    const loadSettings = async () => {
       try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEY)
-        if (saved) {
-          setSelectedDuration(parseInt(saved, 10))
-        }
+        const [savedDuration, savedAuto] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(AUTO_REST_KEY),
+        ])
+        if (savedDuration) setSelectedDuration(parseInt(savedDuration, 10))
+        if (savedAuto) setAutoRestEnabled(savedAuto === 'true')
       } catch {
         // Ignore error
       }
     }
-    loadDuration()
+    loadSettings()
   }, [])
 
   // Save duration when it changes
@@ -128,10 +135,24 @@ export function RestTimerOverlay({
         // Ignore error
       }
     }
-    // Debounce slightly or just save
     const timeout = setTimeout(saveDuration, 500)
     return () => clearTimeout(timeout)
   }, [selectedDuration])
+
+  // Notify parent whenever autoRest state changes
+  useEffect(() => {
+    onAutoRestChange?.(autoRestEnabled, selectedDuration)
+  }, [autoRestEnabled, selectedDuration, onAutoRestChange])
+
+  const handleAutoRestToggle = async (value: boolean) => {
+    haptic('light')
+    setAutoRestEnabled(value)
+    try {
+      await AsyncStorage.setItem(AUTO_REST_KEY, value.toString())
+    } catch {
+      // Ignore error
+    }
+  }
 
   // Track initial duration to calculate progress
   const initialDurationRef = useRef(remainingSeconds || 120)
@@ -273,7 +294,7 @@ export function RestTimerOverlay({
             styles.modalContent,
             {
               transform: [{ translateY: slideAnim }],
-              height: isActive ? 500 : 380,
+              height: isActive ? 500 : 440,
             },
           ]}
           {...panResponder.panHandlers}
@@ -383,6 +404,20 @@ export function RestTimerOverlay({
                       />
                     </TouchableOpacity>
                   </View>
+                </View>
+
+                {/* Auto Rest Toggle */}
+                <View style={styles.autoRestRow}>
+                  <Text style={styles.autoRestLabel}>Auto-start</Text>
+                  <Switch
+                    value={autoRestEnabled}
+                    onValueChange={handleAutoRestToggle}
+                    trackColor={{
+                      false: colors.surfaceSubtle,
+                      true: colors.brandPrimary,
+                    }}
+                    thumbColor="#FFFFFF"
+                  />
                 </View>
 
                 {/* Start Button */}
@@ -564,6 +599,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    autoRestRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 4,
+    },
+    autoRestLabel: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    autoRestSubLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
     startButton: {
       backgroundColor: colors.brandPrimary,

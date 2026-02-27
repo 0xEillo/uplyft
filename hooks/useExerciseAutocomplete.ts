@@ -35,6 +35,97 @@ function getExerciseNameParts(name: string): {
   return { baseName: name.trim(), variation: null }
 }
 
+function tokenizeExerciseName(name: string): string[] {
+  return name
+    .toLowerCase()
+    .replace(/[()]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+function getVariationRank(variation: string | null): number {
+  if (!variation) return 3
+
+  const normalized = variation.toLowerCase()
+
+  if (normalized.includes('barbell')) return 0
+  if (normalized.includes('dumbbell')) return 1
+  if (normalized.includes('bodyweight') || normalized.includes('body weight')) {
+    return 2
+  }
+  if (normalized.includes('smith')) return 4
+  if (normalized.includes('machine')) return 5
+  if (normalized.includes('cable')) return 6
+  return 7
+}
+
+function rankAutocompleteMatches(
+  matches: Exercise[],
+  normalizedInput: string,
+  exercises: Exercise[],
+): Exercise[] {
+  if (matches.length <= 1) return matches
+
+  const baseNameFrequency = new Map<string, number>()
+  exercises.forEach((exercise) => {
+    const key = getExerciseNameParts(exercise.name).baseName.toLowerCase()
+    baseNameFrequency.set(key, (baseNameFrequency.get(key) ?? 0) + 1)
+  })
+
+  type Ranked = {
+    exercise: Exercise
+    originalIndex: number
+    startsWithInput: boolean
+    tokenStartsWithInput: boolean
+    baseFrequency: number
+    variationRank: number
+    nameLength: number
+  }
+
+  const ranked: Ranked[] = matches.map((exercise, originalIndex) => {
+    const nameLower = exercise.name.toLowerCase()
+    const tokens = tokenizeExerciseName(exercise.name)
+    const parts = getExerciseNameParts(exercise.name)
+    const baseKey = parts.baseName.toLowerCase()
+
+    return {
+      exercise,
+      originalIndex,
+      startsWithInput: nameLower.startsWith(normalizedInput),
+      tokenStartsWithInput: tokens.some((token) =>
+        token.startsWith(normalizedInput),
+      ),
+      baseFrequency: baseNameFrequency.get(baseKey) ?? 1,
+      variationRank: getVariationRank(parts.variation),
+      nameLength: exercise.name.length,
+    }
+  })
+
+  ranked.sort((a, b) => {
+    if (a.startsWithInput !== b.startsWithInput) {
+      return a.startsWithInput ? -1 : 1
+    }
+    if (a.tokenStartsWithInput !== b.tokenStartsWithInput) {
+      return a.tokenStartsWithInput ? -1 : 1
+    }
+    if (a.baseFrequency !== b.baseFrequency) {
+      return b.baseFrequency - a.baseFrequency
+    }
+    if (a.variationRank !== b.variationRank) {
+      return a.variationRank - b.variationRank
+    }
+    if (a.originalIndex !== b.originalIndex) {
+      return a.originalIndex - b.originalIndex
+    }
+    if (a.nameLength !== b.nameLength) {
+      return a.nameLength - b.nameLength
+    }
+    return a.exercise.name.localeCompare(b.exercise.name)
+  })
+
+  return ranked.map((item) => item.exercise)
+}
+
 /**
  * Detect if current line looks like an exercise name.
  * Used to determine if the "Convert to Structured" button should be shown.
@@ -107,9 +198,14 @@ export function getExerciseAutocompleteGroup(
 
   // Use fuzzy search to find matches
   // This allows for typos and non-prefix matches
-  const matches = fuzzySearchExercises(exercises, trimmedPrefix, {
+  const fuzzyMatches = fuzzySearchExercises(exercises, trimmedPrefix, {
     preferRecent: true,
   })
+  const matches = rankAutocompleteMatches(
+    fuzzyMatches,
+    normalizedInput,
+    exercises,
+  )
 
   if (!matches.length) return null
 

@@ -1,3 +1,7 @@
+import { type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
@@ -8,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+    Keyboard,
     LayoutAnimation,
     Platform,
     StyleSheet,
@@ -33,6 +38,9 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
+const DEBUG_NEXT_FLOW = false
+const DEBUG_KEYPAD_VERBOSE = true
+
 interface SetData {
   weight: string
   reps: string
@@ -50,6 +58,285 @@ interface ExerciseData {
   sets: SetData[]
 }
 
+type FocusedInputState = {
+  exerciseIndex: number
+  setIndex: number
+  field: 'weight' | 'reps'
+}
+
+type KeypadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'dot' | 'backspace'
+
+interface WorkoutSetRowProps {
+  exerciseIndex: number
+  setIndex: number
+  set: SetData
+  workingSetNumber: number
+  isWarmup: boolean
+  displayLabel: string | number
+  targetText: string
+  isWeightFocused: boolean
+  isRepsFocused: boolean
+  isWeightSuspicious: boolean
+  compactPreview: boolean
+  unitDisplay: string
+  colors: ReturnType<typeof useThemedColors>
+  styles: ReturnType<typeof createStyles>
+  onToggleWarmup: (exerciseIndex: number, setIndex: number) => void
+  onWeightChange: (exerciseIndex: number, setIndex: number, value: string) => void
+  onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
+  onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
+  onBlur: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
+  onDeleteSet: (exerciseIndex: number, setIndex: number) => void
+  onSelectionWeightChange?: (start: number, end: number, valueLength: number) => void
+  onSelectionRepsChange?: (start: number, end: number, valueLength: number) => void
+  registerWeightRef: (ref: TextInput | null) => void
+  registerRepsRef: (ref: TextInput | null) => void
+  canDelete: boolean
+}
+
+const WorkoutSetRow = React.memo(function WorkoutSetRow({
+  exerciseIndex,
+  setIndex,
+  set,
+  isWarmup,
+  displayLabel,
+  targetText,
+  isWeightFocused,
+  isRepsFocused,
+  isWeightSuspicious,
+  compactPreview,
+  unitDisplay,
+  colors,
+  styles,
+  onToggleWarmup,
+  onWeightChange,
+  onRepsChange,
+  onFocus,
+  onBlur,
+  onDeleteSet,
+  onSelectionWeightChange,
+  onSelectionRepsChange,
+  registerWeightRef,
+  registerRepsRef,
+  canDelete,
+}: WorkoutSetRowProps) {
+  return (
+    <View style={styles.setRow}>
+      <LiquidGlassSurface
+        style={styles.setNumberBadge}
+        fallbackStyle={
+          isWarmup
+            ? [styles.setNumberBadgeFallback, styles.warmupBadgeFallback]
+            : styles.setNumberBadgeFallback
+        }
+        tintColor={isWarmup ? colors.statusWarning : undefined}
+        isInteractive
+      >
+        <TouchableOpacity
+          style={styles.setNumberBadgeTouch}
+          onPress={() => onToggleWarmup(exerciseIndex, setIndex)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
+            {displayLabel}
+          </Text>
+        </TouchableOpacity>
+      </LiquidGlassSurface>
+      <TextInput
+        ref={registerWeightRef}
+        style={[
+          styles.inlineInput,
+          isWeightSuspicious && styles.inlineInputWarning,
+        ]}
+        placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'}
+        placeholderTextColor={
+          set.lastWorkoutWeight ? colors.textTertiary : colors.textPlaceholder
+        }
+        showSoftInputOnFocus={false}
+        keyboardType="number-pad"
+        contextMenuHidden
+        caretHidden={false}
+        value={set.weight}
+        selection={
+          isWeightFocused
+            ? { start: set.weight.length, end: set.weight.length }
+            : undefined
+        }
+        onChangeText={(value) => onWeightChange(exerciseIndex, setIndex, value)}
+        cursorColor={colors.brandPrimary}
+        selectionColor={colors.brandPrimary}
+        onSelectionChange={(event) => {
+          if (onSelectionWeightChange) {
+            const { start, end } = event.nativeEvent.selection
+            onSelectionWeightChange(start, end, set.weight.length)
+          }
+        }}
+        onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
+        onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
+      />
+      <Text style={styles.setText}> {unitDisplay} x </Text>
+      <TextInput
+        ref={registerRepsRef}
+        style={styles.inlineInput}
+        placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '___'}
+        placeholderTextColor={
+          set.lastWorkoutReps ? colors.textTertiary : colors.textPlaceholder
+        }
+        showSoftInputOnFocus={false}
+        keyboardType="number-pad"
+        contextMenuHidden
+        caretHidden={false}
+        value={set.reps}
+        selection={
+          isRepsFocused
+            ? { start: set.reps.length, end: set.reps.length }
+            : undefined
+        }
+        onChangeText={(value) => onRepsChange(exerciseIndex, setIndex, value)}
+        cursorColor={colors.brandPrimary}
+        selectionColor={colors.brandPrimary}
+        onSelectionChange={(event) => {
+          if (onSelectionRepsChange) {
+            const { start, end } = event.nativeEvent.selection
+            onSelectionRepsChange(start, end, set.reps.length)
+          }
+        }}
+        onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
+        onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
+      />
+      <Text style={styles.setText}> reps</Text>
+      {targetText ? <Text style={styles.targetText}>{targetText}</Text> : null}
+      {!compactPreview && canDelete && (
+        <View style={styles.deleteSetButtonContainer}>
+          <TouchableOpacity
+            style={styles.deleteSetButton}
+            onPress={() => onDeleteSet(exerciseIndex, setIndex)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  )
+})
+
+interface WorkoutExerciseHeaderProps {
+  exercise: ExerciseData
+  exerciseIndex: number
+  isDragging: boolean
+  compactPreview: boolean
+  colors: ReturnType<typeof useThemedColors>
+  styles: ReturnType<typeof createStyles>
+  exerciseGifUrl?: string
+  totalExercises: number
+  onExerciseNamePress?: (exerciseName: string) => void
+  onLongPressExercise: (index: number) => void
+  onMoveExerciseUp: (index: number) => void
+  onMoveExerciseDown: (index: number) => void
+  onDropExercise: () => void
+  onDeleteExercise: (index: number) => void
+}
+
+const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
+  exercise,
+  exerciseIndex,
+  isDragging,
+  compactPreview,
+  colors,
+  styles,
+  exerciseGifUrl,
+  totalExercises,
+  onExerciseNamePress,
+  onLongPressExercise,
+  onMoveExerciseUp,
+  onMoveExerciseDown,
+  onDropExercise,
+  onDeleteExercise,
+}: WorkoutExerciseHeaderProps) {
+  return (
+    <View style={styles.exerciseHeader}>
+      <View style={styles.exerciseNameRow}>
+        <ExerciseMediaThumbnail
+          gifUrl={exerciseGifUrl}
+          style={styles.exerciseThumbnail}
+        />
+        <TouchableOpacity
+          onPress={() => onExerciseNamePress?.(exercise.name)}
+          onLongPress={() => onLongPressExercise(exerciseIndex)}
+          delayLongPress={400}
+          activeOpacity={0.6}
+          style={styles.exerciseNameButton}
+        >
+          <Text
+            style={styles.exerciseName}
+            numberOfLines={isDragging ? 1 : undefined}
+            ellipsizeMode={isDragging ? 'tail' : undefined}
+          >
+            {exercise.name}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Drag Controls or Delete Button */}
+      {isDragging ? (
+        <View style={styles.dragControls}>
+          <TouchableOpacity
+            onPress={() => onMoveExerciseUp(exerciseIndex)}
+            style={[
+              styles.dragArrow,
+              exerciseIndex === 0 && styles.dragArrowDisabled,
+            ]}
+            activeOpacity={0.5}
+            disabled={exerciseIndex === 0}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="chevron-up"
+              size={22}
+              color={exerciseIndex === 0 ? colors.textTertiary : colors.textPrimary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => onMoveExerciseDown(exerciseIndex)}
+            style={[
+              styles.dragArrow,
+              exerciseIndex === totalExercises - 1 && styles.dragArrowDisabled,
+            ]}
+            activeOpacity={0.5}
+            disabled={exerciseIndex === totalExercises - 1}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="chevron-down"
+              size={22}
+              color={exerciseIndex === totalExercises - 1 ? colors.textTertiary : colors.textPrimary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onDropExercise}
+            style={styles.dragDone}
+            activeOpacity={0.5}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="checkmark" size={20} color={colors.brandPrimary} />
+          </TouchableOpacity>
+        </View>
+      ) : !compactPreview ? (
+        <TouchableOpacity
+          style={styles.deleteExerciseButton}
+          onPress={() => onDeleteExercise(exerciseIndex)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="close-circle" size={20} color={colors.statusError} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )
+})
+
 interface StructuredWorkoutInputProps {
   routine?: WorkoutRoutineWithDetails
   lastWorkout?: WorkoutSessionWithDetails | null
@@ -57,8 +344,17 @@ interface StructuredWorkoutInputProps {
   compactPreview?: boolean
   onDataChange: (exercises: ExerciseData[]) => void
   onRestTimerStart?: (seconds: number) => void
+  autoRestEnabled?: boolean
+  autoRestDuration?: number
   onInputFocus?: () => void
   onInputBlur?: () => void
+  onFocusedInputFrame?: (frame: { pageY: number; height: number }) => void
+  /**
+   * Callback fired when the custom keypad should be shown or hidden.
+   * Parent is responsible for rendering <CustomNumericKeypad> with these props
+   * outside of any ScrollView to avoid the Modal focus-stealing issue.
+   */
+  onKeypadStateChange?: (props: CustomNumericKeypadProps | null) => void
   /**
    * Callback to fetch history data for a specific set when adding new sets.
    * Returns the last workout's weight/reps for the given exercise and set number.
@@ -81,25 +377,55 @@ export function StructuredWorkoutInput({
   compactPreview = false,
   onDataChange,
   onRestTimerStart,
+  autoRestEnabled,
+  autoRestDuration,
   onInputFocus,
   onInputBlur,
+  onFocusedInputFrame,
+  onKeypadStateChange,
   onFetchSetHistory,
   onExerciseNamePress,
 }: StructuredWorkoutInputProps) {
+  const debugNext = useCallback((...args: unknown[]) => {
+    if (DEBUG_NEXT_FLOW) {
+      console.log('[StructuredNextFlow]', ...args)
+    }
+  }, [])
+  const debugKeypad = useCallback((event: string, payload?: Record<string, unknown>) => {
+    if (!__DEV__ || !DEBUG_KEYPAD_VERBOSE) return
+    const ts = Date.now() % 100000
+    if (payload) {
+      console.log(`[KeypadTrace][${ts}] ${event}`, payload)
+    } else {
+      console.log(`[KeypadTrace][${ts}] ${event}`)
+    }
+  }, [])
+
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred } = useWeightUnits()
   const styles = createStyles(colors, compactPreview)
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
+  const [focusedInput, setFocusedInput] = useState<FocusedInputState | null>(null)
+  const focusedInputRef = useRef<FocusedInputState | null>(null)
 
   // Ref to debounce blur callback - prevents double toolbar when focus transfers between inputs
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const focusTransitionRef = useRef(false)
+  const focusTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nextPressInFlightRef = useRef(false)
+  const keypadClosingRef = useRef(false)
+  const keypadCloseUntilRef = useRef(0)
+  const keypadOpenedAtRef = useRef(0)
 
   // Cleanup blur timeout on unmount
   useEffect(() => {
     return () => {
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
+      }
+      if (focusTransitionTimeoutRef.current) {
+        clearTimeout(focusTransitionTimeoutRef.current)
       }
     }
   }, [])
@@ -108,6 +434,9 @@ export function StructuredWorkoutInput({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const draggingScale = useSharedValue(1)
   const draggingOpacity = useSharedValue(1)
+
+  // Exercise GIF lookup cache (exercise id -> gifUrl) for display
+  const [exerciseGifUrls, setExerciseGifUrls] = useState<Record<string, string | null>>({})
 
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -177,10 +506,93 @@ export function StructuredWorkoutInput({
         }
       })
   })
+  const exercisesRef = useRef<ExerciseData[]>(exercises)
+
+  useEffect(() => {
+    exercisesRef.current = exercises
+  }, [exercises])
+
+  // Look up exercise GIFs when exercises change
+  useEffect(() => {
+    let cancelled = false
+    void exerciseLookup.initialize().then(() => {
+      if (cancelled) return
+      const updates: Record<string, string | null> = {}
+      exercises.forEach((ex) => {
+        if (!ex.name.trim()) return
+        const match = exerciseLookup.findByName(ex.name.trim())
+        if (match?.gifUrl) {
+          updates[ex.id] = match.gifUrl
+        } else {
+          updates[ex.id] = null
+        }
+      })
+      if (!cancelled) {
+        setExerciseGifUrls((prev) => ({ ...prev, ...updates }))
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [exercises])
+
+  const commitExercises = useCallback(
+    (nextExercises: ExerciseData[]) => {
+      exercisesRef.current = nextExercises
+      setExercises(nextExercises)
+      onDataChange(nextExercises)
+    },
+    [onDataChange],
+  )
+
+  const setFocusedInputState = useCallback((next: FocusedInputState | null) => {
+    focusedInputRef.current = next
+    setFocusedInput(next)
+  }, [])
+
+  const endFocusTransition = useCallback(() => {
+    focusTransitionRef.current = false
+    if (focusTransitionTimeoutRef.current) {
+      clearTimeout(focusTransitionTimeoutRef.current)
+      focusTransitionTimeoutRef.current = null
+    }
+  }, [])
+
+  const startFocusTransition = useCallback(() => {
+    focusTransitionRef.current = true
+    if (focusTransitionTimeoutRef.current) {
+      clearTimeout(focusTransitionTimeoutRef.current)
+    }
+    // Failsafe to avoid being stuck in transition state if a focus event never arrives.
+    focusTransitionTimeoutRef.current = setTimeout(() => {
+      focusTransitionRef.current = false
+      focusTransitionTimeoutRef.current = null
+    }, 700)
+  }, [])
+
+  const isStructuredInputCurrentlyFocused = useCallback(() => {
+    const textInputState = (TextInput as unknown as {
+      State?: { currentlyFocusedInput?: () => unknown }
+    }).State
+    const activeInput = textInputState?.currentlyFocusedInput?.()
+    if (!activeInput) return false
+
+    return Object.values(inputRefs.current).some((ref) => {
+      if (!ref) return false
+      if (ref === activeInput) return true
+      const refAny = ref as unknown as { _nativeTag?: unknown; __nativeTag?: unknown }
+      const activeAny = activeInput as { _nativeTag?: unknown; __nativeTag?: unknown }
+      return (
+        refAny._nativeTag === activeAny._nativeTag ||
+        refAny.__nativeTag === activeAny.__nativeTag
+      )
+    })
+  }, [])
 
   // Update exercises when initialExercises changes
   useEffect(() => {
     if (initialExercises && initialExercises.length > 0) {
+      exercisesRef.current = initialExercises
       setExercises(initialExercises)
       // Don't call onDataChange on initial mount - parent already has the data
       if (!isInitialMount.current) {
@@ -251,55 +663,63 @@ export function StructuredWorkoutInput({
           }
         })
 
+      exercisesRef.current = newExercises
       setExercises(newExercises)
       onDataChange(newExercises)
     }
   }, [routine, lastWorkout, initialExercises, convertToPreferred, onDataChange])
 
-  const handleWeightChange = (
-    exerciseIndex: number,
-    setIndex: number,
-    value: string,
-  ) => {
-    const newExercises = [...exercises]
-    const set = newExercises[exerciseIndex].sets[setIndex]
+  const handleWeightChange = useCallback(
+    (exerciseIndex: number, setIndex: number, value: string) => {
+      const newExercises = [...exercisesRef.current]
+      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      if (!set) return
 
-    set.weight = value
+      set.weight = value
+      commitExercises(newExercises)
+    },
+    [commitExercises],
+  )
 
-    setExercises(newExercises)
-    onDataChange(newExercises)
-  }
+  const handleRepsChange = useCallback(
+    (exerciseIndex: number, setIndex: number, value: string) => {
+      const newExercises = [...exercisesRef.current]
+      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      if (!set) return
 
-  const handleRepsChange = (
-    exerciseIndex: number,
-    setIndex: number,
-    value: string,
-  ) => {
-    const newExercises = [...exercises]
-    const set = newExercises[exerciseIndex].sets[setIndex]
-    const repsWasEmpty = !set.reps.trim()
+      const repsWasEmpty = !set.reps.trim()
+      set.reps = value
+      const repsNowHasData = Boolean(set.reps.trim())
 
-    set.reps = value
-    const repsNowHasData = Boolean(set.reps.trim())
+      // Start rest timer when user enters reps (goes from empty to having data)
+      if (repsWasEmpty && repsNowHasData && onRestTimerStart) {
+        if (set.targetRestSeconds) {
+          onRestTimerStart(set.targetRestSeconds)
+        } else if (autoRestEnabled && autoRestDuration) {
+          onRestTimerStart(autoRestDuration)
+        }
+      }
 
-    // Start rest timer when user enters reps (goes from empty to having data)
-    if (repsWasEmpty && repsNowHasData && set.targetRestSeconds && onRestTimerStart) {
-      onRestTimerStart(set.targetRestSeconds)
-    }
-
-    setExercises(newExercises)
-    onDataChange(newExercises)
-  }
+      commitExercises(newExercises)
+    },
+    [commitExercises, onRestTimerStart, autoRestEnabled, autoRestDuration],
+  )
 
   const handleAddSet = useCallback(
     async (exerciseIndex: number) => {
+      debugNext('handleAddSet:start', { exerciseIndex })
       await hapticAsync('light')
-      const newExercises = [...exercises]
+      const newExercises = [...exercisesRef.current]
       const exercise = newExercises[exerciseIndex]
+      if (!exercise) {
+        debugNext('handleAddSet:missingExercise', { exerciseIndex })
+        return null
+      }
 
       // Get the weight from the previous set (if it exists)
       const previousSet = exercise.sets[exercise.sets.length - 1]
       const prefillWeight = previousSet?.weight || ''
+      const newSetIndex = exercise.sets.length
 
       // The new set number (1-indexed)
       const newSetNumber = exercise.sets.length + 1
@@ -332,16 +752,22 @@ export function StructuredWorkoutInput({
       }
 
       exercise.sets.push(newSet)
-      setExercises(newExercises)
-      onDataChange(newExercises)
+      commitExercises(newExercises)
+      debugNext('handleAddSet:done', {
+        exerciseIndex,
+        newSetIndex,
+        totalSets: exercise.sets.length,
+      })
+      return newSetIndex
     },
-    [exercises, onFetchSetHistory, onDataChange],
+    [commitExercises, debugNext, onFetchSetHistory],
   )
 
   const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
     await hapticAsync('light')
-    const newExercises = [...exercises]
+    const newExercises = [...exercisesRef.current]
     const exercise = newExercises[exerciseIndex]
+    if (!exercise) return
 
     // Don't allow deleting if only one set remains
     if (exercise.sets.length <= 1) {
@@ -349,49 +775,522 @@ export function StructuredWorkoutInput({
     }
 
     exercise.sets.splice(setIndex, 1)
-    setExercises(newExercises)
-    onDataChange(newExercises)
+    commitExercises(newExercises)
   }
 
   const handleToggleWarmup = async (exerciseIndex: number, setIndex: number) => {
     await hapticAsync('light')
-    const newExercises = [...exercises]
-    const set = newExercises[exerciseIndex].sets[setIndex]
+    const newExercises = [...exercisesRef.current]
+    const set = newExercises[exerciseIndex]?.sets[setIndex]
+    if (!set) return
     set.isWarmup = !set.isWarmup
-    setExercises(newExercises)
-    onDataChange(newExercises)
+    commitExercises(newExercises)
   }
 
   const handleDeleteExercise = async (exerciseIndex: number) => {
     await hapticAsync('light')
-    const newExercises = exercises.filter((_, index) => index !== exerciseIndex)
-    setExercises(newExercises)
-    onDataChange(newExercises)
+    const newExercises = exercisesRef.current.filter(
+      (_, index) => index !== exerciseIndex,
+    )
+    commitExercises(newExercises)
   }
 
+  const focusInputWithCursor = useCallback(
+    (
+      exerciseIndex: number,
+      setIndex: number,
+      field: 'weight' | 'reps',
+      reason: 'programmatic' | 'new-set' | 'modal-ready',
+    ) => {
+      const key = `${exerciseIndex}-${setIndex}-${field}`
+
+      const tryFocus = (attempt: number) => {
+        const input = inputRefs.current[key]
+        if (!input) {
+          if (__DEV__ && attempt === 0) {
+            console.log('[Keypad] Focus restore missing ref', key, reason)
+          }
+          return
+        }
+
+        const needsModalForceRefocus = reason === 'modal-ready' && attempt === 0
+
+        if (needsModalForceRefocus) {
+          if (__DEV__) {
+            console.log('[Keypad] Focus restore force-blur', key)
+          }
+          // The iOS Modal mount often causes the underlying TextInput to lose visual focus (caret disappears)
+          // even though React Native thinks it's still focused. Calling .blur() forces RN to clear its state
+          // so the subsequent .focus() on the next frame actually sends a command to the native UI.
+          input.blur()
+          requestAnimationFrame(() => {
+            // Guard: abort if the user has moved to a different field
+            const cur = focusedInputRef.current
+            if (!cur || cur.exerciseIndex !== exerciseIndex || cur.setIndex !== setIndex || cur.field !== field) {
+              return
+            }
+            tryFocus(attempt + 1)
+          })
+          return
+        }
+
+        const value =
+          field === 'weight'
+            ? exercisesRef.current[exerciseIndex]?.sets?.[setIndex]?.weight ?? ''
+            : exercisesRef.current[exerciseIndex]?.sets?.[setIndex]?.reps ?? ''
+        const cursorPosition = value.length
+
+        input.focus()
+        input.setNativeProps({
+          selection: { start: cursorPosition, end: cursorPosition },
+        })
+
+        const hasFocus = isStructuredInputCurrentlyFocused()
+
+        if (hasFocus || attempt >= 6) {
+          if (__DEV__) {
+            console.log(
+              '[Keypad] Focus restore',
+              key,
+              hasFocus ? 'success' : 'give-up',
+              `attempt=${attempt}`,
+              `reason=${reason}`,
+            )
+          }
+          return
+        }
+
+        if (__DEV__ && attempt === 0) {
+          console.log('[Keypad] Focus restore retrying', key, `reason=${reason}`)
+        }
+        requestAnimationFrame(() => {
+          // Guard: abort if the user has moved to a different field
+          const cur = focusedInputRef.current
+          if (!cur || cur.exerciseIndex !== exerciseIndex || cur.setIndex !== setIndex || cur.field !== field) {
+            return
+          }
+          tryFocus(attempt + 1)
+        })
+      }
+
+      tryFocus(0)
+    },
+    [isStructuredInputCurrentlyFocused],
+  )
+
+  const focusInput = useCallback(
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      focusInputWithCursor(exerciseIndex, setIndex, field, 'programmatic')
+    },
+    [focusInputWithCursor],
+  )
+
+  const focusInputWhenReady = useCallback(
+    (
+      exerciseIndex: number,
+      setIndex: number,
+      field: 'weight' | 'reps',
+      attempt = 0,
+    ) => {
+      const key = `${exerciseIndex}-${setIndex}-${field}`
+      const input = inputRefs.current[key]
+
+      if (input) {
+        debugNext('focusInputWhenReady:success', { key, attempt })
+        focusInputWithCursor(exerciseIndex, setIndex, field, 'new-set')
+        return
+      }
+
+      // New set inputs may mount a frame or two after async add/history fetch completes.
+      if (attempt >= 20) {
+        debugNext('focusInputWhenReady:failed', { key, attempt })
+        return
+      }
+
+      if (attempt === 0 || attempt % 5 === 0) {
+        debugNext('focusInputWhenReady:retry', { key, attempt })
+      }
+
+      requestAnimationFrame(() => {
+        focusInputWhenReady(exerciseIndex, setIndex, field, attempt + 1)
+      })
+    },
+    [debugNext, focusInputWithCursor],
+  )
+
+  const handleNextInput = useCallback(
+    async (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      debugNext('handleNextInput:start', { exerciseIndex, setIndex, field })
+      const latestExercises = exercisesRef.current
+
+      if (field === 'weight') {
+        startFocusTransition()
+        debugNext('handleNextInput:weightToReps', { exerciseIndex, setIndex })
+        setFocusedInputState({ exerciseIndex, setIndex, field: 'reps' })
+        focusInput(exerciseIndex, setIndex, 'reps')
+        return
+      }
+
+      const nextSetIndex = setIndex + 1
+      if (latestExercises[exerciseIndex]?.sets[nextSetIndex]) {
+        startFocusTransition()
+        debugNext('handleNextInput:existingNextSet', {
+          exerciseIndex,
+          fromSetIndex: setIndex,
+          toSetIndex: nextSetIndex,
+        })
+        setFocusedInputState({
+          exerciseIndex,
+          setIndex: nextSetIndex,
+          field: 'weight',
+        })
+        focusInput(exerciseIndex, nextSetIndex, 'weight')
+        return
+      }
+
+      // At the end of an exercise, "Next" creates a new set and focuses its weight.
+      if (!compactPreview && latestExercises[exerciseIndex]) {
+        startFocusTransition()
+        debugNext('handleNextInput:autoAddSet', { exerciseIndex, setIndex })
+        const addedSetIndex = await handleAddSet(exerciseIndex)
+        if (typeof addedSetIndex === 'number') {
+          debugNext('handleNextInput:autoAddSet:focusNewWeight', {
+            exerciseIndex,
+            addedSetIndex,
+          })
+          setFocusedInputState({
+            exerciseIndex,
+            setIndex: addedSetIndex,
+            field: 'weight',
+          })
+          focusInputWhenReady(exerciseIndex, addedSetIndex, 'weight')
+          return
+        }
+        debugNext('handleNextInput:autoAddSet:failed', { exerciseIndex, setIndex })
+      }
+
+      const nextExerciseIndex = exerciseIndex + 1
+      if (latestExercises[nextExerciseIndex]?.sets?.length > 0) {
+        startFocusTransition()
+        debugNext('handleNextInput:nextExercise', { nextExerciseIndex })
+        setFocusedInputState({
+          exerciseIndex: nextExerciseIndex,
+          setIndex: 0,
+          field: 'weight',
+        })
+        focusInput(nextExerciseIndex, 0, 'weight')
+        return
+      }
+
+      debugNext('handleNextInput:dismissKeyboard')
+      endFocusTransition()
+      setFocusedInputState(null)
+      Keyboard.dismiss()
+    },
+    [
+      compactPreview,
+      debugNext,
+      endFocusTransition,
+      focusInput,
+      focusInputWhenReady,
+      handleAddSet,
+      setFocusedInputState,
+      startFocusTransition,
+    ],
+  )
+
+  const handleKeypadKeyPress = useCallback(
+    (key: KeypadKey) => {
+      const current = focusedInputRef.current
+      if (!current) return
+
+      const exercise = exercisesRef.current[current.exerciseIndex]
+      const set = exercise?.sets?.[current.setIndex]
+      if (!set) return
+
+      const existingValue = current.field === 'weight' ? set.weight : set.reps
+      let nextValue = existingValue ?? ''
+
+      if (key === 'backspace') {
+        nextValue = nextValue.slice(0, -1)
+      } else if (key === 'dot') {
+        if (current.field !== 'weight' || nextValue.includes('.')) return
+        nextValue = nextValue.length === 0 ? '0.' : `${nextValue}.`
+      } else {
+        nextValue = `${nextValue}${key}`
+      }
+
+      if (current.field === 'weight') {
+        handleWeightChange(current.exerciseIndex, current.setIndex, nextValue)
+      } else {
+        handleRepsChange(current.exerciseIndex, current.setIndex, nextValue)
+      }
+      debugKeypad('key-press', {
+        key,
+        exerciseIndex: current.exerciseIndex,
+        setIndex: current.setIndex,
+        field: current.field,
+        existingValue,
+        nextValue,
+      })
+    },
+    [debugKeypad, handleRepsChange, handleWeightChange],
+  )
+
+  const handleKeypadNext = useCallback(() => {
+    if (nextPressInFlightRef.current) return
+    if (Date.now() - keypadOpenedAtRef.current < 140) {
+      debugKeypad('next-blocked-open-guard', {
+        msSinceOpen: Date.now() - keypadOpenedAtRef.current,
+      })
+      return
+    }
+    const current = focusedInputRef.current
+    if (!current) return
+    debugKeypad('next-press', {
+      exerciseIndex: current.exerciseIndex,
+      setIndex: current.setIndex,
+      field: current.field,
+    })
+    nextPressInFlightRef.current = true
+    void Promise.resolve(
+      handleNextInput(current.exerciseIndex, current.setIndex, current.field),
+    ).finally(() => {
+      nextPressInFlightRef.current = false
+    })
+  }, [debugKeypad, handleNextInput])
+
+  const handleKeypadDone = useCallback(() => {
+    const current = focusedInputRef.current
+    keypadClosingRef.current = true
+    keypadCloseUntilRef.current = Date.now() + 380
+    debugKeypad('done-press', {
+      focused: current
+        ? `${current.exerciseIndex}-${current.setIndex}-${current.field}`
+        : 'no-focus',
+      closeUntilInMs: Math.max(0, keypadCloseUntilRef.current - Date.now()),
+    })
+    if (current) {
+      inputRefs.current[
+        `${current.exerciseIndex}-${current.setIndex}-${current.field}`
+      ]?.blur()
+    }
+    Keyboard.dismiss()
+    endFocusTransition()
+    nextPressInFlightRef.current = false
+    setFocusedInputState(null)
+    onKeypadStateChange?.(null)
+    onInputBlur?.()
+  }, [debugKeypad, endFocusTransition, onInputBlur, onKeypadStateChange, setFocusedInputState])
+
+  const reportFocusedInputFrame = useCallback(
+    (
+      exerciseIndex: number,
+      setIndex: number,
+      field: 'weight' | 'reps',
+      attempt = 0,
+    ) => {
+      const input = inputRefs.current[`${exerciseIndex}-${setIndex}-${field}`]
+      if (!input || !onFocusedInputFrame) return
+
+      input.measureInWindow((_x, y, _width, height) => {
+        // During rapid set creation/layout transitions measure can briefly return zeros.
+        if ((height <= 0 || y <= 0) && attempt < 8) {
+          requestAnimationFrame(() => {
+            // Guard: abort if the user has moved to a different field
+            const cur = focusedInputRef.current
+            if (!cur || cur.exerciseIndex !== exerciseIndex || cur.setIndex !== setIndex || cur.field !== field) {
+              return
+            }
+            reportFocusedInputFrame(exerciseIndex, setIndex, field, attempt + 1)
+          })
+          return
+        }
+
+        if (height > 0) {
+          onFocusedInputFrame({ pageY: y, height })
+        }
+      })
+    },
+    [onFocusedInputFrame],
+  )
+
+  // Stable refs so the keypad callbacks always call the latest version
+  // without being included as effect dependencies (which would cause infinite loops
+  // when parent re-renders with new inline arrow function props)
+  const keypadHandlersRef = useRef({ handleKeypadKeyPress, handleKeypadNext, handleKeypadDone })
+  keypadHandlersRef.current = { handleKeypadKeyPress, handleKeypadNext, handleKeypadDone }
+
+  const stableOnKeyPress = useCallback((key: KeypadKey) => keypadHandlersRef.current.handleKeypadKeyPress(key), [])
+  const stableOnNext = useCallback(() => keypadHandlersRef.current.handleKeypadNext(), [])
+  const stableOnDone = useCallback(() => keypadHandlersRef.current.handleKeypadDone(), [])
+
+  // Notify parent of keypad state so it can render the keypad outside any ScrollView
+  useEffect(() => {
+    if (compactPreview || !focusedInput || keypadClosingRef.current) {
+      debugKeypad('state-close', {
+        compactPreview,
+        hasFocusedInput: Boolean(focusedInput),
+        keypadClosing: keypadClosingRef.current,
+      })
+      onKeypadStateChange?.(null)
+    } else {
+      keypadOpenedAtRef.current = Date.now()
+      debugKeypad('state-open', {
+        field: focusedInput.field,
+        exerciseIndex: focusedInput.exerciseIndex,
+        setIndex: focusedInput.setIndex,
+      })
+      onKeypadStateChange?.({
+        field: focusedInput.field,
+        onKeyPress: stableOnKeyPress,
+        onNext: stableOnNext,
+        onDone: stableOnDone,
+        onReady: () => {
+          const fi = focusedInputRef.current
+          if (!fi) return
+          const key = `${fi.exerciseIndex}-${fi.setIndex}-${fi.field}`
+          debugKeypad('modal-ready-restore-focus', { key })
+          focusInputWithCursor(fi.exerciseIndex, fi.setIndex, fi.field, 'modal-ready')
+          // Measure and scroll the input into view now that the keypad is fully shown
+          reportFocusedInputFrame(fi.exerciseIndex, fi.setIndex, fi.field)
+        },
+      })
+    }
+    // stableOn* are created once and never change - safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedInput, compactPreview, debugKeypad, onKeypadStateChange, focusInputWithCursor, reportFocusedInputFrame])
+
   const handleFocus = useCallback(
-    (_exerciseIndex: number, _setIndex: number, _field: 'weight' | 'reps') => {
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
       // Cancel any pending blur callback - focus transferred within component
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
         blurTimeoutRef.current = null
       }
+
+      if (Date.now() < keypadCloseUntilRef.current) {
+        debugKeypad('focus-blocked-close-settling', {
+          exerciseIndex,
+          setIndex,
+          field,
+          msUntilAllowed: keypadCloseUntilRef.current - Date.now(),
+        })
+        inputRefs.current[`${exerciseIndex}-${setIndex}-${field}`]?.blur()
+        return
+      }
+
+      // If we are ALREADY fully focused on this exact input, this is a native re-focus
+      // (e.g. from our modal-ready blur/focus trick, or a duplicate event during a Next transition).
+      // We still want to make sure it's scrolled into view, but we DON'T want to
+      // reset keypad state or trigger a duplicate OPEN.
+      const fi = focusedInputRef.current
+      if (
+        fi?.exerciseIndex === exerciseIndex &&
+        fi?.setIndex === setIndex &&
+        fi?.field === field
+      ) {
+        debugKeypad('focus-skip-duplicate', { exerciseIndex, setIndex, field, inTransition: focusTransitionRef.current })
+        endFocusTransition()
+        requestAnimationFrame(() => {
+          const current = focusedInputRef.current
+          if (
+            current?.exerciseIndex === exerciseIndex &&
+            current?.setIndex === setIndex &&
+            current?.field === field
+          ) {
+            reportFocusedInputFrame(exerciseIndex, setIndex, field)
+          }
+        })
+        return
+      }
+
+      debugKeypad('focus', {
+        exerciseIndex,
+        setIndex,
+        field,
+        hadBlurPending: Boolean(blurTimeoutRef.current),
+        inTransition: focusTransitionRef.current,
+      })
+      endFocusTransition()
+      nextPressInFlightRef.current = false
+      keypadClosingRef.current = false
+      setFocusedInputState({ exerciseIndex, setIndex, field })
       onInputFocus?.()
+      requestAnimationFrame(() => {
+        // Guard: only report frame if still on this input (transition may have moved us)
+        const current = focusedInputRef.current
+        if (
+          current?.exerciseIndex === exerciseIndex &&
+          current?.setIndex === setIndex &&
+          current?.field === field
+        ) {
+          reportFocusedInputFrame(exerciseIndex, setIndex, field)
+        }
+      })
     },
-    [onInputFocus],
+    [debugKeypad, endFocusTransition, onInputFocus, reportFocusedInputFrame, setFocusedInputState],
   )
 
-  const handleBlur = useCallback(() => {
-    // Debounce the blur callback to allow focus to transfer between inputs
-    // This prevents the double toolbar glitch on iOS
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current)
-    }
-    blurTimeoutRef.current = setTimeout(() => {
-      onInputBlur?.()
-      blurTimeoutRef.current = null
-    }, 50)
-  }, [onInputBlur])
+  const handleBlur = useCallback(
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      // Debounce the blur callback to allow focus to transfer between inputs
+      // This prevents the double toolbar glitch on iOS
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current)
+      }
+      blurTimeoutRef.current = setTimeout(() => {
+        if (keypadClosingRef.current) {
+          debugKeypad('blur-skip-keypad-closing', { exerciseIndex, setIndex, field })
+          blurTimeoutRef.current = null
+          return
+        }
+
+        if (focusTransitionRef.current) {
+          debugNext('handleBlur:skipClear:focusTransition', {
+            exerciseIndex,
+            setIndex,
+            field,
+          })
+          blurTimeoutRef.current = null
+          return
+        }
+
+        const focusedState = focusedInputRef.current
+        if (
+          focusedState &&
+          (
+            focusedState.exerciseIndex !== exerciseIndex ||
+            focusedState.setIndex !== setIndex ||
+            focusedState.field !== field
+          )
+        ) {
+          debugNext('handleBlur:skipClear:focusMoved', {
+            blurred: { exerciseIndex, setIndex, field },
+            focused: focusedState,
+          })
+          blurTimeoutRef.current = null
+          return
+        }
+
+        if (isStructuredInputCurrentlyFocused()) {
+          debugNext('handleBlur:skipClear:structuredInputStillFocused', {
+            exerciseIndex,
+            setIndex,
+            field,
+          })
+          blurTimeoutRef.current = null
+          return
+        }
+
+        debugKeypad('blur-commit', { exerciseIndex, setIndex, field })
+        setFocusedInputState(null)
+        onInputBlur?.()
+        blurTimeoutRef.current = null
+      }, 80)
+    },
+    [debugKeypad, debugNext, isStructuredInputCurrentlyFocused, onInputBlur, setFocusedInputState],
+  )
 
   // Drag and drop handlers
   const handleLongPressExercise = useCallback(
@@ -412,38 +1311,36 @@ export function StructuredWorkoutInput({
 
   const handleMoveExerciseUp = useCallback(
     async (index: number) => {
-      if (index <= 0) return
+      const updated = [...exercisesRef.current]
+      if (index <= 0 || index >= updated.length) return
       await hapticAsync('light')
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-      
+
       // Compute the new order
-      const updated = [...exercises]
       ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
-      
+
       // Update state and notify parent
-      setExercises(updated)
+      commitExercises(updated)
       setDraggingIndex(index - 1)
-      onDataChange(updated)
     },
-    [exercises, onDataChange],
+    [commitExercises],
   )
 
   const handleMoveExerciseDown = useCallback(
     async (index: number) => {
-      if (index >= exercises.length - 1) return
+      const updated = [...exercisesRef.current]
+      if (index < 0 || index >= updated.length - 1) return
       await hapticAsync('light')
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-      
+
       // Compute the new order
-      const updated = [...exercises]
       ;[updated[index + 1], updated[index]] = [updated[index], updated[index + 1]]
-      
+
       // Update state and notify parent
-      setExercises(updated)
+      commitExercises(updated)
       setDraggingIndex(index + 1)
-      onDataChange(updated)
     },
-    [exercises, onDataChange],
+    [commitExercises],
   )
 
   const handleDropExercise = useCallback(async () => {
@@ -466,94 +1363,37 @@ export function StructuredWorkoutInput({
   }))
 
   return (
-    <View style={styles.container}>
-      {exercises.map((exercise, exerciseIndex) => {
-        const isDragging = draggingIndex === exerciseIndex
+    <>
+      <View style={styles.container}>
+        {exercises.map((exercise, exerciseIndex) => {
+          const isDragging = draggingIndex === exerciseIndex
 
-        return (
-          <Animated.View
-            key={exercise.id}
-            style={[
-              styles.exerciseBlock,
-              isDragging && dragAnimatedStyle,
-              isDragging && styles.exerciseBlockDragging,
-            ]}
-          >
+          return (
+            <Animated.View
+              key={exercise.id}
+              style={[
+                styles.exerciseBlock,
+                isDragging && dragAnimatedStyle,
+                isDragging && styles.exerciseBlockDragging,
+              ]}
+            >
             {/* Exercise Header */}
-            <View style={styles.exerciseHeader}>
-              <TouchableOpacity
-                onPress={() => onExerciseNamePress?.(exercise.name)}
-                onLongPress={() => handleLongPressExercise(exerciseIndex)}
-                delayLongPress={400}
-                activeOpacity={0.6}
-                style={styles.exerciseNameButton}
-              >
-                <Text
-                  style={styles.exerciseName}
-                  numberOfLines={isDragging ? 1 : undefined}
-                  ellipsizeMode={isDragging ? 'tail' : undefined}
-                >
-                  {exercise.name}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Drag Controls or Delete Button */}
-              {isDragging ? (
-                <View style={styles.dragControls}>
-                  <TouchableOpacity
-                    onPress={() => handleMoveExerciseUp(exerciseIndex)}
-                    style={[
-                      styles.dragArrow,
-                      exerciseIndex === 0 && styles.dragArrowDisabled,
-                    ]}
-                    activeOpacity={0.5}
-                    disabled={exerciseIndex === 0}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons
-                      name="chevron-up"
-                      size={22}
-                      color={exerciseIndex === 0 ? colors.textTertiary : colors.textPrimary}
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleMoveExerciseDown(exerciseIndex)}
-                    style={[
-                      styles.dragArrow,
-                      exerciseIndex === exercises.length - 1 && styles.dragArrowDisabled,
-                    ]}
-                    activeOpacity={0.5}
-                    disabled={exerciseIndex === exercises.length - 1}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons
-                      name="chevron-down"
-                      size={22}
-                      color={exerciseIndex === exercises.length - 1 ? colors.textTertiary : colors.textPrimary}
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleDropExercise}
-                    style={styles.dragDone}
-                    activeOpacity={0.5}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="checkmark" size={20} color={colors.brandPrimary} />
-                  </TouchableOpacity>
-                </View>
-              ) : !compactPreview ? (
-                <TouchableOpacity
-                  style={styles.deleteExerciseButton}
-                  onPress={() => handleDeleteExercise(exerciseIndex)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close-circle" size={20} color={colors.statusError} />
-                </TouchableOpacity>
-              ) : null
-              }
-            </View>
+            <WorkoutExerciseHeader
+              exercise={exercise}
+              exerciseIndex={exerciseIndex}
+              isDragging={isDragging}
+              compactPreview={compactPreview ?? false}
+              colors={colors}
+              styles={styles}
+              exerciseGifUrl={exerciseGifUrls[exercise.id] ?? undefined}
+              totalExercises={exercises.length}
+              onExerciseNamePress={onExerciseNamePress}
+              onLongPressExercise={handleLongPressExercise}
+              onMoveExerciseUp={handleMoveExerciseUp}
+              onMoveExerciseDown={handleMoveExerciseDown}
+              onDropExercise={handleDropExercise}
+              onDeleteExercise={handleDeleteExercise}
+            />
 
             {/* Sets as inline text with inputs - hide when dragging for cleaner look */}
             {!isDragging && (
@@ -578,97 +1418,38 @@ export function StructuredWorkoutInput({
                     }
 
                     return (
-                      <View key={setIndex} style={styles.setRow}>
-                        <TouchableOpacity
-                          style={[styles.setNumberBadge, isWarmup && styles.warmupBadge]}
-                          onPress={() => handleToggleWarmup(exerciseIndex, setIndex)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
-                            {displayLabel}
-                          </Text>
-                        </TouchableOpacity>
-                        <TextInput
-                          ref={(ref) => {
-                            inputRefs.current[
-                              `${exerciseIndex}-${setIndex}-weight`
-                            ] = ref
-                          }}
-                          style={[
-                            styles.inlineInput,
-                            isWeightSuspicious(set.weight) && styles.inlineInputWarning,
-                          ]}
-                          placeholder={
-                            set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'
-                          }
-                          placeholderTextColor={
-                            set.lastWorkoutWeight
-                              ? colors.textTertiary
-                              : colors.textPlaceholder
-                          }
-                          keyboardType="decimal-pad"
-                          value={set.weight}
-                          onChangeText={(value) =>
-                            handleWeightChange(exerciseIndex, setIndex, value)
-                          }
-                          cursorColor={colors.brandPrimary}
-                          selectionColor={colors.brandPrimary}
-                          onFocus={() =>
-                            handleFocus(exerciseIndex, setIndex, 'weight')
-                          }
-                          onBlur={handleBlur}
-                        />
-                        <Text style={styles.setText}> {unitDisplay} x </Text>
-                        <TextInput
-                          ref={(ref) => {
-                            inputRefs.current[
-                              `${exerciseIndex}-${setIndex}-reps`
-                            ] = ref
-                          }}
-                          style={styles.inlineInput}
-                          placeholder={
-                            set.lastWorkoutReps ? set.lastWorkoutReps : '___'
-                          }
-                          placeholderTextColor={
-                            set.lastWorkoutReps
-                              ? colors.textTertiary
-                              : colors.textPlaceholder
-                          }
-                          keyboardType="number-pad"
-                          value={set.reps}
-                          onChangeText={(value) =>
-                            handleRepsChange(exerciseIndex, setIndex, value)
-                          }
-                          cursorColor={colors.brandPrimary}
-                          selectionColor={colors.brandPrimary}
-                          onFocus={() => handleFocus(exerciseIndex, setIndex, 'reps')}
-                          onBlur={handleBlur}
-                        />
-                        <Text style={styles.setText}> reps</Text>
-                        {targetText && (
-                          <Text style={styles.targetText}>{targetText}</Text>
-                        )}
-                        {!compactPreview && (
-                          <View style={styles.deleteSetButtonContainer}>
-                            {setIndex === exercise.sets.length - 1 &&
-                              exercise.sets.length > 1 && (
-                                <TouchableOpacity
-                                  style={styles.deleteSetButton}
-                                  onPress={() =>
-                                    handleDeleteSet(exerciseIndex, setIndex)
-                                  }
-                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                  <Ionicons
-                                    name="close-circle"
-                                    size={18}
-                                    color={colors.textTertiary}
-                                  />
-                                </TouchableOpacity>
-                              )}
-                          </View>
-                        )}
-                      </View>
+                      <WorkoutSetRow
+                        key={setIndex}
+                        exerciseIndex={exerciseIndex}
+                        setIndex={setIndex}
+                        set={set}
+                        workingSetNumber={workingSetNumber}
+                        isWarmup={isWarmup}
+                        displayLabel={displayLabel}
+                        targetText={targetText}
+                        isWeightFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'weight'}
+                        isRepsFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'reps'}
+                        isWeightSuspicious={isWeightSuspicious(set.weight)}
+                        compactPreview={compactPreview ?? false}
+                        unitDisplay={unitDisplay}
+                        colors={colors}
+                        styles={styles}
+                        onToggleWarmup={handleToggleWarmup}
+                        onWeightChange={handleWeightChange}
+                        onRepsChange={handleRepsChange}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        onDeleteSet={handleDeleteSet}
+                        onSelectionWeightChange={__DEV__ ? (start, end, length) => {
+                          debugKeypad('selection-weight', { exerciseIndex, setIndex, start, end, valueLength: length })
+                        } : undefined}
+                        onSelectionRepsChange={__DEV__ ? (start, end, length) => {
+                          debugKeypad('selection-reps', { exerciseIndex, setIndex, start, end, valueLength: length })
+                        } : undefined}
+                        registerWeightRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref }}
+                        registerRepsRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref }}
+                        canDelete={setIndex === exercise.sets.length - 1 && exercise.sets.length > 1}
+                      />
                     )
                   })
                 })()}
@@ -697,10 +1478,12 @@ export function StructuredWorkoutInput({
                 {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
               </Text>
             )}
-          </Animated.View>
-        )
-      })}
-    </View>
+            </Animated.View>
+          )
+        })}
+      </View>
+      {/* Keypad is rendered by parent via onKeypadStateChange to avoid Modal focus-stealing */}
+    </>
   )
 }
 
@@ -720,6 +1503,18 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: compactPreview ? 2 : 4,
+    },
+    exerciseNameRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: compactPreview ? 8 : 10,
+      marginRight: 8,
+    },
+    exerciseThumbnail: {
+      width: compactPreview ? 32 : 40,
+      height: compactPreview ? 32 : 40,
+      borderRadius: compactPreview ? 8 : 10,
     },
     exerciseNameButton: {
       flex: 1,
@@ -752,13 +1547,21 @@ const createStyles = (
       width: compactPreview ? 20 : 24,
       height: compactPreview ? 20 : 24,
       borderRadius: compactPreview ? 10 : 12,
-      backgroundColor: colors.border,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: compactPreview ? 6 : 8,
     },
-    warmupBadge: {
+    setNumberBadgeFallback: {
+      backgroundColor: colors.border,
+    },
+    warmupBadgeFallback: {
       backgroundColor: `${colors.statusWarning}25`,
+    },
+    setNumberBadgeTouch: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     setNumberText: {
       fontSize: compactPreview ? 11 : 12,
@@ -766,7 +1569,7 @@ const createStyles = (
       color: colors.textSecondary,
     },
     warmupText: {
-      color: colors.statusWarning,
+      color: colors.textPrimary,
     },
     setText: {
       fontSize: compactPreview ? 15 : 17,
@@ -776,6 +1579,7 @@ const createStyles = (
     inlineInput: {
       minWidth: compactPreview ? 34 : 40,
       paddingHorizontal: 2,
+      paddingRight: 4,
       paddingTop: 0,
       paddingBottom: 0,
       fontSize: compactPreview ? 15 : 17,

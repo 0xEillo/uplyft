@@ -4,6 +4,7 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { SlideUpView } from '@/components/slide-up-view'
+import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -58,7 +59,11 @@ import {
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
-import { TabActions, useFocusEffect, useNavigation } from '@react-navigation/native'
+import {
+  TabActions,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -76,6 +81,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import Reanimated, {
@@ -132,9 +138,10 @@ export default function CreatePostScreen() {
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const isIOS = Platform.OS === 'ios'
-  const bottomSafeInset =
-    isIOS ? Math.min(insets.bottom, 34) : insets.bottom
+  const bottomSafeInset = isIOS ? Math.min(insets.bottom, 34) : insets.bottom
+  const KEYBOARD_OVERLAY_ESTIMATED_HEIGHT = 330 + bottomSafeInset
 
   // Exercise history hook for creating exercises with last performance data
   const {
@@ -171,6 +178,11 @@ export default function CreatePostScreen() {
   const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
+  const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
+    false,
+  )
+  const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
+  const [keypadTapShield, setKeypadTapShield] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
@@ -199,6 +211,8 @@ export default function CreatePostScreen() {
 
   const [showRestTimer, setShowRestTimer] = useState(false)
   const restTimer = useRestTimerContext()
+  const [autoRestEnabled, setAutoRestEnabled] = useState(false)
+  const [autoRestDuration, setAutoRestDuration] = useState(120)
   const {
     startWorkoutActivity,
     updateWorkoutActivity,
@@ -285,6 +299,97 @@ export default function CreatePostScreen() {
     [restTimer],
   )
 
+  const handleAutoRestChange = useCallback(
+    (enabled: boolean, duration: number) => {
+      setAutoRestEnabled(enabled)
+      setAutoRestDuration(duration)
+    },
+    [],
+  )
+
+  const handleStructuredInputFocus = useCallback(() => {
+    if (__DEV__) {
+      const ts = Date.now() % 100000
+      console.log(`[KeypadTrace][${ts}] parent-structured-input-focus`)
+    }
+    setIsStructuredInputFocused(true)
+  }, [])
+
+  const handleStructuredInputBlur = useCallback(() => {
+    if (__DEV__) {
+      const ts = Date.now() % 100000
+      console.log(`[KeypadTrace][${ts}] parent-structured-input-blur`)
+    }
+    setIsStructuredInputFocused(false)
+    setKeypadProps(null)
+  }, [])
+
+  const activateKeypadTapShield = useCallback((durationMs = 340) => {
+    keypadTapShieldRef.current = true
+    setKeypadTapShield(true)
+    if (keypadTapShieldTimeoutRef.current) {
+      clearTimeout(keypadTapShieldTimeoutRef.current)
+    }
+    keypadTapShieldTimeoutRef.current = setTimeout(() => {
+      keypadTapShieldTimeoutRef.current = null
+      keypadTapShieldRef.current = false
+      setKeypadTapShield(false)
+    }, durationMs)
+  }, [])
+
+  const handleStructuredKeypadStateChange = useCallback(
+    (nextKeypadProps: CustomNumericKeypadProps | null) => {
+      if (__DEV__) {
+        const ts = Date.now() % 100000
+        console.log(`[KeypadTrace][${ts}] parent-keypad-state-change`, {
+          hasNextKeypadProps: Boolean(nextKeypadProps),
+          field: nextKeypadProps?.field ?? null,
+          tapShield: keypadTapShieldRef.current,
+        })
+      }
+      if (nextKeypadProps && keypadTapShieldRef.current) {
+        if (__DEV__) console.log('[Keypad] BLOCKED open (tap-shield)')
+        return
+      }
+      if (__DEV__) {
+        console.log(
+          '[Keypad]',
+          nextKeypadProps ? `OPEN ${nextKeypadProps.field}` : 'CLOSE',
+        )
+      }
+      setKeypadProps(nextKeypadProps)
+      setIsStructuredInputFocused(Boolean(nextKeypadProps))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (keypadTapShieldTimeoutRef.current) {
+        clearTimeout(keypadTapShieldTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const ensureStructuredInputVisible = useCallback(
+    (frame: { pageY: number; height: number }) => {
+      if (!scrollViewRef.current) return
+
+      const visibleBottom =
+        windowHeight - KEYBOARD_OVERLAY_ESTIMATED_HEIGHT - 14
+      const inputBottom = frame.pageY + frame.height
+
+      if (inputBottom <= visibleBottom) return
+
+      const delta = inputBottom - visibleBottom
+      scrollViewRef.current.scrollTo({
+        y: Math.max(0, scrollYRef.current + delta + 8),
+        animated: true,
+      })
+    },
+    [KEYBOARD_OVERLAY_ESTIMATED_HEIGHT, windowHeight],
+  )
+
   // Navigate to exercise page if exercise exists in the database
   const handleExerciseNamePress = useCallback(
     (exerciseName: string) => {
@@ -335,6 +440,9 @@ export default function CreatePostScreen() {
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
+  const scrollYRef = useRef(0)
+  const keypadTapShieldRef = useRef(false)
+  const keypadTapShieldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
   const structuredDataRef = useRef(structuredData)
@@ -584,6 +692,7 @@ export default function CreatePostScreen() {
 
     titleInputRef.current?.blur?.()
     notesInputRef.current?.blur?.()
+    setIsStructuredInputFocused(false)
     Keyboard.dismiss()
   }, [])
 
@@ -1760,14 +1869,14 @@ export default function CreatePostScreen() {
     }
 
     if (!workoutTitle.trim()) {
-      isSubmittingRef.current = false
-      setIsLoading(false)
-      Alert.alert(
-        'Title Required',
-        'Give your workout a title so you can find it later.',
-        [{ text: 'OK' }],
-      )
-      return
+      const hour = new Date().getHours()
+      const autoTitle =
+        hour < 12
+          ? 'Morning Session'
+          : hour < 15
+          ? 'Afternoon Session'
+          : 'Evening Session'
+      setWorkoutTitle(autoTitle)
     }
 
     // Check if there's workout data (either notes or structured data)
@@ -1828,7 +1937,7 @@ export default function CreatePostScreen() {
             if (set.weight || set.reps) {
               const weightText = set.weight || '___'
               const repsText = set.reps || '___'
-              
+
               lines.push(
                 `Set ${
                   index + 1
@@ -1873,12 +1982,12 @@ export default function CreatePostScreen() {
         // Try to parse set: "weight x reps" or "weight x reps reps" or "135 x 8"
         // Note: Weight pattern accepts both period and comma as decimal separators (e.g., "7.5" or "7,5")
         const setMatch = line.match(/(\d+(?:[.,]\d+)?)\s*(?:x|×)\s*(\d+)/i)
-        
+
         if (setMatch) {
           // Normalize decimal separator: replace comma with period (for European locales)
           const rawWeight = setMatch[1]
           const weight = rawWeight.replace(',', '.')
-          
+
           sets.push({
             weight,
             reps: setMatch[2],
@@ -1986,10 +2095,7 @@ export default function CreatePostScreen() {
   }, [notes, cursorPosition])
 
   const showInlineVariations =
-    isNotesFocused &&
-    variationSuggestions.length > 0 &&
-    !hasTrailingText
-
+    isNotesFocused && variationSuggestions.length > 0 && !hasTrailingText
 
   const stackedVariationSuggestions = useMemo(() => {
     if (!showInlineVariations) return []
@@ -2001,29 +2107,40 @@ export default function CreatePostScreen() {
 
   // Auto-scroll to show variations when they appear
   useEffect(() => {
-    if (showInlineVariations && stackedVariationSuggestions.length > 0 && scrollViewRef.current) {
+    if (
+      showInlineVariations &&
+      stackedVariationSuggestions.length > 0 &&
+      scrollViewRef.current
+    ) {
       // Small delay to allow layout to update with new padding
       requestAnimationFrame(() => {
         if (scrollViewRef.current) {
           // Calculate roughly where the cursor is
-          const cursorLineIndex = notes.substring(0, cursorPosition).split('\n').length
+          const cursorLineIndex = notes.substring(0, cursorPosition).split('\n')
+            .length
           const lineHeight = 24
           const structuredHeight = calculateStructuredContentHeight()
-          
+
           // Calculate explicit cursor Y position
-          const cursorY = structuredHeight + (cursorLineIndex * lineHeight)
+          const cursorY = structuredHeight + cursorLineIndex * lineHeight
 
           // Scroll such that the cursor is positioned slightly down from the top
           // giving context above (approx 3 lines) while maximizing space below for variations
           // The buffer of -80 ensures previous lines are visible
           scrollViewRef.current.scrollTo({
-            y: Math.max(0, cursorY - 80), 
+            y: Math.max(0, cursorY - 80),
             animated: true,
           })
         }
       })
     }
-  }, [showInlineVariations, stackedVariationSuggestions.length, notes, cursorPosition, calculateStructuredContentHeight])
+  }, [
+    showInlineVariations,
+    stackedVariationSuggestions.length,
+    notes,
+    cursorPosition,
+    calculateStructuredContentHeight,
+  ])
 
   const acceptSuggestionByName = useCallback(
     async (exerciseName: string) => {
@@ -2319,7 +2436,7 @@ export default function CreatePostScreen() {
 
   // Keyboard handling with Reanimated for perfect sync
   const keyboard = useAnimatedKeyboard()
-  
+
   const spacerStyle = useAnimatedStyle(() => ({
     height: keyboard.height.value,
   }))
@@ -2360,7 +2477,9 @@ export default function CreatePostScreen() {
             {(shouldShowWorkoutTimer || showDraftSaved) && (
               <View style={styles.headerCenterContainer}>
                 {shouldShowWorkoutTimer && !showDraftSaved && (
-                  <Text style={styles.headerTimerText}>{headerTimerDisplay}</Text>
+                  <Text style={styles.headerTimerText}>
+                    {headerTimerDisplay}
+                  </Text>
                 )}
                 {showDraftSaved && (
                   <Animated.View
@@ -2412,13 +2531,21 @@ export default function CreatePostScreen() {
           <ScrollView
             ref={scrollViewRef}
             style={styles.inputContainer}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              keypadProps
+                ? { paddingBottom: KEYBOARD_OVERLAY_ESTIMATED_HEIGHT + 24 }
+                : null,
+            ]}
             keyboardDismissMode={
               Platform.OS === 'ios' ? 'interactive' : 'on-drag'
             }
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
+            onScroll={(event) => {
+              scrollYRef.current = event.nativeEvent.contentOffset.y
+            }}
             bounces={true}
             automaticallyAdjustContentInsets={false}
           >
@@ -2427,7 +2554,14 @@ export default function CreatePostScreen() {
               <TextInput
                 ref={titleInputRef}
                 style={styles.titleInput}
-                placeholder="Workout Title"
+                placeholder={(() => {
+                  const h = new Date().getHours()
+                  return h < 12
+                    ? 'Morning Session'
+                    : h < 17
+                    ? 'Afternoon Session'
+                    : 'Evening Session'
+                })()}
                 placeholderTextColor="#999"
                 value={workoutTitle}
                 onChangeText={setWorkoutTitle}
@@ -2471,6 +2605,12 @@ export default function CreatePostScreen() {
                   }
                   onDataChange={handleStructuredDataChange}
                   onRestTimerStart={handleRestTimerStart}
+                  autoRestEnabled={autoRestEnabled}
+                  autoRestDuration={autoRestDuration}
+                  onInputFocus={handleStructuredInputFocus}
+                  onInputBlur={handleStructuredInputBlur}
+                  onFocusedInputFrame={ensureStructuredInputVisible}
+                  onKeypadStateChange={handleStructuredKeypadStateChange}
                   onFetchSetHistory={fetchSetHistory}
                   onExerciseNamePress={handleExerciseNamePress}
                 />
@@ -2497,7 +2637,7 @@ export default function CreatePostScreen() {
                 {...Platform.select({ android: { includeFontPadding: false } })}
                 placeholder={
                   isStructuredMode
-                    ? 'Add notes about your workout...'
+                    ? ''
                     : 'Log your exercises...'
                 }
                 placeholderTextColor="#999"
@@ -2512,6 +2652,8 @@ export default function CreatePostScreen() {
                 selectionColor={colors.brandPrimary}
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
+                  setIsStructuredInputFocused(false)
+                  setKeypadProps(null)
                   setIsNotesFocused(true)
                 }}
                 onBlur={() => {
@@ -2591,8 +2733,35 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          <EditorToolbar {...editorToolbarProps} />
+          {!isStructuredInputFocused && (
+            <EditorToolbar {...editorToolbarProps} />
+          )}
           <Reanimated.View style={spacerStyle} />
+          {/* Custom numeric keypad - rendered here (outside ScrollView) so the
+              TextInput retains native focus and caret stays visible */}
+          {keypadProps && (
+            <CustomNumericKeypad
+              {...keypadProps}
+              onDone={() => {
+                if (__DEV__) console.log('[Keypad] Done pressed, shield 340ms')
+                if (__DEV__) {
+                  const ts = Date.now() % 100000
+                  console.log(`[KeypadTrace][${ts}] parent-keypad-done-wrapper`, {
+                    field: keypadProps.field,
+                  })
+                }
+                activateKeypadTapShield(340)
+                keypadProps.onDone()
+              }}
+            />
+          )}
+          {keypadTapShield && (
+            <View
+              style={StyleSheet.absoluteFill}
+              pointerEvents="auto"
+              accessibilityElementsHidden
+            />
+          )}
         </View>
 
         {isLoading && (
@@ -2609,7 +2778,6 @@ export default function CreatePostScreen() {
               <Text style={styles.newUserGuideTitle}>
                 Log workouts how you like!
               </Text>
-         
 
               <View style={styles.newUserGuideOptionRow}>
                 <View style={styles.newUserGuideOptionBadge}>
@@ -2707,7 +2875,8 @@ export default function CreatePostScreen() {
               </View>
 
               <Text style={styles.newUserGuideFooter}>
-                No matter how you log, AI detects your exercises and turns it into a formatted workout post.
+                No matter how you log, AI detects your exercises and turns it
+                into a formatted workout post.
               </Text>
             </View>
           </View>
@@ -2758,6 +2927,7 @@ export default function CreatePostScreen() {
         onStart={restTimer.start}
         onStop={restTimer.stop}
         onAddTime={restTimer.addTime}
+        onAutoRestChange={handleAutoRestChange}
       />
 
       <WorkoutCoachSheet
