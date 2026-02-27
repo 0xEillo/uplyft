@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   menuDropdown: {
     position: 'absolute',
     right: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     zIndex: 1000,
     shadowColor: '#000',
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     height: 24,
     width: '70%',
     marginBottom: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   skeletonNotes: {
     height: 14,

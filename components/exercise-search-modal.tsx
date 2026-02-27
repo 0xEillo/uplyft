@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
   exerciseThumbnail: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: 12,
     marginRight: 16,
   },
   rowContentContainer: {

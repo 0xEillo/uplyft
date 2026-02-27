@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   bgCircle: {
     width: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   backgroundButtonText: {
     fontSize: 10,

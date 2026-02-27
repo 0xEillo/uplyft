@@ -453,7 +453,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseThumbnail: {
       width: 40,
       height: 40,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: '#f0f0f0',
     },
     exerciseInfo: {

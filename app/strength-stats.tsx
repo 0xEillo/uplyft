@@ -757,7 +757,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: 16,
       padding: 12,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     infoText: {
       flex: 1,
@@ -1028,7 +1028,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
       padding: 12,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     nextLevelLabel: {
       fontSize: 13,

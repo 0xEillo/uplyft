@@ -368,7 +368,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       paddingVertical: 8,
       paddingHorizontal: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
     },

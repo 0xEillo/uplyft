@@ -272,32 +272,31 @@ export function WorkoutCard({
       {/* Action buttons */}
       {(onStartWorkout || onSaveRoutine) && (
         <View style={styles.actionsContainer}>
-          {onStartWorkout && (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={onStartWorkout}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryButtonText}>Start Workout</Text>
-              <Ionicons name="arrow-forward" size={16} color="#fff" />
-            </TouchableOpacity>
-          )}
-          {onSaveRoutine && (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={onSaveRoutine}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="bookmark-outline"
-                size={14}
-                color={
-                  isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary
-                }
-              />
-              <Text style={styles.secondaryButtonText}>Save Routine</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.actionsRow}>
+            {onStartWorkout && (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={onStartWorkout}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.primaryButtonText}>Start Workout</Text>
+                <Ionicons name="arrow-forward" size={15} color="#fff" />
+              </TouchableOpacity>
+            )}
+            {onSaveRoutine && (
+              <TouchableOpacity
+                style={styles.saveIconButton}
+                onPress={onSaveRoutine}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="bookmark-outline"
+                  size={18}
+                  color={isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
     </LiquidGlassSurface>
@@ -525,23 +524,28 @@ const createStyles = (
     actionsContainer: {
       paddingHorizontal: 16,
       paddingBottom: 16,
-      paddingTop: 8,
-      gap: 10,
+      paddingTop: 10,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       marginTop: 4,
     },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'center',
+    },
     primaryButton: {
+      flex: 1,
       backgroundColor: colors.brandPrimary,
-      height: 48,
-      borderRadius: 24,
+      height: 50,
+      borderRadius: 25,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 7,
       shadowColor: colors.brandPrimary,
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.45,
+      shadowOpacity: 0.4,
       shadowRadius: 14,
       elevation: 6,
     },
@@ -551,19 +555,12 @@ const createStyles = (
       fontWeight: '700',
       letterSpacing: 0.1,
     },
-    secondaryButton: {
-      height: 40,
-      borderRadius: 20,
-      flexDirection: 'row',
+    saveIconButton: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.12)' : colors.border,
-    },
-    secondaryButtonText: {
-      color: isDark ? 'rgba(255,255,255,0.6)' : colors.textSecondary,
-      fontSize: 13,
-      fontWeight: '600',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
     },
   })

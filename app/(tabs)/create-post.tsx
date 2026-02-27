@@ -2916,11 +2916,11 @@ const createStyles = (
     },
     routineSelectorButton: {
       padding: 6,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     chatButton: {
       padding: 6,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     divider: {
       height: 1,
@@ -3039,7 +3039,7 @@ const createStyles = (
     newUserGuideOptionHintIconWrap: {
       width: 16,
       height: 16,
-      borderRadius: 8,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: 'center',

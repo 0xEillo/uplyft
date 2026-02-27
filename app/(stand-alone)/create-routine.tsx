@@ -1508,7 +1508,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setInput: {
       flex: 1,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
       padding: 10,
       fontSize: 14,
       color: colors.textPrimary,
@@ -1522,7 +1522,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       width: 100,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderWidth: 1,

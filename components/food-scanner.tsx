@@ -375,7 +375,7 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.brandPrimary,
       paddingHorizontal: 20,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       marginBottom: 16,
     },
     permissionButtonText: {

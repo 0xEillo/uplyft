@@ -819,7 +819,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseLevelBadge: {
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.bg,
     },
     exerciseLevelText: {

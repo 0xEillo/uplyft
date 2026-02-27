@@ -577,8 +577,8 @@ const createStyles = (
       flexDirection: 'row',
       backgroundColor: colors.brandPrimary,
       marginHorizontal: 16,
-      height: 56,
-      borderRadius: 28,
+      height: 50,
+      borderRadius: 25,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 24,
@@ -590,9 +590,9 @@ const createStyles = (
     },
     saveButtonText: {
       color: '#FFF',
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '700',
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
     infoSection: {
       paddingHorizontal: 16,

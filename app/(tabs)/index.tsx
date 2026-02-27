@@ -987,7 +987,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       bottom: 4,
       right: 4,
       backgroundColor: colors.bg,
-      borderRadius: 8,
+      borderRadius: 12,
       paddingHorizontal: 2,
       borderWidth: 1,
       borderColor: colors.bg,

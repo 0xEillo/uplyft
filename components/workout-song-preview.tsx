@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   artwork: {
     width: 42,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   info: {
     flex: 1,

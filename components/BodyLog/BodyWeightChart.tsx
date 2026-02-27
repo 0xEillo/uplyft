@@ -265,7 +265,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     segmentContainer: {
       flexDirection: 'row',
       backgroundColor: colors.surfaceSubtle, // Light gray background
-      borderRadius: 8,
+      borderRadius: 12,
       padding: 2,
       marginBottom: 16,
     },

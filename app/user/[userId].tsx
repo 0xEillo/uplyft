@@ -1125,7 +1125,7 @@ const createStyles = (
     viewToggle: {
       flexDirection: 'row',
       backgroundColor: colors.surfaceCard,
-      borderRadius: 8,
+      borderRadius: 12,
       padding: 2,
       gap: 2,
     },

@@ -1300,7 +1300,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 8,
       paddingVertical: 10,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     changeButton: {
       backgroundColor: colors.surfaceSubtle,
@@ -1434,7 +1434,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     setInput: {
       flex: 1,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
       padding: 10,
       fontSize: 14,
       color: colors.textPrimary,
@@ -1495,7 +1495,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     durationInput: {
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
       paddingVertical: 12,
       paddingHorizontal: 14,
       fontSize: 18,

@@ -34,7 +34,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     badge: {
       backgroundColor: colors.brandPrimary,
-      borderRadius: 8,
+      borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
     },

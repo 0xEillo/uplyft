@@ -367,7 +367,7 @@ const createStyles = (colors: any, insets: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.bg,
-      borderRadius: 8,
+      borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 8,
       minWidth: 100,

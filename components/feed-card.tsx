@@ -1474,7 +1474,7 @@ function createStyles(
       width: '100%',
       aspectRatio: 1,
       marginBottom: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
@@ -1514,7 +1514,7 @@ function createStyles(
     headerMusicIndicator: {
       aspectRatio: 1,
       minHeight: 41,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
       position: 'relative',
     },
@@ -1560,7 +1560,7 @@ function createStyles(
     exerciseThumbnail: {
       width: 48,
       height: 48,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {
@@ -1606,7 +1606,7 @@ function createStyles(
     statsRowMusic: {
       width: 52,
       height: 52,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
       position: 'relative',
     },

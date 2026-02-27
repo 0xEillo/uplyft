@@ -899,7 +899,7 @@ function createMusicStyles(colors: ReturnType<typeof useThemedColors>) {
     artwork: {
       width: 40,
       height: 40,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.surface,
     },
     resultInfo: {

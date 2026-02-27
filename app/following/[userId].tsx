@@ -303,7 +303,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginHorizontal: 14,
       paddingHorizontal: 12,
       height: 40,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     searchIcon: {
       marginRight: 8,

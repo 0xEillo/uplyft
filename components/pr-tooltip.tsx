@@ -223,7 +223,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       paddingVertical: 8,
       paddingHorizontal: 12,
       backgroundColor: colors.brandPrimarySoft,
-      borderRadius: 8,
+      borderRadius: 12,
       borderLeftWidth: 3,
       borderLeftColor: colors.brandPrimary,
     },

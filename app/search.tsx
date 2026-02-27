@@ -534,7 +534,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 8,
+      borderRadius: 12,
       minHeight: 48,
     },
     searchIcon: {

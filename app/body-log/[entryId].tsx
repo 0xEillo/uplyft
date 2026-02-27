@@ -2551,7 +2551,7 @@ const createStyles = (colors: Colors) =>
   statusBadge: {
     paddingHorizontal: 10, // Reduced padding
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 12,
     marginLeft: 12,
     alignSelf: 'center',
   },
@@ -2661,7 +2661,7 @@ const createStyles = (colors: Colors) =>
   addPhotosIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },

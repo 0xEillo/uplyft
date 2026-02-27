@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   artwork: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   resultInfo: {
     flex: 1,

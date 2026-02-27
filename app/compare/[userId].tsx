@@ -943,7 +943,7 @@ const createStyles = (
       backgroundColor: isDark ? colors.border + '40' : colors.border + '80',
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     timePickerText: {
       fontSize: 14,
@@ -973,7 +973,7 @@ const createStyles = (
     timePickerOption: {
       paddingVertical: 8,
       paddingHorizontal: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       minWidth: 60,
       alignItems: 'center',
     },
@@ -1106,7 +1106,7 @@ const createStyles = (
     exerciseGif: {
       width: 56,
       height: 56,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
     },
     exerciseGifImage: {

@@ -326,7 +326,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     exerciseThumbnail: {
       width: 44,
       height: 44,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseInfo: {
@@ -351,7 +351,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     levelBadgeItem: {
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     levelText: {
       fontSize: 12,

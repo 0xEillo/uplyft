@@ -73,7 +73,7 @@ import {
   ToastAndroid,
   TouchableOpacity,
   View,
-  ViewStyle
+  ViewStyle,
 } from 'react-native'
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
@@ -95,11 +95,7 @@ function RecordingIndicator({
 }) {
   const pulse = useSharedValue(0.4)
   useEffect(() => {
-    pulse.value = withRepeat(
-      withTiming(1, { duration: 600 }),
-      -1,
-      true,
-    )
+    pulse.value = withRepeat(withTiming(1, { duration: 600 }), -1, true)
   }, [pulse])
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: pulse.value,
@@ -664,13 +660,17 @@ export function WorkoutChat({
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
-  const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(false)
+  const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(
+    false,
+  )
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
   const hasRunInitialComposerRecoveryRef = useRef(false)
-  const [dailyLogSummary, setDailyLogSummary] =
-    useState<DailyLogSummaryState | null>(null)
+  const [
+    dailyLogSummary,
+    setDailyLogSummary,
+  ] = useState<DailyLogSummaryState | null>(null)
   const [latestLoggedMealId, setLatestLoggedMealId] = useState<string | null>(
     null,
   )
@@ -685,10 +685,14 @@ export function WorkoutChat({
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
   const { trackEvent } = useAnalytics()
   const themedColors = useThemedColors()
-  const colors = useMemo(() => ({
-    ...themedColors,
-    bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg
-  } as any), [themedColors, mode])
+  const colors = useMemo(
+    () =>
+      ({
+        ...themedColors,
+        bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg,
+      } as any),
+    [themedColors, mode],
+  )
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
@@ -724,10 +728,10 @@ export function WorkoutChat({
       const transcribedText = text.trim()
       if (transcribedText) {
         // Send directly to chat
-        const combinedText = input.trim() 
+        const combinedText = input.trim()
           ? `${input.trim()} ${transcribedText}`
           : transcribedText
-        
+
         setInput('')
         setInputHeight(0)
         handleSendMessage(undefined, { overrideInput: combinedText })
@@ -737,9 +741,11 @@ export function WorkoutChat({
   const bottomSafeInset =
     Platform.OS === 'ios' ? Math.min(insets.bottom, 34) : insets.bottom
   // Native tab bar height (49pt on iOS) — not part of RN layout, so we must account for it manually
-  const nativeTabBarHeight = mode === 'fullscreen' && Platform.OS === 'ios' ? 49 : 0
+  const nativeTabBarHeight =
+    mode === 'fullscreen' && Platform.OS === 'ios' ? 49 : 0
   // Extra padding for the floating tab bar when keyboard is closed (taller than standard 49pt)
-  const closedTabBarPadding = mode === 'fullscreen' && Platform.OS === 'ios' ? 65 : 0
+  const closedTabBarPadding =
+    mode === 'fullscreen' && Platform.OS === 'ios' ? 65 : 0
   const keyboardVerticalOffset = nativeTabBarHeight
 
   // Merge custom suggestions with defaults
@@ -772,7 +778,13 @@ export function WorkoutChat({
   // Show welcome message for first-time users (fullscreen mode only)
   useEffect(() => {
     // Wait for profile to load before showing welcome message so we have the user's name
-    if (mode !== 'fullscreen' || hasLoadedWelcome || !user?.id || isProfileLoading) return
+    if (
+      mode !== 'fullscreen' ||
+      hasLoadedWelcome ||
+      !user?.id ||
+      isProfileLoading
+    )
+      return
 
     const checkAndShowWelcome = async () => {
       try {
@@ -806,7 +818,14 @@ export function WorkoutChat({
     }
 
     checkAndShowWelcome()
-  }, [mode, hasLoadedWelcome, user?.id, coachId, profile?.display_name, isProfileLoading])
+  }, [
+    mode,
+    hasLoadedWelcome,
+    user?.id,
+    coachId,
+    profile?.display_name,
+    isProfileLoading,
+  ])
 
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress
@@ -907,16 +926,19 @@ export function WorkoutChat({
     }
   }, [user?.id])
 
-  const handleUpdateCalorieGoal = useCallback(async (goal: number) => {
-    if (!user?.id) return
-    try {
-      await database.dailyLog.updateDay(user.id, { calorieGoal: goal })
-      await refreshDailyLogSummary()
-    } catch (error) {
-      console.error('[WorkoutChat] Failed to update calorie goal:', error)
-      throw error
-    }
-  }, [user?.id, refreshDailyLogSummary])
+  const handleUpdateCalorieGoal = useCallback(
+    async (goal: number) => {
+      if (!user?.id) return
+      try {
+        await database.dailyLog.updateDay(user.id, { calorieGoal: goal })
+        await refreshDailyLogSummary()
+      } catch (error) {
+        console.error('[WorkoutChat] Failed to update calorie goal:', error)
+        throw error
+      }
+    },
+    [user?.id, refreshDailyLogSummary],
+  )
 
   useFocusEffect(
     useCallback(() => {
@@ -929,12 +951,17 @@ export function WorkoutChat({
           const pendingText = await consumePendingFoodLibraryChatText()
           if (!pendingText || cancelled) return
 
-          setInput((prev) => (prev.trim() ? `${prev.trim()} ${pendingText}` : pendingText))
+          setInput((prev) =>
+            prev.trim() ? `${prev.trim()} ${pendingText}` : pendingText,
+          )
           setTimeout(() => {
             if (!cancelled) inputRef.current?.focus()
           }, 120)
         } catch (error) {
-          console.error('[WorkoutChat] Failed to apply food library prompt:', error)
+          console.error(
+            '[WorkoutChat] Failed to apply food library prompt:',
+            error,
+          )
         }
       }
 
@@ -967,7 +994,10 @@ export function WorkoutChat({
             }))
           }
         } catch (error) {
-          console.error('[WorkoutChat] Failed to apply attachment handoff:', error)
+          console.error(
+            '[WorkoutChat] Failed to apply attachment handoff:',
+            error,
+          )
         }
       }
 
@@ -1088,14 +1118,14 @@ export function WorkoutChat({
         acc += chunk
         // Check if content looks like a raw JSON or code block (likely a workout plan)
         // If it starts with typical JSON/code block markers, hide it
-        const isHiddenStream = 
-          /^\s*(\[|\{|```)/.test(acc) || 
-          acc.includes('```') || 
-          acc.includes('\n[') || 
+        const isHiddenStream =
+          /^\s*(\[|\{|```)/.test(acc) ||
+          acc.includes('```') ||
+          acc.includes('\n[') ||
           acc.includes('\n{') ||
           acc.includes(': [') ||
           acc.includes(': {')
-        
+
         if (!options?.silent && assistantMessageId && !isHiddenStream) {
           if (!hasDisabledLoading) {
             setIsLoading(false)
@@ -1132,10 +1162,10 @@ export function WorkoutChat({
         }
 
         // More aggressive detection: skip update if we see typical JSON/code block markers anywhere
-        const isHiddenStream = 
-          /^\s*(\[|\{|```)/.test(acc) || 
-          acc.includes('```') || 
-          acc.includes('\n[') || 
+        const isHiddenStream =
+          /^\s*(\[|\{|```)/.test(acc) ||
+          acc.includes('```') ||
+          acc.includes('\n[') ||
           acc.includes('\n{') ||
           acc.includes(': [') ||
           acc.includes(': {')
@@ -1170,7 +1200,10 @@ export function WorkoutChat({
         } catch {
           acc += line
         }
-        const isHiddenStream = /^\s*(\[|```)/.test(acc) || acc.includes('```json') || acc.includes('\n[')
+        const isHiddenStream =
+          /^\s*(\[|```)/.test(acc) ||
+          acc.includes('```json') ||
+          acc.includes('\n[')
         if (!options?.silent && assistantMessageId && !isHiddenStream) {
           if (!hasDisabledLoading) {
             setIsLoading(false)
@@ -1503,7 +1536,10 @@ export function WorkoutChat({
         })
       }
 
-      setLoggedMealIdByMessage((prev) => ({ ...prev, [messageId]: savedMealId }))
+      setLoggedMealIdByMessage((prev) => ({
+        ...prev,
+        [messageId]: savedMealId,
+      }))
       setLatestLoggedMealId(savedMealId)
       await refreshDailyLogSummary()
       setFoodActionState((prev) => ({ ...prev, [messageId]: 'saved' }))
@@ -1538,15 +1574,17 @@ export function WorkoutChat({
       existingUserImages?: string[]
       forceImages?: string[] // bypass selectedImages state for immediate sends
       overrideInput?: string // bypass input state for immediate sends
-      scanMode?: 'food_label'  // routes request to Gemini OCR instead of GPT-4o
+      scanMode?: 'food_label' // routes request to Gemini OCR instead of GPT-4o
     },
   ) => {
     const isResend = Boolean(options?.existingUserMessageId)
-    const effectiveImages = options?.forceImages ?? (isResend ? (options?.existingUserImages ?? []) : selectedImages)
+    const effectiveImages =
+      options?.forceImages ??
+      (isResend ? options?.existingUserImages ?? [] : selectedImages)
     const hasImages = effectiveImages.length > 0
-    const typedInput = options?.overrideInput?.trim() || (isResend
-      ? options?.existingUserContent?.trim() || ''
-      : input.trim())
+    const typedInput =
+      options?.overrideInput?.trim() ||
+      (isResend ? options?.existingUserContent?.trim() || '' : input.trim())
     const messageContent =
       hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
     if ((!messageContent && !hasImages) || isLoading) return
@@ -1581,7 +1619,8 @@ export function WorkoutChat({
       Keyboard.dismiss()
     }
 
-    const userMessageId = options?.existingUserMessageId || Date.now().toString()
+    const userMessageId =
+      options?.existingUserMessageId || Date.now().toString()
     const userMessage: Message = {
       id: userMessageId,
       role: 'user',
@@ -1654,10 +1693,12 @@ export function WorkoutChat({
           )
         : [...messages, userMessage]
 
-      const formattedMessages = [systemMessage, ...requestMessages].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+      const formattedMessages = [systemMessage, ...requestMessages].map(
+        (m) => ({
+          role: m.role,
+          content: m.content,
+        }),
+      )
 
       // Check if we have a hidden prompt content from the planning flows
       if (typeof hiddenPromptContent !== 'undefined') {
@@ -1814,7 +1855,8 @@ export function WorkoutChat({
           {
             id: Date.now().toString(),
             role: 'assistant',
-            content: "Sorry, I couldn't process that request. Please try again.",
+            content:
+              "Sorry, I couldn't process that request. Please try again.",
           },
         ]
       })
@@ -1987,7 +2029,11 @@ export function WorkoutChat({
     const trainingGuidelines = getCoachTrainingGuidelines(coachId)
 
     // Construct the hidden prompt for the AI
-    const finalPrompt = buildWorkoutCreationPrompt(data, equipmentLabel, trainingGuidelines)
+    const finalPrompt = buildWorkoutCreationPrompt(
+      data,
+      equipmentLabel,
+      trainingGuidelines,
+    )
 
     // Now call the API
     setIsLoading(true)
@@ -2044,11 +2090,11 @@ export function WorkoutChat({
       const reader = response.body?.getReader()
       if (!reader) {
         const assistantContent = await response.text()
-        
+
         // Use timeout to step out of current stack for state updates
         setTimeout(() => {
           setGeneratedPlanContent(assistantContent)
-          
+
           // Parse workout for structured display
           const parsed = parseWorkoutForDisplay(assistantContent)
           setParsedWorkout(parsed)
@@ -2074,11 +2120,11 @@ export function WorkoutChat({
       } else {
         // Stream silently - no placeholder message initially
         const fullContent = await processStreamingResponse(
-          reader, 
+          reader,
           null, // No ID, so it won't update messages during stream
-          { silent: true }
+          { silent: true },
         )
-        
+
         // Once complete, add the message
         setMessages((prev) => [
           ...prev,
@@ -2504,10 +2550,7 @@ export function WorkoutChat({
                 <LiquidGlassSurface
                   key={`plan-actions-glass-${navGlassKey}`}
                   debugLabel="plan-actions-group"
-                  style={[
-                    styles.headerActionGroupGlass,
-                    { top: 8 },
-                  ]}
+                  style={[styles.headerActionGroupGlass, { top: 8 }]}
                 >
                   <View style={styles.headerActionGroup}>
                     <TouchableOpacity
@@ -2520,7 +2563,9 @@ export function WorkoutChat({
                             params: {
                               logDate: dailyLogSummary.logDate,
                               entryId: dailyLogSummary.entryId || undefined,
-                              totalsJson: JSON.stringify(dailyLogSummary.totals),
+                              totalsJson: JSON.stringify(
+                                dailyLogSummary.totals,
+                              ),
                               goalsJson: JSON.stringify(dailyLogSummary.goals),
                             },
                           })
@@ -2555,7 +2600,9 @@ export function WorkoutChat({
                     >
                       <Ionicons
                         name={
-                          messages.length > 0 ? 'create-outline' : 'settings-sharp'
+                          messages.length > 0
+                            ? 'create-outline'
+                            : 'settings-sharp'
                         }
                         size={24}
                         color={colors.brandPrimary}
@@ -2646,7 +2693,9 @@ export function WorkoutChat({
                             )}
                             <TouchableOpacity
                               activeOpacity={0.9}
-                              onLongPress={() => handleCopyMessage(message.content)}
+                              onLongPress={() =>
+                                handleCopyMessage(message.content)
+                              }
                               delayLongPress={220}
                             >
                               <Text style={styles.userMessageText}>
@@ -2667,9 +2716,7 @@ export function WorkoutChat({
                               </Text>
                               <TouchableOpacity
                                 style={styles.messageMetaActionButton}
-                                onPress={() =>
-                                  handleResendMessage(message.id)
-                                }
+                                onPress={() => handleResendMessage(message.id)}
                                 disabled={isLoading}
                                 activeOpacity={0.7}
                               >
@@ -2728,37 +2775,82 @@ export function WorkoutChat({
                             )
 
                             // Calculate progress for chart rings
-                            const { calorie_goal, protein_goal_g } = dailyLogSummary?.goals || {}
+                            const { calorie_goal, protein_goal_g } =
+                              dailyLogSummary?.goals || {}
                             const safeCalGoal = calorie_goal || 2500
                             const safeProtGoal = protein_goal_g || 150
                             const safeCarbGoal = 250
                             const safeFatGoal = 70
 
-                            const calProgress = foodLogPayload ? Math.min(foodLogPayload.calories / safeCalGoal, 1) : 0
-                            const protProgress = foodLogPayload ? Math.min(foodLogPayload.protein_g / safeProtGoal, 1) : 0
-                            const carbProgress = foodLogPayload ? Math.min(foodLogPayload.carbs_g / safeCarbGoal, 1) : 0
-                            const fatProgress = foodLogPayload ? Math.min(foodLogPayload.fat_g / safeFatGoal, 1) : 0
+                            const calProgress = foodLogPayload
+                              ? Math.min(
+                                  foodLogPayload.calories / safeCalGoal,
+                                  1,
+                                )
+                              : 0
+                            const protProgress = foodLogPayload
+                              ? Math.min(
+                                  foodLogPayload.protein_g / safeProtGoal,
+                                  1,
+                                )
+                              : 0
+                            const carbProgress = foodLogPayload
+                              ? Math.min(
+                                  foodLogPayload.carbs_g / safeCarbGoal,
+                                  1,
+                                )
+                              : 0
+                            const fatProgress = foodLogPayload
+                              ? Math.min(foodLogPayload.fat_g / safeFatGoal, 1)
+                              : 0
                             const mealCountToday =
                               dailyLogSummary?.totals.meal_count ?? 0
                             const foodCardLabel = foodLogPayload
-                              ? getFoodCardMealLabel(foodLogPayload, mealCountToday)
+                              ? getFoodCardMealLabel(
+                                  foodLogPayload,
+                                  mealCountToday,
+                                )
                               : `Meal ${Math.max(1, mealCountToday + 1)}`
                             const foodConfidenceLabel = foodLogPayload
-                              ? formatFoodConfidenceLabel(foodLogPayload.confidence)
+                              ? formatFoodConfidenceLabel(
+                                  foodLogPayload.confidence,
+                                )
                               : 'Medium'
-                            const confidenceTone = foodLogPayload?.confidence || 'medium'
-                            const { bg: foodConfidenceBadgeBg, border: foodConfidenceBadgeBorder } =
+                            const confidenceTone =
+                              foodLogPayload?.confidence || 'medium'
+                            const {
+                              bg: foodConfidenceBadgeBg,
+                              border: foodConfidenceBadgeBorder,
+                            } =
                               confidenceTone === 'high'
                                 ? isDark
-                                  ? { bg: 'rgba(52, 199, 89, 0.14)', border: 'rgba(52, 199, 89, 0.28)' }
-                                  : { bg: 'rgba(52, 199, 89, 0.12)', border: 'rgba(52, 199, 89, 0.22)' }
+                                  ? {
+                                      bg: 'rgba(52, 199, 89, 0.14)',
+                                      border: 'rgba(52, 199, 89, 0.28)',
+                                    }
+                                  : {
+                                      bg: 'rgba(52, 199, 89, 0.12)',
+                                      border: 'rgba(52, 199, 89, 0.22)',
+                                    }
                                 : confidenceTone === 'low'
                                 ? isDark
-                                  ? { bg: 'rgba(255, 159, 10, 0.14)', border: 'rgba(255, 159, 10, 0.28)' }
-                                  : { bg: 'rgba(255, 159, 10, 0.12)', border: 'rgba(255, 159, 10, 0.22)' }
+                                  ? {
+                                      bg: 'rgba(255, 159, 10, 0.14)',
+                                      border: 'rgba(255, 159, 10, 0.28)',
+                                    }
+                                  : {
+                                      bg: 'rgba(255, 159, 10, 0.12)',
+                                      border: 'rgba(255, 159, 10, 0.22)',
+                                    }
                                 : isDark
-                                ? { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.16)' }
-                                : { bg: 'rgba(255,255,255,0.52)', border: 'rgba(255,255,255,0.38)' }
+                                ? {
+                                    bg: 'rgba(255,255,255,0.06)',
+                                    border: 'rgba(255,255,255,0.16)',
+                                  }
+                                : {
+                                    bg: 'rgba(255,255,255,0.52)',
+                                    border: 'rgba(255,255,255,0.38)',
+                                  }
                             const foodConfidenceColor =
                               confidenceTone === 'high'
                                 ? '#34C759'
@@ -2771,7 +2863,7 @@ export function WorkoutChat({
                             const displayContent = getVisibleAssistantMessageText(
                               message.content,
                             )
-                            
+
                             const exerciseSuggestions = parseExerciseSuggestions(
                               message.content,
                             )
@@ -2790,13 +2882,17 @@ export function WorkoutChat({
                                 <View style={styles.assistantMessageContent}>
                                   {displayContent && (
                                     <View style={styles.assistantCoachRow}>
-                                      <View style={styles.messageAvatarContainer}>
+                                      <View
+                                        style={styles.messageAvatarContainer}
+                                      >
                                         <Image
                                           source={coach.image}
                                           style={styles.messageAvatar}
                                         />
                                       </View>
-                                      <View style={styles.assistantCoachBubbleWrap}>
+                                      <View
+                                        style={styles.assistantCoachBubbleWrap}
+                                      >
                                         <TouchableOpacity
                                           activeOpacity={1}
                                           onLongPress={() =>
@@ -2804,115 +2900,122 @@ export function WorkoutChat({
                                           }
                                           delayLongPress={220}
                                         >
-                                          <View style={styles.assistantMessageBubble}>
+                                          <View
+                                            style={
+                                              styles.assistantMessageBubble
+                                            }
+                                          >
                                             <Markdown
                                               style={{
-                                              body: {
-                                                fontSize: 16,
-                                                lineHeight: 23,
-                                                color: colors.textPrimary,
-                                                margin: 0,
-                                              },
-                                              paragraph: {
-                                                marginTop: 0,
-                                                marginBottom: 2,
-                                              },
-                                              heading1: {
-                                                fontSize: 22,
-                                                fontWeight: '700',
-                                                color: colors.textPrimary,
-                                                marginTop: 16,
-                                                marginBottom: 8,
-                                              },
-                                              heading2: {
-                                                fontSize: 20,
-                                                fontWeight: '700',
-                                                color: colors.textPrimary,
-                                                marginTop: 14,
-                                                marginBottom: 6,
-                                              },
-                                              heading3: {
-                                                fontSize: 18,
-                                                fontWeight: '600',
-                                                color: colors.textPrimary,
-                                                marginTop: 12,
-                                                marginBottom: 6,
-                                              },
-                                              code_inline: {
-                                                backgroundColor: colors.bg,
-                                                paddingHorizontal: 4,
-                                                paddingVertical: 2,
-                                                borderRadius: 4,
-                                                fontSize: 15,
-                                                fontFamily:
-                                                  Platform.OS === 'ios'
-                                                    ? 'Menlo'
-                                                    : 'monospace',
-                                                color: colors.textPrimary,
-                                              },
-                                              code_block: {
-                                                backgroundColor: colors.bg,
-                                                padding: 12,
-                                                borderRadius: 8,
-                                                fontSize: 15,
-                                                fontFamily:
-                                                  Platform.OS === 'ios'
-                                                    ? 'Menlo'
-                                                    : 'monospace',
-                                                color: colors.textPrimary,
-                                                marginVertical: 8,
-                                                overflow: 'hidden',
-                                              },
-                                              fence: {
-                                                backgroundColor: colors.bg,
-                                                padding: 12,
-                                                borderRadius: 8,
-                                                fontSize: 15,
-                                                fontFamily:
-                                                  Platform.OS === 'ios'
-                                                    ? 'Menlo'
-                                                    : 'monospace',
-                                                color: colors.textPrimary,
-                                                marginVertical: 8,
-                                              },
-                                              strong: {
-                                                fontWeight: '600',
-                                                color: colors.textPrimary,
-                                              },
-                                              em: {
-                                                fontStyle: 'italic',
-                                              },
-                                              bullet_list: {
-                                                marginTop: 0,
-                                                marginBottom: 12,
-                                              },
-                                              ordered_list: {
-                                                marginTop: 0,
-                                                marginBottom: 12,
-                                              },
-                                              list_item: {
-                                                marginTop: 4,
-                                                marginBottom: 4,
-                                              },
-                                              hr: {
-                                                backgroundColor: colors.border,
-                                                height: 1,
-                                                marginVertical: 16,
-                                              },
-                                              blockquote: {
-                                                borderLeftWidth: 3,
-                                                borderLeftColor: colors.brandPrimary,
-                                                paddingLeft: 12,
-                                                marginVertical: 8,
-                                                backgroundColor: colors.bg,
-                                                paddingVertical: 8,
-                                                paddingRight: 8,
-                                                borderRadius: 4,
-                                              },
-                                              link: {
-                                                color: colors.brandPrimary,
-                                                textDecorationLine: 'underline',
-                                              },
+                                                body: {
+                                                  fontSize: 16,
+                                                  lineHeight: 23,
+                                                  color: colors.textPrimary,
+                                                  margin: 0,
+                                                },
+                                                paragraph: {
+                                                  marginTop: 0,
+                                                  marginBottom: 2,
+                                                },
+                                                heading1: {
+                                                  fontSize: 22,
+                                                  fontWeight: '700',
+                                                  color: colors.textPrimary,
+                                                  marginTop: 16,
+                                                  marginBottom: 8,
+                                                },
+                                                heading2: {
+                                                  fontSize: 20,
+                                                  fontWeight: '700',
+                                                  color: colors.textPrimary,
+                                                  marginTop: 14,
+                                                  marginBottom: 6,
+                                                },
+                                                heading3: {
+                                                  fontSize: 18,
+                                                  fontWeight: '600',
+                                                  color: colors.textPrimary,
+                                                  marginTop: 12,
+                                                  marginBottom: 6,
+                                                },
+                                                code_inline: {
+                                                  backgroundColor: colors.bg,
+                                                  paddingHorizontal: 4,
+                                                  paddingVertical: 2,
+                                                  borderRadius: 4,
+                                                  fontSize: 15,
+                                                  fontFamily:
+                                                    Platform.OS === 'ios'
+                                                      ? 'Menlo'
+                                                      : 'monospace',
+                                                  color: colors.textPrimary,
+                                                },
+                                                code_block: {
+                                                  backgroundColor: colors.bg,
+                                                  padding: 12,
+                                                  borderRadius: 12,
+                                                  fontSize: 15,
+                                                  fontFamily:
+                                                    Platform.OS === 'ios'
+                                                      ? 'Menlo'
+                                                      : 'monospace',
+                                                  color: colors.textPrimary,
+                                                  marginVertical: 8,
+                                                  overflow: 'hidden',
+                                                },
+                                                fence: {
+                                                  backgroundColor: colors.bg,
+                                                  padding: 12,
+                                                  borderRadius: 12,
+                                                  fontSize: 15,
+                                                  fontFamily:
+                                                    Platform.OS === 'ios'
+                                                      ? 'Menlo'
+                                                      : 'monospace',
+                                                  color: colors.textPrimary,
+                                                  marginVertical: 8,
+                                                },
+                                                strong: {
+                                                  fontWeight: '600',
+                                                  color: colors.textPrimary,
+                                                },
+                                                em: {
+                                                  fontStyle: 'italic',
+                                                },
+                                                bullet_list: {
+                                                  marginTop: 0,
+                                                  marginBottom: 12,
+                                                },
+                                                ordered_list: {
+                                                  marginTop: 0,
+                                                  marginBottom: 12,
+                                                },
+                                                list_item: {
+                                                  marginTop: 4,
+                                                  marginBottom: 4,
+                                                },
+                                                hr: {
+                                                  backgroundColor:
+                                                    colors.border,
+                                                  height: 1,
+                                                  marginVertical: 16,
+                                                },
+                                                blockquote: {
+                                                  borderLeftWidth: 3,
+                                                  borderLeftColor:
+                                                    colors.brandPrimary,
+                                                  paddingLeft: 12,
+                                                  marginVertical: 8,
+                                                  backgroundColor: colors.bg,
+                                                  paddingVertical: 8,
+                                                  paddingRight: 8,
+                                                  borderRadius: 4,
+                                                },
+                                                link: {
+                                                  color: colors.brandPrimary,
+                                                  textDecorationLine:
+                                                    'underline',
+                                                },
                                               }}
                                             >
                                               {displayContent}
@@ -2929,21 +3032,31 @@ export function WorkoutChat({
                                       onPress={() => {
                                         if (dailyLogSummary?.logDate) {
                                           router.push({
-                                            pathname: '/body-log/daily-food-log',
+                                            pathname:
+                                              '/body-log/daily-food-log',
                                             params: {
-                                              entryId: dailyLogSummary.entryId || 'new',
+                                              entryId:
+                                                dailyLogSummary.entryId ||
+                                                'new',
                                               logDate: dailyLogSummary.logDate,
-                                              totalsJson: JSON.stringify(dailyLogSummary.totals),
-                                              goalsJson: JSON.stringify(dailyLogSummary.goals),
+                                              totalsJson: JSON.stringify(
+                                                dailyLogSummary.totals,
+                                              ),
+                                              goalsJson: JSON.stringify(
+                                                dailyLogSummary.goals,
+                                              ),
                                             },
                                           })
                                         } else {
-                                          router.push('/body-log/daily-food-log')
+                                          router.push(
+                                            '/body-log/daily-food-log',
+                                          )
                                         }
                                       }}
                                       style={[
                                         styles.foodLogCard,
-                                        !displayContent && styles.foodLogCardStandalone,
+                                        !displayContent &&
+                                          styles.foodLogCardStandalone,
                                       ]}
                                     >
                                       <View style={styles.foodLogHeaderRow}>
@@ -2951,9 +3064,13 @@ export function WorkoutChat({
                                           style={[
                                             styles.foodConfidenceBadge,
                                             {
-                                              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.52)',
+                                              backgroundColor: isDark
+                                                ? 'rgba(255,255,255,0.06)'
+                                                : 'rgba(255,255,255,0.52)',
                                               borderWidth: 1,
-                                              borderColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.38)',
+                                              borderColor: isDark
+                                                ? 'rgba(255,255,255,0.16)'
+                                                : 'rgba(255,255,255,0.38)',
                                               alignItems: 'center',
                                               justifyContent: 'center',
                                               marginRight: 10,
@@ -2982,7 +3099,7 @@ export function WorkoutChat({
                                             Alert.alert(
                                               'AI Confidence',
                                               'This indicates how certain the AI is about its nutritional estimate based on your input: \n\n• High: Very certain (e.g., clear photo, exact description). \n• Medium: Good estimate, standard portion assumption.\n• Low: Best guess, details unclear.',
-                                              [{ text: 'Got it' }]
+                                              [{ text: 'Got it' }],
                                             )
                                           }}
                                         >
@@ -2994,17 +3111,27 @@ export function WorkoutChat({
                                           >
                                             {foodConfidenceLabel}
                                           </Text>
-                                          <Ionicons name="information-circle-outline" size={14} color={foodConfidenceColor} />
+                                          <Ionicons
+                                            name="information-circle-outline"
+                                            size={14}
+                                            color={foodConfidenceColor}
+                                          />
                                         </TouchableOpacity>
                                       </View>
 
                                       {/* Calories Row (Full Width) */}
                                       <View style={styles.foodCaloriesCard}>
                                         <View>
-                                          <Text style={styles.foodCaloriesValue}>
-                                            {roundMacro(foodLogPayload.calories)}
+                                          <Text
+                                            style={styles.foodCaloriesValue}
+                                          >
+                                            {roundMacro(
+                                              foodLogPayload.calories,
+                                            )}
                                           </Text>
-                                          <Text style={styles.foodCaloriesLabel}>
+                                          <Text
+                                            style={styles.foodCaloriesLabel}
+                                          >
                                             Calories
                                           </Text>
                                         </View>
@@ -3015,7 +3142,11 @@ export function WorkoutChat({
                                                 cx="35"
                                                 cy="35"
                                                 r="28"
-                                                stroke={isDark ? colors.border : "#E5E5E5"}
+                                                stroke={
+                                                  isDark
+                                                    ? colors.border
+                                                    : '#E5E5E5'
+                                                }
                                                 strokeWidth="6"
                                                 fill="transparent"
                                               />
@@ -3027,7 +3158,10 @@ export function WorkoutChat({
                                                 strokeWidth="6"
                                                 fill="transparent"
                                                 strokeDasharray={`${calCircumference}`}
-                                                strokeDashoffset={`${calCircumference * (1 - calProgress)}`}
+                                                strokeDashoffset={`${
+                                                  calCircumference *
+                                                  (1 - calProgress)
+                                                }`}
                                                 strokeLinecap="round"
                                               />
                                             </G>
@@ -3046,13 +3180,22 @@ export function WorkoutChat({
                                       <View style={styles.foodMacroGrid}>
                                         {/* Protein */}
                                         <View style={styles.foodMacroCard}>
-                                          <Text style={styles.foodMacroValueSmall}>
-                                            {roundMacro(foodLogPayload.protein_g)}g
+                                          <Text
+                                            style={styles.foodMacroValueSmall}
+                                          >
+                                            {roundMacro(
+                                              foodLogPayload.protein_g,
+                                            )}
+                                            g
                                           </Text>
-                                          <Text style={styles.foodMacroLabelSmall}>
+                                          <Text
+                                            style={styles.foodMacroLabelSmall}
+                                          >
                                             Protein
                                           </Text>
-                                          <View style={styles.smallChartContainer}>
+                                          <View
+                                            style={styles.smallChartContainer}
+                                          >
                                             <Svg width={40} height={40}>
                                               <G rotation="-90" origin="20, 20">
                                                 <Circle
@@ -3071,7 +3214,10 @@ export function WorkoutChat({
                                                   strokeWidth="4"
                                                   fill="transparent"
                                                   strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${smallCircumference * (1 - protProgress)}`}
+                                                  strokeDashoffset={`${
+                                                    smallCircumference *
+                                                    (1 - protProgress)
+                                                  }`}
                                                   strokeLinecap="round"
                                                 />
                                               </G>
@@ -3088,13 +3234,20 @@ export function WorkoutChat({
 
                                         {/* Carbs */}
                                         <View style={styles.foodMacroCard}>
-                                          <Text style={styles.foodMacroValueSmall}>
-                                            {roundMacro(foodLogPayload.carbs_g)}g
+                                          <Text
+                                            style={styles.foodMacroValueSmall}
+                                          >
+                                            {roundMacro(foodLogPayload.carbs_g)}
+                                            g
                                           </Text>
-                                          <Text style={styles.foodMacroLabelSmall}>
+                                          <Text
+                                            style={styles.foodMacroLabelSmall}
+                                          >
                                             Carbs
                                           </Text>
-                                          <View style={styles.smallChartContainer}>
+                                          <View
+                                            style={styles.smallChartContainer}
+                                          >
                                             <Svg width={40} height={40}>
                                               <G rotation="-90" origin="20, 20">
                                                 <Circle
@@ -3113,7 +3266,10 @@ export function WorkoutChat({
                                                   strokeWidth="4"
                                                   fill="transparent"
                                                   strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${smallCircumference * (1 - carbProgress)}`}
+                                                  strokeDashoffset={`${
+                                                    smallCircumference *
+                                                    (1 - carbProgress)
+                                                  }`}
                                                   strokeLinecap="round"
                                                 />
                                               </G>
@@ -3130,13 +3286,19 @@ export function WorkoutChat({
 
                                         {/* Fat */}
                                         <View style={styles.foodMacroCard}>
-                                          <Text style={styles.foodMacroValueSmall}>
+                                          <Text
+                                            style={styles.foodMacroValueSmall}
+                                          >
                                             {roundMacro(foodLogPayload.fat_g)}g
                                           </Text>
-                                          <Text style={styles.foodMacroLabelSmall}>
+                                          <Text
+                                            style={styles.foodMacroLabelSmall}
+                                          >
                                             Fats
                                           </Text>
-                                          <View style={styles.smallChartContainer}>
+                                          <View
+                                            style={styles.smallChartContainer}
+                                          >
                                             <Svg width={40} height={40}>
                                               <G rotation="-90" origin="20, 20">
                                                 <Circle
@@ -3155,7 +3317,10 @@ export function WorkoutChat({
                                                   strokeWidth="4"
                                                   fill="transparent"
                                                   strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${smallCircumference * (1 - fatProgress)}`}
+                                                  strokeDashoffset={`${
+                                                    smallCircumference *
+                                                    (1 - fatProgress)
+                                                  }`}
                                                   strokeLinecap="round"
                                                 />
                                               </G>
@@ -3176,13 +3341,17 @@ export function WorkoutChat({
                                           foodActionState[message.id] || 'idle'
                                         const isSaving = state === 'saving'
                                         const isSaved = state === 'saved'
-                                        
+
                                         // Only show 'Update' if the LLM thinks it's an update AND there's actually a meal we can update
                                         // (either logged via this specific message before, or a previous one)
-                                        const canActuallyUpdate = !!(loggedMealIdByMessage[message.id] || latestLoggedMealId)
+                                        const canActuallyUpdate = !!(
+                                          loggedMealIdByMessage[message.id] ||
+                                          latestLoggedMealId
+                                        )
                                         const isUpdateAction =
-                                          foodLogPayload.action === 'update_last' && canActuallyUpdate
-                                        
+                                          foodLogPayload.action ===
+                                            'update_last' && canActuallyUpdate
+
                                         const buttonLabel = isSaved
                                           ? 'Logged'
                                           : isUpdateAction
@@ -3193,7 +3362,8 @@ export function WorkoutChat({
                                           <TouchableOpacity
                                             style={[
                                               styles.foodLogActionButton,
-                                              isSaved && styles.foodLogActionButtonDone,
+                                              isSaved &&
+                                                styles.foodLogActionButtonDone,
                                             ]}
                                             onPress={() =>
                                               handleFoodLogAction(
@@ -3211,13 +3381,23 @@ export function WorkoutChat({
                                               />
                                             ) : (
                                               <Ionicons
-                                                name={isSaved ? "checkmark-circle" : "add-circle"}
+                                                name={
+                                                  isSaved
+                                                    ? 'checkmark-circle'
+                                                    : 'add-circle'
+                                                }
                                                 size={24}
                                                 color={colors.bg}
                                               />
                                             )}
-                                            <Text style={styles.foodLogActionButtonText}>
-                                              {isSaving ? 'Logging...' : buttonLabel}
+                                            <Text
+                                              style={
+                                                styles.foodLogActionButtonText
+                                              }
+                                            >
+                                              {isSaving
+                                                ? 'Logging...'
+                                                : buttonLabel}
                                             </Text>
                                           </TouchableOpacity>
                                         )
@@ -3236,18 +3416,23 @@ export function WorkoutChat({
                                           const exerciseId = exerciseMatch?.id
                                           const canNavigate = !!exerciseId
                                           const isLast =
-                                            idx === exerciseSuggestions.length - 1
-                                          
+                                            idx ===
+                                            exerciseSuggestions.length - 1
+
                                           const handleNavigateToExercise = () => {
                                             if (exerciseId) {
-                                              router.push(`/exercise/${exerciseId}`)
+                                              router.push(
+                                                `/exercise/${exerciseId}`,
+                                              )
                                             }
                                           }
 
                                           return (
                                             <View
                                               key={idx}
-                                              style={styles.suggestionTimelineRow}
+                                              style={
+                                                styles.suggestionTimelineRow
+                                              }
                                             >
                                               <View
                                                 style={
@@ -3266,9 +3451,19 @@ export function WorkoutChat({
                                                       ? styles.suggestionTimelineNodeImage
                                                       : null,
                                                   ]}
-                                                  onPress={handleNavigateToExercise}
-                                                  disabled={!canNavigate || mode === 'sheet'}
-                                                  activeOpacity={canNavigate && mode !== 'sheet' ? 0.7 : 1}
+                                                  onPress={
+                                                    handleNavigateToExercise
+                                                  }
+                                                  disabled={
+                                                    !canNavigate ||
+                                                    mode === 'sheet'
+                                                  }
+                                                  activeOpacity={
+                                                    canNavigate &&
+                                                    mode !== 'sheet'
+                                                      ? 0.7
+                                                      : 1
+                                                  }
                                                 >
                                                   {gifUrl ? (
                                                     <ExerciseMediaThumbnail
@@ -3281,7 +3476,9 @@ export function WorkoutChat({
                                                     <Ionicons
                                                       name="barbell-outline"
                                                       size={18}
-                                                      color={colors.textSecondary}
+                                                      color={
+                                                        colors.textSecondary
+                                                      }
                                                     />
                                                   )}
                                                 </TouchableOpacity>
@@ -3299,13 +3496,19 @@ export function WorkoutChat({
                                                   styles.suggestionContentColumn
                                                 }
                                               >
-                                                <View style={styles.exerciseCard}>
+                                                <View
+                                                  style={styles.exerciseCard}
+                                                >
                                                   <View
                                                     style={
                                                       styles.exerciseCardInfo
                                                     }
                                                   >
-                                                    <View style={styles.exerciseCardNameRow}>
+                                                    <View
+                                                      style={
+                                                        styles.exerciseCardNameRow
+                                                      }
+                                                    >
                                                       <Text
                                                         style={
                                                           styles.exerciseCardName
@@ -3313,19 +3516,31 @@ export function WorkoutChat({
                                                       >
                                                         {suggestion.name}
                                                       </Text>
-                                                      {canNavigate && mode !== 'sheet' && (
-                                                        <TouchableOpacity
-                                                          onPress={handleNavigateToExercise}
-                                                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                                          style={styles.exerciseCardInfoButton}
-                                                        >
-                                                          <Ionicons
-                                                            name="information-circle-outline"
-                                                            size={16}
-                                                            color={colors.textTertiary}
-                                                          />
-                                                        </TouchableOpacity>
-                                                      )}
+                                                      {canNavigate &&
+                                                        mode !== 'sheet' && (
+                                                          <TouchableOpacity
+                                                            onPress={
+                                                              handleNavigateToExercise
+                                                            }
+                                                            hitSlop={{
+                                                              top: 8,
+                                                              bottom: 8,
+                                                              left: 8,
+                                                              right: 8,
+                                                            }}
+                                                            style={
+                                                              styles.exerciseCardInfoButton
+                                                            }
+                                                          >
+                                                            <Ionicons
+                                                              name="information-circle-outline"
+                                                              size={16}
+                                                              color={
+                                                                colors.textTertiary
+                                                              }
+                                                            />
+                                                          </TouchableOpacity>
+                                                        )}
                                                     </View>
                                                     <Text
                                                       style={
@@ -3377,7 +3592,6 @@ export function WorkoutChat({
                     </View>
                   ))}
 
-
                   {isLoading && (
                     <View style={styles.loadingMessageContainer}>
                       <View style={styles.messageAvatarContainer}>
@@ -3401,126 +3615,131 @@ export function WorkoutChat({
             </ScrollView>
 
             {/* Suggestions Row */}
-            {!generatedPlanContent && !planningState.isActive && !messages.some(m => m.role === 'user') && !input.trim() && (
-              <View style={styles.suggestionsContainer}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.suggestionsContent}
-                  keyboardShouldPersistTaps="handled"
-                  style={{ overflow: 'visible' }}
-                >
-                  {suggestionMode !== 'main' && (
-                    <AnimatedSuggestion
-                      index={0}
-                      isBack
-                      colors={colors}
-                      style={styles.suggestionBackBubble}
-                      onPress={() => setSuggestionMode('main')}
-                    />
-                  )}
+            {!generatedPlanContent &&
+              !planningState.isActive &&
+              !messages.some((m) => m.role === 'user') &&
+              !input.trim() && (
+                <View style={styles.suggestionsContainer}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.suggestionsContent}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ overflow: 'visible' }}
+                  >
+                    {suggestionMode !== 'main' && (
+                      <AnimatedSuggestion
+                        index={0}
+                        isBack
+                        colors={colors}
+                        style={styles.suggestionBackBubble}
+                        onPress={() => setSuggestionMode('main')}
+                      />
+                    )}
 
-                  {suggestionMode === 'main'
-                    ? activeSuggestions.main.map((item, idx) => (
-                        <AnimatedSuggestion
-                          key={item.id}
-                          index={idx}
-                          text={item.text}
-                          colors={colors}
-                          style={[
-                            styles.suggestionBubble,
-                            (item.id === 'plan_workout' ||
-                              item.id === 'adjust_workout') &&
+                    {suggestionMode === 'main'
+                      ? activeSuggestions.main.map((item, idx) => (
+                          <AnimatedSuggestion
+                            key={item.id}
+                            index={idx}
+                            text={item.text}
+                            colors={colors}
+                            style={[
+                              styles.suggestionBubble,
+                              (item.id === 'plan_workout' ||
+                                item.id === 'adjust_workout') &&
+                                styles.planWorkoutBubble,
+                              (item.id === 'tell_me_about' ||
+                                item.id === 'how_to') && {
+                                borderWidth: 0,
+                                borderColor: 'transparent',
+                              },
+                            ]}
+                            textStyle={[
+                              styles.suggestionText,
+                              (item.id === 'plan_workout' ||
+                                item.id === 'adjust_workout') &&
+                                styles.planWorkoutText,
+                            ]}
+                            icon={
+                              item.icon ? (
+                                <Ionicons
+                                  name={
+                                    item.id === 'plan_workout' ||
+                                    item.id === 'adjust_workout'
+                                      ? 'flash'
+                                      : (item.icon as any)
+                                  }
+                                  size={16}
+                                  color={
+                                    item.id === 'plan_workout' ||
+                                    item.id === 'adjust_workout'
+                                      ? colors.brandPrimary
+                                      : colors.textPrimary
+                                  }
+                                  style={{ marginRight: 6 }}
+                                />
+                              ) : null
+                            }
+                            onPress={() => handleSuggestionPress(item)}
+                          />
+                        ))
+                      : suggestionMode === 'replace_exercise'
+                      ? currentWorkoutExercises.map((exerciseName, index) => (
+                          <AnimatedSuggestion
+                            key={index}
+                            index={index + 1}
+                            text={exerciseName}
+                            colors={colors}
+                            style={styles.suggestionBubble}
+                            textStyle={styles.suggestionText}
+                            onPress={() => handleSuggestionPress(exerciseName)}
+                          />
+                        ))
+                      : suggestionMode === 'adjust_workout'
+                      ? (
+                          activeSuggestions.adjust_workout || []
+                        ).map((item, index) => (
+                          <AnimatedSuggestion
+                            key={item.id}
+                            index={index + 1}
+                            text={item.text}
+                            colors={colors}
+                            style={[
+                              styles.suggestionBubble,
                               styles.planWorkoutBubble,
-                            (item.id === 'tell_me_about' ||
-                              item.id === 'how_to') && {
-                              borderWidth: 0,
-                              borderColor: 'transparent',
-                            },
-                          ]}
-                          textStyle={[
-                            styles.suggestionText,
-                            (item.id === 'plan_workout' ||
-                              item.id === 'adjust_workout') &&
+                            ]}
+                            textStyle={[
+                              styles.suggestionText,
                               styles.planWorkoutText,
-                          ]}
-                          icon={
-                            item.icon ? (
+                            ]}
+                            icon={
                               <Ionicons
-                                name={
-                                  (item.id === 'plan_workout' || item.id === 'adjust_workout')
-                                    ? 'flash'
-                                    : (item.icon as any)
-                                }
-                                size={16}
-                                color={
-                                  (item.id === 'plan_workout' || item.id === 'adjust_workout')
-                                    ? colors.brandPrimary
-                                    : colors.textPrimary
-                                }
+                                name={item.icon as any}
+                                size={14}
+                                color={colors.brandPrimary}
                                 style={{ marginRight: 6 }}
                               />
-                            ) : null
-                          }
-                          onPress={() => handleSuggestionPress(item)}
-                        />
-                      ))
-                    : suggestionMode === 'replace_exercise'
-                    ? currentWorkoutExercises.map((exerciseName, index) => (
-                        <AnimatedSuggestion
-                          key={index}
-                          index={index + 1}
-                          text={exerciseName}
-                          colors={colors}
-                          style={styles.suggestionBubble}
-                          textStyle={styles.suggestionText}
-                          onPress={() => handleSuggestionPress(exerciseName)}
-                        />
-                      ))
-                    : suggestionMode === 'adjust_workout'
-                    ? (
-                        activeSuggestions.adjust_workout || []
-                      ).map((item, index) => (
-                        <AnimatedSuggestion
-                          key={item.id}
-                          index={index + 1}
-                          text={item.text}
-                          colors={colors}
-                          style={[
-                            styles.suggestionBubble,
-                            styles.planWorkoutBubble,
-                          ]}
-                          textStyle={[
-                            styles.suggestionText,
-                            styles.planWorkoutText,
-                          ]}
-                          icon={
-                            <Ionicons
-                              name={item.icon as any}
-                              size={14}
-                              color={colors.brandPrimary}
-                              style={{ marginRight: 6 }}
-                            />
-                          }
-                          onPress={() => handleSuggestionPress(item)}
-                        />
-                      ))
-                    : (
-                        activeSuggestions[suggestionMode] || []
-                      ).map((item, index) => (
-                        <AnimatedSuggestion
-                          key={index}
-                          index={index + 1}
-                          text={item as string}
-                          colors={colors}
-                          style={styles.suggestionBubble}
-                          textStyle={styles.suggestionText}
-                          onPress={() => handleSuggestionPress(item)}
-                        />
-                      ))}
-                </ScrollView>
-              </View>
-            )}
+                            }
+                            onPress={() => handleSuggestionPress(item)}
+                          />
+                        ))
+                      : (
+                          activeSuggestions[suggestionMode] || []
+                        ).map((item, index) => (
+                          <AnimatedSuggestion
+                            key={index}
+                            index={index + 1}
+                            text={item as string}
+                            colors={colors}
+                            style={styles.suggestionBubble}
+                            textStyle={styles.suggestionText}
+                            onPress={() => handleSuggestionPress(item)}
+                          />
+                        ))}
+                  </ScrollView>
+                </View>
+              )}
 
             {/* Input Area */}
             <View
@@ -3536,7 +3755,9 @@ export function WorkoutChat({
                       : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
                 },
               ]}
-              onLayout={(e) => logLayout('inputContainer', e.nativeEvent.layout)}
+              onLayout={(e) =>
+                logLayout('inputContainer', e.nativeEvent.layout)
+              }
             >
               {/* Image Thumbnails Preview */}
               {selectedImages.length > 0 && (
@@ -3557,7 +3778,11 @@ export function WorkoutChat({
                         style={styles.removeImageButton}
                         onPress={() => removeImage(index)}
                       >
-                        <Ionicons name="close" size={14} color={colors.surface} />
+                        <Ionicons
+                          name="close"
+                          size={14}
+                          color={colors.surface}
+                        />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -3569,7 +3794,7 @@ export function WorkoutChat({
                 </ScrollView>
               )}
 
-                {/* Input Row */}
+              {/* Input Row */}
               <View style={styles.inputWrapper}>
                 {/* Left button: cancel during recording or image picker otherwise */}
                 {isRecording || isTranscribing ? (
@@ -3583,27 +3808,37 @@ export function WorkoutChat({
                       onPress={stopRecording}
                       disabled={isTranscribing}
                     >
-                      <Ionicons name="square" size={14} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </LiquidGlassSurface>
-                ) : !hideImagePicker && (
-                  <LiquidGlassSurface
-                    key={`plan-image-button-glass-${composerGlassKey}`}
-                    style={styles.addImageButtonGlass}
-                    debugLabel="plan-image-button"
-                  >
-                    <TouchableOpacity
-                      style={styles.addImageButton}
-                      onPress={showImagePickerActionSheet}
-                      disabled={isLoading}
-                    >
                       <Ionicons
-                        name="add"
-                        size={22}
-                        color={isLoading ? colors.textPlaceholder : colors.textPrimary}
+                        name="square"
+                        size={14}
+                        color={colors.textSecondary}
                       />
                     </TouchableOpacity>
                   </LiquidGlassSurface>
+                ) : (
+                  !hideImagePicker && (
+                    <LiquidGlassSurface
+                      key={`plan-image-button-glass-${composerGlassKey}`}
+                      style={styles.addImageButtonGlass}
+                      debugLabel="plan-image-button"
+                    >
+                      <TouchableOpacity
+                        style={styles.addImageButton}
+                        onPress={showImagePickerActionSheet}
+                        disabled={isLoading}
+                      >
+                        <Ionicons
+                          name="add"
+                          size={22}
+                          color={
+                            isLoading
+                              ? colors.textPlaceholder
+                              : colors.textPrimary
+                          }
+                        />
+                      </TouchableOpacity>
+                    </LiquidGlassSurface>
+                  )
                 )}
 
                 {/* Main input pill — always LiquidGlassSurface */}
@@ -3653,7 +3888,11 @@ export function WorkoutChat({
                             onPress={toggleRecording}
                             disabled={isLoading}
                           >
-                            <Ionicons name="mic-outline" size={19} color={colors.textPlaceholder} />
+                            <Ionicons
+                              name="mic-outline"
+                              size={19}
+                              color={colors.textPlaceholder}
+                            />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -3662,36 +3901,75 @@ export function WorkoutChat({
                     {/* Right action button */}
                     {isRecording ? (
                       <TouchableOpacity
-                        style={[styles.sendButton, styles.recordingSendButton, { backgroundColor: colors.textPrimary }]}
+                        style={[
+                          styles.sendButton,
+                          styles.recordingSendButton,
+                          { backgroundColor: colors.textPrimary },
+                        ]}
                         onPress={toggleRecording}
                         disabled={isTranscribing}
                       >
-                        {isTranscribing
-                          ? <ActivityIndicator size="small" color={colors.surface} />
-                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                        {isTranscribing ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={colors.surface}
+                          />
+                        ) : (
+                          <Ionicons
+                            name="arrow-up"
+                            size={17}
+                            color={colors.surface}
+                          />
+                        )}
                       </TouchableOpacity>
                     ) : isTranscribing ? (
                       <TouchableOpacity
-                        style={[styles.sendButton, { backgroundColor: colors.textPrimary }]}
+                        style={[
+                          styles.sendButton,
+                          { backgroundColor: colors.textPrimary },
+                        ]}
                         onPress={toggleRecording}
                         disabled={isTranscribing}
                       >
-                        {isTranscribing
-                          ? <ActivityIndicator size="small" color={colors.surface} />
-                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                        {isTranscribing ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={colors.surface}
+                          />
+                        ) : (
+                          <Ionicons
+                            name="arrow-up"
+                            size={17}
+                            color={colors.surface}
+                          />
+                        )}
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
                         style={[
                           styles.sendButton,
-                          ((!input.trim() && selectedImages.length === 0) || isLoading) && styles.sendButtonDisabled,
+                          ((!input.trim() && selectedImages.length === 0) ||
+                            isLoading) &&
+                            styles.sendButtonDisabled,
                         ]}
                         onPress={() => handleSendMessage()}
-                        disabled={(!input.trim() && selectedImages.length === 0) || isLoading}
+                        disabled={
+                          (!input.trim() && selectedImages.length === 0) ||
+                          isLoading
+                        }
                       >
-                        {isLoading
-                          ? <ActivityIndicator size="small" color={colors.surface} />
-                          : <Ionicons name="arrow-up" size={17} color={colors.surface} />}
+                        {isLoading ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={colors.surface}
+                          />
+                        ) : (
+                          <Ionicons
+                            name="arrow-up"
+                            size={17}
+                            color={colors.surface}
+                          />
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
@@ -3771,21 +4049,24 @@ export function WorkoutChat({
           } else {
             Alert.alert(
               'Maximum Images Reached',
-              `You can only add up to ${MAX_IMAGES} images per message.`
+              `You can only add up to ${MAX_IMAGES} images per message.`,
             )
           }
         }}
         onScanFoodLabel={(imageUri) => {
           setIsFoodScannerVisible(false)
           const prompt = `I've scanned a nutrition label. Please read the label in this image and tell me: the product name, the serving size, and the macros per serving (calories, protein, carbs, fat). Then ask me how many servings I had so you can log the correct amount. Do NOT output a <food_log> block yet — wait for me to tell you the quantity first.`
-          handleSendMessage(prompt, { forceImages: [imageUri], scanMode: 'food_label' })
+          handleSendMessage(prompt, {
+            forceImages: [imageUri],
+            scanMode: 'food_label',
+          })
         }}
         onScanBarcode={(productData) => {
           setIsFoodScannerVisible(false)
           if (productData.error || productData.not_found) {
             Alert.alert(
               'Barcode Not Found',
-              "We couldn't find food data for this barcode."
+              "We couldn't find food data for this barcode.",
             )
             return
           }
@@ -3811,7 +4092,9 @@ export function WorkoutChat({
             productData.nutriments?.fat_value ||
             0
 
-          setInput(`Log ${serving} of ${name}${brand} (${cals} kcal, ${protein}p, ${carbs}c, ${fat}f)`)
+          setInput(
+            `Log ${serving} of ${name}${brand} (${cals} kcal, ${protein}p, ${carbs}c, ${fat}f)`,
+          )
           setTimeout(() => inputRef.current?.focus(), 500)
         }}
       />
@@ -4354,7 +4637,11 @@ function createStyles(
     suggestionBubble: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : '#f4f4f5',
+      backgroundColor: isDark
+        ? mode === 'sheet'
+          ? colors.surfaceSubtle
+          : colors.surfaceCard
+        : '#f4f4f5',
       paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: 24,
@@ -4371,7 +4658,11 @@ function createStyles(
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: isDark ? (mode === 'sheet' ? colors.surfaceSubtle : colors.surfaceCard) : '#f4f4f5',
+      backgroundColor: isDark
+        ? mode === 'sheet'
+          ? colors.surfaceSubtle
+          : colors.surfaceCard
+        : '#f4f4f5',
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 0,
@@ -4398,7 +4689,7 @@ function createStyles(
     imageThumbnail: {
       width: 60,
       height: 60,
-      borderRadius: 8,
+      borderRadius: 12,
     },
     removeImageButton: {
       position: 'absolute',
@@ -4453,7 +4744,7 @@ function createStyles(
     messageImageThumbnail: {
       width: 80,
       height: 80,
-      borderRadius: 8,
+      borderRadius: 12,
       overflow: 'hidden',
     },
     messageImage: {

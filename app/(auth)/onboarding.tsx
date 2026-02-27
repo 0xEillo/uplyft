@@ -2670,7 +2670,7 @@ export default function OnboardingScreen() {
                   style={{
                     paddingVertical: 8,
                     paddingHorizontal: 24,
-                    borderRadius: 8,
+                    borderRadius: 12,
                     backgroundColor:
                       weightUnit === 'kg' ? colors.brandPrimary : 'transparent',
                   }}
@@ -2691,7 +2691,7 @@ export default function OnboardingScreen() {
                   style={{
                     paddingVertical: 8,
                     paddingHorizontal: 24,
-                    borderRadius: 8,
+                    borderRadius: 12,
                     backgroundColor:
                       weightUnit === 'lb' ? colors.brandPrimary : 'transparent',
                   }}
