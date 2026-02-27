@@ -10,6 +10,7 @@ import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
 import { database } from '@/lib/database'
+import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { haptic } from '@/lib/haptics'
 import {
   getBodyLogImageUrls,
@@ -865,7 +866,7 @@ export default function BodyLogScreen() {
     }
   }, [handleImportProgressPhotos, isUploadingPhotos, user])
 
-  const handleContextAdd = useCallback(() => {
+  const handleContextAdd = useCallback(async () => {
     if (!user) return alert('You must be logged in')
     haptic('medium')
 
@@ -875,7 +876,12 @@ export default function BodyLogScreen() {
       trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
       setBodyFatSheetVisible(true)
     } else if (activeTab === 'meals') {
-      router.push('/food-library')
+      try {
+        await setPendingChatAttachment({ action: 'scan_food' })
+      } catch (error) {
+        console.error('[BodyLog] Failed to queue scan-food handoff:', error)
+      }
+      router.push('/(tabs)/chat' as any)
     } else if (activeTab === 'photos') {
       handleAddPhoto()
     }
@@ -1026,8 +1032,8 @@ export default function BodyLogScreen() {
             title="Gym Log"
             onLeftPress={() => setShouldExit(true)}
             leftIcon="arrow-back"
-            rightIcon={activeTab === 'meals' ? undefined : 'add'}
-            onRightPress={activeTab === 'meals' ? undefined : handleContextAdd}
+            rightIcon="add"
+            onRightPress={handleContextAdd}
             rightLoading={activeTab === 'photos' && isUploadingPhotos}
             rightDisabled={activeTab === 'photos' && isUploadingPhotos}
           />

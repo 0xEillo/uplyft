@@ -4,6 +4,9 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 // @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
 // eslint-disable-next-line import/no-unresolved
+import { encodeBase64 } from 'https://deno.land/std@0.223.0/encoding/base64.ts'
+// @ts-ignore: Supabase Edge Functions run in Deno and resolve remote modules
+// eslint-disable-next-line import/no-unresolved
 import { z } from 'https://esm.sh/zod@3.25.76'
 import {
   buildBodyLogPrompt,
@@ -14,8 +17,6 @@ import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
 
 const BODY_LOG_BUCKET = 'body-log'
-const UNSUPPORTED_IMAGE_FORMAT_MESSAGE =
-  'HEIC/HEIF images are not supported yet. Please upload JPG or PNG.'
 const REQUEST_SCHEMA = z.union([
   z.object({ entryId: z.string().min(1) }),
   z.object({
@@ -27,8 +28,47 @@ const REQUEST_SCHEMA = z.union([
 // Timeout for AI analysis
 const ANALYZE_TIMEOUT_MS = 45000
 
-function isUnsupportedBodyLogImagePath(path: string): boolean {
+function isHeicImagePath(path: string): boolean {
   return /\.(heic|heif)$/i.test(path)
+}
+
+async function createVisionImageInput(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  filePath: string,
+  signedUrlTTLSeconds: number,
+): Promise<string> {
+  const { data: signed, error: signedError } = await serviceClient.storage
+    .from(BODY_LOG_BUCKET)
+    .createSignedUrl(filePath, signedUrlTTLSeconds)
+
+  if (signedError || !signed?.signedUrl) {
+    console.error(`[BODY_LOG] Failed to sign ${filePath}:`, signedError)
+    throw new Error(`Failed to sign image: ${filePath}`)
+  }
+
+  if (!isHeicImagePath(filePath)) {
+    return signed.signedUrl
+  }
+
+  // OpenRouter rejects .heic/.heif as URL images; use an inline data URL instead.
+  console.log(`[BODY_LOG] Converting ${filePath} to inline data URL for analysis`)
+  const imageResponse = await fetch(signed.signedUrl)
+  if (!imageResponse.ok) {
+    throw new Error(
+      `Failed to download HEIC image (${imageResponse.status}): ${filePath}`,
+    )
+  }
+
+  const imageBytes = new Uint8Array(await imageResponse.arrayBuffer())
+  if (imageBytes.length === 0) {
+    throw new Error(`Downloaded HEIC image is empty: ${filePath}`)
+  }
+
+  const mimeType = filePath.toLowerCase().endsWith('.heif')
+    ? 'image/heif'
+    : 'image/heic'
+  const base64Image = encodeBase64(imageBytes)
+  return `data:${mimeType};base64,${base64Image}`
 }
 
 async function analyzeWithModel(
@@ -158,7 +198,7 @@ serve(async (req: Request) => {
     }
 
     const signedUrlTTLSeconds = 60 * 30
-    const imageUrls: string[] = []
+    const imageInputs: string[] = []
     let entryCreatedAt: string = new Date().toISOString()
     let scanWeightKg: number | null = null
     let isStandaloneScan = false
@@ -200,20 +240,13 @@ serve(async (req: Request) => {
       }
 
       for (const img of images) {
-        if (isUnsupportedBodyLogImagePath(img.file_path)) {
-          return errorResponse(400, UNSUPPORTED_IMAGE_FORMAT_MESSAGE)
-        }
-
-        const { data: signed, error: signedError } = await serviceClient.storage
-          .from(BODY_LOG_BUCKET)
-          .createSignedUrl(img.file_path, signedUrlTTLSeconds)
-
-        if (signedError || !signed?.signedUrl) {
-          console.error(`[BODY_LOG] Failed to sign ${img.file_path}:`, signedError)
-          throw new Error(`Failed to sign image: ${img.file_path}`)
-        }
-
-        imageUrls.push(signed.signedUrl)
+        imageInputs.push(
+          await createVisionImageInput(
+            serviceClient,
+            img.file_path,
+            signedUrlTTLSeconds,
+          ),
+        )
       }
     } else {
       // ── Standalone scan mode (new flow — ephemeral images, no entry needed) ──
@@ -235,20 +268,9 @@ serve(async (req: Request) => {
           : null
 
       for (const filePath of imagePaths) {
-        if (isUnsupportedBodyLogImagePath(filePath)) {
-          return errorResponse(400, UNSUPPORTED_IMAGE_FORMAT_MESSAGE)
-        }
-
-        const { data: signed, error: signedError } = await serviceClient.storage
-          .from(BODY_LOG_BUCKET)
-          .createSignedUrl(filePath, signedUrlTTLSeconds)
-
-        if (signedError || !signed?.signedUrl) {
-          console.error(`[BODY_LOG] Failed to sign ${filePath}:`, signedError)
-          throw new Error(`Failed to sign image: ${filePath}`)
-        }
-
-        imageUrls.push(signed.signedUrl)
+        imageInputs.push(
+          await createVisionImageInput(serviceClient, filePath, signedUrlTTLSeconds),
+        )
       }
     }
 
@@ -261,7 +283,7 @@ serve(async (req: Request) => {
       createdAt: entryCreatedAt,
     })
 
-    if (imageUrls.length > 1) {
+    if (imageInputs.length > 1) {
       systemPrompt +=
         '\n\nIMPORTANT: You are analyzing MULTIPLE photos of the same person from different angles. Combine information from all photos to provide a SINGLE, more accurate assessment. Use triangulation between photos to improve accuracy of body fat %, BMI, and weight estimates.'
     }
@@ -270,13 +292,13 @@ serve(async (req: Request) => {
       {
         type: 'text',
         text:
-          imageUrls.length > 1
+          imageInputs.length > 1
             ? 'Analyze these body composition photos from multiple angles and return combined JSON metrics.'
             : 'Analyze this body composition photo and return JSON metrics.',
       },
     ]
 
-    for (const url of imageUrls) {
+    for (const url of imageInputs) {
       userContent.push({ type: 'image_url', image_url: { url } })
     }
 
