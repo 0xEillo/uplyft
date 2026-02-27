@@ -99,9 +99,11 @@ const MUSCLE_GROUP_ORDER = [
 ]
 
 const SCREEN_WIDTH = Dimensions.get('window').width
-const GAP = 12
+const HORIZONTAL_PADDING = 8
+const CARD_GAP = 8
 const COLUMN_COUNT = 2
-const ITEM_WIDTH = (SCREEN_WIDTH - 28 - GAP) / COLUMN_COUNT
+const GRID_ITEM_WIDTH =
+  (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / COLUMN_COUNT
 const MUSCLE_HIGHLIGHT_COLORS = ['#EF4444']
 const MUSCLE_BORDER_COLOR = '#D1D5DB'
 
@@ -632,7 +634,7 @@ export default function SelectExerciseScreen() {
 
   // FlashList render item
   const renderItem = useCallback(
-    ({ item }: { item: Exercise }) => {
+    ({ item, index }: { item: Exercise; index: number }) => {
       const isCurrentExercise = item.name === currentExerciseName // Should probably rely on ID but name is passed
       const isSelected = selectedIds.has(item.id)
 
@@ -649,13 +651,22 @@ export default function SelectExerciseScreen() {
       }
 
       return (
-        <ExerciseGridItem
-          exercise={item}
-          isCurrentExercise={isCurrentExercise}
-          isSelected={isSelected}
-          onSelect={() => handleSelectExercise(item)}
-          colors={colors}
-        />
+        <View
+          style={[
+            styles.gridItemWrapper,
+            index % COLUMN_COUNT === 0
+              ? styles.gridItemLeftColumn
+              : styles.gridItemRightColumn,
+          ]}
+        >
+          <ExerciseGridItem
+            exercise={item}
+            isCurrentExercise={isCurrentExercise}
+            isSelected={isSelected}
+            onSelect={() => handleSelectExercise(item)}
+            colors={colors}
+          />
+        </View>
       )
     },
     [currentExerciseName, handleSelectExercise, colors, viewMode, selectedIds],
@@ -739,14 +750,15 @@ export default function SelectExerciseScreen() {
             const isCurrentExercise = exercise.name === currentExerciseName
             const isSelected = selectedIds.has(exercise.id)
             return (
-              <ExerciseGridItem
-                key={exercise.id}
-                exercise={exercise}
-                isCurrentExercise={isCurrentExercise}
-                isSelected={isSelected}
-                onSelect={() => handleSelectExercise(exercise)}
-                colors={colors}
-              />
+              <View key={exercise.id} style={styles.recentItemWrapper}>
+                <ExerciseGridItem
+                  exercise={exercise}
+                  isCurrentExercise={isCurrentExercise}
+                  isSelected={isSelected}
+                  onSelect={() => handleSelectExercise(exercise)}
+                  colors={colors}
+                />
+              </View>
             )
           })}
         </ScrollView>
@@ -805,7 +817,7 @@ export default function SelectExerciseScreen() {
   const listContentContainerStyle = useMemo(
     () => ({
       paddingBottom: keyboardHeight + 100,
-      paddingHorizontal: 14,
+      paddingHorizontal: HORIZONTAL_PADDING,
     }),
     [keyboardHeight],
   )
@@ -1091,8 +1103,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 4,
+    marginVertical: 8,
   },
   sectionTitle: {
     fontSize: 16,
@@ -1144,15 +1155,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exerciseCard: {
-    width: ITEM_WIDTH,
-    marginRight: GAP,
-    marginBottom: GAP,
+    width: '100%',
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
   },
+  gridItemWrapper: {
+    flex: 1,
+    marginBottom: CARD_GAP,
+  },
+  gridItemLeftColumn: {
+    marginRight: CARD_GAP / 2,
+  },
+  gridItemRightColumn: {
+    marginLeft: CARD_GAP / 2,
+  },
   cardImageContainer: {
-    height: ITEM_WIDTH * 1.1, // 4:3 aspect ratio roughly
+    aspectRatio: 1 / 1.1,
     backgroundColor: '#000',
     position: 'relative',
   },
@@ -1274,11 +1293,15 @@ const styles = StyleSheet.create({
     marginBottom: 0, // Using card's marginBottom
   },
   recentScrollView: {
-    marginHorizontal: -14, // Bleed to edges
+    marginHorizontal: -HORIZONTAL_PADDING, // Bleed to edges
   },
   recentScrollContainer: {
-    paddingHorizontal: 14, // Align first card with content below
+    paddingHorizontal: HORIZONTAL_PADDING, // Align first card with content below
     paddingBottom: 0,
+  },
+  recentItemWrapper: {
+    width: GRID_ITEM_WIDTH,
+    marginRight: CARD_GAP,
   },
   // Muscle Filter Body Diagram Styles
   muscleFilterScrollView: {
