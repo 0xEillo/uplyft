@@ -1229,6 +1229,7 @@ export function WorkoutChat({
   // Open native iOS attachment sheet
   const showImagePickerActionSheet = () => {
     haptic('light')
+    Keyboard.dismiss()
     router.push('/chat-attachment')
   }
 
@@ -2804,7 +2805,7 @@ export function WorkoutChat({
                                               },
                                               paragraph: {
                                                 marginTop: 0,
-                                                marginBottom: 8,
+                                                marginBottom: 2,
                                               },
                                               heading1: {
                                                 fontSize: 22,
@@ -3996,8 +3997,8 @@ function createStyles(
     },
     userMessageContent: {
       backgroundColor: colors.textPrimary,
-      padding: 12,
-      paddingHorizontal: 14,
+      paddingVertical: 9,
+      paddingHorizontal: 11,
       borderRadius: 18,
       borderBottomRightRadius: 4,
     },
@@ -4063,8 +4064,8 @@ function createStyles(
     },
     assistantMessageBubble: {
       backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
-      padding: 12,
-      paddingHorizontal: 14,
+      paddingVertical: 9,
+      paddingHorizontal: 11,
       borderRadius: 18,
       borderBottomLeftRadius: 4,
     },
