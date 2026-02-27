@@ -14,6 +14,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
@@ -32,10 +33,10 @@ import {
   buildWorkoutCreationPrompt,
   buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
+import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { appFetch } from '@/lib/fetch'
-import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
@@ -691,6 +692,26 @@ export function WorkoutChat({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const tabBarVisibility = useTabBarVisibility()
+
+  const closeWizardAndRestoreTabBar = useCallback(() => {
+    tabBarVisibility?.setHideForFullscreenOverlay(false)
+    setPlanningState({
+      isActive: false,
+      step: 'none',
+      data: {},
+      commonMuscles: [],
+    })
+  }, [tabBarVisibility])
+
+  useEffect(() => {
+    const wizardVisible =
+      planningState.isActive && planningState.step === 'wizard'
+    tabBarVisibility?.setHideForFullscreenOverlay(wizardVisible)
+    return () => {
+      tabBarVisibility?.setHideForFullscreenOverlay(false)
+    }
+  }, [planningState.isActive, planningState.step, tabBarVisibility])
 
   const {
     isRecording,
@@ -1836,18 +1857,13 @@ export function WorkoutChat({
 
   const handleNewChat = () => {
     haptic('light')
+    closeWizardAndRestoreTabBar()
     setMessages([])
     setInput('')
     setInputHeight(0)
     setSelectedImages([])
     setFoodActionState({})
     setLoggedMealIdByMessage({})
-    setPlanningState({
-      isActive: false,
-      step: 'none',
-      data: {},
-      commonMuscles: [],
-    })
     setGeneratedPlanContent(null)
     setParsedWorkout(null)
     setSuggestionMode('main')
@@ -1955,12 +1971,7 @@ export function WorkoutChat({
     }
 
     // Otherwise, this is the final completion, so generate the workout
-    setPlanningState({
-      isActive: false,
-      step: 'none',
-      data: {},
-      commonMuscles: [],
-    })
+    closeWizardAndRestoreTabBar()
 
     // Build the equipment label for display
     const equipmentLabels: Record<string, string> = {
@@ -2471,22 +2482,21 @@ export function WorkoutChat({
         keyboardVerticalOffset={keyboardVerticalOffset}
         onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
       >
-        {planningState.isActive && planningState.step === 'wizard' ? (
+        <Modal
+          visible={planningState.isActive && planningState.step === 'wizard'}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={closeWizardAndRestoreTabBar}
+        >
           <WorkoutPlanningWizard
             colors={colors}
             onComplete={handleWizardComplete}
-            onCancel={() =>
-              setPlanningState({
-                isActive: false,
-                step: 'none',
-                data: {},
-                commonMuscles: [],
-              })
-            }
+            onCancel={closeWizardAndRestoreTabBar}
             initialData={planningState.data}
             commonMuscles={planningState.commonMuscles}
           />
-        ) : (
+        </Modal>
+        {!(planningState.isActive && planningState.step === 'wizard') && (
           <>
             {/* Top Left Menu Button - Toggles between Settings (if empty) and Clear (if messages) */}
             {mode === 'fullscreen' && (
@@ -2695,7 +2705,7 @@ export function WorkoutChat({
                                   <WorkoutCard
                                     workout={messageParsedWorkout}
                                     coachImage={coach.image}
-                                    hideInfoButton={mode === 'sheet'}
+                                    username={profile?.display_name}
                                     onStartWorkout={() => {
                                       setParsedWorkout(messageParsedWorkout)
                                       setGeneratedPlanContent(message.content)

@@ -23,6 +23,7 @@ import {
   SuccessOverlayProvider,
   useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
+import { TabBarVisibilityProvider, useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -188,9 +189,13 @@ function TabLayoutContent() {
     setShowShareScreen(false)
   }
 
+  const tabBarVisibility = useTabBarVisibility()
+  const hideForFullscreenOverlay = tabBarVisibility?.hideForFullscreenOverlay ?? false
   const currentTab = (segments[1] as string | undefined) ?? 'index'
   const isTabBarHidden =
-    currentTab === 'create-post' || currentTab === 'create-speech'
+    hideForFullscreenOverlay ||
+    currentTab === 'create-post' ||
+    currentTab === 'create-speech'
   const isIOS26OrNewer =
     Platform.OS === 'ios' &&
     Number.parseInt(String(Platform.Version).split('.')[0] ?? '0', 10) >= 26
@@ -511,7 +516,9 @@ export default function TabLayout() {
         <ScrollToTopProvider>
           <SuccessOverlayProvider>
             <RatingPromptProvider>
-              <TabLayoutContent />
+              <TabBarVisibilityProvider>
+                <TabLayoutContent />
+              </TabBarVisibilityProvider>
             </RatingPromptProvider>
           </SuccessOverlayProvider>
         </ScrollToTopProvider>

@@ -2706,29 +2706,6 @@ export default function CreatePostScreen() {
                 </View>
               </View>
 
-              <View style={styles.newUserGuideOptionRow}>
-                <View style={styles.newUserGuideOptionBadge}>
-                  <Text style={styles.newUserGuideOptionBadgeText}>5</Text>
-                </View>
-                <View style={styles.newUserGuideOptionContent}>
-                  <Text style={styles.newUserGuideOptionTitle}>
-                    Workout scan
-                  </Text>
-                  <View style={styles.newUserGuideOptionHintRow}>
-                    <View style={styles.newUserGuideOptionHintIconWrap}>
-                      <Ionicons
-                        name="camera-outline"
-                        size={12}
-                        color={colors.textSecondary}
-                      />
-                    </View>
-                    <Text style={styles.newUserGuideOptionHintText}>
-                      Tap camera to scan notes/programs
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
               <Text style={styles.newUserGuideFooter}>
                 No matter how you log, AI detects your exercises and turns it into a formatted workout post.
               </Text>

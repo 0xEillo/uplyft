@@ -138,22 +138,14 @@ const styles = StyleSheet.create({
   },
   fallbackLight: {
     backgroundColor: 'rgba(255,255,255,0.64)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
   },
   fallbackDark: {
     backgroundColor: 'rgba(36,36,36,0.68)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
   nativeVisibilityLight: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
   },
   nativeVisibilityDark: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
 })

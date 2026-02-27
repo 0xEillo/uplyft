@@ -5,19 +5,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import { useState } from 'react'
 import {
-  LayoutAnimation,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
-  UIManager,
-  View
+  View,
 } from 'react-native'
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
 
 export interface RoutineExerciseSet {
   id: string
@@ -43,11 +35,16 @@ interface RoutineExerciseCardProps {
   defaultExpanded?: boolean
   /** When true, blurs the exercise name and details to tease content for non-pro users */
   locked?: boolean
+  /** When true, renders without bottom margin (for use inside a parent list container) */
+  asRow?: boolean
+  /** When asRow is true, suppresses the bottom separator on the last item */
+  isLast?: boolean
 }
 
 /**
  * Reusable component for displaying a routine exercise with collapsible sets.
- * Tap the card to expand/collapse set details. Tap the exercise name to navigate.
+ * Visual language matches workout-card: rounded-square thumb, textPrimary name,
+ * numbered badge + inline set details on expand.
  */
 export function RoutineExerciseCard({
   exercise,
@@ -55,230 +52,255 @@ export function RoutineExerciseCard({
   showSetDetails = true,
   defaultExpanded = false,
   locked = false,
+  asRow = false,
+  isLast = false,
 }: RoutineExerciseCardProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const styles = createStyles(colors)
+  const styles = createStyles(colors, isDark)
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   const formatReps = (min: number | null, max: number | null): string => {
     if (!min) return '-'
-    if (max && max !== min) return `${min}-${max}`
+    if (max && max !== min) return `${min}–${max}`
     return `${min}`
   }
 
-  const formatRestTime = (seconds: number | null): string => {
-    if (!seconds) return '-'
-    const minutes = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  const formatRest = (seconds: number | null): string => {
+    if (!seconds) return ''
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return m > 0 ? `${m}m ${s > 0 ? `${s}s` : ''}rest`.trim() : `${s}s rest`
   }
 
-  // Calculate summary for compact display
   const setCount = exercise.sets.length
-  const firstSet = exercise.sets[0]
-  const repsSummary = firstSet ? formatReps(firstSet.repsMin, firstSet.repsMax) : '-'
-
-  const handleExercisePress = () => {
-    if (onExercisePress) {
-      onExercisePress(exercise.exerciseId)
-    }
-  }
-
-  const handleToggleExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setIsExpanded(!isExpanded)
-  }
+  const canExpand = !locked && showSetDetails && setCount > 0
+  const canNavigate = !!onExercisePress
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.rowTint }]}>
-      {/* Exercise Header - Always visible */}
+    <View style={[styles.card, asRow && styles.cardAsRow, asRow && isLast && styles.cardAsRowLast]}>
+      {/* Header row – always visible */}
       <View style={styles.header}>
-        {/* Thumbnail + Name - Tappable to navigate to exercise */}
-        <TouchableOpacity 
-          style={styles.exerciseInfoTouchable}
-          onPress={handleExercisePress}
-          activeOpacity={onExercisePress ? 0.7 : 1}
-          disabled={!onExercisePress}
+        {/* Thumbnail */}
+        <TouchableOpacity
+          style={[styles.thumb, !exercise.gifUrl && styles.thumbFallback]}
+          onPress={() => onExercisePress?.(exercise.exerciseId)}
+          disabled={!canNavigate}
+          activeOpacity={canNavigate ? 0.7 : 1}
         >
-          <View style={styles.imageContainer}>
-            {exercise.gifUrl ? (
-              <ExerciseMediaThumbnail
-                gifUrl={exercise.gifUrl}
-                style={{ width: '100%', height: '100%' }}
-              />
-            ) : (
-              <View style={[styles.placeholder, { backgroundColor: colors.bg }]}>
-                <Ionicons name="barbell" size={20} color={colors.textSecondary} />
-              </View>
-            )}
-          </View>
-          <View style={styles.info}>
-            {/* Always render the text, but overlay with BlurView if locked */}
-            <View style={locked && styles.lockedTextContainer}>
-              <Text
-                style={[styles.name, { color: colors.brandPrimary }]}
-                numberOfLines={1}
-              >
-                {exercise.name}
-              </Text>
-              <Text style={[styles.summary, { color: colors.textSecondary }]}>
-                {setCount} {setCount === 1 ? 'set' : 'sets'} • {repsSummary} reps
-              </Text>
+          {exercise.gifUrl ? (
+            <ExerciseMediaThumbnail
+              gifUrl={exercise.gifUrl}
+              style={styles.thumbImage}
+            />
+          ) : (
+            <Ionicons
+              name="barbell"
+              size={18}
+              color={isDark ? 'rgba(255,255,255,0.38)' : colors.textTertiary}
+            />
+          )}
+        </TouchableOpacity>
 
-              {locked && (
-                <BlurView
-                  intensity={60}
-                  tint={isDark ? 'dark' : 'light'}
-                  style={styles.blurOverlay}
-                />
+        {/* Name + meta */}
+        <View style={styles.content}>
+          <View style={styles.nameRow}>
+            <TouchableOpacity
+              onPress={() => onExercisePress?.(exercise.exerciseId)}
+              disabled={!canNavigate}
+              activeOpacity={canNavigate ? 0.7 : 1}
+              style={styles.nameTouch}
+            >
+              {locked ? (
+                <View style={styles.lockedTextWrap}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {exercise.name}
+                  </Text>
+                  <BlurView
+                    intensity={55}
+                    tint={isDark ? 'dark' : 'light'}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.name} numberOfLines={1}>
+                  {exercise.name}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.meta}>
+              {!locked && (
+                <Text style={styles.setCountText}>{setCount} sets</Text>
+              )}
+              {canExpand && (
+                <TouchableOpacity
+                  onPress={() => setIsExpanded((v) => !v)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={styles.chevron}
+                >
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={
+                      isDark ? 'rgba(255,255,255,0.28)' : colors.textTertiary
+                    }
+                  />
+                </TouchableOpacity>
               )}
             </View>
           </View>
-        </TouchableOpacity>
-
-        {/* Expand/Collapse Toggle - Hidden when locked */}
-        {!locked && showSetDetails && exercise.sets.length > 0 && (
-          <TouchableOpacity 
-            style={styles.expandButton}
-            onPress={handleToggleExpand}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons 
-              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-              size={20} 
-              color={colors.textSecondary} 
-            />
-          </TouchableOpacity>
-        )}
+        </View>
       </View>
 
-      {/* Detailed Set View - Collapsible - Hidden when locked */}
-      {!locked && showSetDetails && isExpanded && exercise.sets.length > 0 && (
+      {/* Expanded set detail */}
+      {isExpanded && canExpand && (
         <View style={styles.setsContainer}>
-          <View style={styles.setHeader}>
-            <Text style={[styles.colHeader, { color: colors.textSecondary, width: 40 }]}>
-              SET
-            </Text>
-            <Text
-              style={[
-                styles.colHeader,
-                { color: colors.textSecondary, flex: 1, textAlign: 'center' },
-              ]}
-            >
-              REPS
-            </Text>
-            <Text
-              style={[
-                styles.colHeader,
-                { color: colors.textSecondary, flex: 1, textAlign: 'center' },
-              ]}
-            >
-              REST
-            </Text>
-          </View>
-          {exercise.sets.map((set) => (
-            <View key={set.id} style={styles.setRow}>
-              <Text style={[styles.setNumber, { color: colors.statusWarning }]}>
-                {set.setNumber}
-              </Text>
-              <Text style={[styles.setValue, { color: colors.textPrimary }]}>
-                {formatReps(set.repsMin, set.repsMax)}
-              </Text>
-              <Text style={[styles.setValue, { color: colors.textPrimary }]}>
-                {formatRestTime(set.restSeconds)}
-              </Text>
-            </View>
-          ))}
+          {exercise.sets.map((set) => {
+            const restStr = formatRest(set.restSeconds)
+            return (
+              <View key={set.id} style={styles.setRow}>
+                <View style={styles.setBadge}>
+                  <Text style={styles.setBadgeText}>{set.setNumber}</Text>
+                </View>
+                <Text style={styles.setDetail}>
+                  {formatReps(set.repsMin, set.repsMax)} reps
+                  {restStr ? (
+                    <Text style={styles.setDetailMuted}> · {restStr}</Text>
+                  ) : null}
+                </Text>
+              </View>
+            )
+          })}
         </View>
       )}
     </View>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     card: {
-      borderRadius: 12,
+      borderRadius: 16,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.04)'
+        : 'rgba(0,0,0,0.025)',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       padding: 12,
-      marginBottom: 12,
+      marginBottom: 10,
     },
+    cardAsRow: {
+      borderRadius: 0,
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      marginBottom: 0,
+    },
+    cardAsRowLast: {},
     header: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 12,
     },
-    exerciseInfoTouchable: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    imageContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+    thumb: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
       overflow: 'hidden',
-      marginRight: 12,
-      borderWidth: 0.5,
-      borderColor: colors.border,
+      flexShrink: 0,
     },
-    placeholder: {
-      width: '100%',
-      height: '100%',
+    thumbFallback: {
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.06)'
+        : colors.surfaceSubtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       justifyContent: 'center',
       alignItems: 'center',
     },
-    info: {
+    thumbImage: {
+      width: '100%',
+      height: '100%',
+    },
+    content: {
+      flex: 1,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    nameTouch: {
       flex: 1,
     },
     name: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
-      marginBottom: 2,
+      color: isDark ? 'rgba(255,255,255,0.88)' : colors.textPrimary,
+      letterSpacing: -0.1,
     },
-    summary: {
-      fontSize: 13,
+    meta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 0,
+    },
+    setCountText: {
+      fontSize: 12,
       fontWeight: '500',
+      color: isDark ? 'rgba(255,255,255,0.35)' : colors.textTertiary,
     },
-    expandButton: {
-      padding: 8,
-      marginLeft: 4,
+    chevron: {
+      padding: 2,
     },
     setsContainer: {
-      marginTop: 12,
-      gap: 6,
-    },
-    setHeader: {
-      flexDirection: 'row',
-      marginBottom: 4,
-      paddingHorizontal: 8,
-    },
-    colHeader: {
-      fontSize: 11,
-      fontWeight: '600',
-      letterSpacing: 0.5,
+      marginTop: 10,
+      paddingTop: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: isDark
+        ? 'rgba(255,255,255,0.07)'
+        : 'rgba(0,0,0,0.05)',
+      gap: 7,
     },
     setRow: {
       flexDirection: 'row',
-      paddingVertical: 8,
-      paddingHorizontal: 8,
-      backgroundColor: colors.rowTint,
-      borderRadius: 8,
+      alignItems: 'center',
+      gap: 10,
     },
-    setNumber: {
-      width: 40,
-      fontWeight: '600',
+    setBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.1)'
+        : colors.surfaceSubtle,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border,
     },
-    setValue: {
-      flex: 1,
-      textAlign: 'center',
-      fontWeight: '500',
+    setBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: isDark ? 'rgba(255,255,255,0.65)' : colors.textSecondary,
     },
-    lockedTextContainer: {
+    setDetail: {
+      fontSize: 13,
+      color: isDark ? 'rgba(255,255,255,0.62)' : colors.textSecondary,
+      fontWeight: '400',
+    },
+    setDetailMuted: {
+      color: isDark ? 'rgba(255,255,255,0.35)' : colors.textTertiary,
+    },
+    lockedTextWrap: {
       position: 'relative',
       overflow: 'hidden',
       borderRadius: 4,
-    },
-    blurOverlay: {
-      ...StyleSheet.absoluteFillObject,
     },
   })

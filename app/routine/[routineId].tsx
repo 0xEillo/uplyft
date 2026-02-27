@@ -1,5 +1,6 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { RoutineExerciseCard } from '@/components/RoutineExerciseCard'
 import { SlideInView } from '@/components/slide-in-view'
@@ -607,71 +608,38 @@ export default function RoutineDetailScreen() {
           {/* Exercises Section */}
           <View style={styles.exercisesSection}>
             <View style={styles.exercisesHeader}>
-              <Text
-                style={[styles.sectionTitle, { color: colors.textSecondary }]}
-              >
-                Exercises
-              </Text>
+              <Text style={styles.sectionTitle}>Exercises</Text>
               {routine.isOwner && (
                 <TouchableOpacity onPress={handleEditRoutine}>
-                  <Text
-                    style={[
-                      styles.editButtonText,
-                      { color: colors.brandPrimary },
-                    ]}
-                  >
-                    Edit Routine
-                  </Text>
+                  <Text style={styles.editButtonText}>Edit Routine</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Show exercises - with locked state for non-pro explore routines */}
-            {routine.source === 'explore' && !isProMember ? (
-              <>
-                {/* Show ALL exercises but with blurred text */}
-                {routine.exercises.map((exercise) => (
-                  <RoutineExerciseCard
-                    key={exercise.id}
-                    exercise={exercise}
-                    locked={true}
-                  />
-                ))}
-
-                {routine.exercises.length === 0 && (
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      fontStyle: 'italic',
-                      marginTop: 8,
-                    }}
-                  >
-                    No exercises found
-                  </Text>
-                )}
-              </>
+            {routine.exercises.length === 0 ? (
+              <Text style={styles.emptyText}>No exercises found</Text>
             ) : (
-              <>
-                {routine.exercises.map((exercise) => (
+              <LiquidGlassSurface
+                style={styles.exerciseListGlass}
+                fallbackStyle={styles.exerciseListFallback}
+                debugLabel="routine-exercise-list"
+              >
+                {/* Show exercises - with locked state for non-pro explore routines */}
+                {routine.exercises.map((exercise, index) => (
                   <RoutineExerciseCard
                     key={exercise.id}
                     exercise={exercise}
-                    onExercisePress={handleExercisePress}
+                    onExercisePress={
+                      routine.source === 'explore' && !isProMember
+                        ? undefined
+                        : handleExercisePress
+                    }
+                    locked={routine.source === 'explore' && !isProMember}
+                    asRow
+                    isLast={index === routine.exercises.length - 1}
                   />
                 ))}
-
-                {routine.exercises.length === 0 && (
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      fontStyle: 'italic',
-                      marginTop: 8,
-                    }}
-                  >
-                    No exercises found
-                  </Text>
-                )}
-              </>
+              </LiquidGlassSurface>
             )}
           </View>
         </ScrollView>
@@ -805,14 +773,37 @@ const createStyles = (
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: '500',
+      fontSize: 13,
+      fontWeight: '600',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+      color: isDark ? 'rgba(255,255,255,0.38)' : colors.textTertiary,
     },
     editButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '500',
+      color: colors.brandPrimary,
+    },
+    exerciseListGlass: {
+      borderRadius: 20,
+      overflow: 'hidden',
+    },
+    exerciseListFallback: {
+      backgroundColor: isDark
+        ? 'rgba(26,26,28,0.94)'
+        : 'rgba(255,255,255,0.94)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+      marginTop: 8,
     },
   })

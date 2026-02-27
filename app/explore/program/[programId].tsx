@@ -391,55 +391,68 @@ export default function ProgramDetailScreen() {
 
                   {/* Exercises List */}
                   <View style={styles.carouselExerciseList}>
-                    {routine.exercises?.slice(0, 5).map((exItem) => (
-                      <TouchableOpacity 
-                        key={exItem.id} 
-                        style={styles.carouselExerciseRow}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          if (exItem.exercise_id) {
-                            router.push(`/exercise/${exItem.exercise_id}`)
-                          }
-                        }}
-                      >
-                        {/* Exercise GIF */}
-                        <View style={styles.exerciseGifContainer}>
-                          <ExerciseMediaThumbnail
-                            gifUrl={exItem.exercise?.gif_url ?? null}
-                            style={styles.exerciseGifThumb}
-                          />
-                        </View>
-                        {/* Exercise name and details */}
-                        <View style={styles.exerciseInfo}>
-                          {!isProMember ? (
-                            <View style={styles.lockedExerciseTextContainer}>
-                              <Text style={styles.carouselExerciseName} numberOfLines={1}>
-                                {exItem.exercise?.name || 'Unknown Exercise'}
-                              </Text>
-                              <Text style={styles.carouselExerciseDetails}>
-                                {exItem.sets} Sets • {exItem.reps_min}
-                                {exItem.reps_max ? `-${exItem.reps_max}` : ''} Reps
-                              </Text>
-                              <BlurView
-                                intensity={60}
-                                tint={isDark ? 'dark' : 'light'}
-                                style={styles.blurOverlay}
-                              />
-                            </View>
-                          ) : (
-                            <>
-                              <Text style={styles.carouselExerciseName} numberOfLines={1}>
-                                {exItem.exercise?.name || 'Unknown Exercise'}
-                              </Text>
-                              <Text style={styles.carouselExerciseDetails}>
-                                {exItem.sets} Sets • {exItem.reps_min}
-                                {exItem.reps_max ? `-${exItem.reps_max}` : ''} Reps
-                              </Text>
-                            </>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+                    {routine.exercises?.slice(0, 5).map((exItem, exIdx) => {
+                      const isLastVisible =
+                        exIdx === Math.min(4, (routine.exercises?.length ?? 0) - 1)
+                      return (
+                        <TouchableOpacity
+                          key={exItem.id}
+                          style={[
+                            styles.carouselExerciseRow,
+                            !isLastVisible && styles.carouselExerciseRowBorder,
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            if (exItem.exercise_id) {
+                              router.push(`/exercise/${exItem.exercise_id}`)
+                            }
+                          }}
+                        >
+                          {/* Exercise GIF */}
+                          <View style={styles.exerciseGifContainer}>
+                            <ExerciseMediaThumbnail
+                              gifUrl={exItem.exercise?.gif_url ?? null}
+                              style={styles.exerciseGifThumb}
+                            />
+                          </View>
+                          {/* Exercise name and details */}
+                          <View style={styles.exerciseInfo}>
+                            {!isProMember ? (
+                              <View style={styles.lockedExerciseTextContainer}>
+                                <Text style={styles.carouselExerciseName} numberOfLines={1}>
+                                  {exItem.exercise?.name || 'Unknown Exercise'}
+                                </Text>
+                                <Text style={styles.carouselExerciseDetails}>
+                                  {exItem.sets} sets · {exItem.reps_min}
+                                  {exItem.reps_max && exItem.reps_max !== exItem.reps_min
+                                    ? `–${exItem.reps_max}`
+                                    : ''}{' '}
+                                  reps
+                                </Text>
+                                <BlurView
+                                  intensity={60}
+                                  tint={isDark ? 'dark' : 'light'}
+                                  style={styles.blurOverlay}
+                                />
+                              </View>
+                            ) : (
+                              <>
+                                <Text style={styles.carouselExerciseName} numberOfLines={1}>
+                                  {exItem.exercise?.name || 'Unknown Exercise'}
+                                </Text>
+                                <Text style={styles.carouselExerciseDetails}>
+                                  {exItem.sets} sets · {exItem.reps_min}
+                                  {exItem.reps_max && exItem.reps_max !== exItem.reps_min
+                                    ? `–${exItem.reps_max}`
+                                    : ''}{' '}
+                                  reps
+                                </Text>
+                              </>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      )
+                    })}
                     {routine.exercises && routine.exercises.length > 5 && (
                       <Text style={styles.moreExercisesText}>
                         +{routine.exercises.length - 5} more exercises
@@ -504,8 +517,9 @@ const createStyles = (
       alignItems: 'center',
     },
     backButton: {
-      padding: 8,
-      marginLeft: -8,
+      padding: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     headerTitle: {
       fontSize: 20,
@@ -680,38 +694,39 @@ const createStyles = (
       letterSpacing: -0.3,
     },
     carouselExerciseList: {
-      paddingHorizontal: 12,
-      paddingBottom: 16,
-      gap: 8,
+      paddingHorizontal: 14,
+      paddingBottom: 12,
     },
     carouselExerciseRow: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 8,
-      paddingHorizontal: 8,
-      backgroundColor: colors.rowTint,
-      borderRadius: 12,
-      gap: 10,
+      gap: 12,
     },
+    carouselExerciseRowBorder: {},
     carouselExerciseName: {
       fontSize: 15,
       fontWeight: '600',
-      color: colors.textPrimary,
+      color: isDark ? 'rgba(255,255,255,0.88)' : colors.textPrimary,
+      letterSpacing: -0.1,
       marginBottom: 2,
     },
     carouselExerciseDetails: {
-      fontSize: 13,
-      color: colors.textSecondary,
+      fontSize: 12,
       fontWeight: '500',
+      color: isDark ? 'rgba(255,255,255,0.35)' : colors.textTertiary,
     },
     exerciseGifContainer: {
-      width: 52,
-      height: 52,
-      borderRadius: 10,
+      width: 44,
+      height: 44,
+      borderRadius: 12,
       overflow: 'hidden',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-      borderWidth: 1,
-      borderColor: colors.border,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.06)'
+        : colors.surfaceSubtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      flexShrink: 0,
     },
     exerciseGifThumb: {
       width: '100%',
