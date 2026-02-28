@@ -319,18 +319,10 @@ export default function CreatePostScreen() {
   )
 
   const handleStructuredInputFocus = useCallback(() => {
-    if (__DEV__) {
-      const ts = Date.now() % 100000
-      console.log(`[KeypadTrace][${ts}] parent-structured-input-focus`)
-    }
     setIsStructuredInputFocused(true)
   }, [])
 
   const handleStructuredInputBlur = useCallback(() => {
-    if (__DEV__) {
-      const ts = Date.now() % 100000
-      console.log(`[KeypadTrace][${ts}] parent-structured-input-blur`)
-    }
     setIsStructuredInputFocused(false)
     setKeypadProps(null)
   }, [])
@@ -350,24 +342,7 @@ export default function CreatePostScreen() {
 
   const handleStructuredKeypadStateChange = useCallback(
     (nextKeypadProps: CustomNumericKeypadProps | null) => {
-      if (__DEV__) {
-        const ts = Date.now() % 100000
-        console.log(`[KeypadTrace][${ts}] parent-keypad-state-change`, {
-          hasNextKeypadProps: Boolean(nextKeypadProps),
-          field: nextKeypadProps?.field ?? null,
-          tapShield: keypadTapShieldRef.current,
-        })
-      }
-      if (nextKeypadProps && keypadTapShieldRef.current) {
-        if (__DEV__) console.log('[Keypad] BLOCKED open (tap-shield)')
-        return
-      }
-      if (__DEV__) {
-        console.log(
-          '[Keypad]',
-          nextKeypadProps ? `OPEN ${nextKeypadProps.field}` : 'CLOSE',
-        )
-      }
+      if (nextKeypadProps && keypadTapShieldRef.current) return
       setKeypadProps(nextKeypadProps)
       setIsStructuredInputFocused(Boolean(nextKeypadProps))
     },
@@ -2771,13 +2746,6 @@ export default function CreatePostScreen() {
             <CustomNumericKeypad
               {...keypadProps}
               onDone={() => {
-                if (__DEV__) console.log('[Keypad] Done pressed, shield 340ms')
-                if (__DEV__) {
-                  const ts = Date.now() % 100000
-                  console.log(`[KeypadTrace][${ts}] parent-keypad-done-wrapper`, {
-                    field: keypadProps.field,
-                  })
-                }
                 activateKeypadTapShield(340)
                 keypadProps.onDone()
               }}

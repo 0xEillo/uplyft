@@ -40,7 +40,7 @@ if (
 }
 
 const DEBUG_NEXT_FLOW = false
-const DEBUG_KEYPAD_VERBOSE = true
+const DEBUG_KEYPAD_VERBOSE = false
 const DEFAULT_WARMUP_TEMPLATE = [
   { percent: 0.4, reps: 5 },
   { percent: 0.6, reps: 5 },
@@ -985,19 +985,11 @@ export function StructuredWorkoutInput({
 
       const tryFocus = (attempt: number) => {
         const input = inputRefs.current[key]
-        if (!input) {
-          if (__DEV__ && attempt === 0) {
-            console.log('[Keypad] Focus restore missing ref', key, reason)
-          }
-          return
-        }
+        if (!input) return
 
         const needsModalForceRefocus = reason === 'modal-ready' && attempt === 0
 
         if (needsModalForceRefocus) {
-          if (__DEV__) {
-            console.log('[Keypad] Focus restore force-blur', key)
-          }
           // The iOS Modal mount often causes the underlying TextInput to lose visual focus (caret disappears)
           // even though React Native thinks it's still focused. Calling .blur() forces RN to clear its state
           // so the subsequent .focus() on the next frame actually sends a command to the native UI.
@@ -1026,22 +1018,7 @@ export function StructuredWorkoutInput({
 
         const hasFocus = isStructuredInputCurrentlyFocused()
 
-        if (hasFocus || attempt >= 6) {
-          if (__DEV__) {
-            console.log(
-              '[Keypad] Focus restore',
-              key,
-              hasFocus ? 'success' : 'give-up',
-              `attempt=${attempt}`,
-              `reason=${reason}`,
-            )
-          }
-          return
-        }
-
-        if (__DEV__ && attempt === 0) {
-          console.log('[Keypad] Focus restore retrying', key, `reason=${reason}`)
-        }
+        if (hasFocus || attempt >= 6) return
         requestAnimationFrame(() => {
           // Guard: abort if the user has moved to a different field
           const cur = focusedInputRef.current

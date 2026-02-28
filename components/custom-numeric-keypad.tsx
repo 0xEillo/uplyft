@@ -56,24 +56,12 @@ export function CustomNumericKeypad({
   const isWeightField = field === 'weight'
   const [buttonsReady, setButtonsReady] = useState(false)
   const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const debugKeypad = (event: string, payload?: Record<string, unknown>) => {
-    if (!__DEV__) return
-    const ts = Date.now() % 100000
-    if (payload) {
-      console.log(`[KeypadTrace][${ts}] keypad-${event}`, payload)
-    } else {
-      console.log(`[KeypadTrace][${ts}] keypad-${event}`)
-    }
-  }
-
   useEffect(() => {
-    if (__DEV__) console.log('[Keypad] Mount', field)
     return () => {
       if (readyTimeoutRef.current) {
         clearTimeout(readyTimeoutRef.current)
         readyTimeoutRef.current = null
       }
-      if (__DEV__) console.log('[Keypad] Unmount', field)
     }
   }, [field])
 
@@ -85,7 +73,6 @@ export function CustomNumericKeypad({
     readyTimeoutRef.current = setTimeout(() => {
       readyTimeoutRef.current = null
       setButtonsReady(true)
-      debugKeypad('buttons-enabled', { field })
     }, 180)
 
     return () => {
@@ -97,11 +84,7 @@ export function CustomNumericKeypad({
   }, [field])
 
   const handleDone = () => {
-    if (!buttonsReady) {
-      debugKeypad('done-blocked', { reason: 'buttons-not-ready', field })
-      return
-    }
-    debugKeypad('done-press', { field })
+    if (!buttonsReady) return
     onDone()
   }
 
@@ -111,10 +94,7 @@ export function CustomNumericKeypad({
       transparent
       animationType="none"
       onRequestClose={handleDone}
-      onShow={() => {
-        debugKeypad('modal-onshow', { field })
-        onReady?.()
-      }}
+      onShow={() => onReady?.()}
       presentationStyle="overFullScreen"
       hardwareAccelerated
       statusBarTranslucent
@@ -126,11 +106,7 @@ export function CustomNumericKeypad({
             isDark ? styles.dismissAreaDark : styles.dismissAreaLight,
           ]}
           onPress={() => {
-            if (!buttonsReady) {
-              debugKeypad('dismiss-blocked', { reason: 'buttons-not-ready', field })
-              return
-            }
-            debugKeypad('dismiss-press', { field })
+            if (!buttonsReady) return
             handleDone()
           }}
           accessibilityLabel="Dismiss keypad"
@@ -191,7 +167,6 @@ export function CustomNumericKeypad({
                         disabled={isDotDisabled || !buttonsReady}
                         onPress={() => {
                           if (!buttonsReady) return
-                          debugKeypad('digit-press', { key, field })
                           onKeyPress(key)
                         }}
                         activeOpacity={0.75}
@@ -207,11 +182,7 @@ export function CustomNumericKeypad({
             <TouchableOpacity
               style={styles.nextButton}
               onPress={() => {
-                if (!buttonsReady) {
-                  debugKeypad('next-blocked', { reason: 'buttons-not-ready', field })
-                  return
-                }
-                debugKeypad('next-press', { field })
+                if (!buttonsReady) return
                 onNext()
               }}
               activeOpacity={0.85}

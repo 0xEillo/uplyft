@@ -113,19 +113,7 @@ export function SuccessOverlayProvider({
   }
 
   const showPointsGainOverlay = useCallback((scoreData: StrengthScoreData) => {
-    const LOG = '[PointsOverlay:show]'
-    console.log(LOG, 'called with', {
-      pointsGained: scoreData.pointsGained,
-      previousScore: scoreData.previousScore,
-      currentScore: scoreData.currentScore,
-      previousLevel: scoreData.previousLevel,
-      currentLevel: scoreData.currentLevel,
-    })
-    if (scoreData.pointsGained <= 0) {
-      console.log(LOG, 'SKIP: pointsGained <= 0')
-      return
-    }
-    console.log(LOG, 'setting overlay visible')
+    if (scoreData.pointsGained <= 0) return
     setPointsData(scoreData)
     setIsPointsOverlayVisible(true)
   }, [])

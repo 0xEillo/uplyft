@@ -448,26 +448,15 @@ export default function FeedScreen() {
         updateWorkoutData(workout)
 
         // Compute strength score delta for points gain overlay
-        const LOG = '[PointsOverlay]'
-        console.log(LOG, 'starting strength score computation for workout', workout.id, workout.created_at)
         try {
           const prof =
             cachedProfile ??
             workout.profile ??
             await database.profiles.getById(user.id)
-          console.log(LOG, 'profile check:', {
-            hasProf: !!prof,
-            gender: prof?.gender,
-            weight_kg: prof?.weight_kg,
-          })
-          if (!prof) {
-            console.log(LOG, 'NOT showing: no profile')
-          }
           if (prof && !cachedProfile) {
             cachedProfile = prof
           }
           const strengthGender = getStrengthGender(prof?.gender ?? null)
-          console.log(LOG, 'strengthGender:', strengthGender, 'weight_kg:', prof?.weight_kg)
 
           if (strengthGender && prof?.weight_kg) {
             // Get current exercise data (after this workout) and snapshots
@@ -475,12 +464,6 @@ export default function FeedScreen() {
               database.stats.getMajorCompoundLiftsData(user.id),
               database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
             ])
-            console.log(LOG, 'exercise data:', {
-              exerciseDataLength: exerciseData.length,
-              exerciseIds: exerciseData.map((e) => e.exerciseId),
-              snapshotCount: Object.keys(snapshots).length,
-            })
-
             if (exerciseData.length > 0) {
               // Current score (with new workout PRs)
               const currentResult = calculateOverallStrengthScore({
@@ -493,16 +476,6 @@ export default function FeedScreen() {
               const baselineExercises = exerciseData.map((ex) => {
                 const snapshot = snapshots[ex.exerciseId]
                 const isNewPR = snapshot?.lastIncreaseSessionId === workout.id
-
-                console.log(LOG, `exercise ${ex.exerciseId}:`, {
-                  hasSnapshot: !!snapshot,
-                  lastIncreaseSessionId: snapshot?.lastIncreaseSessionId ?? null,
-                  workoutId: workout.id,
-                  isNewPR,
-                  currentMax1RM: ex.max1RM,
-                  previousBest1RM: snapshot?.previousBest1RM ?? null,
-                  baselineWillUse: isNewPR ? snapshot?.previousBest1RM : ex.max1RM,
-                })
 
                 if (isNewPR) {
                   return {
@@ -524,13 +497,6 @@ export default function FeedScreen() {
               })
 
               const pointsGained = Math.max(0, Math.round(currentResult.score - baselineResult.score))
-              console.log(LOG, 'score computation:', {
-                currentScore: currentResult.score,
-                baselineScore: baselineResult.score,
-                pointsGained,
-                liftsTracked: currentResult.liftsTracked,
-                willShow: pointsGained > 0 && currentResult.liftsTracked > 0,
-              })
 
               if (pointsGained > 0 && currentResult.liftsTracked > 0) {
                 const levelProgress = scoreToOverallLevelProgress(currentResult.score)
@@ -544,17 +510,10 @@ export default function FeedScreen() {
                   nextLevel: levelProgress.nextLevel,
                   progress: levelProgress.progress,
                 }
-                console.log(LOG, 'scheduling overlay in 800ms', scoreData)
                 // Delay to show after streak overlay fades
                 setTimeout(() => showPointsGainOverlay(scoreData), 800)
-              } else {
-                console.log(LOG, 'NOT showing: pointsGained<=0 or liftsTracked<=0')
               }
-            } else {
-              console.log(LOG, 'NOT showing: exerciseData.length === 0')
             }
-          } else {
-            console.log(LOG, 'NOT showing: missing strengthGender or weight_kg')
           }
         } catch (err) {
           console.error('[Feed] Error computing strength score delta:', err)
