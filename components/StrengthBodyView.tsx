@@ -921,7 +921,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                       <View key={group}>
                         {/* Muscle Group Header */}
                         <TouchableOpacity
-                          style={[styles.muscleGroupHeader, { borderColor: isExpanded ? `${bestLevelColor}44` : colors.border }]}
+                          style={styles.muscleGroupHeader}
                           onPress={() => {
                             setExpandedMuscleGroups((prev) => {
                               const next = new Set(prev)
@@ -1432,7 +1432,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: 12,
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
-      borderWidth: 1,
       paddingHorizontal: 14,
       paddingVertical: 12,
       shadowColor: '#000',
