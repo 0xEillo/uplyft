@@ -114,7 +114,9 @@ export default function NotificationsScreen() {
         ) {
           router.push('/follow-requests')
         } else if (
-          notification.type === 'workout_comment' &&
+          (notification.type === 'workout_comment' ||
+            notification.type === 'workout_comment_reply' ||
+            notification.type === 'workout_comment_like') &&
           notification.workout_id
         ) {
           // Navigate to the comments view for the workout

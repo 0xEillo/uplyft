@@ -70,7 +70,7 @@ export function WorkoutStatsGrid({
 
       <View style={[styles.statItem, styles.statItemRight]}>
         <View style={styles.labelContainer}>
-          <Ionicons name="trophy-outline" size={14} color={colors.brandPrimary} />
+          <Ionicons name="trophy" size={14} color="#FFD54A" />
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             Records
           </Text>

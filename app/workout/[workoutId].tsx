@@ -6,6 +6,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
+import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -14,14 +15,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, View } from 'react-native'
 
 interface PrDetailForDisplay {
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
   label: string
+  value: number
+  previousValue?: number
   weight: number
   previousReps?: number
   currentReps: number
+  setIndices?: number[]
   isCurrent: boolean
 }
 
 export interface ExercisePRInfo {
+  exerciseId: string
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
@@ -65,7 +71,7 @@ export default function WorkoutDetailScreen() {
   // Compute context for PR calculation
   const computeContext = useMemo(() => {
     if (!workout || !workout.created_at || !workout.date) return null
-    const prUserId = workout.user_id ?? user?.id
+    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
     if (!prUserId) return null
     return {
       sessionId: workout.id,
@@ -75,10 +81,7 @@ export default function WorkoutDetailScreen() {
       exercises: (workout.workout_exercises || []).map((we) => ({
         exerciseId: we.exercise_id,
         exerciseName: we.exercise?.name || 'Exercise',
-        sets: (we.sets || []).map((s) => ({
-          reps: s.reps,
-          weight: s.weight,
-        })),
+        sets: mapSetsToPrContext(we.sets),
       })),
     }
   }, [user, workout])
@@ -154,14 +157,19 @@ export default function WorkoutDetailScreen() {
 
         // 1. Process PR Info (for badges)
         const prData = result.perExercise.map((exPr) => ({
+          exerciseId: exPr.exerciseId,
           exerciseName: exPr.exerciseName,
           prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
           prLabels: exPr.prs.map((pr) => pr.label),
           prDetails: exPr.prs.map((pr) => ({
+            kind: pr.kind,
             label: pr.label,
+            value: pr.value,
+            previousValue: pr.previousValue,
             weight: pr.weight,
             previousReps: pr.previousReps,
             currentReps: pr.currentReps,
+            setIndices: pr.setIndices,
             isCurrent: pr.isCurrent,
           })),
           hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),

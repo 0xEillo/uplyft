@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
@@ -20,14 +21,19 @@ import type {
 import { PrTooltip } from '../pr-tooltip'
 
 interface PrDetailForDisplay {
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
   label: string
+  value: number
+  previousValue?: number
   weight: number
   previousReps?: number
   currentReps: number
+  setIndices?: number[]
   isCurrent: boolean
 }
 
 export interface ExercisePRInfo {
+  exerciseId: string
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
@@ -83,10 +89,14 @@ export function ExerciseDetailCard({
   const gainColor = getLevelColor('Intermediate')
 
   const exercise = workoutExercise.exercise
-  const sets = hideWarmupSets
-    ? workoutExercise.sets.filter((s) => !s.is_warmup)
-    : workoutExercise.sets
-  const hasValidSets = sets.length > 0
+  const setEntries = useMemo(
+    () =>
+      workoutExercise.sets
+        .map((set, originalIndex) => ({ set, originalIndex }))
+        .filter(({ set }) => !(hideWarmupSets && set.is_warmup === true)),
+    [workoutExercise.sets, hideWarmupSets],
+  )
+  const hasValidSets = setEntries.length > 0
   const fallbackExerciseName =
     typeof workoutExercise.exercise_name === 'string'
       ? workoutExercise.exercise_name
@@ -95,13 +105,13 @@ export function ExerciseDetailCard({
   const exercisePressId = exercise?.id || workoutExercise.exercise_id || null
 
   const strengthProgress = useMemo(() => {
-    if (!exercise || sets.length === 0) return null
+    if (!exercise || setEntries.length === 0) return null
     const strengthGender = getStrengthGender(profile?.gender)
     if (!profile?.weight_kg || !strengthGender) return null
     if (!hasStrengthStandards(exercise.name)) return null
 
     let sessionBest1RM = 0
-    sets.forEach((set) => {
+    setEntries.forEach(({ set }) => {
       if (set.is_warmup === true) return
       if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) return
 
@@ -151,19 +161,51 @@ export function ExerciseDetailCard({
       progressDelta,
       accentColor: currentInfo.standard.color,
     }
-  }, [exercise, previousBest1RMKg, profile?.gender, profile?.weight_kg, sets])
+  }, [
+    exercise,
+    previousBest1RMKg,
+    profile?.gender,
+    profile?.weight_kg,
+    setEntries,
+  ])
 
   if (!hasValidSets) {
     return null
   }
 
   const hasPr = (prInfo?.prSetIndices.size ?? 0) > 0
+  const setPrLabelsByIndex = useMemo(() => {
+    const mapping = new Map<number, string[]>()
+    if (!prInfo) return mapping
+
+    const labelForKind = (
+      kind: PrDetailForDisplay['kind'],
+    ): 'Weight' | '1RM' | 'Volume' => {
+      if (kind === 'best-1rm') return '1RM'
+      if (kind === 'best-set-volume') return 'Volume'
+      return 'Weight'
+    }
+
+    prInfo.prDetails.forEach((detail) => {
+      const compactLabel = labelForKind(detail.kind)
+      ;(detail.setIndices || []).forEach((setIndex) => {
+        const existing = mapping.get(setIndex) || []
+        if (!existing.includes(compactLabel)) {
+          existing.push(compactLabel)
+          mapping.set(setIndex, existing)
+        }
+      })
+    })
+
+    return mapping
+  }, [prInfo])
 
   let workingSetNumber = 0
-  const setRows = sets.map((set, index) => {
+  const setRows = setEntries.map(({ set, originalIndex }, index) => {
     const weight = set.weight
     const reps = set.reps
-    const setHasPr = prInfo?.prSetIndices.has(index) === true
+    const setHasPr = prInfo?.prSetIndices.has(originalIndex) === true
+    const setPrLabels = setPrLabelsByIndex.get(originalIndex) || []
 
     const isWarmup = set.is_warmup === true
     if (!isWarmup) {
@@ -218,15 +260,32 @@ export function ExerciseDetailCard({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setTooltipVisible(true)}
-                style={[
-                  styles.prBadgeSmall,
-                  { backgroundColor: colors.brandPrimary },
-                  !prInfo.hasCurrentPR && {
-                    backgroundColor: colors.textTertiary,
-                  },
-                ]}
+                style={styles.prBadgeSmall}
               >
-                <Text style={styles.prBadgeTextSmall}>PR</Text>
+                {(setPrLabels.length > 0 ? setPrLabels : ['Record']).map(
+                  (label) => (
+                    <View key={`${originalIndex}-${label}`} style={styles.prTagRow}>
+                      <Ionicons
+                        name={prInfo.hasCurrentPR ? 'trophy' : 'trophy-outline'}
+                        size={12}
+                        color={
+                          prInfo.hasCurrentPR
+                            ? '#FFD54A'
+                            : colors.textTertiary
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.setDetail,
+                          styles.prTagText,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </View>
+                  ),
+                )}
               </TouchableOpacity>
             )}
           </View>
@@ -457,8 +516,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   prCol: {
-    width: 40,
-    alignItems: 'center',
+    width: 148,
+    alignItems: 'flex-end',
   },
   setRow: {
     flexDirection: 'row',
@@ -485,16 +544,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   prBadgeSmall: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    minWidth: 32,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
   },
-  prBadgeTextSmall: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  prTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  prTagText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 })

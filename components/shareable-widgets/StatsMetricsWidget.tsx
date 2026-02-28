@@ -4,6 +4,7 @@ import {
     getOrdinalSuffix,
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
@@ -213,7 +214,7 @@ export const StatsMetricsWidget = React.forwardRef<
                   end={{ x: 1, y: 1 }}
                   style={styles.prBadgeGradient}
                 >
-                  <Text style={styles.prEmoji}>🏆</Text>
+                  <Ionicons name="trophy" size={14} color="#FFD54A" />
                   <Text style={styles.prText}>
                     {stats.prCount} PR{stats.prCount > 1 ? 's' : ''} hit
                   </Text>
@@ -448,9 +449,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     gap: 6,
-  },
-  prEmoji: {
-    fontSize: 16,
   },
   prText: {
     fontSize: 13,

@@ -15,7 +15,7 @@ import {
   useRouter,
   useSegments,
 } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -34,6 +34,83 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface CommentWithProfile extends WorkoutComment {
   profile?: Profile
+}
+
+interface CommentListItem {
+  comment: CommentWithProfile
+  depth: number
+}
+
+const MAX_REPLY_DEPTH = 2
+
+function getReplyMentionTag(comment: CommentWithProfile) {
+  const preferredTag = comment.profile?.user_tag?.trim()
+  if (preferredTag) {
+    return preferredTag
+  }
+
+  const displayName = comment.profile?.display_name?.trim() || 'user'
+  return displayName.replace(/\s+/g, '').toLowerCase()
+}
+
+function flattenComments(
+  comments: CommentWithProfile[],
+  maxDepth = MAX_REPLY_DEPTH,
+) {
+  if (!comments.length) {
+    return [] as CommentListItem[]
+  }
+
+  const commentsById = new Map(comments.map((comment) => [comment.id, comment]))
+  const childrenByParent = new Map<string | null, CommentWithProfile[]>()
+
+  comments.forEach((comment) => {
+    const parentId =
+      comment.parent_comment_id && commentsById.has(comment.parent_comment_id)
+        ? comment.parent_comment_id
+        : null
+
+    const existingChildren = childrenByParent.get(parentId) || []
+    existingChildren.push(comment)
+    childrenByParent.set(parentId, existingChildren)
+  })
+
+  childrenByParent.forEach((threadComments) => {
+    threadComments.sort((a, b) => a.created_at.localeCompare(b.created_at))
+  })
+
+  const flattened: CommentListItem[] = []
+  const visited = new Set<string>()
+
+  const walkThread = (comment: CommentWithProfile, depth: number) => {
+    if (visited.has(comment.id)) {
+      return
+    }
+
+    visited.add(comment.id)
+    flattened.push({
+      comment,
+      depth,
+    })
+
+    const children = childrenByParent.get(comment.id) || []
+    children.forEach((childComment) => {
+      walkThread(childComment, Math.min(depth + 1, maxDepth))
+    })
+  }
+
+  ;(childrenByParent.get(null) || []).forEach((rootComment) => {
+    walkThread(rootComment, 0)
+  })
+
+  // Handle any edge-cases (cycles/orphans) defensively.
+  comments.forEach((comment) => {
+    if (!visited.has(comment.id)) {
+      walkThread(comment, 0)
+    }
+  })
+
+  return flattened
 }
 
 const DEBUG_NAV = false
@@ -75,12 +152,26 @@ export default function WorkoutCommentsScreen() {
   const insets = useSafeAreaInsets()
   const normalizedReturnTo = normalizeReturnToParam(returnTo)
   const backAttemptRef = useRef(0)
+  const inputRef = useRef<TextInput>(null)
 
   const [comments, setComments] = useState<CommentWithProfile[]>([])
+  const [commentLikeCounts, setCommentLikeCounts] = useState<
+    Record<string, number>
+  >({})
+  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(
+    new Set(),
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [isPosting, setIsPosting] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [replyTarget, setReplyTarget] = useState<CommentWithProfile | null>(
+    null,
+  )
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const flattenedComments = useMemo(
+    () => flattenComments(comments),
+    [comments],
+  )
 
   const styles = createStyles(colors)
 
@@ -195,12 +286,34 @@ export default function WorkoutCommentsScreen() {
 
         // Fetch profiles for all comment authors
         const uniqueUserIds = [...new Set(commentsData.map((c) => c.user_id))]
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', uniqueUserIds)
+        const commentIds = commentsData.map((comment) => comment.id)
 
-        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
+        const profilesPromise = uniqueUserIds.length
+          ? supabase.from('profiles').select('*').in('id', uniqueUserIds)
+          : Promise.resolve({ data: [] as Profile[], error: null })
+
+        const [profilesResult, commentLikeCountMap, likedCommentIdsResult] =
+          await Promise.all([
+            profilesPromise,
+            database.workoutCommentLikes.getCounts(commentIds),
+            user?.id
+              ? database.workoutCommentLikes.getLikedCommentIds(
+                  commentIds,
+                  user.id,
+                )
+              : Promise.resolve([] as string[]),
+          ])
+
+        if (profilesResult.error) {
+          throw profilesResult.error
+        }
+
+        const profileMap = new Map(
+          ((profilesResult.data as Profile[] | null) || []).map((p) => [
+            p.id,
+            p,
+          ]),
+        )
 
         const commentsWithProfiles = commentsData.map((comment) => ({
           ...comment,
@@ -208,6 +321,19 @@ export default function WorkoutCommentsScreen() {
         }))
 
         setComments(commentsWithProfiles)
+        setCommentLikeCounts(commentLikeCountMap)
+        setLikedCommentIds(new Set(likedCommentIdsResult))
+        setReplyTarget((currentReplyTarget) => {
+          if (!currentReplyTarget) {
+            return null
+          }
+
+          return commentsWithProfiles.some(
+            (comment) => comment.id === currentReplyTarget.id,
+          )
+            ? currentReplyTarget
+            : null
+        })
         logNav('Fetching comments success', {
           workoutId,
           commentCount: commentsWithProfiles.length,
@@ -226,12 +352,120 @@ export default function WorkoutCommentsScreen() {
     }
 
     fetchComments()
-  }, [workoutId])
+  }, [workoutId, user?.id])
+
+  const handleStartReply = useCallback((comment: CommentWithProfile) => {
+    const mentionPrefix = `@${getReplyMentionTag(comment)}`
+    setReplyTarget(comment)
+    setCommentText((previousText) => {
+      const trimmed = previousText.trim()
+      if (!trimmed) {
+        return `${mentionPrefix} `
+      }
+
+      if (
+        trimmed.startsWith(`${mentionPrefix} `) ||
+        trimmed === mentionPrefix
+      ) {
+        return previousText
+      }
+
+      return `${mentionPrefix} ${trimmed}`
+    })
+
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [])
+
+  const handleCommentTextChange = useCallback(
+    (value: string) => {
+      setCommentText(value)
+      if (replyTarget && !value.trim()) {
+        setReplyTarget(null)
+      }
+    },
+    [replyTarget],
+  )
+
+  const handleToggleCommentLike = useCallback(
+    async (commentId: string) => {
+      if (!user) return
+
+      const alreadyLiked = likedCommentIds.has(commentId)
+
+      // Optimistic update
+      setLikedCommentIds((previousLikedIds) => {
+        const nextLikedIds = new Set(previousLikedIds)
+        if (alreadyLiked) {
+          nextLikedIds.delete(commentId)
+        } else {
+          nextLikedIds.add(commentId)
+        }
+        return nextLikedIds
+      })
+      setCommentLikeCounts((previousCounts) => ({
+        ...previousCounts,
+        [commentId]: Math.max(
+          0,
+          (previousCounts[commentId] || 0) + (alreadyLiked ? -1 : 1),
+        ),
+      }))
+
+      try {
+        if (alreadyLiked) {
+          await database.workoutCommentLikes.unlike(commentId, user.id)
+        } else {
+          await database.workoutCommentLikes.like(commentId, user.id)
+        }
+      } catch (error) {
+        console.error('Error toggling comment like:', error)
+
+        // Revert optimistic update
+        setLikedCommentIds((previousLikedIds) => {
+          const nextLikedIds = new Set(previousLikedIds)
+          if (alreadyLiked) {
+            nextLikedIds.add(commentId)
+          } else {
+            nextLikedIds.delete(commentId)
+          }
+          return nextLikedIds
+        })
+        setCommentLikeCounts((previousCounts) => ({
+          ...previousCounts,
+          [commentId]: Math.max(
+            0,
+            (previousCounts[commentId] || 0) + (alreadyLiked ? 1 : -1),
+          ),
+        }))
+        Alert.alert('Error', 'Failed to update comment like')
+      }
+    },
+    [user, likedCommentIds],
+  )
 
   const handlePostComment = useCallback(async () => {
     if (!user || !workoutId || !commentText.trim() || isPosting) return
 
-    const trimmedText = commentText.trim()
+    let finalContent = commentText.trim()
+    let parentCommentId: string | null = null
+    let replyToUserId: string | null = null
+
+    if (replyTarget) {
+      const mentionPrefix = `@${getReplyMentionTag(replyTarget)}`
+      if (!finalContent.startsWith(mentionPrefix)) {
+        finalContent = `${mentionPrefix} ${finalContent}`.trim()
+      }
+
+      const replyBody = finalContent.slice(mentionPrefix.length).trim()
+      if (!replyBody) {
+        Alert.alert('Reply cannot be empty', 'Add text after the @mention.')
+        return
+      }
+
+      parentCommentId = replyTarget.id
+      replyToUserId = replyTarget.user_id
+    }
 
     try {
       setIsPosting(true)
@@ -240,7 +474,9 @@ export default function WorkoutCommentsScreen() {
       const newComment = await database.workoutComments.add(
         workoutId,
         user.id,
-        trimmedText,
+        finalContent,
+        parentCommentId,
+        replyToUserId,
       )
 
       // Fetch user profile
@@ -254,6 +490,7 @@ export default function WorkoutCommentsScreen() {
 
       setComments((prev) => [...prev, commentWithProfile])
       setCommentText('')
+      setReplyTarget(null)
       Keyboard.dismiss()
     } catch (error) {
       console.error('Error posting comment:', error)
@@ -261,39 +498,89 @@ export default function WorkoutCommentsScreen() {
     } finally {
       setIsPosting(false)
     }
-  }, [user, workoutId, commentText, isPosting])
+  }, [user, workoutId, commentText, isPosting, replyTarget])
 
   const renderComment = useCallback(
-    ({ item }: { item: CommentWithProfile }) => (
-      <View style={styles.commentItem}>
-        <View style={styles.commentAvatar}>
-          {item.profile?.avatar_url ? (
-            <Image
-              source={{ uri: item.profile.avatar_url }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>
-                {item.profile?.display_name?.[0]?.toUpperCase() || '?'}
+    ({ item }: { item: CommentListItem }) => {
+      const comment = item.comment
+      const likeCount = commentLikeCounts[comment.id] || 0
+      const isLiked = likedCommentIds.has(comment.id)
+      const indentation = item.depth > 0 ? item.depth * 18 : 0
+
+      return (
+        <View
+          style={[
+            styles.commentItem,
+            item.depth > 0 && styles.replyCommentItem,
+            { marginLeft: indentation },
+          ]}
+        >
+          <View style={styles.commentAvatar}>
+            {comment.profile?.avatar_url ? (
+              <Image
+                source={{ uri: comment.profile.avatar_url }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {comment.profile?.display_name?.[0]?.toUpperCase() || '?'}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.commentContent}>
+            <View style={styles.commentHeader}>
+              <Text style={styles.commentAuthor}>
+                {comment.profile?.display_name || 'User'}
+              </Text>
+              <Text style={styles.commentTime}>
+                {formatTimeAgo(comment.created_at)}
               </Text>
             </View>
-          )}
-        </View>
-        <View style={styles.commentContent}>
-          <View style={styles.commentHeader}>
-            <Text style={styles.commentAuthor}>
-              {item.profile?.display_name || 'User'}
-            </Text>
-            <Text style={styles.commentTime}>
-              {formatTimeAgo(item.created_at)}
-            </Text>
+            <Text style={styles.commentText}>{comment.content}</Text>
+            <View style={styles.commentActionsRow}>
+              <TouchableOpacity
+                onPress={() => handleStartReply(comment)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.replyActionText}>Reply</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.commentLikeButton}
+                onPress={() => handleToggleCommentLike(comment.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={16}
+                  color={isLiked ? colors.brandPrimary : colors.textSecondary}
+                />
+                {likeCount > 0 && (
+                  <Text
+                    style={[
+                      styles.commentLikeCount,
+                      isLiked && styles.commentLikeCountActive,
+                    ]}
+                  >
+                    {likeCount}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.commentText}>{item.content}</Text>
         </View>
-      </View>
-    ),
-    [styles],
+      )
+    },
+    [
+      styles,
+      commentLikeCounts,
+      likedCommentIds,
+      colors.brandPrimary,
+      colors.textSecondary,
+      handleStartReply,
+      handleToggleCommentLike,
+    ],
   )
 
   const renderEmptyState = useCallback(
@@ -429,9 +716,9 @@ export default function WorkoutCommentsScreen() {
             </View>
           ) : (
             <FlatList
-              data={comments}
+              data={flattenedComments}
               renderItem={renderComment}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.comment.id}
               contentContainerStyle={styles.commentsList}
               ListEmptyComponent={renderEmptyState}
               keyboardShouldPersistTaps="handled"
@@ -456,9 +743,10 @@ export default function WorkoutCommentsScreen() {
               >
                 <View style={styles.textInputContainer}>
                   <TextInput
+                    ref={inputRef}
                     style={styles.inputField}
                     value={commentText}
-                    onChangeText={setCommentText}
+                    onChangeText={handleCommentTextChange}
                     placeholder="Add a comment..."
                     placeholderTextColor={colors.textPlaceholder}
                     multiline
@@ -535,6 +823,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       marginBottom: 20,
     },
+    replyCommentItem: {
+      marginBottom: 14,
+    },
     commentAvatar: {
       marginRight: 12,
     },
@@ -575,6 +866,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 14,
       color: colors.textPrimary,
       lineHeight: 20,
+    },
+    commentActionsRow: {
+      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingRight: 8,
+    },
+    replyActionText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    commentLikeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    commentLikeCount: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    commentLikeCountActive: {
+      color: colors.brandPrimary,
     },
     emptyState: {
       flex: 1,

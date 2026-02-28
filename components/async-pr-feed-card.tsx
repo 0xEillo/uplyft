@@ -6,6 +6,7 @@ import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
+import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import { usePathname, useRouter } from 'expo-router'
@@ -13,14 +14,19 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 
 interface PrDetailForDisplay {
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
   label: string
+  value: number
+  previousValue?: number
   weight: number
   previousReps?: number
   currentReps: number
+  setIndices?: number[]
   isCurrent: boolean
 }
 
 interface PrInfo {
+  exerciseId: string
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
@@ -56,22 +62,21 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const [prs, setPrs] = useState<number>(0)
   const [prInfo, setPrInfo] = useState<PrInfo[]>([])
   const computeContext = useMemo(() => {
-    if (!user || workout.isPending || !workout.created_at || !workout.date) return null
+    if (workout.isPending || !workout.created_at || !workout.date) return null
+    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
+    if (!prUserId) return null
     return {
       sessionId: workout.id,
-      userId: user.id,
+      userId: prUserId,
       createdAt: workout.created_at,
       date: workout.date,
       exercises: (workout.workout_exercises || []).map((we) => ({
         exerciseId: we.exercise_id,
         exerciseName: we.exercise?.name || 'Exercise',
-        sets: (we.sets || []).map((s) => ({
-          reps: s.reps,
-          weight: s.weight,
-        })),
+        sets: mapSetsToPrContext(we.sets),
       })),
     }
-  }, [user, workout])
+  }, [user?.id, workout])
 
   // Determine if this workout belongs to the current user
   const isOwnWorkout = user?.id === workout.user_id
@@ -168,14 +173,19 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
         setPrs(result.totalPrs)
 
         const prData = result.perExercise.map((exPr) => ({
+          exerciseId: exPr.exerciseId,
           exerciseName: exPr.exerciseName,
           prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
           prLabels: exPr.prs.map((pr) => pr.label),
           prDetails: exPr.prs.map((pr) => ({
+            kind: pr.kind,
             label: pr.label,
+            value: pr.value,
+            previousValue: pr.previousValue,
             weight: pr.weight,
             previousReps: pr.previousReps,
             currentReps: pr.currentReps,
+            setIndices: pr.setIndices,
             isCurrent: pr.isCurrent,
           })),
           hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),

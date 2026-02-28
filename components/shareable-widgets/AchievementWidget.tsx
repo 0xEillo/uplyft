@@ -1,6 +1,7 @@
 import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
 import { PrDetail } from '@/lib/pr'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
@@ -25,7 +26,7 @@ const formatStopwatch = (seconds: number) => {
 interface AchievementWidgetProps {
   workout: WorkoutSessionWithDetails
   weightUnit: 'kg' | 'lb'
-  prData?: { exerciseName: string; prs: PrDetail[] }[]
+  prData?: { exerciseId: string; exerciseName: string; prs: PrDetail[] }[]
   backgroundMode?: 'light' | 'dark' | 'transparent'
 }
 
@@ -40,11 +41,12 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
       .map((exPr) => {
         // Find the matching workout exercise
         const workoutExercise = workout.workout_exercises?.find(
-          (we) => we.exercise?.name === exPr.exerciseName,
+          (we) => we.exercise_id === exPr.exerciseId,
         )
         return {
           exercise: workoutExercise?.exercise,
           sets: workoutExercise?.sets || [],
+          exerciseId: exPr.exerciseId,
           prs: exPr.prs.filter((pr) => pr.isCurrent),
         }
       })
@@ -151,14 +153,14 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                   {prExercises.slice(0, 2).map((exercise, index) => {
                     // Get the best PR from the computed PR data
                     const exercisePrData = prData.find(
-                      (exPr) => exPr.exerciseName === exercise.exercise?.name,
+                      (exPr) => exPr.exerciseId === exercise.exerciseId,
                     )
                     const bestPR = exercisePrData?.prs
                       .filter((pr) => pr.isCurrent)
                       .sort((a, b) => {
-                        // Sort by weight first, then reps
-                        if (a.weight !== b.weight) return b.weight - a.weight
-                        return b.currentReps - a.currentReps
+                        // Prioritize by PR metric value, then by set weight.
+                        if (a.value !== b.value) return b.value - a.value
+                        return b.weight - a.weight
                       })[0]
 
                     const weight = bestPR?.weight || 0
@@ -173,7 +175,11 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                         ]}
                       >
                         <View style={styles.prBadge}>
-                          <Text style={styles.prBadgeText}>PR</Text>
+                          <Ionicons
+                            name="trophy"
+                            size={12}
+                            color="#FFD54A"
+                          />
                         </View>
                         <View style={styles.prInfo}>
                           <Text
@@ -444,18 +450,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 107, 53, 0.15)',
   },
   prBadge: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    minWidth: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    borderRadius: 999,
+    width: 22,
+    height: 22,
     alignItems: 'center',
-  },
-  prBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    justifyContent: 'center',
   },
   prInfo: {
     flex: 1,

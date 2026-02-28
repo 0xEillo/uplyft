@@ -33,7 +33,10 @@ import { MuscleSplitChart } from './MuscleSplitChart'
 import { WorkoutStatsGrid } from './WorkoutStatsGrid'
 
 interface PrDetailForDisplay {
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
   label: string
+  value: number
+  previousValue?: number
   weight: number
   previousReps?: number
   currentReps: number
@@ -41,6 +44,7 @@ interface PrDetailForDisplay {
 }
 
 export interface ExercisePRInfo {
+  exerciseId: string
   exerciseName: string
   prSetIndices: Set<number>
   prLabels: string[]
@@ -522,7 +526,9 @@ export function WorkoutDetailView({
                 .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
                 .map((workoutExercise, index) => {
                   const exercisePR = prInfo.find(
-                    (pr) => pr.exerciseName === workoutExercise.exercise?.name,
+                    (pr) =>
+                      pr.exerciseId === workoutExercise.exercise_id ||
+                      pr.exerciseName === workoutExercise.exercise?.name,
                   )
                   return (
                     <ExerciseDetailCard

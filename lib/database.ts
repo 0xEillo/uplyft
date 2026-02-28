@@ -24,6 +24,7 @@ import type {
   Profile,
   RetentionPushPreferences,
   WorkoutComment,
+  WorkoutCommentLike,
   WorkoutLike,
   WorkoutRoutine,
   WorkoutRoutineExercise,
@@ -970,7 +971,13 @@ export const database = {
 
   // Workout comment operations
   workoutComments: {
-    async add(workoutId: string, userId: string, content: string) {
+    async add(
+      workoutId: string,
+      userId: string,
+      content: string,
+      parentCommentId: string | null = null,
+      replyToUserId: string | null = null,
+    ) {
       const trimmed = content.trim()
       if (!trimmed) {
         throw new Error('Comment content cannot be empty')
@@ -982,6 +989,8 @@ export const database = {
           workout_id: workoutId,
           user_id: userId,
           content: trimmed,
+          parent_comment_id: parentCommentId,
+          reply_to_user_id: replyToUserId,
         })
         .select()
         .single()
@@ -1039,6 +1048,80 @@ export const database = {
 
       if (error) throw error
       return count ?? 0
+    },
+  },
+
+  // Workout comment like operations
+  workoutCommentLikes: {
+    async like(commentId: string, userId: string) {
+      const { data, error } = await supabase
+        .from('workout_comment_likes')
+        .insert({
+          comment_id: commentId,
+          user_id: userId,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as WorkoutCommentLike
+    },
+
+    async unlike(commentId: string, userId: string) {
+      const { error } = await supabase
+        .from('workout_comment_likes')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', userId)
+
+      if (error) throw error
+    },
+
+    async hasLiked(commentId: string, userId: string) {
+      const { data, error } = await supabase
+        .from('workout_comment_likes')
+        .select('comment_id')
+        .eq('comment_id', commentId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') throw error
+      return !!data
+    },
+
+    async getCounts(commentIds: string[]) {
+      if (!commentIds.length) {
+        return {} as Record<string, number>
+      }
+
+      const { data, error } = await supabase
+        .from('workout_comment_likes')
+        .select('comment_id')
+        .in('comment_id', commentIds)
+
+      if (error) throw error
+
+      const counts: Record<string, number> = {}
+      ;(data || []).forEach((row: { comment_id: string }) => {
+        counts[row.comment_id] = (counts[row.comment_id] || 0) + 1
+      })
+
+      return counts
+    },
+
+    async getLikedCommentIds(commentIds: string[], userId: string) {
+      if (!commentIds.length) {
+        return [] as string[]
+      }
+
+      const { data, error } = await supabase
+        .from('workout_comment_likes')
+        .select('comment_id')
+        .eq('user_id', userId)
+        .in('comment_id', commentIds)
+
+      if (error) throw error
+      return (data || []).map((row: { comment_id: string }) => row.comment_id)
     },
   },
 

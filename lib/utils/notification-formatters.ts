@@ -2,7 +2,7 @@ import type { NotificationType } from '@/types/database.types'
 
 /**
  * Format notification text based on type and actors
- * @param type - The notification type ('workout_like' or 'workout_comment')
+ * @param type - The notification type
  * @param actorNames - Array of actor display names
  * @param actorCount - Total number of actors
  * @returns Formatted title and body text
@@ -42,6 +42,22 @@ export function formatNotificationText(
         actorCount === 1
           ? `${firstActor} commented on your workout`
           : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} commented on your workout`,
+    }
+  } else if (type === 'workout_comment_reply') {
+    return {
+      title: 'New Reply',
+      body:
+        actorCount === 1
+          ? `${firstActor} replied to your comment`
+          : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} replied to your comment`,
+    }
+  } else if (type === 'workout_comment_like') {
+    return {
+      title: 'Comment Like',
+      body:
+        actorCount === 1
+          ? `${firstActor} liked your comment`
+          : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} liked your comment`,
     }
   } else if (type === 'follow_request_received') {
     return {
@@ -116,6 +132,10 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'thumbs-up'
     case 'workout_comment':
       return 'chatbubble'
+    case 'workout_comment_reply':
+      return 'chatbubbles'
+    case 'workout_comment_like':
+      return 'heart'
     case 'follow_request_received':
       return 'person-add'
     case 'follow_request_approved':

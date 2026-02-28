@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { PrDetail, PrService } from '@/lib/pr'
+import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
@@ -51,7 +52,9 @@ export function WorkoutShareScreen({
   const { user } = useAuth()
   const scrollViewRef = useRef<ScrollView>(null)
   const [currentPage, setCurrentPage] = useState(0)
-  const [prData, setPrData] = useState<{ exerciseName: string; prs: PrDetail[] }[]>(
+  const [prData, setPrData] = useState<
+    { exerciseId: string; exerciseName: string; prs: PrDetail[] }[]
+  >(
     [],
   )
   const [hasPRs, setHasPRs] = useState(false)
@@ -61,7 +64,8 @@ export function WorkoutShareScreen({
 
   // Compute PRs when workout or visibility changes
   useEffect(() => {
-    if (!visible || !user?.id || !workout.workout_exercises?.length) {
+    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
+    if (!visible || !prUserId || !workout.workout_exercises?.length) {
       setPrData([])
       setHasPRs(false)
       return
@@ -77,16 +81,13 @@ export function WorkoutShareScreen({
 
         const ctx = {
           sessionId: workout.id,
-          userId: user.id,
+          userId: prUserId,
           createdAt: workout.created_at,
           date: workout.date,
           exercises: (workout.workout_exercises || []).map((we) => ({
             exerciseId: we.exercise_id,
             exerciseName: we.exercise?.name || 'Exercise',
-            sets: (we.sets || []).map((s) => ({
-              reps: s.reps,
-              weight: s.weight,
-            })),
+            sets: mapSetsToPrContext(we.sets),
           })),
         }
 

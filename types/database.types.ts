@@ -277,8 +277,16 @@ export interface WorkoutComment {
   workout_id: string
   user_id: string
   content: string
+  parent_comment_id: string | null
+  reply_to_user_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface WorkoutCommentLike {
+  comment_id: string
+  user_id: string
+  created_at: string
 }
 
 export interface WorkoutSocialStats {
@@ -315,6 +323,8 @@ export interface ParsedSet {
 export type NotificationType =
   | 'workout_like'
   | 'workout_comment'
+  | 'workout_comment_reply'
+  | 'workout_comment_like'
   | 'follow_request_received'
   | 'follow_request_approved'
   | 'follow_request_declined'

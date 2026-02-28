@@ -13,10 +13,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 
 export interface PrDetailForTooltip {
-  label: string // e.g., "1RM", "11 reps @ 65kg"
-  weight: number // the weight for this PR
-  previousReps?: number // previous max reps at this weight
-  currentReps: number // current max reps at this weight
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
+  label: string // e.g., "Heaviest Weight", "Best 1RM", "Best Set Volume"
+  value: number // metric value (kg, estimated 1RM kg, or kg*reps)
+  previousValue?: number
+  weight: number // the set weight used for this PR
+  previousReps?: number // legacy field for backwards compatibility
+  currentReps: number // reps in the set used for this PR
   isCurrent: boolean // true if this is still the all-time PR
 }
 
@@ -81,6 +84,48 @@ export function PrTooltip({
 
   const styles = createStyles(colors)
 
+  const formatWeight = (weightKg: number): string => {
+    const converted = weightUnit === 'lb' ? weightKg * 2.20462 : weightKg
+    const maximumFractionDigits = weightUnit === 'kg' ? 1 : 0
+    return `${converted.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits,
+    })} ${weightUnit}`
+  }
+
+  const formatCategoryValue = (pr: PrDetailForTooltip): string => {
+    if (pr.kind === 'best-set-volume') {
+      const converted = weightUnit === 'lb' ? pr.value * 2.20462 : pr.value
+      return `${converted.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })} ${weightUnit}·reps`
+    }
+
+    if (pr.kind === 'best-1rm') {
+      return `${formatWeight(pr.value)} projected`
+    }
+
+    return formatWeight(pr.value)
+  }
+
+  const formatPreviousValue = (pr: PrDetailForTooltip): string | null => {
+    if (typeof pr.previousValue !== 'number' || pr.previousValue <= 0) {
+      return null
+    }
+
+    if (pr.kind === 'best-set-volume') {
+      const converted =
+        weightUnit === 'lb' ? pr.previousValue * 2.20462 : pr.previousValue
+      return `${converted.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })} ${weightUnit}·reps`
+    }
+
+    return formatWeight(pr.previousValue)
+  }
+
   return (
     <Modal
       visible={visible}
@@ -114,15 +159,7 @@ export function PrTooltip({
             {/* PR Details */}
             <View style={styles.prList}>
               {prDetails.map((pr, index) => {
-                const weightDecimals = weightUnit === 'kg' ? 1 : 0
-                const formattedWeight = pr.weight.toFixed(weightDecimals)
-                const currentRepsLabel = pr.currentReps === 1 ? 'rep' : 'reps'
-
-                const showBeat =
-                  pr.previousReps !== undefined &&
-                  pr.previousReps > 0 &&
-                  pr.previousReps !== pr.currentReps
-                const previousRepsLabel = pr.previousReps === 1 ? 'rep' : 'reps'
+                const previousValue = formatPreviousValue(pr)
 
                 return (
                   <View
@@ -136,8 +173,11 @@ export function PrTooltip({
                           !pr.isCurrent && styles.prLabelHistorical,
                         ]}
                       >
-                        {pr.isCurrent ? 'New Record' : 'Previous Record'}
+                        {pr.label}
                       </Text>
+                      {!pr.isCurrent && (
+                        <Text style={styles.historicalTag}>Past</Text>
+                      )}
                     </View>
 
                     <Text
@@ -146,21 +186,18 @@ export function PrTooltip({
                         !pr.isCurrent && styles.prTextHistorical,
                       ]}
                     >
-                      {formattedWeight}
-                      {weightUnit} x {pr.currentReps} {currentRepsLabel}
+                      {formatCategoryValue(pr)}
                     </Text>
 
-                    {showBeat && (
-                      <View style={styles.beatContainer}>
-                        <Ionicons
-                          name="trending-up"
-                          size={12}
-                          color={colors.statusSuccess}
-                        />
-                        <Text style={styles.beatText}>
-                          Beat: {pr.previousReps} {previousRepsLabel}
-                        </Text>
-                      </View>
+                    <Text style={styles.setContextText}>
+                      From {formatWeight(pr.weight)} x {pr.currentReps}{' '}
+                      {pr.currentReps === 1 ? 'rep' : 'reps'}
+                    </Text>
+
+                    {previousValue && (
+                      <Text style={styles.previousValueText}>
+                        Previous: {previousValue}
+                      </Text>
                     )}
                   </View>
                 )
@@ -243,7 +280,8 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     prHeaderRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'space-between',
+      gap: 10,
       marginBottom: 2,
     },
     prLabel: {
@@ -256,19 +294,23 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     prLabelHistorical: {
       color: colors.textSecondary,
     },
-    beatContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      marginTop: 6,
-      paddingTop: 6,
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(0,0,0,0.05)',
-    },
-    beatText: {
+    setContextText: {
       fontSize: 12,
-      fontWeight: '600',
-      color: colors.statusSuccess,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    previousValueText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    historicalTag: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
     },
   })
 }

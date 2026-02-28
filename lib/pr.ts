@@ -7,6 +7,8 @@ type UUID = string
 export interface PrContextSet {
   reps: number | null
   weight: number | null
+  isWarmup?: boolean
+  originalIndex?: number
 }
 
 export interface PrContextExercise {
@@ -24,11 +26,13 @@ export interface SessionContext {
 }
 
 export interface PrDetail {
-  kind: 'single-rep-max' | 'weight-max'
-  label: string // e.g. "1RM", "11 reps @ 65kg"
-  weight: number // the weight for this PR
-  previousReps?: number // previous max reps at this weight
-  currentReps: number // current max reps at this weight
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
+  label: string // e.g. "Heaviest Weight", "Best 1RM", "Best Set Volume"
+  value: number // metric value for this PR (kg, estimated 1RM kg, or kg*reps)
+  previousValue?: number
+  weight: number // weight used in the set that triggered this PR
+  previousReps?: number // legacy field for backwards compatibility in some UI paths
+  currentReps: number // reps used in the set that triggered this PR
   setIndices?: number[] // which sets contributed to this PR
   isCurrent: boolean // true if this is still the all-time PR, false if it's been beaten since
 }
@@ -74,7 +78,10 @@ export class PrService {
     return { totalPrs, perExercise: perExerciseResults }
   }
 
-  // Computes PRs for: single (1RM) and weight-based rep maxes (e.g., most reps at 65kg)
+  // Computes PRs for Hevy-style categories:
+  // 1) Heaviest Weight (absolute load)
+  // 2) Best 1RM (highest estimated 1RM)
+  // 3) Best Set Volume (weight * reps)
   static async computePrsForExercise(
     userId: UUID,
     exerciseId: UUID,
@@ -101,80 +108,72 @@ export class PrService {
       logDate,
     )
 
-    // Calculate Baseline Estimated 1RM from historic sets
-    let baseline1RM = 0
-    historic.forEach((s) => {
-      if (s.weight && s.reps) {
-        const e1rm = estimateOneRepMaxKg(s.weight, s.reps)
-        if (e1rm > baseline1RM) {
-          baseline1RM = e1rm
-        }
-      }
-    })
+    // Warm-up sets should never count toward PR calculations.
+    const currentWorkingSets = currentSets.filter((s) => !s.isWarmup)
+    const historicWorkingSets = historic.filter((s) => !s.isWarmup)
+    const futureWorkingSets = future.filter((s) => !s.isWarmup)
+
+    // Calculate Baseline Estimated 1RM from historic working sets.
+    const historicBest1RM = this.maxEstimatedOneRepMax(historicWorkingSets)
+    const baseline1RM = historicBest1RM?.value ?? 0
 
     const prs: PrDetail[] = []
 
-    // Special case: 1RM (max weight at reps === 1)
-    const hist1Rm = this.maxWeightForReps(historic, 1)
-    const cur1Rm = this.maxWeightForReps(currentSets, 1)
-    const future1Rm = this.maxWeightForReps(future, 1)
+    const currentHeaviest = this.maxWeight(currentWorkingSets)
+    const historicHeaviest = this.maxWeight(historicWorkingSets)
+    const futureHeaviest = this.maxWeight(futureWorkingSets)
 
-    if (cur1Rm && (!hist1Rm || cur1Rm > hist1Rm)) {
-      const firstOneRmSetIndex = currentSets.findIndex(
-        (s) => s.reps === 1 && s.weight === cur1Rm,
-      )
-      const oneRmSetIndices =
-        firstOneRmSetIndex !== -1 ? [firstOneRmSetIndex] : []
+    if (currentHeaviest && (!historicHeaviest || currentHeaviest.value > historicHeaviest.value)) {
       prs.push({
-        kind: 'single-rep-max',
-        label: '1RM',
-        weight: cur1Rm,
-        previousReps: hist1Rm ? 1 : undefined,
-        currentReps: 1,
-        setIndices: oneRmSetIndices,
-        isCurrent: !future1Rm || cur1Rm > future1Rm,
+        kind: 'heaviest-weight',
+        label: 'Heaviest Weight',
+        value: currentHeaviest.value,
+        previousValue: historicHeaviest?.value,
+        weight: currentHeaviest.set.weight!,
+        currentReps: currentHeaviest.set.reps!,
+        setIndices: this.setIndicesFromSet(currentHeaviest.set),
+        isCurrent:
+          !futureHeaviest || currentHeaviest.value >= futureHeaviest.value,
       })
     }
 
-    // Weight-based rep maxes: for each unique weight in current sets (excluding 1-rep sets)
-    const weightsMap = new Map<number, number>() // weight -> max reps
-    currentSets.forEach((s) => {
-      if (s.weight && s.reps && s.reps > 1) {
-        const currentMax = weightsMap.get(s.weight) || 0
-        if (s.reps > currentMax) {
-          weightsMap.set(s.weight, s.reps)
-        }
-      }
-    })
+    const currentBest1RM = this.maxEstimatedOneRepMax(currentWorkingSets)
+    const futureBest1RM = this.maxEstimatedOneRepMax(futureWorkingSets)
 
-    for (const [weight, currentReps] of weightsMap) {
-      // Check historical max reps at this weight
-      const historicalReps = this.maxRepsForWeight(historic, weight)
+    if (currentBest1RM && (!historicBest1RM || currentBest1RM.value > historicBest1RM.value)) {
+      prs.push({
+        kind: 'best-1rm',
+        label: 'Best 1RM',
+        value: currentBest1RM.value,
+        previousValue: historicBest1RM?.value,
+        weight: currentBest1RM.set.weight!,
+        currentReps: currentBest1RM.set.reps!,
+        setIndices: this.setIndicesFromSet(currentBest1RM.set),
+        isCurrent: !futureBest1RM || currentBest1RM.value >= futureBest1RM.value,
+      })
+    }
 
-      // Is this a PR? (more reps than historical max at this weight)
-      if (!historicalReps || currentReps > historicalReps) {
-        // Check if this PR is still current (not beaten by future workouts)
-        const futureReps = this.maxRepsForWeight(future, weight)
-        const isCurrent = !futureReps || currentReps > futureReps
+    const currentBestSetVolume = this.maxSetVolume(currentWorkingSets)
+    const historicBestSetVolume = this.maxSetVolume(historicWorkingSets)
+    const futureBestSetVolume = this.maxSetVolume(futureWorkingSets)
 
-        // Find the first set that achieved this PR
-        const firstPrSetIndex = currentSets.findIndex(
-          (s) => s.weight === weight && s.reps === currentReps,
-        )
-        const setIndices = firstPrSetIndex !== -1 ? [firstPrSetIndex] : []
-
-        prs.push({
-          kind: 'weight-max',
-          label: `${weight}kg for ${currentReps} ${
-            currentReps === 1 ? 'rep' : 'reps'
-          }`,
-          weight,
-          previousReps: historicalReps,
-          currentReps,
-          setIndices,
-          isCurrent,
-        })
-      }
+    if (
+      currentBestSetVolume &&
+      (!historicBestSetVolume ||
+        currentBestSetVolume.value > historicBestSetVolume.value)
+    ) {
+      prs.push({
+        kind: 'best-set-volume',
+        label: 'Best Set Volume',
+        value: currentBestSetVolume.value,
+        previousValue: historicBestSetVolume?.value,
+        weight: currentBestSetVolume.set.weight!,
+        currentReps: currentBestSetVolume.set.reps!,
+        setIndices: this.setIndicesFromSet(currentBestSetVolume.set),
+        isCurrent:
+          !futureBestSetVolume ||
+          currentBestSetVolume.value >= futureBestSetVolume.value,
+      })
     }
 
     return { prs, baseline1RM }
@@ -194,7 +193,7 @@ export class PrService {
         date,
         workout_exercises!inner (
           exercise_id,
-          sets!inner (reps, weight)
+          sets!inner (reps, weight, is_warmup)
         )
       `,
       )
@@ -213,6 +212,7 @@ export class PrService {
         sets?: {
           reps: number | null
           weight: number | null
+          is_warmup?: boolean | null
         }[]
       }[]
     }
@@ -222,7 +222,11 @@ export class PrService {
       session.workout_exercises?.forEach((we) => {
         if (we.exercise_id === exerciseId) {
           we.sets?.forEach((s) => {
-            sets.push({ reps: s.reps, weight: s.weight })
+            sets.push({
+              reps: s.reps,
+              weight: s.weight,
+              isWarmup: s.is_warmup === true,
+            })
           })
         }
       })
@@ -244,7 +248,7 @@ export class PrService {
         date,
         workout_exercises!inner (
           exercise_id,
-          sets!inner (reps, weight)
+          sets!inner (reps, weight, is_warmup)
         )
       `,
       )
@@ -263,6 +267,7 @@ export class PrService {
         sets?: {
           reps: number | null
           weight: number | null
+          is_warmup?: boolean | null
         }[]
       }[]
     }
@@ -272,7 +277,11 @@ export class PrService {
       session.workout_exercises?.forEach((we) => {
         if (we.exercise_id === exerciseId) {
           we.sets?.forEach((s) => {
-            sets.push({ reps: s.reps, weight: s.weight })
+            sets.push({
+              reps: s.reps,
+              weight: s.weight,
+              isWarmup: s.is_warmup === true,
+            })
           })
         }
       })
@@ -280,30 +289,71 @@ export class PrService {
     return sets
   }
 
-  private static maxWeightForReps(
-    sets: PrContextSet[],
-    reps: number,
-  ): number | undefined {
-    let max: number | undefined
-    sets.forEach((s) => {
-      if (s.weight && s.reps === reps) {
-        if (!max || s.weight > max) max = s.weight
-      }
-    })
-    return max
+  private static hasValidWeightAndReps(
+    set: PrContextSet,
+  ): set is PrContextSet & { weight: number; reps: number } {
+    return (
+      typeof set.weight === 'number' &&
+      set.weight > 0 &&
+      typeof set.reps === 'number' &&
+      set.reps > 0
+    )
   }
 
-  // Get the maximum reps achieved at a specific weight
-  private static maxRepsForWeight(
-    sets: PrContextSet[],
-    weight: number,
-  ): number | undefined {
-    let max: number | undefined
-    sets.forEach((s) => {
-      if (s.weight === weight && s.reps != null) {
-        if (!max || s.reps > max) max = s.reps
+  private static maxWeight(sets: PrContextSet[]): {
+    value: number
+    set: PrContextSet & { weight: number; reps: number }
+  } | null {
+    let best: { value: number; set: PrContextSet & { weight: number; reps: number } } | null =
+      null
+
+    sets.forEach((set) => {
+      if (!this.hasValidWeightAndReps(set)) return
+      if (!best || set.weight > best.value) {
+        best = { value: set.weight, set }
       }
     })
-    return max
+
+    return best
+  }
+
+  private static maxEstimatedOneRepMax(sets: PrContextSet[]): {
+    value: number
+    set: PrContextSet & { weight: number; reps: number }
+  } | null {
+    let best: { value: number; set: PrContextSet & { weight: number; reps: number } } | null =
+      null
+
+    sets.forEach((set) => {
+      if (!this.hasValidWeightAndReps(set)) return
+      const estimated = estimateOneRepMaxKg(set.weight, set.reps)
+      if (!best || estimated > best.value) {
+        best = { value: estimated, set }
+      }
+    })
+
+    return best
+  }
+
+  private static maxSetVolume(sets: PrContextSet[]): {
+    value: number
+    set: PrContextSet & { weight: number; reps: number }
+  } | null {
+    let best: { value: number; set: PrContextSet & { weight: number; reps: number } } | null =
+      null
+
+    sets.forEach((set) => {
+      if (!this.hasValidWeightAndReps(set)) return
+      const volume = set.weight * set.reps
+      if (!best || volume > best.value) {
+        best = { value: volume, set }
+      }
+    })
+
+    return best
+  }
+
+  private static setIndicesFromSet(set: PrContextSet): number[] {
+    return typeof set.originalIndex === 'number' ? [set.originalIndex] : []
   }
 }

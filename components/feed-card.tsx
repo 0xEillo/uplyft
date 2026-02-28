@@ -100,7 +100,10 @@ interface ExerciseDisplay {
 }
 
 interface PrDetailForDisplay {
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
   label: string // e.g., "1RM", "11 reps @ 65kg"
+  value: number
+  previousValue?: number
   weight: number // the weight for this PR
   previousReps?: number // previous max reps at this weight
   currentReps: number // current max reps at this weight

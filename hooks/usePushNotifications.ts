@@ -77,7 +77,12 @@ export function usePushNotifications() {
           type === 'follow_received'
         ) {
           router.push('/follow-requests')
-        } else if (type === 'workout_comment' && workoutId) {
+        } else if (
+          (type === 'workout_comment' ||
+            type === 'workout_comment_reply' ||
+            type === 'workout_comment_like') &&
+          workoutId
+        ) {
           router.push({
             pathname: '/workout-comments/[workoutId]',
             params: {

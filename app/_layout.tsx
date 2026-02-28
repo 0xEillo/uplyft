@@ -217,6 +217,10 @@ function RootLayoutNav() {
             options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
+            name="notification-settings"
+            options={{ presentation: 'card', animation: 'default' }}
+          />
+          <Stack.Screen
             name="routine/[routineId]"
             options={{ presentation: 'card', animation: 'default' }}
           />
