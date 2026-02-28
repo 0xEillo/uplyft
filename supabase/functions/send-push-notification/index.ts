@@ -13,10 +13,18 @@ interface NotificationPayload {
       | 'follow_request_approved'
       | 'follow_request_declined'
       | 'follow_received'
+      | 'trial_reminder'
+      | 'retention_scheduled_workout'
+      | 'retention_streak_protection'
+      | 'retention_inactivity'
+      | 'retention_weekly_recap'
+      | 'retention_milestone'
     workout_id: string | null
     request_id: string | null
+    follow_id: string | null
     actors: string[]
     comment_preview: string | null
+    metadata: Record<string, unknown> | null
     read: boolean
     created_at: string
     updated_at: string
@@ -29,10 +37,12 @@ interface ExpoPushMessage {
   sound: 'default'
   title: string
   body: string
+  channelId?: string
   data: {
     type: string
     workoutId?: string
     requestId?: string
+    route?: string
     notificationId: string
   }
   badge?: number
@@ -93,18 +103,23 @@ Deno.serve(async (req) => {
       )
     }
 
-    // 2. Fetch actor profiles for grouping message
-    const { data: actors, error: actorsError } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .in('id', notification.actors)
+    // 2. Fetch actor profiles for grouping message when this notification has actors
+    let actors: { id: string; display_name: string }[] = []
+    if (notification.actors?.length > 0) {
+      const { data: actorRows, error: actorsError } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', notification.actors)
 
-    if (actorsError) {
-      console.error(
-        '[send-push-notification] Error fetching actors:',
-        actorsError,
-      )
-      // Continue with generic message
+      if (actorsError) {
+        console.error(
+          '[send-push-notification] Error fetching actors:',
+          actorsError,
+        )
+        // Continue with generic message
+      } else {
+        actors = actorRows || []
+      }
     }
 
     // 3. Format notification text based on type and actor count
@@ -113,6 +128,18 @@ Deno.serve(async (req) => {
 
     let title = ''
     let body = ''
+
+    const metadata = notification.metadata || {}
+    const metadataTitle =
+      typeof metadata.title === 'string' ? metadata.title : undefined
+    const metadataBody =
+      typeof metadata.body === 'string' ? metadata.body : undefined
+    const metadataRoute =
+      typeof metadata.route === 'string' ? metadata.route : undefined
+
+    const isRetentionType =
+      notification.type === 'trial_reminder' ||
+      notification.type.startsWith('retention_')
 
     if (notification.type === 'workout_like') {
       title = 'New Like'
@@ -150,6 +177,28 @@ Deno.serve(async (req) => {
           actorCount > 2 ? 's' : ''
         } started following you`
       }
+    } else if (isRetentionType) {
+      if (notification.type === 'trial_reminder') {
+        title = metadataTitle || 'Trial Ending Soon'
+        body =
+          metadataBody ||
+          'Your free trial ends soon. Keep your progress going.'
+      } else if (notification.type === 'retention_scheduled_workout') {
+        title = metadataTitle || 'Time to train 💪'
+        body = metadataBody || 'Your workout slot is open. Ready to log it?'
+      } else if (notification.type === 'retention_streak_protection') {
+        title = metadataTitle || 'Streak check 🔥'
+        body = metadataBody || 'Log a quick session to keep momentum alive.'
+      } else if (notification.type === 'retention_inactivity') {
+        title = metadataTitle || 'Comeback session?'
+        body = metadataBody || 'A short workout today can restart momentum.'
+      } else if (notification.type === 'retention_weekly_recap') {
+        title = metadataTitle || 'Weekly recap 📈'
+        body = metadataBody || 'Check your recent progress and plan your week.'
+      } else {
+        title = metadataTitle || 'Milestone unlocked 🎉'
+        body = metadataBody || 'You hit a new milestone. Keep building.'
+      }
     } else {
       console.error(
         '[send-push-notification] Unknown notification type:',
@@ -177,11 +226,33 @@ Deno.serve(async (req) => {
       messageData.requestId = notification.request_id
     }
 
+    if (metadataRoute) {
+      messageData.route = metadataRoute
+    }
+
+    const channelIdByType: Record<string, string> = {
+      workout_like: 'social',
+      workout_comment: 'social',
+      follow_request_received: 'social',
+      follow_request_approved: 'social',
+      follow_request_declined: 'social',
+      follow_received: 'social',
+      trial_reminder: 'default',
+      retention_scheduled_workout: 'retention_scheduled',
+      retention_streak_protection: 'retention_streak',
+      retention_inactivity: 'retention_inactivity',
+      retention_weekly_recap: 'retention_weekly',
+      retention_milestone: 'retention_milestone',
+    }
+
+    const channelId = channelIdByType[notification.type] || 'default'
+
     const message: ExpoPushMessage = {
       to: profile.expo_push_token,
       sound: 'default',
       title,
       body,
+      channelId,
       data: messageData,
       badge: 1, // iOS badge increment
     }

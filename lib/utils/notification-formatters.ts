@@ -1,4 +1,4 @@
-import type { NotificationType } from '@/types/database.types';
+import type { NotificationType } from '@/types/database.types'
 
 /**
  * Format notification text based on type and actors
@@ -11,7 +11,20 @@ export function formatNotificationText(
   type: NotificationType,
   actorNames: string[],
   actorCount: number,
+  metadata?: Record<string, any> | null,
 ): { title: string; body: string } {
+  const metadataTitle =
+    metadata && typeof metadata.title === 'string' ? metadata.title : null
+  const metadataBody =
+    metadata && typeof metadata.body === 'string' ? metadata.body : null
+
+  if ((type === 'trial_reminder' || type.startsWith('retention_')) && metadataTitle && metadataBody) {
+    return {
+      title: metadataTitle,
+      body: metadataBody,
+    }
+  }
+
   const firstActor = actorNames[0] || 'Someone'
 
   if (type === 'workout_like') {
@@ -58,6 +71,31 @@ export function formatNotificationText(
       title: 'Trial Ending Soon',
       body: 'Your free trial ends in 2 days. Keep crushing your fitness goals!',
     }
+  } else if (type === 'retention_scheduled_workout') {
+    return {
+      title: 'Time to train 💪',
+      body: 'Your next workout is ready. Tap to start.',
+    }
+  } else if (type === 'retention_streak_protection') {
+    return {
+      title: 'Streak check 🔥',
+      body: 'A quick workout today keeps your streak alive.',
+    }
+  } else if (type === 'retention_inactivity') {
+    return {
+      title: 'Comeback session?',
+      body: 'A short workout can restart your momentum.',
+    }
+  } else if (type === 'retention_weekly_recap') {
+    return {
+      title: 'Weekly recap 📈',
+      body: 'Review your week and set your next target.',
+    }
+  } else if (type === 'retention_milestone') {
+    return {
+      title: 'Milestone unlocked 🎉',
+      body: 'You hit a new training milestone.',
+    }
   }
 
   // Fallback for unknown types
@@ -88,6 +126,16 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'person'
     case 'trial_reminder':
       return 'time'
+    case 'retention_scheduled_workout':
+      return 'barbell'
+    case 'retention_streak_protection':
+      return 'flame'
+    case 'retention_inactivity':
+      return 'refresh'
+    case 'retention_weekly_recap':
+      return 'stats-chart'
+    case 'retention_milestone':
+      return 'trophy'
     default:
       return 'notifications'
   }

@@ -92,7 +92,10 @@ function RootLayoutNav() {
       ? {
           presentation: 'formSheet' as const,
           headerShown: false,
-          contentStyle: { backgroundColor: 'transparent', height: '100%' as const },
+          contentStyle: {
+            backgroundColor: 'transparent',
+            height: '100%' as const,
+          },
           sheetAllowedDetents,
           sheetGrabberVisible: true,
           sheetInitialDetentIndex: 0,

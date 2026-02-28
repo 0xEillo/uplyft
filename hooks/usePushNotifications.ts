@@ -41,11 +41,12 @@ export function usePushNotifications() {
     // Listen for user tapping on notification
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const { workoutId, notificationId, type } = response.notification
+        const { workoutId, notificationId, type, route } = response.notification
           .request.content.data as {
           workoutId?: string
           notificationId?: string
           type?: string
+          route?: string
         }
 
         // Mark notification as read
@@ -53,6 +54,11 @@ export function usePushNotifications() {
           database.notifications.markAsRead(notificationId).catch((error) => {
             console.error('[Push] Error marking notification as read:', error)
           })
+        }
+
+        if (typeof route === 'string' && route.length > 0) {
+          router.push(route as any)
+          return
         }
 
         // Navigate based on notification type
@@ -82,6 +88,17 @@ export function usePushNotifications() {
         } else if (type === 'workout_like' && workoutId) {
           router.push(buildWorkoutHref(workoutId) as any)
         } else if (type === 'trial_reminder') {
+          router.push('/(tabs)/profile')
+        } else if (
+          type === 'retention_scheduled_workout' ||
+          type === 'retention_streak_protection' ||
+          type === 'retention_inactivity'
+        ) {
+          router.push('/(tabs)/create-post')
+        } else if (
+          type === 'retention_weekly_recap' ||
+          type === 'retention_milestone'
+        ) {
           router.push('/(tabs)/profile')
         } else if (workoutId) {
           // Fallback to workout detail for any other workout-related notifications
@@ -155,13 +172,64 @@ export async function registerForPushNotifications() {
 
     // Android: set notification channel
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF6B35', // App primary color
-        sound: 'default',
-      })
+      const channelConfigs: Record<string, Notifications.NotificationChannelInput> =
+        {
+          default: {
+            name: 'General',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          social: {
+            name: 'Social Activity',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          retention_scheduled: {
+            name: 'Workout Reminders',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          retention_streak: {
+            name: 'Streak Protection',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          retention_inactivity: {
+            name: 'Comeback Nudges',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          retention_weekly: {
+            name: 'Weekly Recaps',
+            importance: Notifications.AndroidImportance.LOW,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          retention_milestone: {
+            name: 'Milestones',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+        }
+
+      await Promise.all(
+        Object.entries(channelConfigs).map(([channelId, config]) =>
+          Notifications.setNotificationChannelAsync(channelId, config),
+        ),
+      )
     }
   } catch (error) {
     console.error('[Push] Registration error:', error)

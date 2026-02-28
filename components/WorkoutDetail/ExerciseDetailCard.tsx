@@ -41,6 +41,7 @@ interface ExerciseDetailCardProps {
   profile?: Profile
   previousBest1RMKg?: number
   onExercisePress?: (exerciseId: string) => void
+  hideWarmupSets?: boolean
 }
 
 function formatWeightRepsText(
@@ -73,6 +74,7 @@ export function ExerciseDetailCard({
   profile,
   previousBest1RMKg,
   onExercisePress,
+  hideWarmupSets = false,
 }: ExerciseDetailCardProps): ReactElement | null {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
@@ -81,7 +83,9 @@ export function ExerciseDetailCard({
   const gainColor = getLevelColor('Intermediate')
 
   const exercise = workoutExercise.exercise
-  const sets = workoutExercise.sets
+  const sets = hideWarmupSets
+    ? workoutExercise.sets.filter((s) => !s.is_warmup)
+    : workoutExercise.sets
   const hasValidSets = sets.length > 0
   const fallbackExerciseName =
     typeof workoutExercise.exercise_name === 'string'

@@ -50,14 +50,17 @@ export function FoodScannerModal({
   const [activeMode, setActiveMode] = useState<ScannerMode>('scan_food')
   const [flash, setFlash] = useState<'off' | 'on'>('off')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [showHelp, setShowHelp] = useState(false)
   const cameraRef = useRef<CameraView>(null)
-  
+
   // Barcode detatch to prevent multiple scans
   const isScanningBarcodeRef = useRef(false)
 
   useEffect(() => {
-    if (visible && !cameraPermission?.granted && cameraPermission?.canAskAgain) {
+    if (
+      visible &&
+      !cameraPermission?.granted &&
+      cameraPermission?.canAskAgain
+    ) {
       requestCameraPermission()
     }
   }, [visible, cameraPermission])
@@ -110,17 +113,30 @@ export function FoodScannerModal({
     }
   }
 
-  const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
-    if (activeMode !== 'barcode' || isScanningBarcodeRef.current || isProcessing) return
-    
+  const handleBarcodeScanned = async ({
+    type,
+    data,
+  }: {
+    type: string
+    data: string
+  }) => {
+    if (
+      activeMode !== 'barcode' ||
+      isScanningBarcodeRef.current ||
+      isProcessing
+    )
+      return
+
     isScanningBarcodeRef.current = true
     setIsProcessing(true)
 
     try {
       // Fetch open food facts
-      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${data}.json`)
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v2/product/${data}.json`,
+      )
       const responseData = await res.json()
-      
+
       if (responseData.status === 1 && responseData.product) {
         onScanBarcode(responseData.product)
       } else {
@@ -141,10 +157,24 @@ export function FoodScannerModal({
 
   if (!cameraPermission?.granted) {
     return (
-      <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-        <View style={[styles.permissionContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <Text style={styles.permissionText}>We need your permission to show the camera.</Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <View
+          style={[
+            styles.permissionContainer,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
+          <Text style={styles.permissionText}>
+            We need your permission to show the camera.
+          </Text>
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={requestCameraPermission}
+          >
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.closeButtonCenter} onPress={onClose}>
@@ -156,7 +186,11 @@ export function FoodScannerModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+    >
       <View style={styles.container}>
         <CameraView
           ref={cameraRef}
@@ -166,37 +200,45 @@ export function FoodScannerModal({
           barcodeScannerSettings={{
             barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8', 'qr'],
           }}
-          onBarcodeScanned={activeMode === 'barcode' ? handleBarcodeScanned : undefined}
+          onBarcodeScanned={
+            activeMode === 'barcode' ? handleBarcodeScanned : undefined
+          }
         >
           {/* Top Bar Overlay */}
-          <View style={[
-            styles.safeArea, 
-            { 
-              paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 40) : Math.max(insets.top, 20),
-              paddingBottom: Math.max(insets.bottom, 20)
-            }
-          ]}>
+          <View
+            style={[
+              styles.safeArea,
+              {
+                paddingTop:
+                  Platform.OS === 'android'
+                    ? Math.max(insets.top, 40)
+                    : Math.max(insets.top, 20),
+                paddingBottom: Math.max(insets.bottom, 20),
+              },
+            ]}
+          >
             <View style={styles.topBar}>
-              <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-                <Ionicons name="close" size={24} color={colors.overlayText} />
-              </TouchableOpacity>
-              
               <View style={styles.logoContainer}>
-                <Ionicons name="nutrition" size={20} color={colors.overlayText} style={{marginRight: 6}} />
+                <Ionicons
+                  name="nutrition"
+                  size={20}
+                  color={colors.overlayText}
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={styles.logoText}>Rep AI</Text>
               </View>
 
-              <TouchableOpacity style={styles.iconButton} onPress={() => setShowHelp(true)}>
-                <Ionicons name="help" size={24} color={colors.overlayText} />
+              <TouchableOpacity onPress={onClose} style={styles.iconButton}>
+                <Ionicons name="close" size={24} color={colors.overlayText} />
               </TouchableOpacity>
             </View>
 
             {/* Middle Viewfinder / Scanning Area */}
             <View style={styles.middleContainer}>
               {isProcessing && (
-                 <View style={styles.processingOverlay}>
-                    <ActivityIndicator size="large" color="#FFFFFF" />
-                 </View>
+                <View style={styles.processingOverlay}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
               )}
               {activeMode === 'barcode' && !isProcessing && (
                 <View style={styles.barcodeFinder}>
@@ -204,7 +246,9 @@ export function FoodScannerModal({
                   <View style={[styles.corner, styles.cornerTR]} />
                   <View style={[styles.corner, styles.cornerBL]} />
                   <View style={[styles.corner, styles.cornerBR]} />
-                  <Text style={styles.barcodeHintText}>Align barcode within frame</Text>
+                  <Text style={styles.barcodeHintText}>
+                    Align barcode within frame
+                  </Text>
                 </View>
               )}
               {activeMode === 'food_label' && !isProcessing && (
@@ -213,52 +257,102 @@ export function FoodScannerModal({
                   <View style={[styles.corner, styles.cornerTR]} />
                   <View style={[styles.corner, styles.cornerBL]} />
                   <View style={[styles.corner, styles.cornerBR]} />
-                  <Text style={styles.barcodeHintText}>Align nutrition label within frame</Text>
+                  <Text style={styles.barcodeHintText}>
+                    Align nutrition label within frame
+                  </Text>
                 </View>
               )}
             </View>
 
             {/* Bottom Controls Area */}
             <View style={styles.bottomControls}>
-              
               {/* Segmented Modes */}
               <View style={styles.segmentedControl}>
-                <TouchableOpacity 
-                  style={[styles.segmentButton, activeMode === 'scan_food' && styles.segmentButtonActive]}
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    activeMode === 'scan_food' && styles.segmentButtonActive,
+                  ]}
                   onPress={() => setActiveMode('scan_food')}
                 >
-                  <Ionicons name="scan-outline" size={20} color={activeMode === 'scan_food' ? '#000' : '#FFF'} />
-                  <Text style={[styles.segmentText, activeMode === 'scan_food' && styles.segmentTextActive]}>Scan Food</Text>
+                  <Ionicons
+                    name="scan-outline"
+                    size={20}
+                    color={activeMode === 'scan_food' ? '#000' : '#FFF'}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeMode === 'scan_food' && styles.segmentTextActive,
+                    ]}
+                  >
+                    Scan Food
+                  </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                   style={[styles.segmentButton, activeMode === 'barcode' && styles.segmentButtonActive]}
-                   onPress={() => setActiveMode('barcode')}
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    activeMode === 'barcode' && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setActiveMode('barcode')}
                 >
-                  <Ionicons name="barcode-outline" size={20} color={activeMode === 'barcode' ? '#000' : '#FFF'} />
-                  <Text style={[styles.segmentText, activeMode === 'barcode' && styles.segmentTextActive]}>Barcode</Text>
+                  <Ionicons
+                    name="barcode-outline"
+                    size={20}
+                    color={activeMode === 'barcode' ? '#000' : '#FFF'}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeMode === 'barcode' && styles.segmentTextActive,
+                    ]}
+                  >
+                    Barcode
+                  </Text>
                 </TouchableOpacity>
 
                 {/* Just for aesthetic parity */}
-                <TouchableOpacity 
-                   style={[styles.segmentButton, activeMode === 'food_label' && styles.segmentButtonActive]}
-                   onPress={() => setActiveMode('food_label')}
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    activeMode === 'food_label' && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setActiveMode('food_label')}
                 >
-                  <Ionicons name="list-outline" size={20} color={activeMode === 'food_label' ? '#000' : '#FFF'} />
-                  <Text style={[styles.segmentText, activeMode === 'food_label' && styles.segmentTextActive]}>Food Label</Text>
+                  <Ionicons
+                    name="list-outline"
+                    size={20}
+                    color={activeMode === 'food_label' ? '#000' : '#FFF'}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeMode === 'food_label' && styles.segmentTextActive,
+                    ]}
+                  >
+                    Food Label
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Shutter & Icons */}
               <View style={styles.captureRow}>
-                <TouchableOpacity onPress={toggleFlash} style={styles.sideButton}>
-                  <Ionicons name={flash === 'on' ? 'flash' : 'flash-off'} size={24} color={colors.overlayText} />
+                <TouchableOpacity
+                  onPress={toggleFlash}
+                  style={styles.sideButton}
+                >
+                  <Ionicons
+                    name={flash === 'on' ? 'flash' : 'flash-off'}
+                    size={24}
+                    color={colors.overlayText}
+                  />
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
                     styles.captureButtonOuter,
-                    activeMode === 'barcode' && { opacity: 0.3 }
+                    activeMode === 'barcode' && { opacity: 0.3 },
                   ]}
                   onPress={handleCapture}
                   disabled={activeMode === 'barcode'}
@@ -266,8 +360,15 @@ export function FoodScannerModal({
                   <View style={styles.captureButtonInner} />
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleGalleryPick} style={styles.sideButton}>
-                  <Ionicons name="image-outline" size={24} color={colors.overlayText} />
+                <TouchableOpacity
+                  onPress={handleGalleryPick}
+                  style={styles.sideButton}
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={24}
+                    color={colors.overlayText}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -275,74 +376,6 @@ export function FoodScannerModal({
         </CameraView>
       </View>
 
-      {/* ── Help Modal ── */}
-      <Modal
-        visible={showHelp}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowHelp(false)}
-      >
-        <View style={styles.helpBackdrop}>
-          <View style={styles.helpSheet}>
-            {/* Header */}
-            <View style={styles.helpHeader}>
-              <Text style={styles.helpTitle}>How to Scan</Text>
-              <TouchableOpacity onPress={() => setShowHelp(false)} style={styles.helpCloseBtn}>
-                <Ionicons name="close" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Modes */}
-            <View style={styles.helpDivider} />
-
-            <View style={styles.helpRow}>
-              <View style={[styles.helpIcon, { backgroundColor: '#EAF4FF' }]}>
-                <Ionicons name="scan-outline" size={20} color="#2B7FFF" />
-              </View>
-              <View style={styles.helpTextBlock}>
-                <Text style={styles.helpRowTitle}>Scan Food</Text>
-                <Text style={styles.helpRowDesc}>Point the camera at any meal or food item and tap the shutter to identify it and log calories automatically.</Text>
-              </View>
-            </View>
-
-            <View style={styles.helpRow}>
-              <View style={[styles.helpIcon, { backgroundColor: '#FFF3EA' }]}>
-                <Ionicons name="barcode-outline" size={20} color="#FF8C2B" />
-              </View>
-              <View style={styles.helpTextBlock}>
-                <Text style={styles.helpRowTitle}>Barcode</Text>
-                <Text style={styles.helpRowDesc}>Align a product barcode inside the frame. It scans automatically — no button press needed.</Text>
-              </View>
-            </View>
-
-            <View style={styles.helpRow}>
-              <View style={[styles.helpIcon, { backgroundColor: '#EDFAF3' }]}>
-                <Ionicons name="list-outline" size={20} color="#22C55E" />
-              </View>
-              <View style={styles.helpTextBlock}>
-                <Text style={styles.helpRowTitle}>Food Label</Text>
-                <Text style={styles.helpRowDesc}>Frame a nutrition facts label and tap the shutter. Rep AI reads the macros directly from the label.</Text>
-              </View>
-            </View>
-
-            <View style={styles.helpDivider} />
-
-            <View style={styles.helpRow}>
-              <View style={[styles.helpIcon, { backgroundColor: '#F4F4F4' }]}>
-                <Ionicons name="image-outline" size={20} color="#666" />
-              </View>
-              <View style={styles.helpTextBlock}>
-                <Text style={styles.helpRowTitle}>Gallery</Text>
-                <Text style={styles.helpRowDesc}>Tap the gallery icon to pick a photo from your library instead of using the camera.</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.helpDoneBtn} onPress={() => setShowHelp(false)}>
-              <Text style={styles.helpDoneBtnText}>Got it</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </Modal>
   )
 }
@@ -451,10 +484,34 @@ const createStyles = (colors: any) =>
       height: 30,
       borderColor: colors.brandPrimary || '#FFFFFF',
     },
-    cornerTL: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 12 },
-    cornerTR: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 12 },
-    cornerBL: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 12 },
-    cornerBR: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 12 },
+    cornerTL: {
+      top: 0,
+      left: 0,
+      borderTopWidth: 4,
+      borderLeftWidth: 4,
+      borderTopLeftRadius: 12,
+    },
+    cornerTR: {
+      top: 0,
+      right: 0,
+      borderTopWidth: 4,
+      borderRightWidth: 4,
+      borderTopRightRadius: 12,
+    },
+    cornerBL: {
+      bottom: 0,
+      left: 0,
+      borderBottomWidth: 4,
+      borderLeftWidth: 4,
+      borderBottomLeftRadius: 12,
+    },
+    cornerBR: {
+      bottom: 0,
+      right: 0,
+      borderBottomWidth: 4,
+      borderRightWidth: 4,
+      borderBottomRightRadius: 12,
+    },
     bottomControls: {
       paddingHorizontal: 20,
       alignItems: 'center',
@@ -515,85 +572,5 @@ const createStyles = (colors: any) =>
       height: 64,
       borderRadius: 32,
       backgroundColor: '#FFFFFF',
-    },
-
-    // ── Help Modal styles ──
-    helpBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      justifyContent: 'flex-end',
-    },
-    helpSheet: {
-      backgroundColor: '#FFFFFF',
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 24,
-      paddingTop: 20,
-      paddingBottom: 36,
-    },
-    helpHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
-    },
-    helpTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: '#111',
-      letterSpacing: -0.3,
-    },
-    helpCloseBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: '#F0F0F0',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    helpDivider: {
-      height: 1,
-      backgroundColor: '#F0F0F0',
-      marginVertical: 12,
-    },
-    helpRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 14,
-      marginVertical: 8,
-    },
-    helpIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-      flexShrink: 0,
-    },
-    helpTextBlock: {
-      flex: 1,
-    },
-    helpRowTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#111',
-      marginBottom: 2,
-    },
-    helpRowDesc: {
-      fontSize: 13,
-      color: '#666',
-      lineHeight: 18,
-    },
-    helpDoneBtn: {
-      marginTop: 20,
-      backgroundColor: '#111',
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    helpDoneBtnText: {
-      color: '#FFF',
-      fontSize: 15,
-      fontWeight: '600',
     },
   })

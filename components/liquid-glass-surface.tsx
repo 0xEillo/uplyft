@@ -95,6 +95,8 @@ export function LiquidGlassSurface({
   }, [debugLabel, isDark])
 
   const { canUseNativeGlass } = availability
+  const isLegacyIPhoneFallback =
+    Platform.OS === 'ios' && !canUseNativeGlass && Platform.isPad !== true
   const glassKey = useMemo(
     () => `glass-${isDark ? 'dark' : 'light'}-${themeRenderKey}`,
     [isDark, themeRenderKey],
@@ -122,7 +124,13 @@ export function LiquidGlassSurface({
     <View
       style={[
         styles.base,
-        isDark ? styles.fallbackDark : styles.fallbackLight,
+        isLegacyIPhoneFallback
+          ? isDark
+            ? styles.legacyIPhoneFallbackDark
+            : styles.legacyIPhoneFallbackLight
+          : isDark
+            ? styles.fallbackDark
+            : styles.fallbackLight,
         fallbackStyle,
         style,
       ]}
@@ -141,6 +149,12 @@ const styles = StyleSheet.create({
   },
   fallbackDark: {
     backgroundColor: 'rgba(36,36,36,0.68)',
+  },
+  legacyIPhoneFallbackLight: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  legacyIPhoneFallbackDark: {
+    backgroundColor: 'rgba(28,28,30,0.92)',
   },
   nativeVisibilityLight: {
     backgroundColor: 'rgba(255,255,255,0.08)',

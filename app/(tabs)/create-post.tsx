@@ -49,6 +49,11 @@ import {
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
+  getToolbarButtons,
+  getWarmupCalculatorEnabled,
+  type ToolbarButtonId,
+} from '@/lib/utils/create-post-settings'
+import {
   generateWorkoutMessage,
   parseCommitment,
 } from '@/lib/utils/workout-messages'
@@ -186,6 +191,12 @@ export default function CreatePostScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
+  const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
+    getWarmupCalculatorEnabled(),
+  )
+  const [toolbarVisibleButtons, setToolbarVisibleButtons] = useState<
+    ToolbarButtonId[]
+  >(() => getToolbarButtons())
   const handleStructuredPreviewChange = useCallback(() => {}, [])
 
   // =============================================================================
@@ -1197,6 +1208,8 @@ export default function CreatePostScreen() {
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
       isScreenFocusedRef.current = true
+      setWarmupCalculatorEnabled(getWarmupCalculatorEnabled())
+      setToolbarVisibleButtons(getToolbarButtons())
 
       haptic('light')
 
@@ -2415,6 +2428,7 @@ export default function CreatePostScreen() {
       isRestTimerActive: restTimer.isActive,
       restTimerRemaining: restTimer.remainingSeconds,
       bottomInsetOverride: bottomSafeInset,
+      visibleButtons: toolbarVisibleButtons,
     }),
     [
       handleScanWorkoutPress,
@@ -2427,6 +2441,7 @@ export default function CreatePostScreen() {
       isTranscribing,
       isProcessingImage,
       isLoading,
+      toolbarVisibleButtons,
       showConvertButton,
       restTimer.isActive,
       restTimer.remainingSeconds,
@@ -2500,7 +2515,7 @@ export default function CreatePostScreen() {
             )}
           </View>
           <View style={styles.headerRightButtons}>
-            {shouldShowWorkoutTimer && (
+            {shouldShowWorkoutTimer ? (
               <TouchableOpacity
                 onPress={handleDiscardWorkout}
                 style={styles.discardButton}
@@ -2508,6 +2523,18 @@ export default function CreatePostScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="trash-outline" size={22} color="#E53935" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.headerButton}
+                activeOpacity={0.7}
+                onPress={() => router.push('/create-post-settings')}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={22}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -2613,6 +2640,7 @@ export default function CreatePostScreen() {
                   onKeypadStateChange={handleStructuredKeypadStateChange}
                   onFetchSetHistory={fetchSetHistory}
                   onExerciseNamePress={handleExerciseNamePress}
+                  warmupCalculatorEnabled={warmupCalculatorEnabled}
                 />
               </View>
             )}
@@ -2733,7 +2761,7 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          {!isStructuredInputFocused && (
+          {!isStructuredInputFocused && toolbarVisibleButtons.length > 0 && (
             <EditorToolbar {...editorToolbarProps} />
           )}
           <Reanimated.View style={spacerStyle} />

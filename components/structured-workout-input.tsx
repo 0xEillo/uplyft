@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+    Alert,
     Keyboard,
     LayoutAnimation,
     Platform,
@@ -40,6 +41,11 @@ if (
 
 const DEBUG_NEXT_FLOW = false
 const DEBUG_KEYPAD_VERBOSE = true
+const DEFAULT_WARMUP_TEMPLATE = [
+  { percent: 0.4, reps: 5 },
+  { percent: 0.6, reps: 5 },
+  { percent: 0.8, reps: 3 },
+] as const
 
 interface SetData {
   weight: string
@@ -368,6 +374,7 @@ interface StructuredWorkoutInputProps {
    * Parent can use this to navigate to exercise details if it exists in the database.
    */
   onExerciseNamePress?: (exerciseName: string) => void
+  warmupCalculatorEnabled?: boolean
 }
 
 export function StructuredWorkoutInput({
@@ -385,6 +392,7 @@ export function StructuredWorkoutInput({
   onKeypadStateChange,
   onFetchSetHistory,
   onExerciseNamePress,
+  warmupCalculatorEnabled = false,
 }: StructuredWorkoutInputProps) {
   const debugNext = useCallback((...args: unknown[]) => {
     if (DEBUG_NEXT_FLOW) {
@@ -786,6 +794,177 @@ export function StructuredWorkoutInput({
     set.isWarmup = !set.isWarmup
     commitExercises(newExercises)
   }
+
+  const parseWorkingWeightInput = useCallback((value: string): number | null => {
+    const normalized = value.trim().replace(',', '.')
+    if (!normalized) return null
+
+    const numeric = Number.parseFloat(normalized)
+    if (!Number.isFinite(numeric) || numeric <= 0) return null
+
+    return numeric
+  }, [])
+
+  const inferWorkingWeightFromExercise = useCallback(
+    async (exercise: ExerciseData): Promise<number | null> => {
+      const workingSets = exercise.sets.filter((set) => !set.isWarmup)
+
+      // 1) Prefer first working set with an explicit weight in this session.
+      const firstEnteredWorkingWeight = workingSets.find((set) =>
+        Boolean(set.weight.trim()),
+      )
+      if (firstEnteredWorkingWeight?.weight) {
+        const parsed = parseWorkingWeightInput(firstEnteredWorkingWeight.weight)
+        if (parsed) return parsed
+      }
+
+      // 2) Fallback: heaviest entered working-set weight in this session.
+      const enteredWeights = workingSets
+        .map((set) => parseWorkingWeightInput(set.weight))
+        .filter((value): value is number => value !== null)
+      if (enteredWeights.length > 0) {
+        return Math.max(...enteredWeights)
+      }
+
+      // 3) Fallback: heaviest tracked weight from last workout placeholders.
+      const lastWorkoutWeights = workingSets
+        .map((set) => parseWorkingWeightInput(set.lastWorkoutWeight ?? ''))
+        .filter((value): value is number => value !== null)
+      if (lastWorkoutWeights.length > 0) {
+        return Math.max(...lastWorkoutWeights)
+      }
+
+      // 4) Last attempt: fetch set-1 history if provided by parent.
+      if (onFetchSetHistory) {
+        try {
+          const setOneHistory = await onFetchSetHistory(exercise.name, 1)
+          const parsed = parseWorkingWeightInput(setOneHistory?.weight ?? '')
+          if (parsed) return parsed
+        } catch (error) {
+          console.warn('[WarmupCalculator] Failed to fetch history fallback:', error)
+        }
+      }
+
+      return null
+    },
+    [onFetchSetHistory, parseWorkingWeightInput],
+  )
+
+  const getMentalRoundingStep = useCallback(
+    (rawWeight: number, equipment: string | null): number => {
+      const equipmentNormalized = (equipment ?? '').toLowerCase()
+      const isDumbbellLike =
+        equipmentNormalized.includes('dumbbell') ||
+        equipmentNormalized.includes('kettlebell')
+
+      if (weightUnit === 'kg') {
+        // Keep only very light DB/KB movements finer; otherwise simplify to 5kg.
+        if (isDumbbellLike && rawWeight < 20) return 2.5
+        return 5
+      }
+
+      // lbs: favor 5s, and simplify heavier loads to 10s.
+      if (rawWeight >= 100) return 10
+      return 5
+    },
+    [weightUnit],
+  )
+
+  const snapWarmupWeight = useCallback(
+    (rawWeight: number, step: number): number => {
+      const scaled = rawWeight / step
+      let snapped = Math.round(scaled) * step
+
+      if (snapped <= 0) snapped = step
+      return Number(snapped.toFixed(2))
+    },
+    [],
+  )
+
+  const formatWarmupWeight = useCallback((weight: number): string => {
+    const normalized = Number(weight.toFixed(2))
+    return Number.isInteger(normalized)
+      ? String(normalized)
+      : normalized.toString()
+  }, [])
+
+  const closeStructuredInput = useCallback(() => {
+    keypadClosingRef.current = true
+    keypadCloseUntilRef.current = Date.now() + 250
+    endFocusTransition()
+    nextPressInFlightRef.current = false
+    setFocusedInputState(null)
+    onKeypadStateChange?.(null)
+    onInputBlur?.()
+    Keyboard.dismiss()
+  }, [endFocusTransition, onInputBlur, onKeypadStateChange, setFocusedInputState])
+
+  const handleInsertWarmupSets = useCallback(
+    async (exerciseIndex: number) => {
+      await hapticAsync('light')
+      closeStructuredInput()
+      const newExercises = [...exercisesRef.current]
+      const exercise = newExercises[exerciseIndex]
+      if (!exercise) return
+
+      const workingWeight = await inferWorkingWeightFromExercise(exercise)
+      if (!workingWeight) {
+        Alert.alert(
+          'No Working Weight Found',
+          'Add a working-set weight first, or complete this exercise once so we can use your last tracked weight.',
+        )
+        return
+      }
+
+      await hapticAsync('medium')
+      const workingSets = exercise.sets.filter((set) => !set.isWarmup)
+      if (workingSets.length === 0) {
+        Alert.alert(
+          'No Working Sets',
+          'Add at least one working set before inserting warm-up sets.',
+        )
+        return
+      }
+
+      const exerciseMeta = exerciseLookup.findByName(exercise.name)
+      const equipment = exerciseMeta?.equipment ?? null
+      let previousWarmupWeight = 0
+
+      const warmupSets: SetData[] = DEFAULT_WARMUP_TEMPLATE.map((template, index) => {
+        const rawWeight = workingWeight * template.percent
+        const step = getMentalRoundingStep(rawWeight, equipment)
+        let roundedWeight = snapWarmupWeight(rawWeight, step)
+
+        // Keep progression simple and strictly increasing.
+        if (roundedWeight <= previousWarmupWeight) {
+          roundedWeight = Number((previousWarmupWeight + step).toFixed(2))
+        }
+        previousWarmupWeight = roundedWeight
+
+        return {
+          weight: formatWarmupWeight(roundedWeight),
+          reps: String(template.reps),
+          isWarmup: true,
+          lastWorkoutWeight: null,
+          lastWorkoutReps: null,
+          targetRepsMin: null,
+          targetRepsMax: null,
+          targetRestSeconds: null,
+        }
+      })
+
+      exercise.sets = [...warmupSets, ...workingSets]
+      commitExercises(newExercises)
+    },
+    [
+      closeStructuredInput,
+      commitExercises,
+      formatWarmupWeight,
+      getMentalRoundingStep,
+      inferWorkingWeightFromExercise,
+      snapWarmupWeight,
+    ],
+  )
 
   const handleDeleteExercise = async (exerciseIndex: number) => {
     await hapticAsync('light')
@@ -1454,20 +1633,38 @@ export function StructuredWorkoutInput({
                   })
                 })()}
 
-                {/* Add Set Button */}
                 {!compactPreview && (
-                  <TouchableOpacity
-                    style={styles.addSetButton}
-                    onPress={() => handleAddSet(exerciseIndex)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons
-                      name="add-circle-outline"
-                      size={18}
-                      color={colors.brandPrimary}
-                    />
-                    <Text style={styles.addSetText}>Add set</Text>
-                  </TouchableOpacity>
+                  <View style={styles.setActionsRow}>
+                    <TouchableOpacity
+                      style={styles.addSetButton}
+                      onPress={() => handleAddSet(exerciseIndex)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={18}
+                        color={colors.brandPrimary}
+                      />
+                      <Text style={styles.addSetText}>Add set</Text>
+                    </TouchableOpacity>
+
+                    {warmupCalculatorEnabled && !exercise.sets.some((s) => s.isWarmup) && (
+                      <TouchableOpacity
+                        style={styles.addWarmupButton}
+                        onPress={() => {
+                          void handleInsertWarmupSets(exerciseIndex)
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons
+                          name="flame-outline"
+                          size={16}
+                          color={colors.statusWarning}
+                        />
+                        <Text style={styles.addWarmupText}>Add warm-ups</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </>
             )}
@@ -1608,13 +1805,28 @@ const createStyles = (
     addSetButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: compactPreview ? 4 : 8,
       paddingVertical: compactPreview ? 2 : 4,
-      alignSelf: 'flex-start',
+    },
+    setActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: compactPreview ? 4 : 8,
     },
     addSetText: {
       fontSize: compactPreview ? 13 : 15,
       color: colors.brandPrimary,
+      marginLeft: 4,
+      fontWeight: '500',
+    },
+    addWarmupButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: compactPreview ? 2 : 4,
+    },
+    addWarmupText: {
+      fontSize: compactPreview ? 13 : 15,
+      color: colors.statusWarning,
       marginLeft: 4,
       fontWeight: '500',
     },

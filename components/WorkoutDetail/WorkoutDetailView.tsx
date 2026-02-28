@@ -21,6 +21,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
+import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo } from '@/lib/utils/formatters'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
 import type { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -113,6 +114,7 @@ export function WorkoutDetailView({
   const NAVBAR_HEIGHT = 76
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
+  const hideWarmupSets = !getShowWarmupSets()
 
   // Fetch user level for badge
   const { level: userLevel, isLoading: isLevelLoading } = useUserLevel(workout?.user_id ?? undefined)
@@ -536,6 +538,7 @@ export function WorkoutDetailView({
                           : undefined
                       }
                       onExercisePress={onExercisePress}
+                      hideWarmupSets={hideWarmupSets}
                     />
                   )
                 })}

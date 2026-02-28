@@ -55,6 +55,7 @@ export function normalizeExerciseName(name: string): string {
 export function formatWorkoutForDisplay(
   workout: WorkoutSessionWithDetails,
   unit: WeightUnit,
+  hideWarmupSets = false,
 ): ExerciseDisplay[] {
   if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
     return []
@@ -66,7 +67,8 @@ export function formatWorkoutForDisplay(
 
   return sortedExercises.map((we) => {
     const exercise = we.exercise
-    const sets = we.sets || []
+    const rawSets = we.sets || []
+    const sets = hideWarmupSets ? rawSets.filter((s) => !s.is_warmup) : rawSets
     const fallbackName =
       typeof we.exercise_name === 'string'
         ? we.exercise_name

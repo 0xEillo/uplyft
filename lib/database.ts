@@ -22,6 +22,7 @@ import type {
   FollowRequest,
   ParsedWorkout,
   Profile,
+  RetentionPushPreferences,
   WorkoutComment,
   WorkoutLike,
   WorkoutRoutine,
@@ -174,6 +175,36 @@ const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
       const trimmed = raw.trim()
       sanitized.profile_description = trimmed.length > 0 ? trimmed : null
     }
+  }
+
+  return sanitized
+}
+
+type RetentionPushPreferenceUpdates = Partial<
+  Omit<RetentionPushPreferences, 'user_id' | 'created_at' | 'updated_at'>
+>
+
+const sanitizeRetentionPushPreferenceUpdates = (
+  updates: RetentionPushPreferenceUpdates,
+): RetentionPushPreferenceUpdates => {
+  const sanitized: RetentionPushPreferenceUpdates = { ...updates }
+
+  if ('preferred_reminder_hour' in sanitized) {
+    const hour = Number(sanitized.preferred_reminder_hour)
+    sanitized.preferred_reminder_hour = Number.isFinite(hour)
+      ? Math.min(22, Math.max(5, Math.round(hour)))
+      : 18
+  }
+
+  if ('max_pushes_per_week' in sanitized) {
+    const weeklyCap = Number(sanitized.max_pushes_per_week)
+    sanitized.max_pushes_per_week = Number.isFinite(weeklyCap)
+      ? Math.min(7, Math.max(1, Math.round(weeklyCap)))
+      : 3
+  }
+
+  if ('timezone' in sanitized && sanitized.timezone) {
+    sanitized.timezone = sanitized.timezone.trim()
   }
 
   return sanitized
@@ -549,6 +580,75 @@ export const database = {
 
       if (error) throw error
       return data as Profile
+    },
+  },
+
+  retentionPushPreferences: {
+    async get(userId: string) {
+      const { data, error } = await supabase
+        .from('retention_push_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+
+      if (data) {
+        return data as RetentionPushPreferences
+      }
+
+      const { data: created, error: createError } = await supabase
+        .from('retention_push_preferences')
+        .insert({ user_id: userId })
+        .select('*')
+        .single()
+
+      if (createError) throw createError
+      return created as RetentionPushPreferences
+    },
+
+    async update(userId: string, updates: RetentionPushPreferenceUpdates) {
+      const sanitized = sanitizeRetentionPushPreferenceUpdates(updates)
+      const { data, error } = await supabase
+        .from('retention_push_preferences')
+        .update(sanitized)
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+      return data as RetentionPushPreferences
+    },
+
+    async snooze(userId: string, days: 1 | 3 | 7) {
+      const snoozedUntil = new Date()
+      snoozedUntil.setDate(snoozedUntil.getDate() + days)
+
+      const { data, error } = await supabase
+        .from('retention_push_preferences')
+        .update({
+          snoozed_until: snoozedUntil.toISOString(),
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+      return data as RetentionPushPreferences
+    },
+
+    async clearSnooze(userId: string) {
+      const { data, error } = await supabase
+        .from('retention_push_preferences')
+        .update({
+          snoozed_until: null,
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single()
+
+      if (error) throw error
+      return data as RetentionPushPreferences
     },
   },
 

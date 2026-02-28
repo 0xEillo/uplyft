@@ -34,6 +34,25 @@ export interface Profile {
   coach: string | null
 }
 
+export interface RetentionPushPreferences {
+  user_id: string
+  enabled: boolean
+  scheduled_reminders_enabled: boolean
+  streak_protection_enabled: boolean
+  inactivity_enabled: boolean
+  weekly_recaps_enabled: boolean
+  milestones_enabled: boolean
+  preferred_reminder_hour: number
+  quiet_hours_start: string
+  quiet_hours_end: string
+  timezone: string
+  max_pushes_per_week: number
+  snoozed_until: string | null
+  last_sent_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Exercise {
   id: string
   name: string
@@ -301,6 +320,11 @@ export type NotificationType =
   | 'follow_request_declined'
   | 'follow_received'
   | 'trial_reminder'
+  | 'retention_scheduled_workout'
+  | 'retention_streak_protection'
+  | 'retention_inactivity'
+  | 'retention_weekly_recap'
+  | 'retention_milestone'
 
 export interface Notification {
   id: string

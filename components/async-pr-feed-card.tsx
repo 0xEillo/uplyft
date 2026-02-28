@@ -4,6 +4,7 @@ import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
+import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
@@ -196,7 +197,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     }
   }, [computeContext])
 
-  const exercises = formatWorkoutForDisplay(workout, weightUnit)
+  const exercises = formatWorkoutForDisplay(workout, weightUnit, !getShowWarmupSets())
 
   const handleUserPress = useCallback(() => {
     if (!workout.user_id) return

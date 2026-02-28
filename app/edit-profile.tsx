@@ -1,4 +1,5 @@
-import { GlassIconButton } from '@/components/glass-icon-button'
+import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { BlurredHeader } from '@/components/blurred-header'
 import {
     COMMITMENTS,
     EXPERIENCE_LEVELS,
@@ -28,13 +29,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function EditProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
+  const insets = useSafeAreaInsets()
+  const NAVBAR_HEIGHT = 76
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
@@ -191,33 +194,49 @@ export default function EditProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <GlassIconButton icon="arrow-back" onPress={() => router.back()} color={colors.textPrimary} />
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <View style={styles.placeholder} />
-        </View>
+      <View style={styles.container}>
+        <BlurredHeader>
+          <BaseNavbar
+            leftContent={
+              <NavbarIsland>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </NavbarIsland>
+            }
+            centerContent={<Text style={styles.headerTitle}>Edit Profile</Text>}
+          />
+        </BlurredHeader>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-          <GlassIconButton icon="close" onPress={() => router.back()} color={colors.textPrimary} />
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <ActivityIndicator size="small" color={colors.brandPrimary} />
-          ) : (
-            <Text style={styles.saveButton}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <BlurredHeader>
+        <BaseNavbar
+          leftContent={
+            <NavbarIsland>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </NavbarIsland>
+          }
+          centerContent={<Text style={styles.headerTitle}>Edit Profile</Text>}
+          rightContent={
+            <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButtonWrap}>
+              {isSaving ? (
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
+              ) : (
+                <Text style={styles.saveButton}>Save</Text>
+              )}
+            </TouchableOpacity>
+          }
+        />
+      </BlurredHeader>
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
@@ -226,7 +245,11 @@ export default function EditProfileScreen() {
       >
         <ScrollView
           style={styles.content}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + NAVBAR_HEIGHT },
+          ]}
+          scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
         >
           {/* Avatar */}
@@ -486,7 +509,7 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -499,21 +522,22 @@ const createStyles = (
       flex: 1,
       backgroundColor: colors.bg,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 14,
-      paddingVertical: 16,
-      backgroundColor: colors.bg,
-    },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 18,
+      fontWeight: '700',
       color: colors.textPrimary,
     },
-    placeholder: {
-      width: 60,
+    backButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    saveButtonWrap: {
+      paddingHorizontal: 4,
+      height: 44,
+      justifyContent: 'center',
     },
     saveButton: {
       fontSize: 16,
@@ -568,24 +592,25 @@ const createStyles = (
       borderColor: colors.bg,
     },
     section: {
-      marginTop: 24,
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
+      paddingTop: 20,
     },
     label: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 12,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 8,
     },
     description: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.textSecondary,
       marginBottom: 12,
-      lineHeight: 20,
+      lineHeight: 18,
     },
     input: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 16,
       fontSize: 16,
       color: colors.textPrimary,
@@ -642,7 +667,7 @@ const createStyles = (
     },
     bioInput: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 16,
       fontSize: 15,
       color: colors.textPrimary,

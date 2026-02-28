@@ -96,6 +96,17 @@ export default function NotificationsScreen() {
         await database.notifications.markAsRead(notification.id)
         await refreshNotifications()
 
+        const metadataRoute =
+          notification.metadata &&
+          typeof notification.metadata.route === 'string'
+            ? notification.metadata.route
+            : null
+
+        if (metadataRoute) {
+          router.push(metadataRoute as any)
+          return
+        }
+
         if (
           notification.type === 'follow_request_received' ||
           notification.type === 'follow_request_approved' ||
@@ -128,6 +139,17 @@ export default function NotificationsScreen() {
           })
         } else if (notification.type === 'trial_reminder') {
           // Navigate to profile page where subscription can be managed
+          router.push('/(tabs)/profile')
+        } else if (
+          notification.type === 'retention_scheduled_workout' ||
+          notification.type === 'retention_streak_protection' ||
+          notification.type === 'retention_inactivity'
+        ) {
+          router.push('/(tabs)/create-post')
+        } else if (
+          notification.type === 'retention_weekly_recap' ||
+          notification.type === 'retention_milestone'
+        ) {
           router.push('/(tabs)/profile')
         } else {
           // For other notifications, go to the feed
@@ -265,6 +287,7 @@ export default function NotificationsScreen() {
                   notification.type,
                   actorNames,
                   actorCount,
+                  notification.metadata,
                 )
 
                 // Update messaging if this request was responded to
@@ -319,6 +342,9 @@ export default function NotificationsScreen() {
                 const isResponding =
                   notification.request_id &&
                   respondingRequests.has(notification.request_id)
+                const isSystemNotification =
+                  notification.type === 'trial_reminder' ||
+                  notification.type.startsWith('retention_')
 
                 return (
                   <TouchableOpacity
@@ -332,7 +358,7 @@ export default function NotificationsScreen() {
                   >
                     {/* Actor avatars or system icon */}
                     <View style={styles.avatarsContainer}>
-                      {notification.type === 'trial_reminder' ? (
+                      {isSystemNotification ? (
                         // System notification - show icon instead of avatars
                         <View
                           style={[
@@ -342,7 +368,7 @@ export default function NotificationsScreen() {
                           ]}
                         >
                           <Ionicons
-                            name="time"
+                            name={getNotificationIcon(notification.type) as any}
                             size={18}
                             color={colors.surface}
                           />

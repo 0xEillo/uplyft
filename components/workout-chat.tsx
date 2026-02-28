@@ -72,6 +72,7 @@ import {
   TextStyle,
   ToastAndroid,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   ViewStyle,
 } from 'react-native'
@@ -696,6 +697,7 @@ export function WorkoutChat({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const tabBarVisibility = useTabBarVisibility()
 
   const closeWizardAndRestoreTabBar = useCallback(() => {
@@ -743,10 +745,18 @@ export function WorkoutChat({
   // Native tab bar height (49pt on iOS) — not part of RN layout, so we must account for it manually
   const nativeTabBarHeight =
     mode === 'fullscreen' && Platform.OS === 'ios' ? 49 : 0
-  // Extra padding for the floating tab bar when keyboard is closed (taller than standard 49pt)
+  // Compact phones (e.g. iPhone SE) need less clearance above the tab bar.
+  const isCompactIOSFullscreen =
+    mode === 'fullscreen' && Platform.OS === 'ios' && windowHeight <= 700
+  const closedTabBarTopGap = isCompactIOSFullscreen ? 28 : 16
+  // Extra padding for the floating tab bar when keyboard is closed.
   const closedTabBarPadding =
-    mode === 'fullscreen' && Platform.OS === 'ios' ? 65 : 0
-  const keyboardVerticalOffset = nativeTabBarHeight
+    mode === 'fullscreen' && Platform.OS === 'ios'
+      ? isCompactIOSFullscreen
+        ? closedTabBarTopGap
+        : nativeTabBarHeight + closedTabBarTopGap
+      : 0
+  const keyboardVerticalOffset = isCompactIOSFullscreen ? 0 : nativeTabBarHeight
 
   // Merge custom suggestions with defaults
   const suggestions: SuggestionsConfig =

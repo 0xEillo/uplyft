@@ -28,7 +28,7 @@ import { getProgressDeltaPoints, getStrengthGender } from '@/lib/strength-progre
 import { getStandardsLadder, type StrengthLevel, type StrengthStandard } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   RefreshControl,
@@ -39,8 +39,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+const STRENGTH_MUSCLE_TAP_DISCOVERED_KEY = '@strength_muscle_tap_discovered'
 const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000
 const EXERCISE_CONFIG_BY_NAME = getExerciseNameMap()
 
@@ -123,7 +125,14 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
   } = useStrengthData()
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
+  const [hasDiscoveredMuscleTap, setHasDiscoveredMuscleTap] = useState(false)
   const strengthGender = getStrengthGender(profile?.gender)
+
+  useEffect(() => {
+    AsyncStorage.getItem(STRENGTH_MUSCLE_TAP_DISCOVERED_KEY).then((v) => {
+      if (v === 'true') setHasDiscoveredMuscleTap(true)
+    })
+  }, [])
   const recommendationCardWidth = useMemo(
     () => Math.max(264, Math.min(348, viewportWidth - 68)),
     [viewportWidth],
@@ -524,7 +533,10 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
   const handleBodyPartPress = useCallback(
     (bodyPart: { slug?: string }, _side?: 'left' | 'right') => {
       if (!bodyPart.slug) return
-      
+
+      setHasDiscoveredMuscleTap(true)
+      AsyncStorage.setItem(STRENGTH_MUSCLE_TAP_DISCOVERED_KEY, 'true').catch(() => {})
+
       const slug = bodyPart.slug as BodyPartSlug
       const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
 
@@ -577,6 +589,12 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
               colors={bodyColors}
               onBodyPartPress={handleBodyPartPress}
             />
+
+            {!hasDiscoveredMuscleTap && (
+              <Text style={styles.bodyHint}>
+                Tap the muscles to reveal exercises with standards.
+              </Text>
+            )}
 
             {/* Integrated Legend Key - Directly under the chart */}
             <View style={styles.integratedLegend}>
@@ -1070,9 +1088,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     bodySection: {
       flex: 1,
       paddingHorizontal: 14,
-      marginTop: -20,
+      marginTop: -35,
     },
 
+    bodyHint: {
+      fontSize: 11,
+      color: colors.textTertiary,
+      textAlign: 'center',
+      marginTop: 4,
+      marginBottom: 10,
+    },
     // Legend
     integratedLegend: {
       marginTop: 8,

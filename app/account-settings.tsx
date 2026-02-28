@@ -5,13 +5,15 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
+import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { Profile } from '@/types/database.types'
+import { Profile, RetentionPushPreferences } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import * as Notifications from 'expo-notifications'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -28,6 +30,14 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+type RetentionToggleKey =
+  | 'enabled'
+  | 'scheduled_reminders_enabled'
+  | 'streak_protection_enabled'
+  | 'inactivity_enabled'
+  | 'weekly_recaps_enabled'
+  | 'milestones_enabled'
+
 export default function SettingsScreen() {
   const { user, signOut, isAnonymous } = useAuth()
   const { trackEvent } = useAnalytics()
@@ -42,6 +52,11 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
+  const [retentionPrefs, setRetentionPrefs] =
+    useState<RetentionPushPreferences | null>(null)
+  const [isPushSettingsUpdating, setIsPushSettingsUpdating] = useState(false)
+  const [isSendingTestNotification, setIsSendingTestNotification] =
+    useState(false)
   const insets = useSafeAreaInsets()
   const NAVBAR_HEIGHT = 76
   const resolvedReturnTo =
@@ -87,6 +102,147 @@ export default function SettingsScreen() {
     }
   }, [user])
 
+  const loadRetentionPreferences = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const prefs = await database.retentionPushPreferences.get(user.id)
+      const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      if (localTimezone && prefs.timezone !== localTimezone) {
+        const updated = await database.retentionPushPreferences.update(user.id, {
+          timezone: localTimezone,
+        })
+        setRetentionPrefs(updated)
+      } else {
+        setRetentionPrefs(prefs)
+      }
+    } catch (error) {
+      console.error('Error loading retention push preferences:', error)
+    }
+  }, [user?.id])
+
+  const handleToggleRetention = useCallback(
+    async (key: RetentionToggleKey, value: boolean) => {
+      if (!user?.id || !retentionPrefs) return
+
+      trackEvent(AnalyticsEvents.SETTINGS_CHANGED, {
+        setting: `push_${key}`,
+        value: value ? 'on' : 'off',
+      })
+
+      try {
+        setIsPushSettingsUpdating(true)
+
+        if (value) {
+          await registerForPushNotifications()
+          await database.profiles.update(user.id, {
+            has_requested_push_notifications: true,
+          })
+        }
+
+        const updated = await database.retentionPushPreferences.update(user.id, {
+          [key]: value,
+        })
+        setRetentionPrefs(updated)
+      } catch (error) {
+        console.error('Error updating retention push setting:', error)
+        Alert.alert(
+          'Error',
+          'Unable to update notification settings right now. Please try again.',
+        )
+      } finally {
+        setIsPushSettingsUpdating(false)
+      }
+    },
+    [retentionPrefs, trackEvent, user?.id],
+  )
+
+  const handleUpdateReminderHour = useCallback(
+    async (hour: number) => {
+      if (!user?.id || !retentionPrefs) return
+
+      try {
+        setIsPushSettingsUpdating(true)
+        const updated = await database.retentionPushPreferences.update(user.id, {
+          preferred_reminder_hour: hour,
+        })
+        setRetentionPrefs(updated)
+      } catch (error) {
+        console.error('Error updating reminder hour:', error)
+      } finally {
+        setIsPushSettingsUpdating(false)
+      }
+    },
+    [retentionPrefs, user?.id],
+  )
+
+  const handleSnoozeNotifications = useCallback(
+    async (days: 1 | 3 | 7) => {
+      if (!user?.id || !retentionPrefs) return
+
+      trackEvent(AnalyticsEvents.SETTINGS_CHANGED, {
+        setting: 'push_snooze',
+        value: `${days}_days`,
+      })
+
+      try {
+        setIsPushSettingsUpdating(true)
+        const updated = await database.retentionPushPreferences.snooze(
+          user.id,
+          days,
+        )
+        setRetentionPrefs(updated)
+      } catch (error) {
+        console.error('Error snoozing notifications:', error)
+      } finally {
+        setIsPushSettingsUpdating(false)
+      }
+    },
+    [retentionPrefs, trackEvent, user?.id],
+  )
+
+  const handleClearSnooze = useCallback(async () => {
+    if (!user?.id || !retentionPrefs) return
+
+    try {
+      setIsPushSettingsUpdating(true)
+      const updated = await database.retentionPushPreferences.clearSnooze(
+        user.id,
+      )
+      setRetentionPrefs(updated)
+    } catch (error) {
+      console.error('Error clearing notification snooze:', error)
+    } finally {
+      setIsPushSettingsUpdating(false)
+    }
+  }, [retentionPrefs, user?.id])
+
+  const handleTestNotification = useCallback(async () => {
+    try {
+      setIsSendingTestNotification(true)
+
+      await registerForPushNotifications()
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Test reminder 💪',
+          body: 'This is how your workout reminder will appear.',
+          data: {
+            type: 'retention_scheduled_workout',
+            route: '/(tabs)/create-post',
+          },
+        },
+        trigger: null,
+      })
+    } catch (error) {
+      console.error('Error scheduling test notification:', error)
+      Alert.alert('Error', 'Unable to send a test notification right now.')
+    } finally {
+      setIsSendingTestNotification(false)
+    }
+  }, [])
+
   const handleTogglePrivacy = useCallback(async () => {
     if (!user || !profile) return
 
@@ -127,12 +283,14 @@ export default function SettingsScreen() {
   useEffect(() => {
     loadProfile()
     loadPendingRequests()
-  }, [loadProfile, loadPendingRequests])
+    loadRetentionPreferences()
+  }, [loadProfile, loadPendingRequests, loadRetentionPreferences])
 
   useFocusEffect(
     useCallback(() => {
       loadPendingRequests()
-    }, [loadPendingRequests]),
+      loadRetentionPreferences()
+    }, [loadPendingRequests, loadRetentionPreferences]),
   )
 
   const styles = createStyles(colors)
@@ -411,6 +569,23 @@ export default function SettingsScreen() {
 
     return null
   }
+
+  const reminderHourOptions = [6, 9, 12, 17, 19]
+  const formatHourLabel = (hour: number) => {
+    const period = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${hour12}${period}`
+  }
+
+  const snoozedUntilLabel = retentionPrefs?.snoozed_until
+    ? new Date(retentionPrefs.snoozed_until).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null
+  const notificationsEnabled = retentionPrefs?.enabled ?? false
 
   if (isLoading) {
     return (
@@ -753,6 +928,273 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+
+          <View style={styles.preferenceCard}>
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Workout Reminders</Text>
+                <Text style={styles.preferenceDescription}>
+                  Off-app reminders to help you stay consistent.
+                </Text>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={(value) =>
+                  handleToggleRetention('enabled', value)
+                }
+                disabled={isPushSettingsUpdating || !retentionPrefs}
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  notificationsEnabled ? colors.brandPrimary : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Scheduled Workout</Text>
+                <Text style={styles.preferenceDescription}>
+                  Nudge near your preferred training hour.
+                </Text>
+              </View>
+              <Switch
+                value={retentionPrefs?.scheduled_reminders_enabled ?? false}
+                onValueChange={(value) =>
+                  handleToggleRetention('scheduled_reminders_enabled', value)
+                }
+                disabled={
+                  isPushSettingsUpdating ||
+                  !retentionPrefs ||
+                  !notificationsEnabled
+                }
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  retentionPrefs?.scheduled_reminders_enabled
+                    ? colors.brandPrimary
+                    : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Streak Protection</Text>
+                <Text style={styles.preferenceDescription}>
+                  Evening reminder when your streak is in danger.
+                </Text>
+              </View>
+              <Switch
+                value={retentionPrefs?.streak_protection_enabled ?? false}
+                onValueChange={(value) =>
+                  handleToggleRetention('streak_protection_enabled', value)
+                }
+                disabled={
+                  isPushSettingsUpdating ||
+                  !retentionPrefs ||
+                  !notificationsEnabled
+                }
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  retentionPrefs?.streak_protection_enabled
+                    ? colors.brandPrimary
+                    : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Inactivity Nudges</Text>
+                <Text style={styles.preferenceDescription}>
+                  Comeback reminders after a few days away.
+                </Text>
+              </View>
+              <Switch
+                value={retentionPrefs?.inactivity_enabled ?? false}
+                onValueChange={(value) =>
+                  handleToggleRetention('inactivity_enabled', value)
+                }
+                disabled={
+                  isPushSettingsUpdating ||
+                  !retentionPrefs ||
+                  !notificationsEnabled
+                }
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  retentionPrefs?.inactivity_enabled
+                    ? colors.brandPrimary
+                    : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Weekly Recap</Text>
+                <Text style={styles.preferenceDescription}>
+                  Monday recap to kick off your week.
+                </Text>
+              </View>
+              <Switch
+                value={retentionPrefs?.weekly_recaps_enabled ?? false}
+                onValueChange={(value) =>
+                  handleToggleRetention('weekly_recaps_enabled', value)
+                }
+                disabled={
+                  isPushSettingsUpdating ||
+                  !retentionPrefs ||
+                  !notificationsEnabled
+                }
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  retentionPrefs?.weekly_recaps_enabled
+                    ? colors.brandPrimary
+                    : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceRow}>
+              <View style={styles.preferenceLeft}>
+                <Text style={styles.preferenceTitle}>Milestones</Text>
+                <Text style={styles.preferenceDescription}>
+                  Celebrate major training milestones.
+                </Text>
+              </View>
+              <Switch
+                value={retentionPrefs?.milestones_enabled ?? false}
+                onValueChange={(value) =>
+                  handleToggleRetention('milestones_enabled', value)
+                }
+                disabled={
+                  isPushSettingsUpdating ||
+                  !retentionPrefs ||
+                  !notificationsEnabled
+                }
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  retentionPrefs?.milestones_enabled
+                    ? colors.brandPrimary
+                    : '#F3F4F6'
+                }
+              />
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceLeft}>
+              <Text style={styles.preferenceTitle}>Reminder Time</Text>
+              <Text style={styles.preferenceDescription}>
+                Quiet hours are fixed at 10:00 PM to 8:00 AM.
+              </Text>
+              <View style={styles.notificationPillGroup}>
+                {reminderHourOptions.map((hour) => {
+                  const isActive = retentionPrefs?.preferred_reminder_hour === hour
+                  return (
+                    <TouchableOpacity
+                      key={hour}
+                      style={[
+                        styles.notificationPillButton,
+                        isActive && styles.notificationPillButtonActive,
+                      ]}
+                      onPress={() => handleUpdateReminderHour(hour)}
+                      disabled={
+                        isPushSettingsUpdating ||
+                        !retentionPrefs ||
+                        !notificationsEnabled
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.notificationPillButtonText,
+                          isActive && styles.notificationPillButtonTextActive,
+                        ]}
+                      >
+                        {formatHourLabel(hour)}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceLeft}>
+              <Text style={styles.preferenceTitle}>Global Snooze</Text>
+              <Text style={styles.preferenceDescription}>
+                Pause all reminder categories for a while.
+              </Text>
+              <View style={styles.notificationPillGroup}>
+                {[1, 3, 7].map((days) => (
+                  <TouchableOpacity
+                    key={days}
+                    style={styles.notificationPillButton}
+                    onPress={() =>
+                      handleSnoozeNotifications(days as 1 | 3 | 7)
+                    }
+                    disabled={isPushSettingsUpdating || !retentionPrefs}
+                  >
+                    <Text style={styles.notificationPillButtonText}>
+                      {days}d
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {retentionPrefs?.snoozed_until && (
+                  <TouchableOpacity
+                    style={styles.notificationPillButton}
+                    onPress={handleClearSnooze}
+                    disabled={isPushSettingsUpdating}
+                  >
+                    <Text style={styles.notificationPillButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {snoozedUntilLabel && (
+                <Text style={styles.preferenceDescription}>
+                  Snoozed until {snoozedUntilLabel}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.preferenceDivider} />
+
+            <TouchableOpacity
+              style={styles.testNotificationButton}
+              onPress={handleTestNotification}
+              disabled={isSendingTestNotification}
+            >
+              {isSendingTestNotification ? (
+                <ActivityIndicator size="small" color={colors.brandPrimary} />
+              ) : (
+                <>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={18}
+                    color={colors.brandPrimary}
+                  />
+                  <Text style={styles.testNotificationButtonText}>
+                    Send Test Notification
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Community Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Community</Text>
@@ -827,43 +1269,47 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal</Text>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleOpenPrivacyPolicy}
-          >
-            <View style={styles.actionButtonContent}>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={handleOpenPrivacyPolicy}
+            >
+              <View style={styles.actionButtonContent}>
+                <Ionicons
+                  name="shield-outline"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.actionButtonTextNeutral}>Privacy Policy</Text>
+              </View>
               <Ionicons
-                name="shield-outline"
-                size={22}
-                color={colors.textSecondary}
+                name="chevron-forward"
+                size={20}
+                color={colors.textMuted}
               />
-              <Text style={styles.actionButtonTextNeutral}>Privacy Policy</Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textMuted}
-            />
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.legalButtonSpacing]}
-            onPress={handleOpenTermsOfUse}
-          >
-            <View style={styles.actionButtonContent}>
+            <View style={styles.cardDivider} />
+
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={handleOpenTermsOfUse}
+            >
+              <View style={styles.actionButtonContent}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.actionButtonTextNeutral}>Terms of Use</Text>
+              </View>
               <Ionicons
-                name="document-text-outline"
-                size={22}
-                color={colors.textSecondary}
+                name="chevron-forward"
+                size={20}
+                color={colors.textMuted}
               />
-              <Text style={styles.actionButtonTextNeutral}>Terms of Use</Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textMuted}
-            />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Actions Section */}
@@ -913,13 +1359,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.bg,
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 18,
+      fontWeight: '700',
       color: colors.textPrimary,
-      textAlign: 'center',
     },
     backButton: {
-      zIndex: 1,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     loadingContainer: {
       flex: 1,
@@ -933,26 +1382,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingBottom: 40,
     },
     section: {
-      marginTop: 24,
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
+      paddingTop: 20,
     },
     sectionTitle: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
       color: colors.textSecondary,
-      marginBottom: 12,
+      textTransform: 'uppercase',
+      marginBottom: 8,
     },
     profileCard: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 20,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
     avatarContainer: {
       alignItems: 'center',
@@ -1031,21 +1476,31 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     actionButton: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 18,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
-    legalButtonSpacing: {
-      marginTop: 6,
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+    },
+    cardRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 18,
+    },
+    cardDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
     actionButtonContent: {
       flexDirection: 'row',
@@ -1088,18 +1543,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     dangerButton: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 18,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
     dangerButtonText: {
       fontSize: 16,
@@ -1184,15 +1635,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     preferenceCard: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
     preferenceRow: {
       flexDirection: 'row',
@@ -1242,17 +1688,54 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.border,
       marginVertical: 16,
     },
+    notificationPillGroup: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 10,
+    },
+    notificationPillButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    notificationPillButtonActive: {
+      backgroundColor: colors.brandPrimary,
+      borderColor: colors.brandPrimary,
+    },
+    notificationPillButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    notificationPillButtonTextActive: {
+      color: colors.surface,
+    },
+    testNotificationButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 10,
+      paddingVertical: 10,
+    },
+    testNotificationButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.brandPrimary,
+    },
     subscriptionCard: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
     subscriptionRow: {
       flexDirection: 'row',
@@ -1303,8 +1786,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginVertical: 16,
     },
     guestBanner: {
-      marginHorizontal: 14,
-      marginTop: 16,
+      marginHorizontal: 20,
+      marginTop: 20,
       backgroundColor: colors.brandPrimary + '12',
       borderRadius: 16,
       borderWidth: 2,
