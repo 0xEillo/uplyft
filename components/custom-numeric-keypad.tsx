@@ -4,7 +4,6 @@ import { BlurView } from 'expo-blur'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   BackHandler,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -122,10 +121,13 @@ export function CustomNumericKeypad({
 
   // Handle hardware back button on Android
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      handleDone()
-      return true
-    })
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        handleDone()
+        return true
+      },
+    )
     return () => backHandler.remove()
   }, [handleDone])
 
@@ -146,80 +148,62 @@ export function CustomNumericKeypad({
           animatedStyle,
         ]}
       >
-          <BlurView
-            pointerEvents="none"
-            intensity={isDark ? 46 : 58}
-            tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-          <View pointerEvents="none" style={styles.blurFallback} />
+        <BlurView
+          pointerEvents="none"
+          intensity={isDark ? 46 : 58}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+        <View pointerEvents="none" style={styles.blurFallback} />
 
-          <View style={styles.headerRow}>
-            <Text style={styles.headerLabel}>
-              {isWeightField ? 'Weight' : 'Reps'}
-            </Text>
-            <TouchableOpacity
-              style={styles.doneButton}
-              onPress={handleDone}
-              activeOpacity={0.8}
-              disabled={!buttonsReady}
-            >
-              <Text style={styles.doneButtonText}>Done</Text>
-            </TouchableOpacity>
+        <View style={styles.keypadRow}>
+          <View style={styles.leftGrid}>
+            {NUMBER_ROWS.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.numberRow}>
+                {row.map((key, keyIndex) => {
+                  const isDotDisabled = key === 'dot' && !isWeightField
+                  if (!key) {
+                    return <View key={keyIndex} style={styles.keySpacer} />
+                  }
+
+                  const label =
+                    key === 'backspace' ? '⌫' : key === 'dot' ? '.' : key
+
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.keyButton,
+                        isDotDisabled && styles.keyButtonDisabled,
+                      ]}
+                      disabled={isDotDisabled || !buttonsReady}
+                      onPress={() => {
+                        if (!buttonsReady) return
+                        onKeyPress(key)
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.keyButtonText}>{label}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            ))}
           </View>
 
-          <View style={styles.keypadRow}>
-            <View style={styles.leftGrid}>
-              {NUMBER_ROWS.map((row, rowIndex) => (
-                <View key={rowIndex} style={styles.numberRow}>
-                  {row.map((key, keyIndex) => {
-                    const isDotDisabled = key === 'dot' && !isWeightField
-                    if (!key) {
-                      return <View key={keyIndex} style={styles.keySpacer} />
-                    }
-
-                    const label =
-                      key === 'backspace'
-                        ? '⌫'
-                        : key === 'dot'
-                          ? '.'
-                          : key
-
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.keyButton,
-                          isDotDisabled && styles.keyButtonDisabled,
-                        ]}
-                        disabled={isDotDisabled || !buttonsReady}
-                        onPress={() => {
-                          if (!buttonsReady) return
-                          onKeyPress(key)
-                        }}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.keyButtonText}>{label}</Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={() => {
-                if (!buttonsReady) return
-                onNext()
-              }}
-              activeOpacity={0.85}
-              disabled={!buttonsReady}
-            >
-              <Text style={styles.nextButtonText}>Next</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={() => {
+              if (!buttonsReady) return
+              onNext()
+            }}
+            activeOpacity={0.85}
+            disabled={!buttonsReady}
+          >
+            <Text style={styles.nextButtonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   )
 }
@@ -271,30 +255,9 @@ const createStyles = (
         ? 'rgba(255, 255, 255, 0.04)'
         : 'rgba(255, 255, 255, 0.2)',
     },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 4,
-      zIndex: 1,
-    },
-    headerLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    doneButton: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    doneButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.brandPrimary,
-    },
     keypadRow: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'flex-start',
       gap: 10,
       zIndex: 1,
     },

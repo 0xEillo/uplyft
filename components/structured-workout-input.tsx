@@ -1726,7 +1726,7 @@ const createStyles = (
       width: '100%',
     },
     exerciseBlock: {
-      marginBottom: compactPreview ? 10 : 20,
+      marginBottom: compactPreview ? 6 : 14,
     },
     exerciseHeader: {
       flexDirection: 'row',
