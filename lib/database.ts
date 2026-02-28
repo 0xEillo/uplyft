@@ -2849,6 +2849,7 @@ export const database = {
           currentBest1RM: number
           previousBest1RM: number
           lastIncreaseAt: string | null
+          lastIncreaseSessionId: string | null
         }
       >
     > {
@@ -2856,6 +2857,7 @@ export const database = {
         .from('workout_sessions')
         .select(
           `
+          id,
           created_at,
           date,
           workout_exercises!inner (
@@ -2874,6 +2876,7 @@ export const database = {
       if (error) throw error
 
       interface Best1RMSnapshotRow {
+        id: string
         created_at: string
         date: string
         workout_exercises?: {
@@ -2891,6 +2894,7 @@ export const database = {
           currentBest1RM: number
           previousBest1RM: number
           lastIncreaseAt: string | null
+          lastIncreaseSessionId: string | null
         }
       > = {}
 
@@ -2919,17 +2923,17 @@ export const database = {
               currentBest1RM: 0,
               previousBest1RM: 0,
               lastIncreaseAt: null,
+              lastIncreaseSessionId: null,
             }
           }
 
           const current = bestByExerciseId[exerciseId]
 
-          // Use >= to capture the most recent occurrence of a tie as the "last increase" (if we wanted to track last performance)
-          // But strict > ensures we only track Personal Records
           if (sessionBest > current.currentBest1RM) {
             current.previousBest1RM = current.currentBest1RM
             current.currentBest1RM = sessionBest
             current.lastIncreaseAt = session.created_at
+            current.lastIncreaseSessionId = session.id
           }
         })
       })

@@ -3939,6 +3939,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Weighted Pull Up': 'Back',
   'Deadlift (Barbell)': 'Lower Back',
   'Bent Over Row (Dumbbell)': 'Back',
+  'Seated Row': 'Back',
   'Seated Row (Machine)': 'Back',
   'T Bar Row (Machine)': 'Back',
 
@@ -4018,6 +4019,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Hammer Curl (Dumbbell)': 'Pull',
   'Bicep Curl (Barbell)': 'Pull',
   'Bent Over Row (Dumbbell)': 'Pull',
+  'Seated Row': 'Pull',
   'Seated Row (Machine)': 'Pull',
   'Rope Face Pulls (Cable)': 'Pull',
   'Shrug (Machine)': 'Pull',

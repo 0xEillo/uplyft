@@ -50,6 +50,11 @@ export interface OverallStrengthScoreResult {
 export const OVERALL_STRENGTH_SCORE_CAP = 1000
 const DECAY_GRACE_DAYS = 14
 const DECAY_RATE_PER_WEEK = 0.05
+// Geometric decay for normalized weighted average across exercises in a group.
+// Each subsequent exercise gets 0.5x the weight of the previous, then all weights
+// are normalized to sum to 1. This means the group score reflects balanced strength
+// across all tracked exercises — a single outlier lift can't dominate the group.
+const SECONDARY_EXERCISE_DECAY = 0.5
 
 const OVERALL_GROUP_WEIGHTS: Record<OverallStrengthGroup, number> = {
   Legs: 0.25,
@@ -249,18 +254,18 @@ export function calculateOverallStrengthScore(input: {
 
   const groupState: Record<
     OverallStrengthGroup,
-    { topExerciseScore: number; lastTrainedAt: string | null; trackedExerciseCount: number }
+    { exerciseScores: number[]; lastTrainedAt: string | null; trackedExerciseCount: number }
   > = {
-    Legs: { topExerciseScore: 0, lastTrainedAt: null, trackedExerciseCount: 0 },
-    Back: { topExerciseScore: 0, lastTrainedAt: null, trackedExerciseCount: 0 },
-    Chest: { topExerciseScore: 0, lastTrainedAt: null, trackedExerciseCount: 0 },
-    Shoulders: { topExerciseScore: 0, lastTrainedAt: null, trackedExerciseCount: 0 },
-    Arms: { topExerciseScore: 0, lastTrainedAt: null, trackedExerciseCount: 0 },
+    Legs: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Back: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Chest: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Shoulders: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Arms: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
   }
 
   let liftsTracked = 0
 
-  exercises.forEach((exercise, idx) => {
+  exercises.forEach((exercise) => {
     const points = calculateExerciseStrengthPoints({
       exerciseName: exercise.exerciseName,
       gender,
@@ -285,9 +290,7 @@ export function calculateOverallStrengthScore(input: {
 
     const state = groupState[overallGroup]
     state.trackedExerciseCount += 1
-    if (weightedPoints > state.topExerciseScore) {
-      state.topExerciseScore = weightedPoints
-    }
+    state.exerciseScores.push(weightedPoints)
 
     const currentLast = asDateOrNull(state.lastTrainedAt)
     const nextLast = asDateOrNull(exercise.lastTrainedAt)
@@ -301,12 +304,23 @@ export function calculateOverallStrengthScore(input: {
 
   ;(Object.keys(OVERALL_GROUP_WEIGHTS) as OverallStrengthGroup[]).forEach((group) => {
     const weight = OVERALL_GROUP_WEIGHTS[group]
-    const topExerciseScore = groupState[group].topExerciseScore
+    const state = groupState[group]
+
+    // Sort descending, then compute a normalized weighted average so every exercise
+    // contributes proportionally — a single outlier can't inflate the group.
+    const sortedScores = [...state.exerciseScores].sort((a, b) => b - a)
+    const topExerciseScore = sortedScores[0] ?? 0
+    const weights = sortedScores.map((_, i) => Math.pow(SECONDARY_EXERCISE_DECAY, i))
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+    const groupRawScore = totalWeight > 0
+      ? sortedScores.reduce((sum, s, i) => sum + s * weights[i], 0) / totalWeight
+      : 0
+
     const decayFactor =
-      topExerciseScore > 0
-        ? computeDecayFactor(groupState[group].lastTrainedAt, now)
+      groupRawScore > 0
+        ? computeDecayFactor(state.lastTrainedAt, now)
         : 1
-    const effectiveScore = topExerciseScore * decayFactor
+    const effectiveScore = groupRawScore * decayFactor
     const weightedContribution = effectiveScore * weight
     totalScore += weightedContribution
 
@@ -317,8 +331,8 @@ export function calculateOverallStrengthScore(input: {
       decayFactor,
       effectiveScore: clampScore(effectiveScore),
       weightedContribution,
-      lastTrainedAt: groupState[group].lastTrainedAt,
-      trackedExerciseCount: groupState[group].trackedExerciseCount,
+      lastTrainedAt: state.lastTrainedAt,
+      trackedExerciseCount: state.trackedExerciseCount,
     }
   })
 
