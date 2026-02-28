@@ -1,10 +1,10 @@
+import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { SlideUpView } from '@/components/slide-up-view'
-import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -37,6 +37,11 @@ import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
+import {
+  getToolbarButtons,
+  getWarmupCalculatorEnabled,
+  type ToolbarButtonId,
+} from '@/lib/utils/create-post-settings'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
@@ -48,11 +53,6 @@ import {
   saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
-import {
-  getToolbarButtons,
-  getWarmupCalculatorEnabled,
-  type ToolbarButtonId,
-} from '@/lib/utils/create-post-settings'
 import {
   generateWorkoutMessage,
   parseCommitment,
@@ -2785,7 +2785,7 @@ export default function CreatePostScreen() {
                     <View style={styles.newUserGuideOptionHintIconWrap}>
                       <Ionicons
                         name="create-outline"
-                        size={12}
+                        size={13}
                         color={colors.textSecondary}
                       />
                     </View>
@@ -2806,7 +2806,7 @@ export default function CreatePostScreen() {
                     <View style={styles.newUserGuideOptionHintIconWrap}>
                       <Ionicons
                         name="add-outline"
-                        size={12}
+                        size={13}
                         color={colors.textSecondary}
                       />
                     </View>
@@ -2838,7 +2838,7 @@ export default function CreatePostScreen() {
                     <View style={styles.newUserGuideOptionHintIconWrap}>
                       <Ionicons
                         name="search-outline"
-                        size={12}
+                        size={13}
                         color={colors.textSecondary}
                       />
                     </View>
@@ -2849,26 +2849,7 @@ export default function CreatePostScreen() {
                 </View>
               </View>
 
-              <View style={styles.newUserGuideOptionRow}>
-                <View style={styles.newUserGuideOptionBadge}>
-                  <Text style={styles.newUserGuideOptionBadgeText}>4</Text>
-                </View>
-                <View style={styles.newUserGuideOptionContent}>
-                  <Text style={styles.newUserGuideOptionTitle}>Voice log</Text>
-                  <View style={styles.newUserGuideOptionHintRow}>
-                    <View style={styles.newUserGuideOptionHintIconWrap}>
-                      <Ionicons
-                        name="mic-outline"
-                        size={12}
-                        color={colors.textSecondary}
-                      />
-                    </View>
-                    <Text style={styles.newUserGuideOptionHintText}>
-                      Tap mic and speak your workout
-                    </Text>
-                  </View>
-                </View>
-              </View>
+            
 
               <Text style={styles.newUserGuideFooter}>
                 No matter how you log, AI detects your exercises and turns it
@@ -3146,66 +3127,63 @@ const createStyles = (
       width: '100%',
       maxWidth: 360,
       backgroundColor: colors.surfaceSubtle,
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      gap: 4,
+      gap: 10,
     },
     newUserGuideTitle: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 4,
+      letterSpacing: -0.4,
+      marginBottom: 2,
     },
     newUserGuideSubtitle: {
-      fontSize: 12,
-      lineHeight: 16,
+      fontSize: 13,
+      lineHeight: 18,
       color: colors.textSecondary,
       marginBottom: 2,
     },
     newUserGuideOptionRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
-      marginTop: 1,
+      gap: 10,
     },
     newUserGuideOptionBadge: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: colors.bg,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 0,
+      marginTop: 1,
     },
     newUserGuideOptionBadgeText: {
       fontSize: 11,
       fontWeight: '700',
-      color: colors.textSecondary,
+      color: '#fff',
     },
     newUserGuideOptionContent: {
       flex: 1,
-      gap: 2,
+      gap: 3,
     },
     newUserGuideOptionTitle: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.textPrimary,
     },
     newUserGuideOptionHintRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
-      marginTop: 1,
+      gap: 6,
     },
     newUserGuideOptionHintIconWrap: {
-      width: 16,
-      height: 16,
-      borderRadius: 12,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: 'center',
@@ -3213,8 +3191,8 @@ const createStyles = (
       backgroundColor: colors.bg,
     },
     newUserGuideOptionHintText: {
-      fontSize: 12,
-      lineHeight: 15,
+      fontSize: 13,
+      lineHeight: 18,
       color: colors.textSecondary,
     },
     newUserGuideStructuredPreview: {
@@ -3226,7 +3204,7 @@ const createStyles = (
       paddingHorizontal: 8,
       paddingTop: 6,
       paddingBottom: 4,
-      marginTop: 2,
+      marginTop: 4,
     },
     // StructuredWorkoutInput keeps bottom spacing for full-page editing.
     // Trim it in this read-only preview to keep the onboarding card compact.
@@ -3234,11 +3212,14 @@ const createStyles = (
       marginBottom: -4,
     },
     newUserGuideFooter: {
-      fontSize: 12,
-      lineHeight: 16,
-      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textTertiary,
       fontWeight: '500',
-      marginTop: 4,
+      paddingTop: 10,
+      marginTop: 2,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     attachedImageContainer: {
       paddingHorizontal: 20,
