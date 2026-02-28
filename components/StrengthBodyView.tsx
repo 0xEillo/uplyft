@@ -20,6 +20,7 @@ import {
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
 } from '@/lib/exercise-standards-config'
+import Body from 'react-native-body-highlighter'
 import {
   calculateExerciseStrengthPoints,
   LEVEL_POINT_ANCHORS,
@@ -45,6 +46,57 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const STRENGTH_MUSCLE_TAP_DISCOVERED_KEY = '@strength_muscle_tap_discovered'
 const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000
 const EXERCISE_CONFIG_BY_NAME = getExerciseNameMap()
+
+type DisplayGroup = 'Legs' | 'Back' | 'Chest' | 'Shoulders' | 'Arms' | 'Core'
+
+const DISPLAY_GROUP_BODY_MAPPING: Record<
+  DisplayGroup,
+  { slug: BodyPartSlug; side: 'front' | 'back'; offsetY: number; scale: number }
+> = {
+  Legs: { slug: 'quadriceps', side: 'front', offsetY: -18, scale: 0.25 },
+  Back: { slug: 'upper-back', side: 'back', offsetY: 29, scale: 0.37 },
+  Chest: { slug: 'chest', side: 'front', offsetY: 29, scale: 0.37 },
+  Shoulders: { slug: 'deltoids', side: 'front', offsetY: 29, scale: 0.37 },
+  Arms: { slug: 'biceps', side: 'front', offsetY: 29, scale: 0.37 },
+  Core: { slug: 'abs', side: 'front', offsetY: 29, scale: 0.37 },
+}
+
+const DISPLAY_GROUP_ORDER: DisplayGroup[] = [
+  'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core',
+]
+
+function mapMuscleToDisplayGroup(muscle: string | null): DisplayGroup | null {
+  if (!muscle) return null
+  switch (muscle) {
+    case 'Quads':
+    case 'Hamstrings':
+    case 'Glutes':
+    case 'Calves':
+    case 'Adductors':
+      return 'Legs'
+    case 'Back':
+    case 'Lats':
+    case 'Traps':
+    case 'Lower Back':
+      return 'Back'
+    case 'Chest':
+      return 'Chest'
+    case 'Shoulders':
+      return 'Shoulders'
+    case 'Biceps':
+    case 'Triceps':
+    case 'Forearms':
+      return 'Arms'
+    case 'Abs':
+    case 'Core':
+      return 'Core'
+    default:
+      return null
+  }
+}
+
+const MUSCLE_HIGHLIGHT_COLORS = ['#EF4444']
+const MUSCLE_BORDER_COLOR = '#D1D5DB'
 
 type FocusGroup = 'Legs' | 'Back' | 'Chest' | 'Shoulders' | 'Arms'
 
@@ -126,6 +178,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
   const [hasDiscoveredMuscleTap, setHasDiscoveredMuscleTap] = useState(false)
+  const [expandedMuscleGroups, setExpandedMuscleGroups] = useState<Set<string>>(new Set())
   const strengthGender = getStrengthGender(profile?.gender)
 
   useEffect(() => {
@@ -225,6 +278,24 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
     profile?.weight_kg,
     strengthGender,
   ])
+
+  const exercisesByGroup = useMemo<[DisplayGroup, TrackedExerciseWithProgress[]][]>(() => {
+    const grouped = new Map<DisplayGroup, TrackedExerciseWithProgress[]>()
+    DISPLAY_GROUP_ORDER.forEach((g) => grouped.set(g, []))
+
+    trackedExercisesWithProgress.forEach((exercise) => {
+      const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName)
+      const canonicalName = config?.name ?? exercise.exerciseName
+      const muscle =
+        EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null
+      const group = mapMuscleToDisplayGroup(muscle)
+      if (group && grouped.has(group)) {
+        grouped.get(group)!.push(exercise)
+      }
+    })
+
+    return DISPLAY_GROUP_ORDER.map((g) => [g, grouped.get(g) ?? []] as [DisplayGroup, TrackedExerciseWithProgress[]])
+  }, [trackedExercisesWithProgress])
 
   const priorityRecommendations = useMemo<PriorityExerciseRecommendation[]>(() => {
     const bodyweightKg = profile?.weight_kg
@@ -360,12 +431,22 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
           orderingRank = groupRank.get(row.focusGroup) ?? Number.MAX_SAFE_INTEGER
         }
 
-        const progressGap = Math.max(0, 100 - row.exercise.progress) / 100
+        const progressToLevelUp = Math.max(
+          0,
+          Math.min(1, row.exercise.progress / 100),
+        )
         const targetDeltaKg = Math.max(
           1,
           Math.ceil(targetWeight - row.exercise.max1RM),
         )
-        const deltaFactor = Math.max(0, 1 - Math.min(targetDeltaKg, 40) / 50)
+        const distanceFactor = 1 / (1 + Math.min(targetDeltaKg, 80) / 8)
+        const readinessFactor = Math.max(
+          0.08,
+          Math.min(
+            1,
+            Math.pow(progressToLevelUp, 1.4) * 0.72 + distanceFactor * 0.28,
+          ),
+        )
         const tierFactor = row.tier === 1 ? 1 : 0.72
 
         const lastTrainedTime = row.exercise.lastTrainedAt
@@ -378,15 +459,33 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
             )
           : 0
         const stalenessFactor = Math.min(1, daysSinceTrained / 21)
+        const momentumFactor = row.exercise.showRecentProgressDelta
+          ? Math.min(1, row.exercise.progressDelta / 20)
+          : 0
+
+        const readinessWeightedGain =
+          estimatedScoreGain * (0.15 + readinessFactor * readinessFactor * 3)
+
+        const nextLevelIntensity = getLevelIntensity(
+          row.exercise.nextLevel ?? row.exercise.level,
+        )
+        const levelDifficultyFactor = Math.max(
+          0.22,
+          Math.pow(0.8, Math.max(0, nextLevelIntensity - 2)),
+        )
+        const adjustedReadinessGain = readinessWeightedGain * levelDifficultyFactor
 
         const impactScore = Math.round(
-          estimatedScoreGain * 3.2 +
+          estimatedScoreGain * levelDifficultyFactor * 3.2 +
             groupWeight * 32 * (1 + focusWeakness * 0.5) +
-            progressGap * 22 +
-            deltaFactor * 14 +
+            progressToLevelUp * 24 +
+            distanceFactor * 16 +
+            levelDifficultyFactor * 12 +
             tierFactor * 11 +
-            stalenessFactor * 8,
+            stalenessFactor * 6 +
+            momentumFactor * 8,
         )
+        const priorityScore = adjustedReadinessGain + impactScore * 0.08
 
         return {
           ...row.exercise,
@@ -396,16 +495,22 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
           targetDeltaKg,
           estimatedScoreGain,
           impactScore,
+          priorityScore,
+          levelDifficultyFactor,
           orderingRank,
         }
       })
       .sort((a, b) => {
-        const gainDiff = b.estimatedScoreGain - a.estimatedScoreGain
+        const gainDiff = b.priorityScore - a.priorityScore
         if (Math.abs(gainDiff) > 0.01) {
           return gainDiff
         }
         if (b.impactScore !== a.impactScore) {
           return b.impactScore - a.impactScore
+        }
+        const difficultyDiff = b.levelDifficultyFactor - a.levelDifficultyFactor
+        if (Math.abs(difficultyDiff) > 0.01) {
+          return difficultyDiff
         }
         if (a.orderingRank !== b.orderingRank) {
           return a.orderingRank - b.orderingRank
@@ -418,7 +523,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
       .slice(0, 5)
 
     return prioritized.map((exercise, index) => {
-      const { orderingRank, ...rest } = exercise
+      const { orderingRank, priorityScore, levelDifficultyFactor, ...rest } = exercise
       return {
         ...rest,
         rank: index + 1,
@@ -790,135 +895,171 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
               </>
             )}
 
-            {/* Your Exercises Section - Gamified Exercise Progress */}
-            {/* Your Exercises Section - Gamified Exercise Progress */}
-            {trackedExercisesWithProgress.length > 0 ? (
-              <>
-                <View style={styles.sectionHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.sectionHeaderText}>Your Exercises</Text>
-                    <TouchableOpacity
-                      onPress={() => openSectionInfo('your-exercises')}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
+            {/* Muscle Ranks Section */}
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.sectionHeaderText}>Muscle Ranks</Text>
+                  <TouchableOpacity
+                    onPress={() => openSectionInfo('your-exercises')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
+              </View>
 
-                <View style={styles.exerciseCardsContainer}>
-                  {trackedExercisesWithProgress.map((exercise) => {
-                    const levelColor = getLevelColor(exercise.level!)
-                    const gainColor = getLevelColor('Intermediate')
+              <View style={styles.exerciseCardsContainer}>
+                {exercisesByGroup.map(([group, exercises]) => {
+                  const isExpanded = expandedMuscleGroups.has(group)
+                  const bodyMapping = DISPLAY_GROUP_BODY_MAPPING[group]
+                  const bestExercise = exercises[0]
+                  const level = bestExercise?.level ?? 'Untrained'
+                  const bestLevelColor = getLevelColor(level)
+
                     return (
-                      <TouchableOpacity
-                        key={exercise.exerciseId}
-                        style={styles.exerciseCard}
-                        onPress={() => navigateToExercise(exercise.exerciseId)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.exerciseInlineHeader}>
-                          <ExerciseMediaThumbnail
-                            gifUrl={exercise.gifUrl}
-                            style={styles.exerciseCardThumbnail}
-                          />
-                          <View style={styles.exerciseInlineHeaderContent}>
-                            <Text style={styles.exerciseCardName} numberOfLines={1}>
-                              {exercise.exerciseName}
-                            </Text>
-                            <View style={styles.exerciseInlineProgressWrap}>
-                              <View style={styles.exerciseInlineProgressTopRow}>
-                                <View style={styles.exerciseInlineMetaRow}>
-                                  <Text
-                                    style={[
-                                      styles.exerciseInlineLevelLabel,
-                                      { color: levelColor },
-                                    ]}
-                                  >
-                                    {exercise.level!}
-                                  </Text>
-                                  {exercise.showRecentProgressDelta && (
-                                    <Text style={[styles.exerciseInlineGainText, { color: gainColor }]}>
-                                      ▲ {exercise.progressDelta}%
-                                    </Text>
-                                  )}
-                                </View>
-                                <View style={styles.exerciseInlineProgressValueRow}>
-                                  <Text style={[styles.exerciseInlineProgressPercent, { color: levelColor }]}>
-                                    {Math.round(exercise.progress)}%
-                                  </Text>
-                                </View>
-                              </View>
-                              <View style={styles.exerciseInlineBarTrack}>
+                      <View key={group}>
+                        {/* Muscle Group Header */}
+                        <TouchableOpacity
+                          style={[styles.muscleGroupHeader, { borderColor: isExpanded ? `${bestLevelColor}44` : colors.border }]}
+                          onPress={() => {
+                            setExpandedMuscleGroups((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(group)) {
+                                next.delete(group)
+                              } else {
+                                next.add(group)
+                              }
+                              return next
+                            })
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          {/* Muscle Body Icon */}
+                          <View style={styles.muscleIconOuter}>
+                            <View style={styles.muscleIconInner} pointerEvents="none">
+                              {bodyMapping ? (
                                 <View
                                   style={[
-                                    styles.exerciseInlineBarFill,
-                                    {
-                                      width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
-                                      backgroundColor: levelColor,
-                                    },
+                                    styles.muscleBodyWrapper,
+                                    { transform: [{ translateY: bodyMapping.offsetY }] },
                                   ]}
-                                />
-                              </View>
+                                >
+                                  <Body
+                                    data={[{ slug: bodyMapping.slug, intensity: 1 }]}
+                                    gender="male"
+                                    side={bodyMapping.side}
+                                    scale={bodyMapping.scale}
+                                    colors={MUSCLE_HIGHLIGHT_COLORS}
+                                    border={MUSCLE_BORDER_COLOR}
+                                  />
+                                </View>
+                              ) : (
+                                <Ionicons name="body-outline" size={22} color={colors.textSecondary} />
+                              )}
                             </View>
                           </View>
-                        </View>
-                      </TouchableOpacity>
+
+                          {/* Muscle Name + Count */}
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={styles.muscleGroupName}>{group}</Text>
+                            <Text style={styles.muscleGroupSubtext}>
+                              {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}
+                            </Text>
+                          </View>
+
+                          {/* Best level badge */}
+                          <Text style={[styles.muscleGroupLevel, { color: bestLevelColor }]}>
+                            {exercises.length > 0 ? bestExercise!.level : 'Unranked'}
+                          </Text>
+
+                          <Ionicons
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+
+                        {/* Expanded Exercise List */}
+                        {isExpanded && (
+                          <View style={styles.muscleGroupExercises}>
+                            {exercises.length === 0 ? (
+                              <TouchableOpacity
+                                style={[styles.exerciseCard, styles.unrankedCta]}
+                                onPress={() => router.push('/(tabs)/create-post')}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="add-circle-outline" size={24} color={colors.textSecondary} />
+                                <Text style={[styles.unrankedCtaText, { color: colors.textSecondary }]}>
+                                  Log sets to rank this muscle
+                                </Text>
+                              </TouchableOpacity>
+                            ) : exercises.map((exercise) => {
+                              const levelColor = getLevelColor(exercise.level!)
+                              const gainColor = getLevelColor('Intermediate')
+                              return (
+                                <TouchableOpacity
+                                  key={exercise.exerciseId}
+                                  style={styles.exerciseCard}
+                                  onPress={() => navigateToExercise(exercise.exerciseId)}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={styles.exerciseInlineHeader}>
+                                    <ExerciseMediaThumbnail
+                                      gifUrl={exercise.gifUrl}
+                                      style={styles.exerciseCardThumbnail}
+                                    />
+                                    <View style={styles.exerciseInlineHeaderContent}>
+                                      <Text style={styles.exerciseCardName} numberOfLines={1}>
+                                        {exercise.exerciseName}
+                                      </Text>
+                                      <View style={styles.exerciseInlineProgressWrap}>
+                                        <View style={styles.exerciseInlineProgressTopRow}>
+                                          <View style={styles.exerciseInlineMetaRow}>
+                                            <Text
+                                              style={[
+                                                styles.exerciseInlineLevelLabel,
+                                                { color: levelColor },
+                                              ]}
+                                            >
+                                              {exercise.level!}
+                                            </Text>
+                                            {exercise.showRecentProgressDelta && (
+                                              <Text style={[styles.exerciseInlineGainText, { color: gainColor }]}>
+                                                ▲ {exercise.progressDelta}%
+                                              </Text>
+                                            )}
+                                          </View>
+                                          <View style={styles.exerciseInlineProgressValueRow}>
+                                            <Text style={[styles.exerciseInlineProgressPercent, { color: levelColor }]}>
+                                              {Math.round(exercise.progress)}%
+                                            </Text>
+                                          </View>
+                                        </View>
+                                        <View style={styles.exerciseInlineBarTrack}>
+                                          <View
+                                            style={[
+                                              styles.exerciseInlineBarFill,
+                                              {
+                                                width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
+                                                backgroundColor: levelColor,
+                                              },
+                                            ]}
+                                          />
+                                        </View>
+                                      </View>
+                                    </View>
+                                  </View>
+                                </TouchableOpacity>
+                              )
+                            })}
+                          </View>
+                        )}
+                      </View>
                     )
                   })}
                 </View>
               </>
-            ) : (
-              <>
-                 <View style={styles.sectionHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.sectionHeaderText}>Your Exercises</Text>
-                    <TouchableOpacity
-                      onPress={() => openSectionInfo('your-exercises')}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.exerciseCardsContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.exerciseCard,
-                      {
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingVertical: 32,
-                        backgroundColor: colors.surfaceCard,
-                      }
-                    ]}
-                    onPress={() => router.push('/(tabs)/create-post')}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 28,
-                        backgroundColor: colors.brandPrimarySoft,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: 16,
-                      }}
-                    >
-                      <Ionicons name="add" size={32} color={colors.brandPrimary} />
-                    </View>
-                    <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
-                      Start Tracking
-                    </Text>
-                    <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 20, lineHeight: 20 }}>
-                      Log your sets and reps to see your strength stats and levels here.
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
           </View>
     </>
   )
@@ -1204,7 +1345,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Exercise Cards Section
     exerciseCardsContainer: {
-      gap: 12,
+      gap: 6,
     },
     exerciseCard: {
       backgroundColor: colors.surfaceCard,
@@ -1282,5 +1423,84 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontWeight: '600',
       lineHeight: 20,
       color: colors.textPrimary,
+    },
+
+    // Muscle Group Dropdown
+    muscleGroupHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 16,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    muscleIconOuter: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      borderWidth: 1.5,
+      borderColor: MUSCLE_BORDER_COLOR,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      backgroundColor: colors.bg,
+    },
+    muscleIconInner: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    muscleBodyWrapper: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      width: 84,
+      height: 168,
+      marginTop: -84,
+      marginLeft: -42,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    muscleGroupName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.2,
+    },
+    muscleGroupSubtext: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 1,
+    },
+    muscleGroupLevel: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    muscleGroupExercises: {
+      gap: 6,
+      paddingTop: 6,
+      paddingLeft: 8,
+    },
+    unrankedCta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+    },
+    unrankedCtaText: {
+      fontSize: 14,
+      fontWeight: '600',
     },
   })

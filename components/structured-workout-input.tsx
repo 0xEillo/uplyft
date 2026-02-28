@@ -41,6 +41,8 @@ if (
 
 const DEBUG_NEXT_FLOW = false
 const DEBUG_KEYPAD_VERBOSE = false
+/** Log focus/blur flow when tapping between inputs - set true to debug keyboard closing */
+const DEBUG_FOCUS_TRANSFER = false
 const DEFAULT_WARMUP_TEMPLATE = [
   { percent: 0.4, reps: 5 },
   { percent: 0.6, reps: 5 },
@@ -92,6 +94,7 @@ interface WorkoutSetRowProps {
   onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
   onBlur: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
+  onPressIn: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
   onDeleteSet: (exerciseIndex: number, setIndex: number) => void
   onSelectionWeightChange?: (start: number, end: number, valueLength: number) => void
   onSelectionRepsChange?: (start: number, end: number, valueLength: number) => void
@@ -119,6 +122,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   onRepsChange,
   onFocus,
   onBlur,
+  onPressIn,
   onDeleteSet,
   onSelectionWeightChange,
   onSelectionRepsChange,
@@ -130,12 +134,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
     <View style={styles.setRow}>
       <LiquidGlassSurface
         style={styles.setNumberBadge}
-        fallbackStyle={
-          isWarmup
-            ? [styles.setNumberBadgeFallback, styles.warmupBadgeFallback]
-            : styles.setNumberBadgeFallback
-        }
-        tintColor={isWarmup ? colors.statusWarning : undefined}
+        fallbackStyle={styles.setNumberBadgeFallback}
         isInteractive
       >
         <TouchableOpacity
@@ -154,7 +153,8 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
           styles.inlineInput,
           isWeightSuspicious && styles.inlineInputWarning,
         ]}
-        placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '___'}
+        hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
+        placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : ''}
         placeholderTextColor={
           set.lastWorkoutWeight ? colors.textTertiary : colors.textPlaceholder
         }
@@ -177,6 +177,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
             onSelectionWeightChange(start, end, set.weight.length)
           }
         }}
+        onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
         onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
         onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
       />
@@ -184,7 +185,8 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       <TextInput
         ref={registerRepsRef}
         style={styles.inlineInput}
-        placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '___'}
+        hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
+        placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : ''}
         placeholderTextColor={
           set.lastWorkoutReps ? colors.textTertiary : colors.textPlaceholder
         }
@@ -207,6 +209,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
             onSelectionRepsChange(start, end, set.reps.length)
           }
         }}
+        onPressIn={() => onPressIn(exerciseIndex, setIndex, 'reps')}
         onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
         onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
       />
@@ -406,6 +409,18 @@ export function StructuredWorkoutInput({
       console.log(`[KeypadTrace][${ts}] ${event}`, payload)
     } else {
       console.log(`[KeypadTrace][${ts}] ${event}`)
+    }
+  }, [])
+
+  const debugFocusTransfer = useCallback((event: string, payload?: Record<string, unknown>) => {
+    if (!__DEV__ || !DEBUG_FOCUS_TRANSFER) return
+    const ts = Date.now()
+    const key = (p?: Record<string, unknown>) =>
+      p ? `${p.exerciseIndex ?? '?'}-${p.setIndex ?? '?'}-${p.field ?? '?'}` : 'null'
+    if (payload) {
+      console.log(`[KeypadFocus][${ts}] ${event}`, { ...payload, key: key(payload) })
+    } else {
+      console.log(`[KeypadFocus][${ts}] ${event}`)
     }
   }, [])
 
@@ -1220,6 +1235,7 @@ export function StructuredWorkoutInput({
     const current = focusedInputRef.current
     keypadClosingRef.current = true
     keypadCloseUntilRef.current = Date.now() + 380
+    debugFocusTransfer('handleKeypadDone: user tapped Done - closing keypad')
     debugKeypad('done-press', {
       focused: current
         ? `${current.exerciseIndex}-${current.setIndex}-${current.field}`
@@ -1237,7 +1253,7 @@ export function StructuredWorkoutInput({
     setFocusedInputState(null)
     onKeypadStateChange?.(null)
     onInputBlur?.()
-  }, [debugKeypad, endFocusTransition, onInputBlur, onKeypadStateChange, setFocusedInputState])
+  }, [debugFocusTransfer, debugKeypad, endFocusTransition, onInputBlur, onKeypadStateChange, setFocusedInputState])
 
   const reportFocusedInputFrame = useCallback(
     (
@@ -1289,6 +1305,11 @@ export function StructuredWorkoutInput({
         hasFocusedInput: Boolean(focusedInput),
         keypadClosing: keypadClosingRef.current,
       })
+      debugFocusTransfer('effect: CLOSE keypad', {
+        reason: compactPreview ? 'compactPreview' : !focusedInput ? 'no focusedInput' : 'keypadClosingRef',
+        focusedInput: focusedInput ? `${focusedInput.exerciseIndex}-${focusedInput.setIndex}-${focusedInput.field}` : null,
+        keypadClosingRef: keypadClosingRef.current,
+      })
       onKeypadStateChange?.(null)
     } else {
       keypadOpenedAtRef.current = Date.now()
@@ -1296,6 +1317,11 @@ export function StructuredWorkoutInput({
         field: focusedInput.field,
         exerciseIndex: focusedInput.exerciseIndex,
         setIndex: focusedInput.setIndex,
+      })
+      debugFocusTransfer('effect: OPEN keypad', {
+        exerciseIndex: focusedInput.exerciseIndex,
+        setIndex: focusedInput.setIndex,
+        field: focusedInput.field,
       })
       onKeypadStateChange?.({
         field: focusedInput.field,
@@ -1315,25 +1341,35 @@ export function StructuredWorkoutInput({
     }
     // stableOn* are created once and never change - safe to omit from deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusedInput, compactPreview, debugKeypad, onKeypadStateChange, focusInputWithCursor, reportFocusedInputFrame])
+  }, [focusedInput, compactPreview, debugKeypad, debugFocusTransfer, onKeypadStateChange, focusInputWithCursor, reportFocusedInputFrame])
 
   const handleFocus = useCallback(
     (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      const hadBlurPending = Boolean(blurTimeoutRef.current)
+      const prevFocused = focusedInputRef.current
+      debugFocusTransfer('handleFocus ENTER', {
+        exerciseIndex,
+        setIndex,
+        field,
+        hadBlurPending,
+        prevFocused: prevFocused ? `${prevFocused.exerciseIndex}-${prevFocused.setIndex}-${prevFocused.field}` : null,
+      })
+
       // Cancel any pending blur callback - focus transferred within component
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
         blurTimeoutRef.current = null
+        debugFocusTransfer('handleFocus: cancelled blur timeout (focus moved to another field)')
       }
 
       if (Date.now() < keypadCloseUntilRef.current) {
-        debugKeypad('focus-blocked-close-settling', {
+        debugFocusTransfer('handleFocus: Ignore keypadCloseUntilRef (let focus through)', {
           exerciseIndex,
           setIndex,
           field,
           msUntilAllowed: keypadCloseUntilRef.current - Date.now(),
         })
-        inputRefs.current[`${exerciseIndex}-${setIndex}-${field}`]?.blur()
-        return
+        keypadCloseUntilRef.current = 0
       }
 
       // If we are ALREADY fully focused on this exact input, this is a native re-focus
@@ -1341,12 +1377,16 @@ export function StructuredWorkoutInput({
       // We still want to make sure it's scrolled into view, but we DON'T want to
       // reset keypad state or trigger a duplicate OPEN.
       const fi = focusedInputRef.current
+      
+      // If the keypad was completely closed (fi is null) but React Native still thinks we are 
+      // focused on the native input, we want to NOT skip this. We must open the keypad.
       if (
+        fi !== null &&
         fi?.exerciseIndex === exerciseIndex &&
         fi?.setIndex === setIndex &&
         fi?.field === field
       ) {
-        debugKeypad('focus-skip-duplicate', { exerciseIndex, setIndex, field, inTransition: focusTransitionRef.current })
+        debugFocusTransfer('handleFocus: SKIP duplicate (same field re-focused)')
         endFocusTransition()
         requestAnimationFrame(() => {
           const current = focusedInputRef.current
@@ -1361,12 +1401,11 @@ export function StructuredWorkoutInput({
         return
       }
 
-      debugKeypad('focus', {
+      debugFocusTransfer('handleFocus: SUCCESS - setting focusedInput', {
         exerciseIndex,
         setIndex,
         field,
-        hadBlurPending: Boolean(blurTimeoutRef.current),
-        inTransition: focusTransitionRef.current,
+        from: prevFocused ? `${prevFocused.exerciseIndex}-${prevFocused.setIndex}-${prevFocused.field}` : null,
       })
       endFocusTransition()
       nextPressInFlightRef.current = false
@@ -1385,34 +1424,42 @@ export function StructuredWorkoutInput({
         }
       })
     },
-    [debugKeypad, endFocusTransition, onInputFocus, reportFocusedInputFrame, setFocusedInputState],
+    [debugFocusTransfer, endFocusTransition, onInputFocus, reportFocusedInputFrame, setFocusedInputState],
   )
 
   const handleBlur = useCallback(
     (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+      debugFocusTransfer('handleBlur ENTER (scheduling 300ms timeout)', {
+        exerciseIndex,
+        setIndex,
+        field,
+      })
       // Debounce the blur callback to allow focus to transfer between inputs
       // This prevents the double toolbar glitch on iOS
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current)
       }
       blurTimeoutRef.current = setTimeout(() => {
+        const focusedState = focusedInputRef.current
+        debugFocusTransfer('handleBlur TIMEOUT fired', {
+          blurred: { exerciseIndex, setIndex, field },
+          focusedInputRef: focusedState ? `${focusedState.exerciseIndex}-${focusedState.setIndex}-${focusedState.field}` : null,
+          keypadClosingRef: keypadClosingRef.current,
+          focusTransitionRef: focusTransitionRef.current,
+        })
+
         if (keypadClosingRef.current) {
-          debugKeypad('blur-skip-keypad-closing', { exerciseIndex, setIndex, field })
+          debugFocusTransfer('handleBlur: SKIP keypadClosingRef')
           blurTimeoutRef.current = null
           return
         }
 
         if (focusTransitionRef.current) {
-          debugNext('handleBlur:skipClear:focusTransition', {
-            exerciseIndex,
-            setIndex,
-            field,
-          })
+          debugFocusTransfer('handleBlur: SKIP focusTransitionRef')
           blurTimeoutRef.current = null
           return
         }
 
-        const focusedState = focusedInputRef.current
         if (
           focusedState &&
           (
@@ -1421,31 +1468,29 @@ export function StructuredWorkoutInput({
             focusedState.field !== field
           )
         ) {
-          debugNext('handleBlur:skipClear:focusMoved', {
-            blurred: { exerciseIndex, setIndex, field },
-            focused: focusedState,
+          debugFocusTransfer('handleBlur: SKIP focus moved to another field', {
+            blurred: `${exerciseIndex}-${setIndex}-${field}`,
+            focused: `${focusedState.exerciseIndex}-${focusedState.setIndex}-${focusedState.field}`,
           })
           blurTimeoutRef.current = null
           return
         }
 
-        if (isStructuredInputCurrentlyFocused()) {
-          debugNext('handleBlur:skipClear:structuredInputStillFocused', {
-            exerciseIndex,
-            setIndex,
-            field,
-          })
-          blurTimeoutRef.current = null
-          return
-        }
-
-        debugKeypad('blur-commit', { exerciseIndex, setIndex, field })
+        // Don't skip when isStructuredInputCurrentlyFocused - the native input can retain
+        // "ghost focus" after keypad close. We must commit so focusedInputRef becomes null,
+        // allowing re-tap on same field to open keypad again.
+        debugFocusTransfer('handleBlur: COMMIT - closing keypad', {
+          exerciseIndex,
+          setIndex,
+          field,
+        })
         setFocusedInputState(null)
+        onKeypadStateChange?.(null)
         onInputBlur?.()
         blurTimeoutRef.current = null
-      }, 80)
+      }, 300)
     },
-    [debugKeypad, debugNext, isStructuredInputCurrentlyFocused, onInputBlur, setFocusedInputState],
+    [debugFocusTransfer, onInputBlur, onKeypadStateChange, setFocusedInputState],
   )
 
   // Drag and drop handlers
@@ -1595,13 +1640,22 @@ export function StructuredWorkoutInput({
                         onRepsChange={handleRepsChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
+                        onPressIn={(exIdx, setIdx, fld) => {
+                          // When keypad is closed, native input can retain ghost focus so onFocus won't fire.
+                          // Force blur/focus cycle to wake keypad; otherwise just delegate to handleFocus.
+                          if (!focusedInputRef.current) {
+                            inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.blur()
+                            requestAnimationFrame(() => {
+                              inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.focus()
+                              handleFocus(exIdx, setIdx, fld)
+                            })
+                          } else {
+                            handleFocus(exIdx, setIdx, fld)
+                          }
+                        }}
                         onDeleteSet={handleDeleteSet}
-                        onSelectionWeightChange={__DEV__ ? (start, end, length) => {
-                          debugKeypad('selection-weight', { exerciseIndex, setIndex, start, end, valueLength: length })
-                        } : undefined}
-                        onSelectionRepsChange={__DEV__ ? (start, end, length) => {
-                          debugKeypad('selection-reps', { exerciseIndex, setIndex, start, end, valueLength: length })
-                        } : undefined}
+                        onSelectionWeightChange={undefined}
+                        onSelectionRepsChange={undefined}
                         registerWeightRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref }}
                         registerRepsRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref }}
                         canDelete={setIndex === exercise.sets.length - 1 && exercise.sets.length > 1}
@@ -1625,7 +1679,9 @@ export function StructuredWorkoutInput({
                       <Text style={styles.addSetText}>Add set</Text>
                     </TouchableOpacity>
 
-                    {warmupCalculatorEnabled && !exercise.sets.some((s) => s.isWarmup) && (
+                    {warmupCalculatorEnabled &&
+                      !exercise.sets.some((s) => s.isWarmup) &&
+                      !exercise.sets.some((s) => s.weight.trim() !== '' || s.reps.trim() !== '') && (
                       <TouchableOpacity
                         style={styles.addWarmupButton}
                         onPress={() => {
@@ -1728,9 +1784,6 @@ const createStyles = (
     setNumberBadgeFallback: {
       backgroundColor: colors.border,
     },
-    warmupBadgeFallback: {
-      backgroundColor: `${colors.statusWarning}25`,
-    },
     setNumberBadgeTouch: {
       width: '100%',
       height: '100%',
@@ -1743,7 +1796,7 @@ const createStyles = (
       color: colors.textSecondary,
     },
     warmupText: {
-      color: colors.textPrimary,
+      color: colors.statusWarning,
     },
     setText: {
       fontSize: compactPreview ? 15 : 17,
@@ -1751,11 +1804,9 @@ const createStyles = (
       lineHeight: compactPreview ? 20 : 24,
     },
     inlineInput: {
-      minWidth: compactPreview ? 34 : 40,
-      paddingHorizontal: 2,
-      paddingRight: 4,
-      paddingTop: 0,
-      paddingBottom: 0,
+      minWidth: compactPreview ? 44 : 52,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       fontSize: compactPreview ? 15 : 17,
       color: colors.textPrimary,
       borderBottomWidth: 1,

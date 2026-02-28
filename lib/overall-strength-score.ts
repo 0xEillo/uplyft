@@ -17,6 +17,7 @@ export type OverallStrengthGroup =
   | 'Chest'
   | 'Shoulders'
   | 'Arms'
+  | 'Core'
 
 export interface OverallStrengthExerciseInput {
   exerciseId: string
@@ -57,11 +58,12 @@ const DECAY_RATE_PER_WEEK = 0.05
 const SECONDARY_EXERCISE_DECAY = 0.5
 
 const OVERALL_GROUP_WEIGHTS: Record<OverallStrengthGroup, number> = {
-  Legs: 0.25,
-  Back: 0.25,
-  Chest: 0.2,
-  Shoulders: 0.2, // Increased from 10%
-  Arms: 0.1,
+  Legs: 0.24,
+  Back: 0.24,
+  Chest: 0.19,
+  Shoulders: 0.19,
+  Arms: 0.09,
+  Core: 0.05,
 }
 
 export const LEVEL_POINT_ANCHORS: Record<StrengthLevel, number> = {
@@ -103,6 +105,7 @@ function toOverallGroup(specificMuscle: string | null): OverallStrengthGroup | n
     case 'Adductors':
       return 'Legs'
     case 'Back':
+    case 'Lats':
     case 'Traps':
     case 'Lower Back':
       return 'Back'
@@ -114,6 +117,9 @@ function toOverallGroup(specificMuscle: string | null): OverallStrengthGroup | n
     case 'Triceps':
     case 'Forearms':
       return 'Arms'
+    case 'Abs':
+    case 'Core':
+      return 'Core'
     default:
       return null
   }
@@ -261,6 +267,7 @@ export function calculateOverallStrengthScore(input: {
     Chest: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
     Shoulders: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
     Arms: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Core: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
   }
 
   let liftsTracked = 0
@@ -285,7 +292,7 @@ export function calculateOverallStrengthScore(input: {
 
     const config = exerciseNameMap.get(exercise.exerciseName)
     const tier = config?.tier || 2
-    const tierWeight = tier === 1 ? 1.0 : 0.35
+    const tierWeight = tier === 1 ? 1.0 : 0.4
     const weightedPoints = points * tierWeight
 
     const state = groupState[overallGroup]

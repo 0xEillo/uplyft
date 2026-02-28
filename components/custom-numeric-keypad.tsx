@@ -1,15 +1,23 @@
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BlurView } from 'expo-blur'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Modal,
+  BackHandler,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type KeypadInputField = 'weight' | 'reps'
@@ -56,6 +64,30 @@ export function CustomNumericKeypad({
   const isWeightField = field === 'weight'
   const [buttonsReady, setButtonsReady] = useState(false)
   const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const slideY = useSharedValue(500)
+
+  useEffect(() => {
+    slideY.value = withSpring(0, { damping: 28, stiffness: 280, mass: 0.85 })
+  }, [slideY])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideY.value }],
+  }))
+
+  const animateOut = useCallback(
+    (callback: () => void) => {
+      slideY.value = withTiming(
+        500,
+        { duration: 220, easing: Easing.in(Easing.quad) },
+        (finished) => {
+          if (finished) runOnJS(callback)()
+        },
+      )
+    },
+    [slideY],
+  )
+
   useEffect(() => {
     return () => {
       if (readyTimeoutRef.current) {
@@ -83,41 +115,37 @@ export function CustomNumericKeypad({
     }
   }, [field])
 
-  const handleDone = () => {
+  const handleDone = useCallback(() => {
     if (!buttonsReady) return
-    onDone()
-  }
+    animateOut(onDone)
+  }, [buttonsReady, animateOut, onDone])
+
+  // Handle hardware back button on Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleDone()
+      return true
+    })
+    return () => backHandler.remove()
+  }, [handleDone])
+
+  // Call onReady after a short delay to allow mounting, simulating Modal onShow
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onReady?.()
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [onReady])
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="none"
-      onRequestClose={handleDone}
-      onShow={() => onReady?.()}
-      presentationStyle="overFullScreen"
-      hardwareAccelerated
-      statusBarTranslucent
-    >
-      <View style={styles.wrapper} pointerEvents="box-none">
-        <Pressable
-          style={[
-            styles.dismissArea,
-            isDark ? styles.dismissAreaDark : styles.dismissAreaLight,
-          ]}
-          onPress={() => {
-            if (!buttonsReady) return
-            handleDone()
-          }}
-          accessibilityLabel="Dismiss keypad"
-        />
-
-        <View
-          style={[
-            styles.container,
-            { paddingBottom: Math.max(insets.bottom, 10) + 6 },
-          ]}
-        >
+    <View style={styles.wrapper} pointerEvents="box-none">
+      <Animated.View
+        style={[
+          styles.container,
+          { paddingBottom: Math.max(insets.bottom, 10) + 6 },
+          animatedStyle,
+        ]}
+      >
           <BlurView
             pointerEvents="none"
             intensity={isDark ? 46 : 58}
@@ -191,9 +219,8 @@ export function CustomNumericKeypad({
               <Text style={styles.nextButtonText}>Next</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
-    </Modal>
+        </Animated.View>
+    </View>
   )
 }
 
@@ -214,10 +241,10 @@ const createStyles = (
       flex: 1,
     },
     dismissAreaLight: {
-      backgroundColor: 'rgba(16, 24, 40, 0.08)',
+      backgroundColor: 'transparent',
     },
     dismissAreaDark: {
-      backgroundColor: 'rgba(0, 0, 0, 0.16)',
+      backgroundColor: 'transparent',
     },
     container: {
       position: 'relative',

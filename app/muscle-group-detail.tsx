@@ -16,7 +16,6 @@ import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
@@ -43,7 +42,6 @@ export default function MuscleGroupDetailScreen() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
-  const { formatWeight, weightUnit } = useWeightUnits()
   const { profile } = useProfile()
   const [shouldExit, setShouldExit] = useState(false)
   const isIOSFormSheet = Platform.OS === 'ios'
@@ -187,11 +185,6 @@ export default function MuscleGroupDetailScreen() {
                     !exercise.isDone && styles.untrackedThumbnail,
                   ]) as ViewStyle}
                 />
-                {!exercise.isDone && (
-                  <View style={styles.lockOverlay}>
-                    <Ionicons name="lock-closed" size={14} color="#FFF" />
-                  </View>
-                )}
               </View>
               <View style={styles.exerciseInfo}>
                 <Text
@@ -202,33 +195,24 @@ export default function MuscleGroupDetailScreen() {
                 >
                   {exercise.exerciseName}
                 </Text>
-                {exercise.isDone ? (
-                  <Text style={styles.exerciseWeight}>
-                    Est. 1RM:{' '}
-                    {formatWeight(exercise.max1RM, {
-                      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                    })}
-                  </Text>
-                ) : (
-                  <Text style={styles.exerciseStatus}>Not yet tracked</Text>
-                )}
               </View>
             </View>
 
             <View style={styles.exerciseRight}>
-              {exercise.strengthInfo && (
+              {exercise.isDone && exercise.strengthInfo ? (
                 <LevelBadge
                   level={exercise.strengthInfo.level}
-                  variant="pill"
+                  variant="icon"
                   size="small"
                   showTooltipOnPress={false}
                 />
-              )}
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={colors.textTertiary}
-              />
+              ) : exercise.isDone ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              ) : null}
             </View>
           </TouchableOpacity>
         ))}
@@ -257,7 +241,7 @@ export default function MuscleGroupDetailScreen() {
               <LevelBadge 
                 level={groupData.level} 
                 size="medium" 
-                variant="pill" 
+                variant="icon"
                 onPress={() => setShowLevelSheet(true)}
               />
             )}
@@ -306,7 +290,7 @@ export default function MuscleGroupDetailScreen() {
           <LevelBadge 
             level={groupData.level} 
             size="medium" 
-            variant="pill" 
+            variant="icon"
             onPress={() => setShowLevelSheet(true)}
           />
         </View>
@@ -466,10 +450,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginBottom: 2,
       letterSpacing: -0.2,
     },
-    exerciseWeight: {
-      fontSize: 12,
-      color: colors.textSecondary,
-    },
     exerciseRight: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -486,26 +466,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     untrackedThumbnail: {
       opacity: 0.7,
     },
-    lockOverlay: {
-      position: 'absolute',
-      right: -4,
-      bottom: -4,
-      backgroundColor: colors.textTertiary,
-      borderRadius: 10,
-      width: 18,
-      height: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 2,
-      borderColor: colors.bg,
-    },
     untrackedText: {
       color: colors.textSecondary,
-    },
-    exerciseStatus: {
-      fontSize: 12,
-      color: colors.textTertiary,
-      marginTop: 2,
     },
     infoFooter: {
       flexDirection: 'row',

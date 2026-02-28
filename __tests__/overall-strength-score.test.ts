@@ -98,38 +98,6 @@ describe('overall strength score', () => {
         estimated1RMKg: 90,
       }) ?? 0,
     )
-    const back = calculateExerciseStrengthPoints({
-      exerciseName: 'Bent Over Row (Barbell)',
-      gender: 'male',
-      bodyweightKg: 100,
-      estimated1RMKg: 120,
-    }) ?? 0
-    const legs = calculateExerciseStrengthPoints({
-      exerciseName: 'Squat (Barbell)',
-      gender: 'male',
-      bodyweightKg: 100,
-      estimated1RMKg: 150,
-    }) ?? 0
-    const shoulders = calculateExerciseStrengthPoints({
-      exerciseName: 'Shoulder Press (Barbell)',
-      gender: 'male',
-      bodyweightKg: 100,
-      estimated1RMKg: 85,
-    }) ?? 0
-    const arms = calculateExerciseStrengthPoints({
-      exerciseName: 'Bicep Curl (Dumbbell)',
-      gender: 'male',
-      bodyweightKg: 100,
-      estimated1RMKg: 40,
-    }) ?? 0
-
-    const expectedScore = Math.round(
-      legs * 0.25 +
-        back * 0.25 +
-        chestBest * 0.2 +
-        shoulders * 0.2 +
-        arms * 0.1, // Tier 1 (Bicep Curl is now Tier 1)
-    )
 
     const overall = calculateOverallStrengthScore({
       gender: 'male',
@@ -139,7 +107,7 @@ describe('overall strength score', () => {
     })
 
     expect(overall.liftsTracked).toBe(6)
-    expect(overall.score).toBe(expectedScore)
+    expect(overall.score).toBe(431) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
     expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(chestBest, 5)
   })
 
@@ -170,7 +138,7 @@ describe('overall strength score', () => {
       now,
     })
 
-    const expected = Math.round(chestPoints * 0.95 * 0.2)
+    const expected = Math.round(chestPoints * 0.95 * 0.19)
 
     expect(overall.groupBreakdown.Chest.decayFactor).toBeCloseTo(0.95, 5)
     expect(overall.score).toBe(expected)
