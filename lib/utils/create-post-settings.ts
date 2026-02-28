@@ -43,7 +43,7 @@ export function setToolbarButtons(buttons: ToolbarButtonId[]): void {
 const SHOW_WARMUP_SETS_KEY = '@create_post_show_warmup_sets'
 
 export function getShowWarmupSets(): boolean {
-  return storage.getBoolean(SHOW_WARMUP_SETS_KEY) ?? true
+  return storage.getBoolean(SHOW_WARMUP_SETS_KEY) ?? false
 }
 
 export function setShowWarmupSets(show: boolean): void {

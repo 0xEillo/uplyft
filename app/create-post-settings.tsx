@@ -156,7 +156,7 @@ export default function CreatePostSettingsScreen() {
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingTitle}>Show Warm-up Sets</Text>
                 <Text style={styles.settingDescription}>
-                  Display warm-up sets in workout detail views and feed cards.
+                  Display warm-up sets in workout posts.
                 </Text>
               </View>
               <Switch
