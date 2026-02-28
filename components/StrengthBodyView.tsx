@@ -1444,8 +1444,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 52,
       height: 52,
       borderRadius: 26,
-      borderWidth: 1.5,
-      borderColor: MUSCLE_BORDER_COLOR,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
