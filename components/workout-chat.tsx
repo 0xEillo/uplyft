@@ -45,6 +45,7 @@ import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import {
   loadDraft as loadWorkoutDraft,
   saveDraft,
+  StructuredExerciseDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -187,6 +188,32 @@ export interface ExerciseSuggestion {
   sets: number
   reps: string
   notes?: string
+}
+
+function getExerciseSuggestionKey(suggestion: ExerciseSuggestion): string {
+  return `${suggestion.name.trim().toLowerCase()}|${suggestion.sets}|${suggestion.reps.trim().toLowerCase()}`
+}
+
+function parseRepRangeFromSuggestion(reps: string): {
+  targetRepsMin: number | null
+  targetRepsMax: number | null
+} {
+  const trimmed = reps.trim()
+  const rangeMatch = trimmed.match(/(\d+)\s*[-–]\s*(\d+)/)
+  if (rangeMatch) {
+    return {
+      targetRepsMin: parseInt(rangeMatch[1], 10),
+      targetRepsMax: parseInt(rangeMatch[2], 10),
+    }
+  }
+
+  const singleMatch = trimmed.match(/(\d+)/)
+  if (singleMatch) {
+    const repsValue = parseInt(singleMatch[1], 10)
+    return { targetRepsMin: repsValue, targetRepsMax: repsValue }
+  }
+
+  return { targetRepsMin: null, targetRepsMax: null }
 }
 
 // Internal component for animated suggestion buttons
@@ -650,6 +677,9 @@ export function WorkoutChat({
   const [exerciseToReplace, setExerciseToReplace] = useState<string | null>(
     null,
   ) // Track which exercise is being replaced
+  const [exerciseActionState, setExerciseActionState] = useState<
+    Record<string, 'idle' | 'saving' | 'saved' | 'error'>
+  >({})
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
   const coach = getCoach(coachId)
   const coachName = coach.name.split(' ').pop() || 'Coach'
@@ -1453,12 +1483,112 @@ export function WorkoutChat({
     setViewerImages([])
   }
 
-  const handleAddExercise = (suggestion: ExerciseSuggestion) => {
-    hapticSuccess()
-    if (onAddExercise) {
-      onAddExercise(suggestion)
-    } else {
-      setProposedWorkout((prev) => [...prev, suggestion])
+  const handleAddExercise = async (suggestion: ExerciseSuggestion) => {
+    const suggestionKey = getExerciseSuggestionKey(suggestion)
+    const currentState = exerciseActionState[suggestionKey]
+    if (currentState === 'saving' || currentState === 'saved') {
+      return
+    }
+
+    setExerciseActionState((prev) => ({ ...prev, [suggestionKey]: 'saving' }))
+
+    try {
+      if (onAddExercise) {
+        await Promise.resolve(onAddExercise(suggestion))
+      } else {
+        const draft = await loadWorkoutDraft()
+        const structuredData = draft?.structuredData || []
+        const alreadyExists = structuredData.some(
+          (exercise) =>
+            exercise.name.trim().toLowerCase() ===
+            suggestion.name.trim().toLowerCase(),
+        )
+
+        if (!alreadyExists) {
+          const { targetRepsMin, targetRepsMax } =
+            parseRepRangeFromSuggestion(suggestion.reps)
+
+          const newExercise: StructuredExerciseDraft = {
+            id:
+              Date.now().toString(36) +
+              Math.random().toString(36).slice(2, 10),
+            name: suggestion.name,
+            sets: Array.from({ length: Math.max(1, suggestion.sets) }, () => ({
+              weight: '',
+              reps: '',
+              isWarmup: false,
+              lastWorkoutWeight: null,
+              lastWorkoutReps: null,
+              targetRepsMin,
+              targetRepsMax,
+              targetRestSeconds: null,
+            })),
+          }
+
+          await saveDraft({
+            notes: draft?.notes || '',
+            title: draft?.title || '',
+            structuredData: [...structuredData, newExercise],
+            isStructuredMode: true,
+            selectedRoutineId: draft?.selectedRoutineId ?? null,
+            timerStartedAt: draft?.timerStartedAt ?? null,
+            timerElapsedSeconds: draft?.timerElapsedSeconds ?? 0,
+            updatedAt: Date.now(),
+          })
+
+          setLoadedDraftContext((prev) => {
+            if (!prev) {
+              return {
+                title: draft?.title || '',
+                notes: draft?.notes || '',
+                exercises: [
+                  {
+                    name: suggestion.name,
+                    setsCount: suggestion.sets,
+                    sets: [],
+                  },
+                ],
+              }
+            }
+
+            const hasExercise = prev.exercises.some(
+              (exercise) =>
+                exercise.name.trim().toLowerCase() ===
+                suggestion.name.trim().toLowerCase(),
+            )
+            if (hasExercise) {
+              return prev
+            }
+
+            return {
+              ...prev,
+              exercises: [
+                ...prev.exercises,
+                {
+                  name: suggestion.name,
+                  setsCount: suggestion.sets,
+                  sets: [],
+                },
+              ],
+            }
+          })
+        }
+      }
+
+      setProposedWorkout((prev) => {
+        const alreadyAdded = prev.some(
+          (exercise) =>
+            getExerciseSuggestionKey(exercise) === suggestionKey,
+        )
+        return alreadyAdded ? prev : [...prev, suggestion]
+      })
+
+      setExerciseActionState((prev) => ({ ...prev, [suggestionKey]: 'saved' }))
+      hapticSuccess()
+    } catch (error) {
+      console.error('[WorkoutChat] Failed to add exercise suggestion:', error)
+      setExerciseActionState((prev) => ({ ...prev, [suggestionKey]: 'error' }))
+      Alert.alert('Unable to add exercise', 'Please try again.')
     }
   }
 
@@ -3426,6 +3556,14 @@ export function WorkoutChat({
                                           const gifUrl = exerciseMatch?.gifUrl
                                           const exerciseId = exerciseMatch?.id
                                           const canNavigate = !!exerciseId
+                                          const suggestionKey =
+                                            getExerciseSuggestionKey(suggestion)
+                                          const addState =
+                                            exerciseActionState[suggestionKey] ||
+                                            'idle'
+                                          const isSavingAdd =
+                                            addState === 'saving'
+                                          const isAdded = addState === 'saved'
                                           const isLast =
                                             idx ===
                                             exerciseSuggestions.length - 1
@@ -3441,27 +3579,51 @@ export function WorkoutChat({
                                           return (
                                             <View
                                               key={idx}
-                                              style={
-                                                styles.suggestionTimelineRow
-                                              }
+                                              style={[
+                                                styles.exerciseCard,
+                                                isLast
+                                                  ? null
+                                                  : styles.exerciseCardSpacing,
+                                              ]}
                                             >
-                                              <View
-                                                style={
-                                                  styles.suggestionTimelineColumn
+                                              <TouchableOpacity
+                                                style={[
+                                                  styles.exerciseCardThumbnail,
+                                                  gifUrl
+                                                    ? styles.exerciseCardThumbnailImage
+                                                    : null,
+                                                ]}
+                                                onPress={
+                                                  handleNavigateToExercise
+                                                }
+                                                disabled={
+                                                  !canNavigate ||
+                                                  mode === 'sheet'
+                                                }
+                                                activeOpacity={
+                                                  canNavigate && mode !== 'sheet'
+                                                    ? 0.7
+                                                    : 1
                                                 }
                                               >
-                                                <View
-                                                  style={
-                                                    styles.suggestionTimelineLineTop
-                                                  }
-                                                />
+                                                {gifUrl ? (
+                                                  <ExerciseMediaThumbnail
+                                                    gifUrl={gifUrl}
+                                                    style={
+                                                      styles.suggestionThumbnailImage
+                                                    }
+                                                  />
+                                                ) : (
+                                                  <Ionicons
+                                                    name="barbell-outline"
+                                                    size={18}
+                                                    color={colors.textSecondary}
+                                                  />
+                                                )}
+                                              </TouchableOpacity>
+
+                                              <View style={styles.exerciseCardInfo}>
                                                 <TouchableOpacity
-                                                  style={[
-                                                    styles.suggestionTimelineNode,
-                                                    gifUrl
-                                                      ? styles.suggestionTimelineNodeImage
-                                                      : null,
-                                                  ]}
                                                   onPress={
                                                     handleNavigateToExercise
                                                   }
@@ -3470,124 +3632,65 @@ export function WorkoutChat({
                                                     mode === 'sheet'
                                                   }
                                                   activeOpacity={
-                                                    canNavigate &&
-                                                    mode !== 'sheet'
+                                                    canNavigate && mode !== 'sheet'
                                                       ? 0.7
                                                       : 1
                                                   }
                                                 >
-                                                  {gifUrl ? (
-                                                    <ExerciseMediaThumbnail
-                                                      gifUrl={gifUrl}
-                                                      style={
-                                                        styles.suggestionThumbnailImage
-                                                      }
-                                                    />
-                                                  ) : (
-                                                    <Ionicons
-                                                      name="barbell-outline"
-                                                      size={18}
-                                                      color={
-                                                        colors.textSecondary
-                                                      }
-                                                    />
-                                                  )}
-                                                </TouchableOpacity>
-                                                {!isLast && (
-                                                  <View
+                                                  <Text
                                                     style={
-                                                      styles.suggestionTimelineLineBottom
+                                                      styles.exerciseCardName
                                                     }
+                                                  >
+                                                    {suggestion.name}
+                                                  </Text>
+                                                </TouchableOpacity>
+                                                <Text
+                                                  style={
+                                                    styles.exerciseCardDetails
+                                                  }
+                                                >
+                                                  {suggestion.sets} sets ×{' '}
+                                                  {suggestion.reps} reps
+                                                </Text>
+                                              </View>
+                                              <TouchableOpacity
+                                                style={[
+                                                  styles.addExerciseButton,
+                                                  isAdded &&
+                                                    styles.addExerciseButtonSaved,
+                                                ]}
+                                                onPress={() => {
+                                                  if (exerciseToReplace) {
+                                                    handleReplaceExercise(
+                                                      suggestion,
+                                                    )
+                                                    return
+                                                  }
+
+                                                  handleAddExercise(suggestion)
+                                                }}
+                                                disabled={isSavingAdd || isAdded}
+                                              >
+                                                {isSavingAdd ? (
+                                                  <ActivityIndicator
+                                                    size="small"
+                                                    color={colors.surface}
+                                                  />
+                                                ) : (
+                                                  <Ionicons
+                                                    name={
+                                                      isAdded
+                                                        ? 'checkmark'
+                                                        : exerciseToReplace
+                                                        ? 'swap-horizontal'
+                                                        : 'add'
+                                                    }
+                                                    size={20}
+                                                    color={colors.surface}
                                                   />
                                                 )}
-                                              </View>
-
-                                              <View
-                                                style={
-                                                  styles.suggestionContentColumn
-                                                }
-                                              >
-                                                <View
-                                                  style={styles.exerciseCard}
-                                                >
-                                                  <View
-                                                    style={
-                                                      styles.exerciseCardInfo
-                                                    }
-                                                  >
-                                                    <View
-                                                      style={
-                                                        styles.exerciseCardNameRow
-                                                      }
-                                                    >
-                                                      <Text
-                                                        style={
-                                                          styles.exerciseCardName
-                                                        }
-                                                      >
-                                                        {suggestion.name}
-                                                      </Text>
-                                                      {canNavigate &&
-                                                        mode !== 'sheet' && (
-                                                          <TouchableOpacity
-                                                            onPress={
-                                                              handleNavigateToExercise
-                                                            }
-                                                            hitSlop={{
-                                                              top: 8,
-                                                              bottom: 8,
-                                                              left: 8,
-                                                              right: 8,
-                                                            }}
-                                                            style={
-                                                              styles.exerciseCardInfoButton
-                                                            }
-                                                          >
-                                                            <Ionicons
-                                                              name="information-circle-outline"
-                                                              size={16}
-                                                              color={
-                                                                colors.textTertiary
-                                                              }
-                                                            />
-                                                          </TouchableOpacity>
-                                                        )}
-                                                    </View>
-                                                    <Text
-                                                      style={
-                                                        styles.exerciseCardDetails
-                                                      }
-                                                    >
-                                                      {suggestion.sets} sets ×{' '}
-                                                      {suggestion.reps} reps
-                                                    </Text>
-                                                  </View>
-                                                  <TouchableOpacity
-                                                    style={
-                                                      styles.addExerciseButton
-                                                    }
-                                                    onPress={() =>
-                                                      exerciseToReplace
-                                                        ? handleReplaceExercise(
-                                                            suggestion,
-                                                          )
-                                                        : handleAddExercise(
-                                                            suggestion,
-                                                          )
-                                                    }
-                                                  >
-                                                    <Ionicons
-                                                      name={
-                                                        exerciseToReplace
-                                                          ? 'swap-horizontal'
-                                                          : 'add'
-                                                      }
-                                                      size={20}
-                                                      color={colors.surface}
-                                                    />
-                                                  </TouchableOpacity>
-                                                </View>
-                                              </View>
+                                              </TouchableOpacity>
                                             </View>
                                           )
                                         },
@@ -4934,7 +5037,6 @@ function createStyles(
     // Exercise suggestion cards (for sheet mode with onAddExercise)
     exerciseCardsContainer: {
       marginTop: 12,
-      gap: 8,
       alignSelf: 'stretch',
     },
     exerciseCard: {
@@ -4946,16 +5048,27 @@ function createStyles(
       borderWidth: 1,
       borderColor: colors.border,
     },
+    exerciseCardSpacing: {
+      marginBottom: 8,
+    },
+    exerciseCardThumbnail: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginRight: 10,
+    },
+    exerciseCardThumbnailImage: {
+      overflow: 'hidden',
+      borderWidth: 0,
+      padding: 0,
+    },
     exerciseCardInfo: {
       flex: 1,
-    },
-    exerciseCardNameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    exerciseCardInfoButton: {
-      padding: 2,
     },
     exerciseCardName: {
       fontSize: 15,
@@ -4976,51 +5089,12 @@ function createStyles(
       justifyContent: 'center',
       alignItems: 'center',
     },
-    // Timeline styles for exercise suggestions
-    suggestionTimelineRow: {
-      flexDirection: 'row',
-      minHeight: 64,
-    },
-    suggestionTimelineColumn: {
-      width: 48,
-      alignItems: 'center',
-    },
-    suggestionTimelineLineTop: {
-      width: 2,
-      height: 12,
-      backgroundColor: colors.border,
-      opacity: 0.5,
-    },
-    suggestionTimelineLineBottom: {
-      width: 2,
-      flex: 1,
-      backgroundColor: colors.border,
-      opacity: 0.5,
-    },
-    suggestionTimelineNode: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.bg,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      zIndex: 2,
-    },
-    suggestionTimelineNodeImage: {
-      padding: 0,
-      overflow: 'hidden',
-      borderWidth: 0,
+    addExerciseButtonSaved: {
+      backgroundColor: '#34C759',
     },
     suggestionThumbnailImage: {
       width: '100%',
       height: '100%',
-    },
-    suggestionContentColumn: {
-      flex: 1,
-      paddingLeft: 12,
-      paddingBottom: 8,
     },
     foodToggleButton: {
       width: 48,
