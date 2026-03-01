@@ -2567,6 +2567,7 @@ export function WorkoutChat({
                       style={styles.foodToggleButton}
                       onPress={() => {
                         haptic('light')
+                        Keyboard.dismiss()
                         if (Platform.OS === 'ios' && dailyLogSummary) {
                           router.push({
                             pathname: '/daily-macros-detail',
