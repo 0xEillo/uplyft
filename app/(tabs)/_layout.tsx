@@ -167,12 +167,22 @@ function TabLayoutContent() {
     }
 
     const timer = setTimeout(() => {
-      setShowSignUpPrompt(true)
+      if (Platform.OS === 'ios') {
+        router.push('/post-paywall-signup')
+      } else {
+        setShowSignUpPrompt(true)
+      }
       setHasShownSignUpPrompt(true)
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [isAnonymous, hasShownSignUpPrompt, isProMember, isSubscriptionLoading])
+  }, [
+    hasShownSignUpPrompt,
+    isAnonymous,
+    isProMember,
+    isSubscriptionLoading,
+    router,
+  ])
 
   // Enforce Hard Paywall
   // Use the delayed state to allow the user to see the app briefly
@@ -390,10 +400,12 @@ function TabLayoutContent() {
         />
       )}
       <RatingPromptModal />
-      <SignInBottomSheet
-        visible={showSignUpPrompt}
-        onClose={() => setShowSignUpPrompt(false)}
-      />
+      {Platform.OS !== 'ios' && (
+        <SignInBottomSheet
+          visible={showSignUpPrompt}
+          onClose={() => setShowSignUpPrompt(false)}
+        />
+      )}
       <Paywall
         visible={showGlobalPaywall}
         onClose={() => {}} // No-op, cannot close

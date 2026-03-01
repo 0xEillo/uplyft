@@ -352,6 +352,10 @@ function RootLayoutNav() {
                 : transparentModalFallback
             }
           />
+          <Stack.Screen
+            name="post-paywall-signup"
+            options={getNativeFormSheetOptions([0.48, 0.75])}
+          />
         </Stack>
       </NavigationThemeProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
