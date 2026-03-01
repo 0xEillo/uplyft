@@ -1,6 +1,7 @@
 import { Paywall } from '@/components/paywall'
 import { PointsGainOverlay } from '@/components/points-gain-overlay'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
+import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
@@ -86,8 +87,10 @@ function TabLayoutContent() {
     stop: stopRestTimer,
   } = useRestTimerContext()
   const { stopWorkoutActivity } = useLiveActivity()
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
+  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false)
+  const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
   const [workoutElapsedSeconds, setWorkoutElapsedSeconds] = useState(0)
@@ -150,6 +153,26 @@ function TabLayoutContent() {
       setDelayedShowPaywall(false)
     }
   }, [isSubscriptionLoading, isProMember])
+
+  // Prompt paid guest users to create an account after the paywall flow.
+  // Dismissable: users can close and continue using the app as guest.
+  useEffect(() => {
+    if (
+      isSubscriptionLoading ||
+      !isProMember ||
+      !isAnonymous ||
+      hasShownSignUpPrompt
+    ) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setShowSignUpPrompt(true)
+      setHasShownSignUpPrompt(true)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [isAnonymous, hasShownSignUpPrompt, isProMember, isSubscriptionLoading])
 
   // Enforce Hard Paywall
   // Use the delayed state to allow the user to see the app briefly
@@ -367,6 +390,10 @@ function TabLayoutContent() {
         />
       )}
       <RatingPromptModal />
+      <SignInBottomSheet
+        visible={showSignUpPrompt}
+        onClose={() => setShowSignUpPrompt(false)}
+      />
       <Paywall
         visible={showGlobalPaywall}
         onClose={() => {}} // No-op, cannot close

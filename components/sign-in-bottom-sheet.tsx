@@ -1,24 +1,28 @@
 import { HapticButton } from '@/components/haptic-button'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SignInBottomSheetProps {
   visible: boolean
@@ -30,22 +34,28 @@ export function SignInBottomSheet({
   onClose,
 }: SignInBottomSheetProps) {
   const colors = useThemedColors()
-  const styles = createStyles(colors)
+  const { isDark } = useTheme()
+  const insets = useSafeAreaInsets()
+  const styles = createStyles(colors, isDark)
   const { signInWithGoogle, signInWithApple } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
 
-  const translateY = useSharedValue(400)
+  const translateY = useSharedValue(420)
   const backdropOpacity = useSharedValue(0)
 
   useEffect(() => {
     if (visible) {
       translateY.value = withTiming(0, {
-        duration: 300,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
       })
-      backdropOpacity.value = withTiming(1, { duration: 200 })
+      backdropOpacity.value = withTiming(1, { duration: 260 })
     } else {
-      translateY.value = withTiming(400, { duration: 200 })
+      translateY.value = withTiming(420, {
+        duration: 240,
+        easing: Easing.in(Easing.quad),
+      })
       backdropOpacity.value = withTiming(0, { duration: 200 })
     }
   }, [visible, translateY, backdropOpacity])
@@ -58,7 +68,7 @@ export function SignInBottomSheet({
     opacity: backdropOpacity.value,
   }))
 
-  const handleAppleSignIn = async () => {
+  const handleAppleSignUp = async () => {
     setIsAppleLoading(true)
     try {
       await signInWithApple(true)
@@ -66,15 +76,15 @@ export function SignInBottomSheet({
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign In Failed',
-        error instanceof Error ? error.message : 'Failed to sign in with Apple',
+        'Sign Up Failed',
+        error instanceof Error ? error.message : 'Failed to sign up with Apple',
       )
     } finally {
       setIsAppleLoading(false)
     }
   }
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true)
     try {
       await signInWithGoogle(true)
@@ -82,93 +92,110 @@ export function SignInBottomSheet({
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign In Failed',
-        error instanceof Error
-          ? error.message
-          : 'Failed to sign in with Google',
+        'Sign Up Failed',
+        error instanceof Error ? error.message : 'Failed to sign up with Google',
       )
     } finally {
       setIsGoogleLoading(false)
     }
   }
 
-  const handleEmailSignIn = () => {
+  const handleEmailSignUp = () => {
     onClose()
-    router.push('/(auth)/signin-email')
+    router.push('/(auth)/signup-email')
   }
 
   return (
-    <Modal transparent visible={visible} animationType="none">
+    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
       <View style={styles.container}>
         <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
           <Pressable style={styles.backdropPress} onPress={onClose} />
         </Animated.View>
 
-        <Animated.View style={[styles.sheet, animatedSheetStyle]}>
-          {/* Handle Bar */}
-          <View style={styles.handleBar} />
+        <Animated.View
+          style={[
+            styles.sheetWrapper,
+            { paddingBottom: Math.max(insets.bottom + 12, 24) },
+            animatedSheetStyle,
+          ]}
+        >
+          <LiquidGlassSurface
+            style={styles.sheet}
+            glassEffectStyle="regular"
+            fallbackStyle={styles.sheetFallback}
+          >
+            <View style={styles.handleBar} />
 
-          {/* Title */}
-          <Text style={styles.title}>Sign In</Text>
+            <View style={styles.headerRow}>
+              <View style={styles.headerTextBlock}>
+                <Text style={styles.title}>Create your account</Text>
+                <Text style={styles.subtitle}>
+                  Sign up to sync your workouts and keep your progress safe.
+                </Text>
+              </View>
 
-          {/* Buttons */}
-          <View style={styles.buttonsContainer}>
-            {Platform.OS === 'ios' && (
+              <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8}>
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            <View style={styles.buttonsContainer}>
+              {Platform.OS === 'ios' && (
+                <HapticButton
+                  style={[
+                    styles.appleButton,
+                    isAppleLoading && styles.buttonDisabled,
+                  ]}
+                  onPress={handleAppleSignUp}
+                  disabled={isAppleLoading}
+                  hapticEnabled={!isAppleLoading}
+                >
+                  {isAppleLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
+                      <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                    </>
+                  )}
+                </HapticButton>
+              )}
+
               <HapticButton
                 style={[
-                  styles.appleButton,
-                  isAppleLoading && styles.buttonDisabled,
+                  styles.glassButton,
+                  isGoogleLoading && styles.buttonDisabled,
                 ]}
-                onPress={handleAppleSignIn}
-                disabled={isAppleLoading}
-                hapticEnabled={!isAppleLoading}
+                onPress={handleGoogleSignUp}
+                disabled={isGoogleLoading}
+                hapticEnabled={!isGoogleLoading}
               >
-                {isAppleLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={colors.textPrimary} />
                 ) : (
                   <>
-                    <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                    <Text style={styles.appleButtonText}>
-                      Sign in with Apple
-                    </Text>
+                    <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
+                    <Text style={styles.glassButtonText}>Continue with Google</Text>
                   </>
                 )}
               </HapticButton>
-            )}
 
-            <HapticButton
-              style={[
-                styles.googleButton,
-                isGoogleLoading && styles.buttonDisabled,
-              ]}
-              onPress={handleGoogleSignIn}
-              disabled={isGoogleLoading}
-              hapticEnabled={!isGoogleLoading}
-            >
-              {isGoogleLoading ? (
-                <ActivityIndicator color={colors.textPrimary} />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={20} color={colors.textPrimary} />
-                  <Text style={styles.googleButtonText}>
-                    Sign in with Google
-                  </Text>
-                </>
-              )}
-            </HapticButton>
-
-            <HapticButton style={styles.emailButton} onPress={handleEmailSignIn}>
-              <Ionicons name="mail-outline" size={20} color={colors.onPrimary} />
-              <Text style={styles.emailButtonText}>Sign in with Email</Text>
-            </HapticButton>
-          </View>
+              <HapticButton style={styles.primaryButton} onPress={handleEmailSignUp}>
+                <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
+                <Text style={styles.primaryButtonText}>Continue with Email</Text>
+              </HapticButton>
+            </View>
+          </LiquidGlassSurface>
         </Animated.View>
       </View>
     </Modal>
   )
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -176,79 +203,132 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(8, 10, 20, 0.28)',
     },
     backdropPress: {
       flex: 1,
     },
+    sheetWrapper: {
+      paddingHorizontal: 10,
+    },
     sheet: {
-      backgroundColor: colors.bg,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 24,
-      paddingTop: 12,
-      paddingBottom: 48,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
+      paddingHorizontal: 18,
+      paddingTop: 10,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.56)',
+      shadowColor: '#000000',
+      shadowOpacity: isDark ? 0.28 : 0.14,
+      shadowRadius: 22,
+      shadowOffset: { width: 0, height: -8 },
+    },
+    sheetFallback: {
+      backgroundColor: isDark ? 'rgba(24, 24, 28, 0.84)' : 'rgba(248, 249, 255, 0.85)',
     },
     handleBar: {
-      width: 40,
+      width: 42,
       height: 4,
-      backgroundColor: colors.border,
-      borderRadius: 2,
+      backgroundColor: isDark
+        ? 'rgba(255, 255, 255, 0.34)'
+        : 'rgba(39, 44, 63, 0.24)',
+      borderRadius: 999,
       alignSelf: 'center',
-      marginBottom: 24,
+      marginBottom: 14,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 20,
+      alignItems: 'flex-start',
+    },
+    headerTextBlock: {
+      flex: 1,
+      gap: 6,
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(255, 255, 255, 0.6)',
+      borderWidth: 1,
+      borderColor: isDark
+        ? 'rgba(255, 255, 255, 0.14)'
+        : 'rgba(255, 255, 255, 0.75)',
     },
     title: {
       fontSize: 24,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 24,
-      textAlign: 'center',
+      letterSpacing: -0.4,
+    },
+    subtitle: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
     },
     buttonsContainer: {
-      gap: 12,
+      gap: 10,
+      paddingBottom: 4,
     },
     appleButton: {
-      height: 56,
+      height: 54,
       backgroundColor: '#000000',
-      borderRadius: 28,
+      borderRadius: 20,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.08)',
     },
     appleButtonText: {
       color: '#FFFFFF',
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '600',
     },
-    googleButton: {
-      height: 56,
-      backgroundColor: colors.surfaceInput,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 28,
+    glassButton: {
+      height: 54,
+      borderRadius: 20,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: isDark
+        ? 'rgba(255,255,255,0.14)'
+        : 'rgba(255,255,255,0.62)',
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(255,255,255,0.46)',
     },
-    googleButtonText: {
+    glassButtonText: {
       color: colors.textPrimary,
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '600',
     },
-    emailButton: {
+    primaryButton: {
       height: 56,
       backgroundColor: colors.brandPrimary,
-      borderRadius: 28,
+      borderRadius: 20,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
+      gap: 10,
+      shadowColor: colors.brandPrimary,
+      shadowOpacity: 0.3,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
     },
-    emailButtonText: {
+    primaryButtonText: {
       color: colors.onPrimary,
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '700',
     },
     buttonDisabled: {
