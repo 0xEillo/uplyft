@@ -191,17 +191,28 @@ export function CustomNumericKeypad({
             ))}
           </View>
 
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={() => {
-              if (!buttonsReady) return
-              onNext()
-            }}
-            activeOpacity={0.85}
-            disabled={!buttonsReady}
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
+          <View style={styles.actionColumn}>
+            <TouchableOpacity
+              style={styles.nextButton}
+              onPress={() => {
+                if (!buttonsReady) return
+                onNext()
+              }}
+              activeOpacity={0.85}
+              disabled={!buttonsReady}
+            >
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleDone}
+              activeOpacity={0.85}
+              disabled={!buttonsReady}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -265,6 +276,11 @@ const createStyles = (
       flex: 1,
       gap: 8,
     },
+    actionColumn: {
+      width: 64,
+      gap: 8,
+      alignItems: 'stretch',
+    },
     numberRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -288,7 +304,6 @@ const createStyles = (
       fontWeight: '500',
     },
     nextButton: {
-      width: 64,
       minHeight: 44,
       paddingHorizontal: 12,
       borderRadius: 22,
@@ -305,5 +320,24 @@ const createStyles = (
       fontSize: 15,
       fontWeight: '600',
       color: '#FFFFFF',
+    },
+    closeButton: {
+      minHeight: 44,
+      paddingHorizontal: 10,
+      borderRadius: 22,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark
+        ? 'rgba(255, 255, 255, 0.32)'
+        : 'rgba(0, 0, 0, 0.12)',
+      backgroundColor: isDark
+        ? 'rgba(255, 255, 255, 0.12)'
+        : 'rgba(255, 255, 255, 0.78)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    closeButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
     },
   })
