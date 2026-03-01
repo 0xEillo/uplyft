@@ -70,16 +70,6 @@ export const APP_POSTS: AppPost[] = [
     ctaRoute: '/explore',
   },
   {
-    id: 'music-preview',
-    title: 'Add a Song Preview to Your Workout',
-    body: 'Attach a track preview so friends can feel the vibe you trained to.',
-    createdAt: '2026-02-02T13:10:00.000Z',
-    preview: 'music_preview',
-    badge: 'NEW',
-    ctaText: 'Add a song',
-    ctaRoute: '/(tabs)/create-post',
-  },
-  {
     id: 'quick-toolbar',
     title: 'Quick Add Toolbar While You Type',
     body:

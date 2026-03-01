@@ -243,6 +243,14 @@ export default function FeedScreen() {
     [appPostState, persistAppPostState],
   )
 
+  const handleAppPostDismiss = useCallback(
+    (post: AppPost) => {
+      LayoutAnimation.configureNext(CardDeleteAnimation)
+      handleAppPostCta(post.id)
+    },
+    [handleAppPostCta],
+  )
+
   const loadUserWorkoutCount = useCallback(async () => {
     if (!user) return
     try {
@@ -718,6 +726,7 @@ export default function FeedScreen() {
             post={item.post}
             isFirst={index === 0}
             onCtaPress={(post) => handleAppPostCta(post.id)}
+            onDismiss={handleAppPostDismiss}
           />
         )
       }
@@ -757,7 +766,7 @@ export default function FeedScreen() {
         />
       )
     },
-    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending, handleAppPostCta],
+    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending, handleAppPostCta, handleAppPostDismiss],
   )
 
   const renderFooter = useCallback(() => {

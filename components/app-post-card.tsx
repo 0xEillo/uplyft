@@ -19,12 +19,14 @@ interface AppPostCardProps {
   post: AppPost
   isFirst?: boolean
   onCtaPress?: (post: AppPost) => void
+  onDismiss?: (post: AppPost) => void
 }
 
 export function AppPostCard({
   post,
   isFirst = false,
   onCtaPress,
+  onDismiss,
 }: AppPostCardProps) {
   const colors = useThemedColors()
   const router = useRouter()
@@ -67,6 +69,19 @@ export function AppPostCard({
             </View>
           </View>
         </View>
+        {onDismiss ? (
+          <TouchableOpacity
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            onPress={() => onDismiss(post)}
+            style={styles.dismissButton}
+          >
+            <Ionicons
+              name="close"
+              size={22}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <Text style={styles.title} numberOfLines={2}>
@@ -145,6 +160,9 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       fontWeight: '700',
       color: colors.textPrimary,
       maxWidth: 160,
+    },
+    dismissButton: {
+      padding: 4,
     },
 
     badge: {
