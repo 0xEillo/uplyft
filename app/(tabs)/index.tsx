@@ -1,16 +1,14 @@
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
+import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
-    Animated,
-    FlatList,
     LayoutAnimation,
     Platform,
-    RefreshControl,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -159,8 +157,7 @@ export default function FeedScreen() {
   const { updateWorkoutData, showPointsGainOverlay, showExerciseRankOverlays } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
-  const flatListRef = useRef<FlatList>(null)
-  const scrollY = useRef(new Animated.Value(0)).current
+  const flatListRef = useRef<FlashListRef<FeedItem>>(null)
 
   // --- Navigation Header Animations ---
 
@@ -892,9 +889,11 @@ export default function FeedScreen() {
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
-        <Animated.FlatList
-          ref={flatListRef as any}
+        <FlashList<FeedItem>
+          ref={flatListRef}
           data={feedItems}
+          estimatedItemSize={320}
+          getItemType={(item: FeedItem) => item.type}
           ItemSeparatorComponent={() => (
             <View
               style={{
@@ -918,11 +917,6 @@ export default function FeedScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true },
-          )}
-          scrollEventThrottle={16}
           ListHeaderComponent={
             <>
               {/* Tutorial checklist (existing) */}
@@ -962,13 +956,9 @@ export default function FeedScreen() {
             ) : null
           }
           ListFooterComponent={renderFooter}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              progressViewOffset={headerTotalHeight}
-            />
-          }
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          progressViewOffset={headerTotalHeight}
         />
       )}
     </View>

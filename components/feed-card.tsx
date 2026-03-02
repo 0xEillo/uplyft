@@ -1,20 +1,19 @@
 import { Ionicons } from '@expo/vector-icons'
 import {
   memo,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type ReactElement,
 } from 'react'
+import { Image } from 'expo-image'
 
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -43,10 +42,6 @@ import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { LevelBadge } from './LevelBadge'
 import { PrTooltip } from './pr-tooltip'
 import { WorkoutShareScreen } from './workout-share-screen'
-
-// Constants
-const IMAGE_FADE_DURATION = 200 // Duration for thumbnail image fade-in
-const FULLSCREEN_FADE_DURATION = 300 // Duration for fullscreen image fade-in
 
 // Helper functions for compact formatting
 function formatDurationCompact(seconds: number): string {
@@ -311,8 +306,6 @@ export const FeedCard = memo(function FeedCard({
   const [imageModalVisible, setImageModalVisible] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
-  const imageOpacity = useRef(new Animated.Value(0)).current
-  const fullscreenOpacity = useRef(new Animated.Value(0)).current
 
   // Skeleton shimmer animation for pending state
   const shimmerAnim = useRef(new Animated.Value(0)).current
@@ -444,40 +437,10 @@ export const FeedCard = memo(function FeedCard({
     outputRange: [0.6, 1],
   })
 
-  const finishImageLoad = useCallback(() => {
-    setImageLoading(false)
-    Animated.timing(imageOpacity, {
-      toValue: 1,
-      duration: IMAGE_FADE_DURATION,
-      useNativeDriver: true,
-    }).start()
-  }, [imageOpacity])
-
   useEffect(() => {
-    if (!coverImageUrl) {
-      setImageLoading(false)
-      imageOpacity.setValue(1)
-      return
-    }
-
-    let isActive = true
-    imageOpacity.setValue(0)
-    setImageLoading(true)
-
-    Image.prefetch(coverImageUrl)
-      .then(() => {
-        if (!isActive) return
-        finishImageLoad()
-      })
-      .catch(() => {
-        if (!isActive) return
-        setImageLoading(false)
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [coverImageUrl, finishImageLoad, imageOpacity])
+    setImageLoading(Boolean(coverImageUrl))
+    setFullscreenImageLoading(true)
+  }, [coverImageUrl])
 
   const handleCloseShareScreen = () => {
     setShowShareScreen(false)
@@ -674,16 +637,16 @@ export const FeedCard = memo(function FeedCard({
         onPress={() => setImageModalVisible(true)}
         activeOpacity={0.9}
       >
-        <Animated.Image
+        <Image
           source={{ uri: coverImageUrl }}
-          style={[styles.workoutImage, { opacity: imageOpacity }]}
-          resizeMode="cover"
-          onLoad={finishImageLoad}
+          style={styles.workoutImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
+          onLoadStart={() => setImageLoading(true)}
+          onLoad={() => setImageLoading(false)}
           onError={(error) => {
-            console.error(
-              'Failed to load workout image:',
-              error.nativeEvent.error,
-            )
+            console.error('Failed to load workout image:', error)
             setImageLoading(false)
           }}
         />
@@ -730,7 +693,13 @@ export const FeedCard = memo(function FeedCard({
           activeOpacity={onUserPress ? 0.7 : 1}
         >
           {userAvatar ? (
-            <Image source={{ uri: userAvatar }} style={styles.avatar} />
+            <Image
+              source={{ uri: userAvatar }}
+              style={styles.avatar}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={100}
+            />
           ) : (
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{userName[0]}</Text>
@@ -1018,6 +987,9 @@ export const FeedCard = memo(function FeedCard({
                       <Image
                         source={{ uri: liker.avatar_url }}
                         style={styles.likedByAvatar}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        transition={100}
                       />
                     ) : (
                       <View
@@ -1057,6 +1029,9 @@ export const FeedCard = memo(function FeedCard({
                 <Image
                   source={{ uri: latestComment.userAvatar }}
                   style={styles.commentAvatar}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={100}
                 />
               ) : (
                 <View style={styles.commentAvatarPlaceholder}>
@@ -1101,24 +1076,16 @@ export const FeedCard = memo(function FeedCard({
             onPress={() => setImageModalVisible(false)}
           >
             <View style={styles.imageModalContent}>
-              <Animated.Image
+              <Image
                 source={{ uri: coverImageUrl }}
-                style={[styles.fullscreenImage, { opacity: fullscreenOpacity }]}
-                resizeMode="contain"
+                style={styles.fullscreenImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={220}
                 onLoadStart={() => setFullscreenImageLoading(true)}
-                onLoad={() => {
-                  setFullscreenImageLoading(false)
-                  Animated.timing(fullscreenOpacity, {
-                    toValue: 1,
-                    duration: FULLSCREEN_FADE_DURATION,
-                    useNativeDriver: true,
-                  }).start()
-                }}
+                onLoad={() => setFullscreenImageLoading(false)}
                 onError={(error) => {
-                  console.error(
-                    'Failed to load fullscreen image:',
-                    error.nativeEvent.error,
-                  )
+                  console.error('Failed to load fullscreen image:', error)
                   setFullscreenImageLoading(false)
                 }}
               />

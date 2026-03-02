@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useRef, useCallback } from 'react'
-import { FlatList } from 'react-native'
+
+type ScrollToOffsetTarget = {
+  scrollToOffset: (params: { offset: number; animated?: boolean }) => void
+}
 
 interface ScrollToTopContextType {
-  registerScrollRef: (routeName: string, ref: React.RefObject<FlatList<any> | null>) => void
+  registerScrollRef: (
+    routeName: string,
+    ref: React.RefObject<ScrollToOffsetTarget | null>,
+  ) => void
   scrollToTop: (routeName: string) => void
 }
 
@@ -15,15 +21,18 @@ export function ScrollToTopProvider({
 }: {
   children: React.ReactNode
 }) {
-  const scrollRefs = useRef<Map<string, React.RefObject<FlatList<any> | null>>>(
-    new Map()
-  )
+  const scrollRefs = useRef<
+    Map<string, React.RefObject<ScrollToOffsetTarget | null>>
+  >(new Map())
 
   const registerScrollRef = useCallback(
-    (routeName: string, ref: React.RefObject<FlatList<any> | null>) => {
+    (
+      routeName: string,
+      ref: React.RefObject<ScrollToOffsetTarget | null>,
+    ) => {
       scrollRefs.current.set(routeName, ref)
     },
-    []
+    [],
   )
 
   const scrollToTop = useCallback(
@@ -50,4 +59,3 @@ export function useScrollToTop() {
   }
   return context
 }
-

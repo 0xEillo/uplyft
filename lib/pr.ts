@@ -52,22 +52,36 @@ export class PrService {
     const perExerciseResults: PrResult['perExercise'] = []
 
     for (const exercise of ctx.exercises) {
-      const { prs, baseline1RM } = await this.computePrsForExercise(
-        ctx.userId,
-        exercise.exerciseId,
-        exercise.exerciseName,
-        ctx.createdAt,
-        ctx.date,
-        exercise.sets,
-      )
-      // Always include the exercise in the result to provide baseline stats,
-      // even if no PRs were achieved.
-      perExerciseResults.push({
-        exerciseId: exercise.exerciseId,
-        exerciseName: exercise.exerciseName,
-        prs,
-        baseline1RM,
-      })
+      try {
+        const { prs, baseline1RM } = await this.computePrsForExercise(
+          ctx.userId,
+          exercise.exerciseId,
+          exercise.exerciseName,
+          ctx.createdAt,
+          ctx.date,
+          exercise.sets,
+        )
+        // Always include the exercise in the result to provide baseline stats,
+        // even if no PRs were achieved.
+        perExerciseResults.push({
+          exerciseId: exercise.exerciseId,
+          exerciseName: exercise.exerciseName,
+          prs,
+          baseline1RM,
+        })
+      } catch (error) {
+        const normalizedError = this.normalizeSupabaseError(error)
+        console.warn('PR compute skipped exercise due to upstream error:', {
+          exerciseId: exercise.exerciseId,
+          message: normalizedError.message,
+        })
+        perExerciseResults.push({
+          exerciseId: exercise.exerciseId,
+          exerciseName: exercise.exerciseName,
+          prs: [],
+          baseline1RM: 0,
+        })
+      }
     }
 
     const totalPrs = perExerciseResults.reduce(
@@ -355,5 +369,25 @@ export class PrService {
 
   private static setIndicesFromSet(set: PrContextSet): number[] {
     return typeof set.originalIndex === 'number' ? [set.originalIndex] : []
+  }
+
+  private static normalizeSupabaseError(error: unknown): { message: string } {
+    const fallbackMessage = 'Unknown PR service error'
+    if (!error || typeof error !== 'object') return { message: fallbackMessage }
+
+    const message = 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : fallbackMessage
+
+    // Supabase can occasionally return a full Cloudflare HTML page in message.
+    // Avoid logging full HTML blobs; keep diagnostics compact and actionable.
+    if (
+      message.includes('<!DOCTYPE html>') &&
+      message.toLowerCase().includes('bad gateway')
+    ) {
+      return { message: 'Upstream service returned 502 Bad Gateway' }
+    }
+
+    return { message }
   }
 }

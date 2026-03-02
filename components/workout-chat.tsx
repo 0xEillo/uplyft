@@ -50,7 +50,9 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
+import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as FileSystem from 'expo-file-system/legacy'
+import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -59,9 +61,9 @@ import {
   Alert,
   Clipboard,
   FlatList,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Linking,
   Modal,
   Platform,
@@ -648,7 +650,7 @@ export function WorkoutChat({
   onClose,
   onChatStarted,
 }: WorkoutChatProps = {}) {
-  const scrollViewRef = useRef<ScrollView>(null)
+  const messagesListRef = useRef<FlashListRef<Message>>(null)
   const inputRef = useRef<TextInput>(null)
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
@@ -1085,7 +1087,7 @@ export function WorkoutChat({
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true })
+    messagesListRef.current?.scrollToEnd({ animated: true })
   }
 
   useEffect(() => {
@@ -1106,7 +1108,7 @@ export function WorkoutChat({
     if (generatedPlanContent) {
       // Small delay to ensure buttons are rendered before scrolling
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
+        scrollToBottom()
       }, 100)
     }
   }, [generatedPlanContent])
@@ -2757,56 +2759,15 @@ export function WorkoutChat({
                 </LiquidGlassSurface>
               </>
             )}
-
-            <ScrollView
-              ref={scrollViewRef}
+            <FlashList<Message>
+              ref={messagesListRef}
               style={styles.messagesContainer}
-              contentContainerStyle={[
-                styles.messagesContent,
-                {
-                  paddingTop:
-                    mode === 'sheet'
-                      ? 16
-                      : messages.length === 0 && !isLoading
-                      ? 16
-                      : 80,
-                },
-              ]}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode={
-                Platform.OS === 'ios' ? 'interactive' : 'on-drag'
-              }
-              showsVerticalScrollIndicator={false}
-              automaticallyAdjustKeyboardInsets={false}
-              contentInsetAdjustmentBehavior="never"
-              onLayout={(e) => logLayout('scrollView', e.nativeEvent.layout)}
-              onContentSizeChange={(w, h) => {
-                ;(messages.length > 0 || isLoading) && scrollToBottom()
-              }}
-            >
-              {messages.length === 0 && !isLoading && !input.trim() ? (
-                <View style={styles.emptyState}>
-                  {mode === 'fullscreen' && (
-                    <View style={styles.welcomeSection}>
-                      <View style={styles.coachWelcomeContainer}>
-                        <Image
-                          source={getCoach(coachId).image}
-                          style={styles.coachWelcomeImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <Text style={styles.welcomeDescription}>
-                        Create personalized workouts, log meals, and track
-                        macros
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ) : (
-                <View style={styles.chatMessages}>
-                  {messages.map((message) => (
+              data={messages}
+              keyExtractor={(item: Message) => item.id}
+              getItemType={(item: Message) => item.role}
+              estimatedItemSize={260}
+              renderItem={({ item: message }: { item: Message }) => (
                     <View
-                      key={message.id}
                       style={[
                         message.role === 'user'
                           ? styles.userMessageContainer
@@ -2819,7 +2780,7 @@ export function WorkoutChat({
                             {/* Display images for user messages */}
                             {message.images && message.images.length > 0 && (
                               <View style={styles.messageImagesGrid}>
-                                {message.images.map((imageUri, index) => (
+                                {message.images.map((imageUri: string, index: number) => (
                                   <TouchableOpacity
                                     key={index}
                                     style={styles.messageImageThumbnail}
@@ -2830,7 +2791,7 @@ export function WorkoutChat({
                                     <Image
                                       source={{ uri: imageUri }}
                                       style={styles.messageImage}
-                                      resizeMode="cover"
+                                      contentFit="cover"
                                     />
                                   </TouchableOpacity>
                                 ))}
@@ -3708,15 +3669,56 @@ export function WorkoutChat({
                         </>
                       )}
                     </View>
-                  ))}
-
+              )}
+              contentContainerStyle={[
+                styles.messagesContent,
+                {
+                  paddingTop:
+                    mode === 'sheet'
+                      ? 16
+                      : messages.length === 0 && !isLoading
+                      ? 16
+                      : 80,
+                },
+              ]}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={
+                Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+              }
+              showsVerticalScrollIndicator={false}
+              onLayout={(e: LayoutChangeEvent) =>
+                logLayout('scrollView', e.nativeEvent.layout)
+              }
+              onContentSizeChange={() => {
+                ;(messages.length > 0 || isLoading) && scrollToBottom()
+              }}
+              ListEmptyComponent={
+                messages.length === 0 && !isLoading && !input.trim() ? (
+                  <View style={styles.emptyState}>
+                    {mode === 'fullscreen' && (
+                      <View style={styles.welcomeSection}>
+                        <View style={styles.coachWelcomeContainer}>
+                          <Image
+                            source={getCoach(coachId).image}
+                            style={styles.coachWelcomeImage}
+                            contentFit="cover"
+                          />
+                        </View>
+                        <Text style={styles.welcomeDescription}>
+                          Create personalized workouts, log meals, and track
+                          macros
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={
+                <>
                   {isLoading && (
                     <View style={styles.loadingMessageContainer}>
                       <View style={styles.messageAvatarContainer}>
-                        <Image
-                          source={coach.image}
-                          style={styles.messageAvatar}
-                        />
+                        <Image source={coach.image} style={styles.messageAvatar} />
                       </View>
                       <View style={styles.typingIndicator}>
                         <TypingDot delay={0} colors={colors} />
@@ -3725,12 +3727,11 @@ export function WorkoutChat({
                       </View>
                     </View>
                   )}
-                  {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-                  {/* Start Workout & Save Buttons - Only show at bottom if it's NOT an inline workout card message */}
-                  {/* REMOVED: Redundant footer buttons. Actions are now handled inline by WorkoutCard */}
-                </View>
-              )}
-            </ScrollView>
+                  <View style={styles.chatMessages} />
+                </>
+              }
+            />
+
 
             {/* Suggestions Row */}
             {!generatedPlanContent &&
@@ -3890,7 +3891,7 @@ export function WorkoutChat({
                       <Image
                         source={{ uri: imageUri }}
                         style={styles.imageThumbnail}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
                       <TouchableOpacity
                         style={styles.removeImageButton}
@@ -4128,7 +4129,7 @@ export function WorkoutChat({
                           <Image
                             source={{ uri: item }}
                             style={styles.imageViewerImage}
-                            resizeMode="contain"
+                            contentFit="contain"
                           />
                         </View>
                       )}

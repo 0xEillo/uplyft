@@ -22,13 +22,13 @@ import {
 } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
-  FlatList,
   Image,
   StyleSheet,
   Text,
@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const { registerScrollRef } = useScrollToTop()
-  const flatListRef = useRef<FlatList>(null)
+  const flatListRef = useRef<FlashListRef<WorkoutSessionWithDetails>>(null)
   const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
     user?.id,
   )
@@ -461,10 +461,12 @@ export default function ProfileScreen() {
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
-        <FlatList
+        <FlashList<WorkoutSessionWithDetails>
           ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
+          estimatedItemSize={viewMode === 'grid' ? 180 : 360}
+          getItemType={() => viewMode}
           ItemSeparatorComponent={() =>
             viewMode === 'feed' ? (
               <View
@@ -475,7 +477,7 @@ export default function ProfileScreen() {
               />
             ) : null
           }
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: WorkoutSessionWithDetails) => item.id}
           ListHeaderComponent={
             <View style={styles.profileHeader}>
               {/* Cover Photo Section */}
@@ -682,8 +684,6 @@ export default function ProfileScreen() {
           }
           key={viewMode}
           numColumns={viewMode === 'grid' ? 3 : 1}
-          contentInsetAdjustmentBehavior="automatic"
-          automaticallyAdjustContentInsets
           contentContainerStyle={[
             styles.feedContent,
             viewMode === 'grid' && styles.gridContent,

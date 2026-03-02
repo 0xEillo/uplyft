@@ -12,6 +12,7 @@ import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import type { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
+import { FlashList } from '@shopify/flash-list'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
@@ -21,8 +22,6 @@ import {
   Alert,
   Dimensions,
   FlatList,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -318,73 +317,65 @@ export default function ExploreScreen() {
             leftIcon="arrow-back"
           />
         </BlurredHeader>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
+          </View>
+        ) : (
+          <FlashList<ExploreRoutine>
+            data={routines}
+            renderItem={renderRoutineItem}
+            keyExtractor={(item: ExploreRoutine) => item.id}
+            numColumns={2}
+            estimatedItemSize={248}
+            columnWrapperStyle={styles.routineRow}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingTop: insets.top + HEADER_ROW_HEIGHT },
+            ]}
+            showsVerticalScrollIndicator={false}
+            scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true)
+              loadData()
+            }}
+            progressViewOffset={insets.top + HEADER_ROW_HEIGHT}
+            ListHeaderComponent={
+              <>
+                {programs.length > 0 && (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>Programs</Text>
+                    </View>
 
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + HEADER_ROW_HEIGHT }]}
-          showsVerticalScrollIndicator={false}
-          scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true)
-                loadData()
-              }}
-              tintColor={colors.brandPrimary}
-              progressViewOffset={insets.top + HEADER_ROW_HEIGHT}
-            />
-          }
-        >
-
-
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.brandPrimary} />
-            </View>
-          ) : (
-            <>
-              {/* Programs Section */}
-              {programs.length > 0 && (
-                <>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Programs</Text>
-                  </View>
-
-                  <FlatList
-                    horizontal
-                    data={programs}
-                    renderItem={renderProgramCard}
-                    keyExtractor={(item) => item.id}
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.programsList}
-                    snapToInterval={width * 0.8 + 16}
-                    decelerationRate="fast"
-                  />
-                </>
-              )}
-
-              {/* Routines Grid */}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Routines</Text>
-              </View>
-
-              <View style={styles.routinesGrid}>
-                {routines.map((routine, index) => (
-                  <View key={routine.id} style={styles.routineWrapper}>
-                    {renderRoutineItem({ item: routine, index })}
-                  </View>
-                ))}
-                {routines.length === 0 && (
-                  <View style={styles.emptyState}>
-                    <Text style={{ color: colors.textSecondary }}>
-                      No routines found
-                    </Text>
-                  </View>
+                    <FlatList
+                      horizontal
+                      data={programs}
+                      renderItem={renderProgramCard}
+                      keyExtractor={(item) => item.id}
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.programsList}
+                      snapToInterval={width * 0.8 + 16}
+                      decelerationRate="fast"
+                    />
+                  </>
                 )}
+
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Routines</Text>
+                </View>
+              </>
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={{ color: colors.textSecondary }}>
+                  No routines found
+                </Text>
               </View>
-            </>
-          )}
-        </ScrollView>
+            }
+          />
+        )}
       </View>
     </SlideInView>
   )
@@ -488,16 +479,13 @@ const createStyles = (
       fontSize: 12,
       fontWeight: '600',
     },
-    routinesGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+    routineRow: {
+      justifyContent: 'space-between',
       paddingHorizontal: 20,
-      gap: 16,
-      paddingTop: 12,
+      marginBottom: 16,
     },
     routineWrapper: {
       width: (width - 56) / 2,
-      marginBottom: 8,
     },
     routineCard: {
       height: 240,
