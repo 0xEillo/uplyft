@@ -1,3 +1,4 @@
+import { ExerciseRankOverlay } from '@/components/exercise-rank-overlay'
 import { Paywall } from '@/components/paywall'
 import { PointsGainOverlay } from '@/components/points-gain-overlay'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
@@ -78,6 +79,9 @@ function TabLayoutContent() {
     isPointsOverlayVisible,
     pointsData,
     hidePointsOverlay,
+    isExerciseRankOverlayVisible,
+    currentExerciseRankUpgrade,
+    dismissCurrentExerciseRankOverlay,
   } = useSuccessOverlay()
   const { weightUnit } = useWeightUnits()
   const { shareWorkout, shareToInstagramStories } = useWorkoutShare()
@@ -375,6 +379,15 @@ function TabLayoutContent() {
         currentStreak={data.currentStreak}
         previousStreak={data.previousStreak}
       />
+      {currentExerciseRankUpgrade && (
+        <ExerciseRankOverlay
+          visible={isExerciseRankOverlayVisible}
+          onAnimationComplete={dismissCurrentExerciseRankOverlay}
+          exerciseName={currentExerciseRankUpgrade.exerciseName}
+          previousLevel={currentExerciseRankUpgrade.previousLevel}
+          currentLevel={currentExerciseRankUpgrade.currentLevel}
+        />
+      )}
       {pointsData && (
         <PointsGainOverlay
           visible={isPointsOverlayVisible}

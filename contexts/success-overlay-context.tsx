@@ -1,6 +1,7 @@
+import { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import React, { createContext, useCallback, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react'
 
 interface SuccessOverlayData {
   message: string
@@ -39,6 +40,11 @@ interface SuccessOverlayContextType {
   hidePointsOverlay: () => void
   isPointsOverlayVisible: boolean
   pointsData: StrengthScoreData | null
+  // Exercise rank overlays
+  showExerciseRankOverlays: (upgrades: ExerciseRankUpgrade[], scoreData?: StrengthScoreData) => void
+  dismissCurrentExerciseRankOverlay: () => void
+  isExerciseRankOverlayVisible: boolean
+  currentExerciseRankUpgrade: ExerciseRankUpgrade | null
 }
 
 const SuccessOverlayContext = createContext<
@@ -61,6 +67,8 @@ export function SuccessOverlayProvider({
   })
   const [isPointsOverlayVisible, setIsPointsOverlayVisible] = useState(false)
   const [pointsData, setPointsData] = useState<StrengthScoreData | null>(null)
+  const [exerciseRankQueue, setExerciseRankQueue] = useState<ExerciseRankUpgrade[]>([])
+  const pendingPointsDataRef = useRef<StrengthScoreData | null>(null)
 
   const showOverlay = (overlayData: SuccessOverlayData) => {
     setData(overlayData)
@@ -122,6 +130,39 @@ export function SuccessOverlayProvider({
     setIsPointsOverlayVisible(false)
   }, [])
 
+  const showExerciseRankOverlays = useCallback(
+    (upgrades: ExerciseRankUpgrade[], scoreData?: StrengthScoreData) => {
+      if (scoreData) pendingPointsDataRef.current = scoreData
+      if (upgrades.length === 0) {
+        if (scoreData && scoreData.pointsGained > 0) {
+          setPointsData(scoreData)
+          setIsPointsOverlayVisible(true)
+          pendingPointsDataRef.current = null
+        }
+        return
+      }
+      setExerciseRankQueue(upgrades)
+    },
+    [],
+  )
+
+  const dismissCurrentExerciseRankOverlay = useCallback(() => {
+    setExerciseRankQueue((prev) => {
+      const next = prev.slice(1)
+      if (next.length === 0) {
+        const pending = pendingPointsDataRef.current
+        if (pending && pending.pointsGained > 0) {
+          setTimeout(() => {
+            setPointsData(pending)
+            setIsPointsOverlayVisible(true)
+            pendingPointsDataRef.current = null
+          }, 400)
+        }
+      }
+      return next
+    })
+  }, [])
+
   return (
     <SuccessOverlayContext.Provider
       value={{
@@ -139,6 +180,10 @@ export function SuccessOverlayProvider({
         hidePointsOverlay,
         isPointsOverlayVisible,
         pointsData,
+        showExerciseRankOverlays,
+        dismissCurrentExerciseRankOverlay,
+        isExerciseRankOverlayVisible: exerciseRankQueue.length > 0,
+        currentExerciseRankUpgrade: exerciseRankQueue[0] ?? null,
       }}
     >
       {children}

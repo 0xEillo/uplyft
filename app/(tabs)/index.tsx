@@ -33,6 +33,7 @@ import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
+import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
@@ -41,6 +42,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import { getStrengthGender } from '@/lib/strength-progress'
+import { getStrengthStandard } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
   prependProcessedWorkoutToFeed,
@@ -154,7 +156,7 @@ export default function FeedScreen() {
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
-  const { updateWorkoutData, showPointsGainOverlay } = useSuccessOverlay()
+  const { updateWorkoutData, showPointsGainOverlay, showExerciseRankOverlays } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlatList>(null)
@@ -506,6 +508,31 @@ export default function FeedScreen() {
 
               const pointsGained = Math.max(0, Math.round(currentResult.score - baselineResult.score))
 
+              // Detect per-exercise rank upgrades
+              const exerciseUpgrades: ExerciseRankUpgrade[] = []
+              const genderKey = strengthGender === 'male' ? 'male' : ('female' as 'male' | 'female')
+              for (const ex of exerciseData) {
+                const snapshot = snapshots[ex.exerciseId]
+                const isNewPR = snapshot?.lastIncreaseSessionId === workout.id
+                if (!isNewPR || !snapshot?.previousBest1RM || !prof.weight_kg) continue
+
+                const currentStd = getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, ex.max1RM)
+                const prevStd = getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, snapshot.previousBest1RM)
+
+                if (currentStd && prevStd && currentStd.level !== prevStd.level) {
+                  const LEVEL_ORDER = ['Untrained', 'Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class']
+                  const prevIdx = LEVEL_ORDER.indexOf(prevStd.level)
+                  const currIdx = LEVEL_ORDER.indexOf(currentStd.level)
+                  if (currIdx > prevIdx) {
+                    exerciseUpgrades.push({
+                      exerciseName: ex.exerciseName,
+                      previousLevel: prevStd.level,
+                      currentLevel: currentStd.level,
+                    })
+                  }
+                }
+              }
+
               if (pointsGained > 0 && currentResult.liftsTracked > 0) {
                 const levelProgress = scoreToOverallLevelProgress(currentResult.score)
                 const baselineLevelProgress = scoreToOverallLevelProgress(baselineResult.score)
@@ -518,8 +545,16 @@ export default function FeedScreen() {
                   nextLevel: levelProgress.nextLevel,
                   progress: levelProgress.progress,
                 }
-                // Delay to show after streak overlay fades
-                setTimeout(() => showPointsGainOverlay(scoreData), 800)
+                if (exerciseUpgrades.length > 0) {
+                  // Show exercise rank overlays first, then points gain overlay
+                  showExerciseRankOverlays(exerciseUpgrades, scoreData)
+                } else {
+                  // Delay to show after streak overlay fades
+                  setTimeout(() => showPointsGainOverlay(scoreData), 800)
+                }
+              } else if (exerciseUpgrades.length > 0) {
+                // Exercise rank upgrades but no overall points — just show rank overlays
+                showExerciseRankOverlays(exerciseUpgrades)
               }
             }
           }
@@ -609,6 +644,7 @@ export default function FeedScreen() {
     router,
     updateWorkoutData,
     showPointsGainOverlay,
+    showExerciseRankOverlays,
   ])
 
   const handleRefresh = useCallback(async () => {
