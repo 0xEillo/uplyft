@@ -19,6 +19,7 @@ import {
 import {
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
+  TIER2_WEIGHT,
 } from '@/lib/exercise-standards-config'
 import Body from 'react-native-body-highlighter'
 import {
@@ -325,7 +326,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
       const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName)
       const canonicalName = config?.name ?? exercise.exerciseName
       const tier = config?.tier === 1 ? 1 : 2
-      const tierWeight = tier === 1 ? 1 : 0.35
+      const tierWeight = tier === 1 ? 1 : TIER2_WEIGHT
 
       const specificMuscle =
         EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null
@@ -396,7 +397,7 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
       .filter((row) => row.exercise.nextLevel && row.exercise.targetWeight !== null)
       .map((row) => {
         const targetWeight = row.exercise.targetWeight ?? row.exercise.max1RM
-        const tierWeight = row.tier === 1 ? 1 : 0.35
+        const tierWeight = row.tier === 1 ? 1 : TIER2_WEIGHT
         const groupWeight = row.focusGroup ? FOCUS_GROUP_WEIGHTS[row.focusGroup] : 0.08
 
         const nextPoints =

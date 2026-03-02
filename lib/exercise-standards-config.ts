@@ -31,6 +31,9 @@ export interface ExerciseStandardsConfig {
   tier?: 1 | 2
 }
 
+/** Weight applied to tier-2 exercises in strength score calculations (tier-1 = 1.0) */
+export const TIER2_WEIGHT = 0.45
+
 /**
  * Canonical list of exercises with strength standards
  * These exercises have standards defined and support percentile rankings (used in workout chat)

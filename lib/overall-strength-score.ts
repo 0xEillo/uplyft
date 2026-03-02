@@ -1,6 +1,7 @@
 import {
     EXERCISE_MUSCLE_MAPPING,
     getExerciseNameMap,
+    TIER2_WEIGHT,
     type StrengthLevel,
 } from './exercise-standards-config'
 import { type StrengthGender } from './strength-progress'
@@ -292,7 +293,7 @@ export function calculateOverallStrengthScore(input: {
 
     const config = exerciseNameMap.get(exercise.exerciseName)
     const tier = config?.tier || 2
-    const tierWeight = tier === 1 ? 1.0 : 0.4
+    const tierWeight = tier === 1 ? 1.0 : TIER2_WEIGHT
     const weightedPoints = points * tierWeight
 
     const state = groupState[overallGroup]
