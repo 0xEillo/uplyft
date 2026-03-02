@@ -2101,6 +2101,9 @@ export default function CreatePostScreen() {
     }
     isSubmittingRef.current = true
 
+    // Submit tapped: workout is ending, so stop any active rest timer immediately.
+    restTimer.stop()
+
     // Immediate haptic feedback for responsive feel
     haptic('medium')
 
