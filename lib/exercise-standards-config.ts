@@ -204,6 +204,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
+  // Decline Bench Press
+  {
+    id: 'd06c7a2e-f5dd-49e4-a63f-f659d94cded5',
+    name: 'Decline Bench Press (Barbell)',
+    aliases: ['Barbell Decline Bench Press'],
+    tier: 1,
+    gifUrl: 'GrO65fd.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Dumbbell Bench Press
   {
     id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
@@ -366,6 +451,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 0.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Chest Press
+  {
+    id: 'd6328434-8f90-40eb-8f27-5cf26033e65d',
+    name: 'Chest Press (Machine)',
+    aliases: ['Chest Press'],
+    tier: 2,
+    gifUrl: 'T0yTjgW.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.3,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -1719,10 +1889,10 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Hip Thrust
   {
-    id: '8e8ea45f-2a9e-47d5-8b99-410549aab166',
-    name: 'Glute Bridge (Barbell)',
+    id: '67d8950c-2c29-44f8-8cdc-43d238b1a9f2',
+    name: 'Hip Thrust (Barbell)',
+    aliases: ['Hip Thrust (Barbell)', 'Barbell Hip Thrust'],
     tier: 1,
-    gifUrl: 'qKBpF7I.gif',
     male: [
       {
         level: 'Beginner',
@@ -1803,10 +1973,10 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Row
   {
-    id: '288281a7-e9bc-4902-896e-1df4c892cd20',
-    name: 'Bent Over Row (Dumbbell)',
+    id: 'ff36b318-02d7-4750-aff3-322046ecb190',
+    name: 'Dumbbell Row (Dumbbell)',
     tier: 1,
-    gifUrl: 'BJ0Hz5L.gif',
+    gifUrl: 'C0MA9bC.gif',
     male: [
       {
         level: 'Beginner',
@@ -1885,12 +2055,12 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Seated Cable Row
+  // Seated Row (Cable)
   {
-    id: '2bdfb2da-20f2-439d-8e4d-8b5e928a97ba',
-    name: 'Seated Row',
+    id: '0ecd527a-c4ee-476c-9c02-293bfd4f7c46',
+    name: 'Seated Row (Cable)',
     tier: 2,
-    gifUrl: 'X3cqyXz.gif',
+    gifUrl: 'Tq6gbK6.gif',
     male: [
       {
         level: 'Beginner',
@@ -2634,6 +2804,90 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+  // Hyperextension
+  {
+    id: '15cba386-ed64-4c01-afc3-bb64e82d22a9',
+    name: 'Hyperextension',
+    aliases: ['Hyperextension (Bodyweight)', 'Hyper Extension'],
+    tier: 2,
+    gifUrl: 'zhMwOwE.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.3,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.7,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.0,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.2,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.4,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.4,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.05,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.2,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -3476,7 +3730,12 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '49f4eca5-609a-4c85-a482-57a5db72bd33',
     name: 'Lateral Raise (Dumbbell)',
-    aliases: ['Lateral Raise', 'Dumbbell Lateral Raise', 'Side Raise', 'Side Lateral Raise'],
+    aliases: [
+      'Lateral Raise',
+      'Dumbbell Lateral Raise',
+      'Side Raise',
+      'Side Lateral Raise',
+    ],
     tier: 1,
     gifUrl: 'DsgkuIt.gif',
     male: [
@@ -3731,7 +3990,11 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '67f335db-9176-491f-ad48-bf8c3f8cec4b',
     name: 'Overhead Cable Extension (Cable)',
-    aliases: ['Cable Overhead Tricep Extension', 'Cable High Pulley Overhead Tricep Extension', 'Overhead Cable Extension'],
+    aliases: [
+      'Cable Overhead Tricep Extension',
+      'Cable High Pulley Overhead Tricep Extension',
+      'Overhead Cable Extension',
+    ],
     tier: 2,
     gifUrl: '1xHyxys.gif',
     male: [
@@ -3921,8 +4184,12 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Chest
   'Bench Press (Barbell)': 'Chest',
   'Incline Bench Press (Barbell)': 'Chest',
+  'Decline Bench Press (Barbell)': 'Chest',
   'Bench Press (Dumbbell)': 'Chest',
   'Incline Bench Press (Dumbbell)': 'Chest',
+  'Chest Press (Machine)': 'Chest',
+  'Chest Press': 'Chest',
+  'Barbell Decline Bench Press': 'Chest',
 
   // Shoulders
   'Shoulder Press (Barbell)': 'Shoulders',
@@ -3976,7 +4243,8 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Lying Leg Curl (Machine)': 'Hamstrings',
 
   // Glutes
-  'Glute Bridge (Barbell)': 'Glutes',
+  'Hip Thrust (Barbell)': 'Glutes',
+  'Barbell Hip Thrust': 'Glutes',
 
   // Calves
   'Standing Calf Raise (Machine)': 'Calves',
@@ -3988,6 +4256,9 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Lower Back
   'Back Extension (Machine)': 'Lower Back',
+  Hyperextension: 'Lower Back',
+  'Hyperextension (Bodyweight)': 'Lower Back',
+  'Hyper Extension': 'Lower Back',
 
   // Forearms
   'Wrist Curl (Barbell)': 'Forearms',
@@ -3999,8 +4270,12 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Bench Press (Barbell)': 'Push',
   'Incline Bench Press (Barbell)': 'Push',
+  'Decline Bench Press (Barbell)': 'Push',
   'Bench Press (Dumbbell)': 'Push',
   'Incline Bench Press (Dumbbell)': 'Push',
+  'Chest Press (Machine)': 'Push',
+  'Chest Press': 'Push',
+  'Barbell Decline Bench Press': 'Push',
   'Shoulder Press (Barbell)': 'Push',
   'Shoulder Press (Machine)': 'Push',
   'Seated Shoulder Press (Dumbbell)': 'Push',
@@ -4033,10 +4308,14 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Romanian Deadlift (Barbell)': 'Lower',
   'Leg Press (Machine)': 'Lower',
   'Bulgarian Split Squat (Dumbbell)': 'Lower',
-  'Glute Bridge (Barbell)': 'Lower',
+  'Hip Thrust (Barbell)': 'Lower',
+  'Barbell Hip Thrust': 'Lower',
   'Leg Extension (Machine)': 'Lower',
   'Standing Calf Raise (Machine)': 'Lower',
   'Back Extension (Machine)': 'Lower',
+  Hyperextension: 'Lower',
+  'Hyperextension (Bodyweight)': 'Lower',
+  'Hyper Extension': 'Lower',
   'Seated Leg Curl (Machine)': 'Lower',
   'Lying Leg Curl (Machine)': 'Lower',
   'Seated Calf Raise (Machine)': 'Lower',
@@ -4052,11 +4331,15 @@ export function getTrackableExercisesForMuscle(
     .filter(([_, muscle]) => muscle === muscleName)
     .map(([exercise, _]) => exercise)
 
-  const secondaryExerciseNames = Object.entries(SECONDARY_EXERCISE_MUSCLE_MAPPING)
+  const secondaryExerciseNames = Object.entries(
+    SECONDARY_EXERCISE_MUSCLE_MAPPING,
+  )
     .filter(([_, muscle]) => muscle === muscleName)
     .map(([exercise, _]) => exercise)
-    
-  const allExerciseNames = Array.from(new Set([...primaryExerciseNames, ...secondaryExerciseNames]))
+
+  const allExerciseNames = Array.from(
+    new Set([...primaryExerciseNames, ...secondaryExerciseNames]),
+  )
 
   return EXERCISES_WITH_STANDARDS.filter((ex) =>
     allExerciseNames.includes(ex.name),
