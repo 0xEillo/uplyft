@@ -1009,8 +1009,7 @@ const createStyles = (
       paddingHorizontal: 1, // Space for grid gaps
     },
     gridItem: {
-      flex: 1,
-      maxWidth: '33.33%',
+      width: '100%',
       aspectRatio: 1,
       margin: 1,
       backgroundColor: colors.surfaceCard,
