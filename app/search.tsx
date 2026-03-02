@@ -7,6 +7,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { createInviteShareLink } from '@/lib/deeplinknow'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -53,7 +54,7 @@ interface UserWithFollowStatus extends Profile {
 
 export default function SearchScreen() {
   const colors = useThemedColors()
-  const { user, isAnonymous } = useAuth()
+  const { user, isAnonymous, session } = useAuth()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -237,17 +238,34 @@ export default function SearchScreen() {
 
   const handleInvite = useCallback(async () => {
     try {
+      if (!user?.id) {
+        Alert.alert('Sign In Required', 'Please sign in before sharing invites.')
+        return
+      }
+
       haptic('light')
 
-      const appStoreLink =
-        'https://apps.apple.com/app/rep-ai-workout-tracker/id6753986473'
-      const message = `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.\n\n${appStoreLink}`
+      const inviterProfile = await database.profiles.getByIdOrNull(user.id)
+      const inviteLink = await createInviteShareLink({
+        inviterId: user.id,
+        inviterTag: inviterProfile?.user_tag ?? null,
+        inviterName: inviterProfile?.display_name ?? null,
+      }, {
+        accessToken: session?.access_token,
+        platform: Platform.OS,
+      })
+
+      const inviterLabel =
+        inviterProfile?.display_name ||
+        inviterProfile?.user_tag ||
+        'your friend'
+      const message = `${inviterLabel} invited you to Rep AI! Track your workouts, share progress, and train together.\n\n${inviteLink}`
 
       const result = await Share.share(
         Platform.OS === 'ios'
           ? {
-              message: `Join me on Rep AI! Track your workouts, share your progress, and connect with the fitness community.`,
-              url: appStoreLink,
+              message: `${inviterLabel} invited you to Rep AI! Track your workouts, share progress, and train together.`,
+              url: inviteLink,
             }
           : {
               message,
@@ -255,14 +273,17 @@ export default function SearchScreen() {
       )
 
       if (result.action === Share.sharedAction) {
-        trackEvent(AnalyticsEvents.SEARCH_INVITE_SHARED)
+        trackEvent(AnalyticsEvents.SEARCH_INVITE_SHARED, {
+          inviter_id: user.id,
+          invite_url: inviteLink,
+        })
         hapticSuccess()
       }
     } catch (error) {
       console.error('Error sharing:', error)
       Alert.alert('Error', 'Failed to share invite. Please try again.')
     }
-  }, [trackEvent])
+  }, [session?.access_token, trackEvent, user?.id])
 
   const markNextFocusAsChildReturn = useCallback(() => {
     markSearchEntrySkipFlag()

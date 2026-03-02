@@ -70,6 +70,44 @@ const facebookPluginConfig =
       ]
     : null
 
+const deeplinkNowDomainRaw =
+  process.env.DEEPLINKNOW_DOMAIN || process.env.EXPO_PUBLIC_DEEPLINKNOW_DOMAIN
+const deeplinkNowDomain = deeplinkNowDomainRaw
+  ? deeplinkNowDomainRaw
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/g, '')
+  : ''
+
+const deeplinkNowPluginConfig = (() => {
+  try {
+    require.resolve('@deeplinknow/react-native/plugin')
+    return '@deeplinknow/react-native/plugin'
+  } catch {
+    return null
+  }
+})()
+
+const deeplinkNowAssociatedDomains = deeplinkNowDomain
+  ? [`applinks:${deeplinkNowDomain}`]
+  : []
+
+const deeplinkNowIntentFilters = deeplinkNowDomain
+  ? [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          {
+            scheme: 'https',
+            host: deeplinkNowDomain,
+            pathPrefix: '/',
+          },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ]
+  : []
+
 module.exports = {
   expo: {
     name: 'Rep AI',
@@ -82,6 +120,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       usesAppleSignIn: true,
+      associatedDomains: deeplinkNowAssociatedDomains,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription:
@@ -120,6 +159,7 @@ module.exports = {
         'READ_MEDIA_IMAGES',
         'POST_NOTIFICATIONS',
       ],
+      intentFilters: deeplinkNowIntentFilters,
       package: 'com.viralstudio.repai',
     },
     updates: {
@@ -178,6 +218,8 @@ module.exports = {
       ],
       // Facebook SDK - only included when env vars are configured
       ...(facebookPluginConfig ? [facebookPluginConfig] : []),
+      // DeeplinkNow plugin - included when package is installed in local env
+      ...(deeplinkNowPluginConfig ? [deeplinkNowPluginConfig] : []),
       // Override Live Activity Swift UI (lock screen + Dynamic Island)
       './plugins/with-custom-live-activity',
       // Live Activity for Dynamic Island workout timer (iOS only)
@@ -197,6 +239,7 @@ module.exports = {
       },
       posthogApiKey: process.env.POSTHOG_API_KEY,
       posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
+      deeplinkNowDomain: deeplinkNowDomain || undefined,
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,
       revenueCatTestStoreKey: process.env.REVENUECAT_TEST_STORE_KEY,

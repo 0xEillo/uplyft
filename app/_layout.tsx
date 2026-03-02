@@ -28,6 +28,7 @@ import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { initializeFacebookSDK } from '@/lib/facebook-sdk'
+import { consumePendingInvite } from '@/lib/deeplinknow'
 import { stopMusicPreview } from '@/lib/music-preview-player'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 
@@ -67,6 +68,7 @@ function RootLayoutNav() {
   const { isDark } = useTheme()
   const { trackEvent } = useAnalytics()
   const lastRouteKey = useRef('')
+  const lastInviteResolutionUserRef = useRef<string | null>(null)
 
   // Initialize push notifications
   usePushNotifications()
@@ -160,7 +162,9 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return
 
-    const inAuthGroup = segments[0] === '(auth)'
+    const firstSegment = segments[0] as string | undefined
+    const inAuthGroup = firstSegment === '(auth)'
+    const isInviteRoute = firstSegment === 'invite'
     const authRoute = segments[1] as string | undefined
     // Allow authenticated users (including anonymous) to stay on signup-options and trial-offer
     const allowedPostSignupRoutes = [
@@ -171,7 +175,7 @@ function RootLayoutNav() {
       'signup-password',
     ]
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !isInviteRoute) {
       // Redirect to welcome screen if not authenticated (no session at all)
       router.replace('/(auth)/welcome')
     } else if (
@@ -183,6 +187,41 @@ function RootLayoutNav() {
       router.replace('/(tabs)')
     }
   }, [user, segments, isLoading, router])
+
+  useEffect(() => {
+    if (!user?.id) {
+      lastInviteResolutionUserRef.current = null
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (isLoading || !user?.id) return
+    if (lastInviteResolutionUserRef.current === user.id) return
+
+    lastInviteResolutionUserRef.current = user.id
+    let cancelled = false
+
+    const resolvePendingInvite = async () => {
+      const invite = await consumePendingInvite()
+      if (!invite || cancelled) return
+      if (invite.inviterId === user.id) return
+
+      router.replace({
+        pathname: '/user/[userId]',
+        params: {
+          userId: invite.inviterId,
+        },
+      })
+    }
+
+    resolvePendingInvite().catch((error) => {
+      console.warn('[Invite] Failed to resolve pending invite:', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoading, router, user?.id])
 
   return (
     <>
@@ -221,6 +260,10 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="search"
+            options={{ presentation: 'card', animation: 'default' }}
+          />
+          <Stack.Screen
+            name="invite"
             options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
