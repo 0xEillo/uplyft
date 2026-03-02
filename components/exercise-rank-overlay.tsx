@@ -8,12 +8,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  StyleSheet,
-  Text,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -162,7 +162,7 @@ function ExerciseRankOverlayComponent({
       ]).start()
     }, 700)
 
-    schedule(() => handleClose(), 3800)
+    schedule(() => handleClose(), 2000)
   }, [visible, fadeAnim, contentScale, tileScale, labelOpacity, labelScale, schedule, handleClose, clearAllTimeouts])
 
   useEffect(() => {
