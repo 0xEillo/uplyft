@@ -1060,6 +1060,49 @@ async function buildUserContext(
         }
       },
     }),
+    getDetailedNutritionLog: tool({
+      description:
+        'Fetch detailed nutrition information for a specific day, including individual meals, their descriptions, macros, and timestamps. Use this when the user asks about specific meals or needs to see the detailed breakdown of their daily nutrition.',
+      inputSchema: z
+        .object({
+          logDate: z
+            .string()
+            .trim()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format')
+            .describe(
+              'The date to fetch meals for in YYYY-MM-DD format (e.g. 2025-03-02). Use the date from the CURRENT DAILY NUTRITION CONTEXT if the user is asking about today.',
+            ),
+        }),
+      execute: async ({ logDate }: { logDate: string }) => {
+        const { data: entry } = await supabase
+          .from('daily_log_entries')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('log_date', logDate)
+          .maybeSingle()
+
+        if (!entry) {
+          return { logDate, meals: [] }
+        }
+
+        const { data: meals, error } = await supabase
+          .from('daily_log_meals')
+          .select('id, description, calories, protein_g, carbs_g, fat_g, created_at, source')
+          .eq('user_id', userId)
+          .eq('daily_log_entry_id', entry.id)
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          console.error('Error fetching meals:', error)
+          return { logDate, error: 'Failed to fetch meals' }
+        }
+
+        return {
+          logDate,
+          meals: meals || [],
+        }
+      },
+    }),
   }
 
   return { summary, tools }
