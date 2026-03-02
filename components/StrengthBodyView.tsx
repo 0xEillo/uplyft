@@ -969,9 +969,11 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                           </View>
 
                           {/* Best level badge */}
-                          <Text style={[styles.muscleGroupLevel, { color: bestLevelColor }]}>
-                            {exercises.length > 0 ? bestExercise!.level : 'Unranked'}
-                          </Text>
+                          <LevelBadge
+                            level={exercises.length > 0 ? (bestExercise!.level as StrengthLevel) : 'Untrained'}
+                            variant="pill"
+                            size="small"
+                          />
 
                           <Ionicons
                             name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -1016,14 +1018,11 @@ export function StrengthBodyView({ embedded = false }: { embedded?: boolean } = 
                                       <View style={styles.exerciseInlineProgressWrap}>
                                         <View style={styles.exerciseInlineProgressTopRow}>
                                           <View style={styles.exerciseInlineMetaRow}>
-                                            <Text
-                                              style={[
-                                                styles.exerciseInlineLevelLabel,
-                                                { color: levelColor },
-                                              ]}
-                                            >
-                                              {exercise.level!}
-                                            </Text>
+                                            <LevelBadge
+                                              level={exercise.level! as StrengthLevel}
+                                              variant="pill"
+                                              size="xs"
+                                            />
                                             {exercise.showRecentProgressDelta && (
                                               <Text style={[styles.exerciseInlineGainText, { color: gainColor }]}>
                                                 ▲ {exercise.progressDelta}%

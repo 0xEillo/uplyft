@@ -68,7 +68,7 @@ export function SignInBottomSheet({
     opacity: backdropOpacity.value,
   }))
 
-  const handleAppleSignUp = async () => {
+  const handleAppleSignIn = async () => {
     setIsAppleLoading(true)
     try {
       await signInWithApple(true)
@@ -76,15 +76,15 @@ export function SignInBottomSheet({
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign Up Failed',
-        error instanceof Error ? error.message : 'Failed to sign up with Apple',
+        'Sign In Failed',
+        error instanceof Error ? error.message : 'Failed to sign in with Apple',
       )
     } finally {
       setIsAppleLoading(false)
     }
   }
 
-  const handleGoogleSignUp = async () => {
+  const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
       await signInWithGoogle(true)
@@ -92,17 +92,17 @@ export function SignInBottomSheet({
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign Up Failed',
-        error instanceof Error ? error.message : 'Failed to sign up with Google',
+        'Sign In Failed',
+        error instanceof Error ? error.message : 'Failed to sign in with Google',
       )
     } finally {
       setIsGoogleLoading(false)
     }
   }
 
-  const handleEmailSignUp = () => {
+  const handleEmailSignIn = () => {
     onClose()
-    router.push('/(auth)/signup-email')
+    router.push('/(auth)/signin-email')
   }
 
   return (
@@ -128,9 +128,9 @@ export function SignInBottomSheet({
 
             <View style={styles.headerRow}>
               <View style={styles.headerTextBlock}>
-                <Text style={styles.title}>Create your account</Text>
+                <Text style={styles.title}>Welcome back</Text>
                 <Text style={styles.subtitle}>
-                  Sign up to sync your workouts and keep your progress safe.
+                  Sign in to continue your training and pick up where you left off.
                 </Text>
               </View>
 
@@ -146,7 +146,7 @@ export function SignInBottomSheet({
                     styles.appleButton,
                     isAppleLoading && styles.buttonDisabled,
                   ]}
-                  onPress={handleAppleSignUp}
+                  onPress={handleAppleSignIn}
                   disabled={isAppleLoading}
                   hapticEnabled={!isAppleLoading}
                 >
@@ -166,7 +166,7 @@ export function SignInBottomSheet({
                   styles.glassButton,
                   isGoogleLoading && styles.buttonDisabled,
                 ]}
-                onPress={handleGoogleSignUp}
+                onPress={handleGoogleSignIn}
                 disabled={isGoogleLoading}
                 hapticEnabled={!isGoogleLoading}
               >
@@ -180,7 +180,7 @@ export function SignInBottomSheet({
                 )}
               </HapticButton>
 
-              <HapticButton style={styles.primaryButton} onPress={handleEmailSignUp}>
+              <HapticButton style={styles.primaryButton} onPress={handleEmailSignIn}>
                 <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
                 <Text style={styles.primaryButtonText}>Continue with Email</Text>
               </HapticButton>

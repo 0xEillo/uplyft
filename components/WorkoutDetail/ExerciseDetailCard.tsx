@@ -381,39 +381,41 @@ export function ExerciseDetailCard({
         </View>
       </TouchableOpacity>
 
-      {/* Sets header */}
-      <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
-        <Text
-          style={[
-            styles.headerCell,
-            styles.setCol,
-            { color: colors.textSecondary },
-          ]}
-        >
-          SET
-        </Text>
-        <Text
-          style={[
-            styles.headerCell,
-            styles.weightCol,
-            { color: colors.textSecondary },
-          ]}
-        >
-          WEIGHT & REPS
-        </Text>
-        {hasPr && (
+      {/* Sets header + rows: full-width, edge-to-edge */}
+      <View style={styles.tableWrapper}>
+        <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
           <Text
             style={[
               styles.headerCell,
-              styles.prCol,
+              styles.setCol,
               { color: colors.textSecondary },
             ]}
-          />
-        )}
-      </View>
+          >
+            SET
+          </Text>
+          <Text
+            style={[
+              styles.headerCell,
+              styles.weightCol,
+              { color: colors.textSecondary },
+            ]}
+          >
+            WEIGHT & REPS
+          </Text>
+          {hasPr && (
+            <Text
+              style={[
+                styles.headerCell,
+                styles.prCol,
+                { color: colors.textSecondary },
+              ]}
+            />
+          )}
+        </View>
 
-      {/* Sets list */}
-      {setRows}
+        {/* Sets list */}
+        {setRows}
+      </View>
       {/* PR Tooltip */}
       {prInfo && (
         <PrTooltip
@@ -499,9 +501,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
   },
+  tableWrapper: {
+    marginHorizontal: -16,
+  },
   tableHeader: {
     flexDirection: 'row',
     paddingVertical: 8,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
   },
   headerCell: {
@@ -522,6 +528,7 @@ const styles = StyleSheet.create({
   setRow: {
     flexDirection: 'row',
     paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   setCell: {
     justifyContent: 'center',
