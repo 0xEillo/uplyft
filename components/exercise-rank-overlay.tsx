@@ -17,7 +17,7 @@ import {
 } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
-const TILE_SIZE = Math.min(140, (SCREEN_WIDTH - 80) / 2 - 16)
+const TILE_SIZE = 180
 
 export interface ExerciseRankUpgrade {
   exerciseName: string
@@ -98,7 +98,6 @@ function ExerciseRankOverlayComponent({
   visible,
   onAnimationComplete,
   exerciseName,
-  previousLevel,
   currentLevel,
 }: ExerciseRankOverlayProps) {
   const colors = useThemedColors()
@@ -106,9 +105,7 @@ function ExerciseRankOverlayComponent({
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const contentScale = useRef(new Animated.Value(0.88)).current
-  const oldTileScale = useRef(new Animated.Value(0)).current
-  const arrowOpacity = useRef(new Animated.Value(0)).current
-  const newTileScale = useRef(new Animated.Value(0)).current
+  const tileScale = useRef(new Animated.Value(0)).current
   const labelOpacity = useRef(new Animated.Value(0)).current
   const labelScale = useRef(new Animated.Value(0.5)).current
 
@@ -136,9 +133,7 @@ function ExerciseRankOverlayComponent({
     if (!visible) {
       fadeAnim.setValue(0)
       contentScale.setValue(0.88)
-      oldTileScale.setValue(0)
-      arrowOpacity.setValue(0)
-      newTileScale.setValue(0)
+      tileScale.setValue(0)
       labelOpacity.setValue(0)
       labelScale.setValue(0.5)
       return
@@ -147,47 +142,33 @@ function ExerciseRankOverlayComponent({
     clearAllTimeouts()
     fadeAnim.setValue(0)
     contentScale.setValue(0.88)
-    oldTileScale.setValue(0)
-    arrowOpacity.setValue(0)
-    newTileScale.setValue(0)
+    tileScale.setValue(0)
     labelOpacity.setValue(0)
     labelScale.setValue(0.5)
 
-    // Stage 1: Fade in + scale up
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(contentScale, { toValue: 1, tension: 100, friction: 12, useNativeDriver: true }),
     ]).start()
 
-    // Stage 2: Old tile pops in
     schedule(() => {
-      Animated.spring(oldTileScale, { toValue: 1, tension: 130, friction: 8, useNativeDriver: true }).start()
+      Animated.spring(tileScale, { toValue: 1, tension: 80, friction: 5, useNativeDriver: true }).start()
     }, 200)
 
-    // Stage 3: Arrow fades in
-    schedule(() => {
-      Animated.timing(arrowOpacity, { toValue: 1, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start()
-    }, 500)
-
-    // Stage 4: New tile pops in BIG
-    schedule(() => {
-      Animated.spring(newTileScale, { toValue: 1, tension: 80, friction: 5, useNativeDriver: true }).start()
-    }, 750)
-
-    // Stage 5: RANK UP label
     schedule(() => {
       Animated.parallel([
         Animated.timing(labelOpacity, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.spring(labelScale, { toValue: 1, tension: 120, friction: 8, useNativeDriver: true }),
       ]).start()
-    }, 1100)
+    }, 700)
 
-    // Auto-close
-    schedule(() => handleClose(), 4200)
-  }, [visible, fadeAnim, contentScale, oldTileScale, arrowOpacity, newTileScale, labelOpacity, labelScale, schedule, handleClose, clearAllTimeouts])
+    schedule(() => handleClose(), 3800)
+  }, [visible, fadeAnim, contentScale, tileScale, labelOpacity, labelScale, schedule, handleClose, clearAllTimeouts])
 
   useEffect(() => {
-    const id = fadeAnim.addListener(({ value }) => { latestFadeValue.current = value })
+    const id = fadeAnim.addListener(({ value }) => {
+      latestFadeValue.current = value
+    })
     return () => {
       fadeAnim.removeListener(id)
       clearAllTimeouts()
@@ -201,7 +182,7 @@ function ExerciseRankOverlayComponent({
     const particleColors = [newLevelColor, '#FFD700', '#FF6B35', '#5FD068', '#42A5F5', '#FF5252', '#AB47BC', '#E040FB']
     return Array.from({ length: 32 }, (_, i) => ({
       id: i,
-      delay: 600 + Math.random() * 400,
+      delay: 400 + Math.random() * 400,
       color: particleColors[i % particleColors.length],
       startX: SCREEN_WIDTH * 0.2 + Math.random() * SCREEN_WIDTH * 0.6,
       startY: SCREEN_HEIGHT * 0.3 + (Math.random() - 0.5) * 60,
@@ -210,24 +191,7 @@ function ExerciseRankOverlayComponent({
 
   if (!visible && latestFadeValue.current === 0) return null
 
-  const palette = isDark
-    ? {
-        tileBg: 'rgba(34,37,43,0.86)',
-        tileBorder: 'rgba(255,255,255,0.24)',
-        tileLockedBg: 'rgba(18,20,24,0.90)',
-        tileLockedBorder: 'rgba(255,255,255,0.14)',
-        lockBadgeBg: 'rgba(26,28,32,0.84)',
-        lockBadgeBorder: 'rgba(255,255,255,0.16)',
-      }
-    : {
-        tileBg: 'rgba(255,255,255,0.94)',
-        tileBorder: 'rgba(0,0,0,0.14)',
-        tileLockedBg: 'rgba(246,248,252,0.90)',
-        tileLockedBorder: 'rgba(0,0,0,0.10)',
-        lockBadgeBg: 'rgba(255,255,255,0.92)',
-        lockBadgeBorder: 'rgba(0,0,0,0.16)',
-      }
-
+  const tileBg = isDark ? 'rgba(34,37,43,0.86)' : 'rgba(255,255,255,0.94)'
   const styles = createStyles(colors, isDark, newLevelColor)
 
   return (
@@ -238,81 +202,38 @@ function ExerciseRankOverlayComponent({
 
       <View style={styles.pressArea}>
         <Animated.View style={[styles.card, { transform: [{ scale: contentScale }] }]}>
-
-          {/* Exercise name */}
           <Text style={styles.exerciseName} numberOfLines={2}>{exerciseName}</Text>
 
-          {/* Badges row */}
-          <View style={styles.badgesRow}>
-            {/* Previous level tile */}
-            <Animated.View style={{ transform: [{ scale: oldTileScale }] }}>
-              <LiquidGlassSurface
-                style={[
-                  styles.badgeTile,
-                  styles.badgeTileLocked,
-                  { backgroundColor: palette.tileLockedBg, borderColor: palette.tileLockedBorder },
-                ]}
-                debugLabel="exercise-rank-prev"
-              >
-                <View style={styles.badgeVisualWrap}>
-                  <LevelBadge level={previousLevel} size="large" showTooltipOnPress={false} style={styles.lockedBadge} />
-                  <View style={[styles.lockIconBadge, { backgroundColor: palette.lockBadgeBg, borderColor: palette.lockBadgeBorder }]}>
-                    <Ionicons name="checkmark" size={11} color={colors.textPrimary} />
-                  </View>
-                </View>
-                <View style={styles.textStack}>
-                  <Text style={[styles.badgeName, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {previousLevel}
-                  </Text>
-                </View>
-                <View style={[styles.badgeStatusPill, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)' }]}>
-                  <Text style={[styles.badgeStatusText, { color: colors.textTertiary }]}>Before</Text>
-                </View>
-              </LiquidGlassSurface>
-            </Animated.View>
-
-            {/* Arrow */}
-            <Animated.View style={[styles.arrowWrap, { opacity: arrowOpacity }]}>
-              <Ionicons name="arrow-forward" size={24} color={newLevelColor} />
-            </Animated.View>
-
-            {/* New level tile */}
-            <Animated.View style={{ transform: [{ scale: newTileScale }] }}>
-              <LiquidGlassSurface
-                style={[
-                  styles.badgeTile,
-                  { backgroundColor: palette.tileBg, borderColor: newLevelColor, borderWidth: 2 },
-                ]}
-                debugLabel="exercise-rank-new"
-              >
-                <LinearGradient
-                  colors={[`${newLevelColor}40`, 'transparent']}
-                  style={StyleSheet.absoluteFill}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  pointerEvents="none"
-                />
-                <View style={styles.badgeVisualWrap}>
-                  <LevelBadge level={currentLevel} size="large" showTooltipOnPress={false} />
-                </View>
-                <View style={styles.textStack}>
-                  <Text style={[styles.badgeName, { color: newLevelColor }]} numberOfLines={2}>
-                    {currentLevel}
-                  </Text>
-                </View>
-                <View style={[styles.badgeStatusPill, { backgroundColor: `${newLevelColor}33` }]}>
-                  <Ionicons name="star" size={11} color={newLevelColor} style={{ marginRight: 3 }} />
-                  <Text style={[styles.badgeStatusText, { color: newLevelColor }]}>New</Text>
-                </View>
-              </LiquidGlassSurface>
-            </Animated.View>
-          </View>
-
-          {/* RANK UP label */}
-          <Animated.View style={{ opacity: labelOpacity, transform: [{ scale: labelScale }], alignItems: 'center' }}>
+          <Animated.View style={{ opacity: labelOpacity, transform: [{ scale: labelScale }], alignItems: 'center', marginBottom: 32 }}>
             <Text style={[styles.rankUpLabel, { color: newLevelColor }]}>RANK UP!</Text>
           </Animated.View>
 
+          <Animated.View style={{ transform: [{ scale: tileScale }] }}>
+            <LiquidGlassSurface
+              style={[styles.badgeTile, { backgroundColor: tileBg, borderColor: newLevelColor, borderWidth: 2 }]}
+              debugLabel="exercise-rank-new"
+            >
+              <LinearGradient
+                colors={[`${newLevelColor}40`, 'transparent']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                pointerEvents="none"
+              />
+              <View style={styles.badgeVisualWrap}>
+                <LevelBadge level={currentLevel} size="hero" showTooltipOnPress={false} />
+              </View>
+              <View style={styles.textStack}>
+                <Text style={[styles.badgeName, { color: newLevelColor }]} numberOfLines={2}>
+                  {currentLevel}
+                </Text>
+              </View>
+              <View style={[styles.badgeStatusPill, { backgroundColor: `${newLevelColor}33` }]}>
+                <Ionicons name="star" size={11} color={newLevelColor} style={{ marginRight: 3 }} />
+                <Text style={[styles.badgeStatusText, { color: newLevelColor }]}>Unlocked</Text>
+              </View>
+            </LiquidGlassSurface>
+          </Animated.View>
         </Animated.View>
       </View>
     </Animated.View>
@@ -355,59 +276,34 @@ const createStyles = (
       color: colors.textSecondary,
       textAlign: 'center',
       letterSpacing: 0.2,
-      marginBottom: 32,
+      marginBottom: 24,
       textTransform: 'uppercase',
     },
-    badgesRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 12,
-      marginBottom: 32,
-    },
-    arrowWrap: {
-      alignItems: 'center',
-      justifyContent: 'center',
+    rankUpLabel: {
+      fontSize: 36,
+      fontWeight: '900',
+      letterSpacing: 4,
+      textAlign: 'center',
     },
     badgeTile: {
       width: TILE_SIZE,
-      minHeight: TILE_SIZE + 24,
-      borderRadius: 18,
-      paddingHorizontal: 6,
-      paddingVertical: 10,
+      minHeight: TILE_SIZE + 32,
+      borderRadius: 22,
+      paddingHorizontal: 12,
+      paddingVertical: 16,
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.28,
-      shadowRadius: 12,
-      elevation: 4,
-      borderWidth: 1,
+      gap: 10,
+      shadowColor: levelColor,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.35,
+      shadowRadius: 16,
+      elevation: 6,
     },
-    badgeTileLocked: {},
     badgeVisualWrap: {
-      width: 54,
-      height: 54,
       justifyContent: 'center',
       alignItems: 'center',
-      position: 'relative',
-    },
-    lockedBadge: {
-      opacity: 0.4,
-    },
-    lockIconBadge: {
-      position: 'absolute',
-      right: -4,
-      bottom: -4,
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      zIndex: 10,
     },
     textStack: {
       gap: 3,
@@ -415,9 +311,9 @@ const createStyles = (
       width: '100%',
     },
     badgeName: {
-      fontSize: 13,
-      lineHeight: 16,
-      fontWeight: '700',
+      fontSize: 16,
+      lineHeight: 20,
+      fontWeight: '800',
       textAlign: 'center',
       includeFontPadding: false,
     },
@@ -426,18 +322,12 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      minWidth: 60,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      minWidth: 80,
     },
     badgeStatusText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
-    },
-    rankUpLabel: {
-      fontSize: 36,
-      fontWeight: '900',
-      letterSpacing: 4,
-      textAlign: 'center',
     },
   })

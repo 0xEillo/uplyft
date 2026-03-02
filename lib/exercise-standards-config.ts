@@ -1638,6 +1638,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
+  // Incline Hammer Curl (Dumbbell)
+  {
+    id: '5505819c-2e69-4889-b883-afdf8b20e3e2',
+    name: 'Incline Hammer Curl (Dumbbell)',
+    aliases: ['Dumbbell Incline Hammer Curl'],
+    tier: 2,
+    gifUrl: 'ByX0WxV.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.4,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.65,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.45,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Barbell Curl
   {
     id: '715479a2-4676-4ae1-a94e-b469d7c387e0',
@@ -4220,6 +4305,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
   'Hammer Curl (Dumbbell)': 'Biceps',
+  'Incline Hammer Curl (Dumbbell)': 'Biceps',
   'Bicep Curl (Barbell)': 'Biceps',
   'Rope Hammer Curl (Cable)': 'Biceps',
   'Preacher Curl (Barbell)': 'Biceps',
@@ -4295,6 +4381,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Weighted Pull-Up': 'Pull',
   'Bicep Curl (Dumbbell)': 'Pull',
   'Hammer Curl (Dumbbell)': 'Pull',
+  'Incline Hammer Curl (Dumbbell)': 'Pull',
   'Bicep Curl (Barbell)': 'Pull',
   'Bent Over Row (Dumbbell)': 'Pull',
   'Seated Row': 'Pull',
