@@ -268,7 +268,7 @@ const createStyles = (
     },
     keypadRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'stretch',
       gap: 10,
       zIndex: 1,
     },
@@ -278,8 +278,8 @@ const createStyles = (
     },
     actionColumn: {
       width: 64,
-      gap: 8,
       alignItems: 'stretch',
+      justifyContent: 'space-between',
     },
     numberRow: {
       flexDirection: 'row',
@@ -322,7 +322,7 @@ const createStyles = (
       color: '#FFFFFF',
     },
     closeButton: {
-      minHeight: 44,
+      minHeight: 52,
       paddingHorizontal: 10,
       borderRadius: 22,
       borderWidth: StyleSheet.hairlineWidth,

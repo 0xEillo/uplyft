@@ -79,6 +79,7 @@ import {
   AppState,
   Easing,
   Keyboard,
+  type LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -90,8 +91,12 @@ import {
   View,
 } from 'react-native'
 import Reanimated, {
+  Easing as ReanimatedEasing,
   useAnimatedKeyboard,
   useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -147,6 +152,13 @@ export default function CreatePostScreen() {
   const isIOS = Platform.OS === 'ios'
   const bottomSafeInset = isIOS ? Math.min(insets.bottom, 34) : insets.bottom
   const KEYBOARD_OVERLAY_ESTIMATED_HEIGHT = 330 + bottomSafeInset
+  const KEYBOARD_CURSOR_CLEARANCE = 14
+  const KEYBOARD_SCROLL_BUFFER = 8
+  const NATIVE_KEYBOARD_EXTRA_ESCAPE = 20
+  const CUSTOM_KEYBOARD_EXTRA_ESCAPE = 20
+  const TOOLBAR_FALLBACK_HEIGHT = isIOS ? 60 : 50
+  // Custom keypad actual height: paddingTop(8) + 4 rows×52 + 3 gaps×8 + paddingBottom(max(inset,10)+6)
+  const CUSTOM_KEYPAD_HEIGHT = 246 + Math.max(bottomSafeInset, 10)
 
   // Exercise history hook for creating exercises with last performance data
   const {
@@ -343,7 +355,24 @@ export default function CreatePostScreen() {
   const handleStructuredKeypadStateChange = useCallback(
     (nextKeypadProps: CustomNumericKeypadProps | null) => {
       if (nextKeypadProps && keypadTapShieldRef.current) return
-      setKeypadProps(nextKeypadProps)
+      setKeypadProps((previousKeypadProps) => {
+        if (!nextKeypadProps && !previousKeypadProps) {
+          return previousKeypadProps
+        }
+
+        if (
+          nextKeypadProps &&
+          previousKeypadProps &&
+          nextKeypadProps.field === previousKeypadProps.field &&
+          nextKeypadProps.onKeyPress === previousKeypadProps.onKeyPress &&
+          nextKeypadProps.onNext === previousKeypadProps.onNext &&
+          nextKeypadProps.onDone === previousKeypadProps.onDone
+        ) {
+          return previousKeypadProps
+        }
+
+        return nextKeypadProps
+      })
       setIsStructuredInputFocused(Boolean(nextKeypadProps))
     },
     [],
@@ -354,26 +383,67 @@ export default function CreatePostScreen() {
       if (keypadTapShieldTimeoutRef.current) {
         clearTimeout(keypadTapShieldTimeoutRef.current)
       }
+      if (keyboardSettleTimeoutRef.current) {
+        clearTimeout(keyboardSettleTimeoutRef.current)
+        keyboardSettleTimeoutRef.current = null
+      }
+      if (toolbarInsetLockTimeoutRef.current) {
+        clearTimeout(toolbarInsetLockTimeoutRef.current)
+        toolbarInsetLockTimeoutRef.current = null
+      }
+      if (customSpacerReleaseTimeoutRef.current) {
+        clearTimeout(customSpacerReleaseTimeoutRef.current)
+        customSpacerReleaseTimeoutRef.current = null
+      }
     }
   }, [])
 
-  const ensureStructuredInputVisible = useCallback(
-    (frame: { pageY: number; height: number }) => {
-      if (!scrollViewRef.current) return
+  const scrollFrameAboveKeyboard = useCallback(
+    (
+      frame: { pageY: number; height: number },
+      keyboardOverlayHeight: number,
+      extraBottomSpacing = 0,
+    ) => {
+      if (!scrollViewRef.current || keyboardOverlayHeight <= 0) return
 
+      const toolbarHeight = toolbarVisibleRef.current
+        ? Math.max(toolbarBlockingHeightRef.current, TOOLBAR_FALLBACK_HEIGHT)
+        : 0
+      const blockedBottomHeight =
+        keyboardOverlayHeight + toolbarHeight + extraBottomSpacing
       const visibleBottom =
-        windowHeight - KEYBOARD_OVERLAY_ESTIMATED_HEIGHT - 14
-      const inputBottom = frame.pageY + frame.height
+        windowHeight - blockedBottomHeight - KEYBOARD_CURSOR_CLEARANCE
+      const frameBottom = frame.pageY + frame.height
 
-      if (inputBottom <= visibleBottom) return
+      if (frameBottom <= visibleBottom) return
 
-      const delta = inputBottom - visibleBottom
+      const delta = frameBottom - visibleBottom
       scrollViewRef.current.scrollTo({
-        y: Math.max(0, scrollYRef.current + delta + 8),
+        y: Math.max(0, scrollYRef.current + delta + KEYBOARD_SCROLL_BUFFER),
         animated: true,
       })
     },
-    [KEYBOARD_OVERLAY_ESTIMATED_HEIGHT, windowHeight],
+    [
+      KEYBOARD_CURSOR_CLEARANCE,
+      KEYBOARD_SCROLL_BUFFER,
+      TOOLBAR_FALLBACK_HEIGHT,
+      windowHeight,
+    ],
+  )
+
+  const ensureStructuredInputVisible = useCallback(
+    (frame: { pageY: number; height: number }) => {
+      if (keypadVisibleRef.current) {
+        scrollFrameAboveKeyboard(
+          frame,
+          CUSTOM_KEYPAD_HEIGHT,
+          CUSTOM_KEYBOARD_EXTRA_ESCAPE,
+        )
+        return
+      }
+      scrollFrameAboveKeyboard(frame, nativeKeyboardHeightRef.current)
+    },
+    [CUSTOM_KEYBOARD_EXTRA_ESCAPE, CUSTOM_KEYPAD_HEIGHT, scrollFrameAboveKeyboard],
   )
 
   // Navigate to exercise page if exercise exists in the database
@@ -410,8 +480,6 @@ export default function CreatePostScreen() {
     isNotesFocused,
   )
 
-  const previousLineCount = useRef(0)
-
   // =============================================================================
   // IMAGE ATTACHMENT STATE
   // =============================================================================
@@ -427,6 +495,16 @@ export default function CreatePostScreen() {
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const scrollYRef = useRef(0)
+  const nativeKeyboardHeightRef = useRef(0)
+  const keypadVisibleRef = useRef(false)
+  const toolbarMeasuredHeightRef = useRef(0)
+  const toolbarBlockingHeightRef = useRef(0)
+  const toolbarVisibleRef = useRef(false)
+  const keyboardSettleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const toolbarInsetLockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const customSpacerReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
   const keypadTapShieldRef = useRef(false)
   const keypadTapShieldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notesRef = useRef(notes)
@@ -448,12 +526,216 @@ export default function CreatePostScreen() {
   const isHydratingRef = useRef(true)
   const isSubmittingRef = useRef(false)
   const hadWorkoutDraftContentRef = useRef(false)
+  const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+
+  const startToolbarInsetHandoff = useCallback(() => {
+    setIsToolbarInsetLocked(true)
+    if (toolbarInsetLockTimeoutRef.current) {
+      clearTimeout(toolbarInsetLockTimeoutRef.current)
+    }
+    // Keep toolbar inset pinned while native keyboard starts animating in.
+    toolbarInsetLockTimeoutRef.current = setTimeout(() => {
+      toolbarInsetLockTimeoutRef.current = null
+      setIsToolbarInsetLocked(false)
+    }, 420)
+  }, [])
+
+  const ensureFocusedInputVisibleForNativeKeyboard = useCallback(
+    (keyboardHeight: number) => {
+      if (!scrollViewRef.current || keyboardHeight <= 0 || keypadVisibleRef.current) {
+        return
+      }
+
+      const textInputState = (TextInput as unknown as {
+        State?: { currentlyFocusedInput?: () => unknown }
+      }).State
+      const activeInput = textInputState?.currentlyFocusedInput?.()
+      if (!activeInput) return
+
+      const scrollResponder = (
+        scrollViewRef.current as ScrollView & {
+          getScrollResponder?: () => {
+            scrollResponderScrollNativeHandleToKeyboard?: (
+              nodeHandle: unknown,
+              additionalOffset?: number,
+              preventNegativeScrollOffset?: boolean,
+            ) => void
+          }
+        }
+      ).getScrollResponder?.()
+
+      const toolbarHeight = toolbarVisibleRef.current
+        ? Math.max(toolbarBlockingHeightRef.current, TOOLBAR_FALLBACK_HEIGHT)
+        : 0
+      scrollResponder?.scrollResponderScrollNativeHandleToKeyboard?.(
+        activeInput,
+        KEYBOARD_CURSOR_CLEARANCE +
+          KEYBOARD_SCROLL_BUFFER +
+          toolbarHeight +
+          NATIVE_KEYBOARD_EXTRA_ESCAPE,
+        true,
+      )
+    },
+    [
+      KEYBOARD_CURSOR_CLEARANCE,
+      KEYBOARD_SCROLL_BUFFER,
+      NATIVE_KEYBOARD_EXTRA_ESCAPE,
+      TOOLBAR_FALLBACK_HEIGHT,
+    ],
+  )
+
+  const ensureNotesCursorVisible = useCallback(
+    (keyboardHeight?: number) => {
+      if (!isNotesFocused || !notesInputRef.current) return
+
+      const overlayHeight =
+        typeof keyboardHeight === 'number'
+          ? keyboardHeight
+          : keypadVisibleRef.current
+          ? CUSTOM_KEYPAD_HEIGHT
+          : nativeKeyboardHeightRef.current
+      if (overlayHeight <= 0) return
+      const nativeExtraBottomSpacing = keypadVisibleRef.current
+        ? CUSTOM_KEYBOARD_EXTRA_ESCAPE
+        : NATIVE_KEYBOARD_EXTRA_ESCAPE
+
+      const lineIndex = Math.max(1, notes.slice(0, cursorPosition).split('\n').length)
+      const lineHeight = 24
+      const inputPaddingTop =
+        isStructuredMode && (structuredData.length > 0 || selectedRoutine) ? 8 : 16
+
+      notesInputRef.current.measureInWindow((_x, y, _width, height) => {
+        if (height <= 0 || y <= 0) return
+
+        const cursorBottom = y + inputPaddingTop + lineIndex * lineHeight
+        scrollFrameAboveKeyboard(
+          { pageY: cursorBottom - lineHeight, height: lineHeight },
+          overlayHeight,
+          nativeExtraBottomSpacing,
+        )
+      })
+    },
+    [
+      CUSTOM_KEYPAD_HEIGHT,
+      CUSTOM_KEYBOARD_EXTRA_ESCAPE,
+      cursorPosition,
+      isNotesFocused,
+      isStructuredMode,
+      NATIVE_KEYBOARD_EXTRA_ESCAPE,
+      notes,
+      scrollFrameAboveKeyboard,
+      selectedRoutine,
+      structuredData.length,
+    ],
+  )
+
+  useEffect(() => {
+    keypadVisibleRef.current = Boolean(keypadProps)
+  }, [keypadProps])
+
+  useEffect(() => {
+    const nextIsToolbarVisible =
+      toolbarVisibleButtons.length > 0 &&
+      (!isStructuredInputFocused || Boolean(keypadProps))
+
+    toolbarVisibleRef.current = nextIsToolbarVisible
+    if (!nextIsToolbarVisible) {
+      toolbarBlockingHeightRef.current = 0
+      return
+    }
+
+    toolbarBlockingHeightRef.current =
+      toolbarMeasuredHeightRef.current > 0
+        ? toolbarMeasuredHeightRef.current
+        : TOOLBAR_FALLBACK_HEIGHT
+  }, [
+    TOOLBAR_FALLBACK_HEIGHT,
+    isStructuredInputFocused,
+    keypadProps,
+    toolbarVisibleButtons.length,
+  ])
+
+  const handleToolbarLayout = useCallback((event: LayoutChangeEvent) => {
+    const measuredHeight = Math.max(0, event.nativeEvent.layout.height)
+    if (!measuredHeight) return
+
+    toolbarMeasuredHeightRef.current = measuredHeight
+    if (toolbarVisibleRef.current) {
+      toolbarBlockingHeightRef.current = measuredHeight
+    }
+  }, [])
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const handleKeyboardShow = (event: {
+      endCoordinates?: { height?: number }
+    }) => {
+      const keyboardHeight = Math.max(0, event.endCoordinates?.height ?? 0)
+      nativeKeyboardHeightRef.current = keyboardHeight
+      if (toolbarInsetLockTimeoutRef.current) {
+        clearTimeout(toolbarInsetLockTimeoutRef.current)
+        toolbarInsetLockTimeoutRef.current = null
+      }
+      setIsToolbarInsetLocked(false)
+      if (keyboardSettleTimeoutRef.current) {
+        clearTimeout(keyboardSettleTimeoutRef.current)
+      }
+
+      requestAnimationFrame(() => {
+        ensureFocusedInputVisibleForNativeKeyboard(keyboardHeight)
+        ensureNotesCursorVisible(keyboardHeight)
+      })
+      keyboardSettleTimeoutRef.current = setTimeout(() => {
+        const settledHeight = nativeKeyboardHeightRef.current
+        if (settledHeight <= 0) return
+
+        ensureFocusedInputVisibleForNativeKeyboard(settledHeight)
+        ensureNotesCursorVisible(settledHeight)
+      }, 160)
+    }
+
+    const handleKeyboardHide = () => {
+      nativeKeyboardHeightRef.current = 0
+      if (toolbarInsetLockTimeoutRef.current) {
+        clearTimeout(toolbarInsetLockTimeoutRef.current)
+        toolbarInsetLockTimeoutRef.current = null
+      }
+      setIsToolbarInsetLocked(false)
+      if (keyboardSettleTimeoutRef.current) {
+        clearTimeout(keyboardSettleTimeoutRef.current)
+        keyboardSettleTimeoutRef.current = null
+      }
+    }
+
+    const showSub = Keyboard.addListener(showEvent, handleKeyboardShow)
+    const hideSub = Keyboard.addListener(hideEvent, handleKeyboardHide)
+    const frameSub =
+      Platform.OS === 'ios'
+        ? Keyboard.addListener('keyboardWillChangeFrame', handleKeyboardShow)
+        : null
+
+    return () => {
+      if (keyboardSettleTimeoutRef.current) {
+        clearTimeout(keyboardSettleTimeoutRef.current)
+        keyboardSettleTimeoutRef.current = null
+      }
+      if (toolbarInsetLockTimeoutRef.current) {
+        clearTimeout(toolbarInsetLockTimeoutRef.current)
+        toolbarInsetLockTimeoutRef.current = null
+      }
+      showSub.remove()
+      hideSub.remove()
+      frameSub?.remove()
+    }
+  }, [ensureFocusedInputVisibleForNativeKeyboard, ensureNotesCursorVisible])
 
   const logDraftDebug = useCallback(
     (_event: string, _payload?: Record<string, unknown>) => {
@@ -2001,8 +2283,14 @@ export default function CreatePostScreen() {
     (event: { nativeEvent: { selection: { start: number; end: number } } }) => {
       const cursorPos = event.nativeEvent.selection.start
       setCursorPosition(cursorPos)
+
+      if (isNotesFocused && nativeKeyboardHeightRef.current > 0) {
+        requestAnimationFrame(() => {
+          ensureNotesCursorVisible()
+        })
+      }
     },
-    [],
+    [ensureNotesCursorVisible, isNotesFocused],
   )
 
   // Calculate dynamic height of structured content
@@ -2028,32 +2316,18 @@ export default function CreatePostScreen() {
     return totalHeight
   }, [isStructuredMode, structuredData])
 
-  // Handle content size changes to scroll to cursor when adding new lines
+  // Handle content size changes to keep the cursor above the keyboard.
   const handleContentSizeChange = useCallback(
-    (event: {
+    (_event: {
       nativeEvent: { contentSize: { width: number; height: number } }
     }) => {
-      if (scrollViewRef.current && isNotesFocused) {
-        // Calculate cursor position in text
-        const textBeforeCursor = notes.substring(0, cursorPosition)
-        const currentLineCount = textBeforeCursor.split('\n').length
-
-        // Only scroll if we're adding lines (going down)
-        if (currentLineCount > previousLineCount.current) {
-          // Calculate dynamic height of structured content above notes
-          const structuredContentHeight = calculateStructuredContentHeight()
-
-          // Scroll to show cursor with minimal padding above keyboard
-          scrollViewRef.current.scrollTo({
-            y: structuredContentHeight + currentLineCount * 24 - 250,
-            animated: true,
-          })
-        }
-
-        previousLineCount.current = currentLineCount
+      if (isNotesFocused && nativeKeyboardHeightRef.current > 0) {
+        requestAnimationFrame(() => {
+          ensureNotesCursorVisible()
+        })
       }
     },
-    [notes, cursorPosition, isNotesFocused, calculateStructuredContentHeight],
+    [ensureNotesCursorVisible, isNotesFocused],
   )
 
   // =============================================================================
@@ -2427,9 +2701,54 @@ export default function CreatePostScreen() {
   // Keyboard handling with Reanimated for perfect sync
   const keyboard = useAnimatedKeyboard()
 
-  const spacerStyle = useAnimatedStyle(() => ({
-    height: keyboard.height.value,
+  // Custom keypad spacer — lifts the toolbar in sync with the keypad slide animation
+  const customKeypadSpacerH = useSharedValue(0)
+  useEffect(() => {
+    if (keypadProps) {
+      if (customSpacerReleaseTimeoutRef.current) {
+        clearTimeout(customSpacerReleaseTimeoutRef.current)
+        customSpacerReleaseTimeoutRef.current = null
+      }
+      customKeypadSpacerH.value = withSpring(CUSTOM_KEYPAD_HEIGHT, {
+        damping: 28,
+        stiffness: 280,
+        mass: 0.85,
+      })
+    } else {
+      const runCloseAnimation = () => {
+        customKeypadSpacerH.value = withTiming(0, {
+          duration: 220,
+          easing: ReanimatedEasing.in(ReanimatedEasing.quad),
+        })
+      }
+
+      // Smooth custom->native keyboard handoff: keep custom lift briefly so we
+      // don't drop before the native keyboard lift starts.
+      if (isToolbarInsetLocked) {
+        if (customSpacerReleaseTimeoutRef.current) {
+          clearTimeout(customSpacerReleaseTimeoutRef.current)
+        }
+        customSpacerReleaseTimeoutRef.current = setTimeout(() => {
+          customSpacerReleaseTimeoutRef.current = null
+          runCloseAnimation()
+        }, 120)
+      } else {
+        if (customSpacerReleaseTimeoutRef.current) {
+          clearTimeout(customSpacerReleaseTimeoutRef.current)
+          customSpacerReleaseTimeoutRef.current = null
+        }
+        runCloseAnimation()
+      }
+    }
+  }, [keypadProps, isToolbarInsetLocked, CUSTOM_KEYPAD_HEIGHT, customKeypadSpacerH])
+  const combinedSpacerStyle = useAnimatedStyle(() => ({
+    height: Math.max(customKeypadSpacerH.value, keyboard.height.value),
   }))
+  const isToolbarVisible =
+    toolbarVisibleButtons.length > 0 &&
+    (!isStructuredInputFocused || Boolean(keypadProps))
+  const toolbarBottomInsetOverride =
+    keypadProps || isToolbarInsetLocked ? 0 : bottomSafeInset
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -2572,6 +2891,18 @@ export default function CreatePostScreen() {
                 autoFocus={false}
                 cursorColor={colors.brandPrimary}
                 selectionColor={colors.brandPrimary}
+                onFocus={() => {
+                  if (keypadProps) {
+                    startToolbarInsetHandoff()
+                  }
+                  if (nativeKeyboardHeightRef.current > 0) {
+                    requestAnimationFrame(() => {
+                      ensureFocusedInputVisibleForNativeKeyboard(
+                        nativeKeyboardHeightRef.current,
+                      )
+                    })
+                  }
+                }}
               />
               <View>
                 <TouchableOpacity
@@ -2655,9 +2986,17 @@ export default function CreatePostScreen() {
                 selectionColor={colors.brandPrimary}
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
+                  if (keypadProps) {
+                    startToolbarInsetHandoff()
+                  }
                   setIsStructuredInputFocused(false)
                   setKeypadProps(null)
                   setIsNotesFocused(true)
+                  if (nativeKeyboardHeightRef.current > 0) {
+                    requestAnimationFrame(() => {
+                      ensureNotesCursorVisible()
+                    })
+                  }
                 }}
                 onBlur={() => {
                   setIsNotesFocused(false)
@@ -2736,10 +3075,15 @@ export default function CreatePostScreen() {
           </ScrollView>
 
           {/* Editor Toolbar */}
-          {!isStructuredInputFocused && toolbarVisibleButtons.length > 0 && (
-            <EditorToolbar {...editorToolbarProps} />
+          {isToolbarVisible && (
+            <View onLayout={handleToolbarLayout}>
+              <EditorToolbar
+                {...editorToolbarProps}
+                bottomInsetOverride={toolbarBottomInsetOverride}
+              />
+            </View>
           )}
-          <Reanimated.View style={spacerStyle} />
+          <Reanimated.View style={combinedSpacerStyle} />
           {/* Custom numeric keypad - rendered here (outside ScrollView) so the
               TextInput retains native focus and caret stays visible */}
           {keypadProps && (
