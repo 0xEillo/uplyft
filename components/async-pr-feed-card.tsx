@@ -219,32 +219,14 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   }, [workout.id, router])
 
   const handleDelete = useCallback(async () => {
-    Alert.alert(
-      'Delete Workout',
-      'Are you sure you want to delete this workout? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await database.workoutSessions.delete(workout.id)
-              onDelete()
-            } catch (error) {
-              console.error('Error deleting workout:', error)
-              Alert.alert(
-                'Error',
-                'Failed to delete workout. Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
+    // FeedCard already shows confirmation - this is the "confirmed" callback
+    try {
+      await database.workoutSessions.delete(workout.id)
+      onDelete()
+    } catch (error) {
+      console.error('Error deleting workout:', error)
+      Alert.alert('Error', 'Failed to delete workout. Please try again.')
+    }
   }, [workout.id, onDelete])
 
   const handleCreateRoutine = useCallback(() => {

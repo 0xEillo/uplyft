@@ -189,7 +189,9 @@ function ExerciseRankOverlayComponent({
     }))
   }, [visible, newLevelColor])
 
-  if (!visible && latestFadeValue.current === 0) return null
+  if (!visible && latestFadeValue.current === 0) {
+    return null
+  }
 
   const tileBg = isDark ? 'rgba(34,37,43,0.86)' : 'rgba(255,255,255,0.94)'
   const styles = createStyles(colors, isDark, newLevelColor)

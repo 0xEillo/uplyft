@@ -478,7 +478,9 @@ function PointsGainOverlayComponent({
     }))
   }, [showLevelUpConfetti, newLevelColor])
 
-  if (!visible && latestFadeValue.current === 0) return null
+  if (!visible && latestFadeValue.current === 0) {
+    return null
+  }
 
   const displayLevelColor = showNewLevel ? newLevelColor : oldLevelColor
   const displayNextLevel = showNewLevel ? nextLevel : oldNextLevel
@@ -720,10 +722,10 @@ const createStyles = (
       paddingHorizontal: BAR_HORIZONTAL_PADDING,
     },
     badgeArea: {
-      minHeight: 180,
+      minHeight: 150,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: -10,
     },
     badgeWrapper: {},
     levelName: {

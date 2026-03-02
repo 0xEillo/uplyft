@@ -684,6 +684,8 @@ export default function ProfileScreen() {
           }
           key={viewMode}
           numColumns={viewMode === 'grid' ? 3 : 1}
+          contentInsetAdjustmentBehavior="automatic"
+          automaticallyAdjustContentInsets
           contentContainerStyle={[
             styles.feedContent,
             viewMode === 'grid' && styles.gridContent,

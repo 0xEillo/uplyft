@@ -8,22 +8,22 @@ import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { useAuth } from '@/contexts/auth-context'
 import {
-  LiveActivityProvider,
-  useLiveActivity,
+    LiveActivityProvider,
+    useLiveActivity,
 } from '@/contexts/live-activity-context'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
-  RestTimerProvider,
-  useRestTimerContext,
+    RestTimerProvider,
+    useRestTimerContext,
 } from '@/contexts/rest-timer-context'
 import {
-  ScrollToTopProvider,
-  useScrollToTop,
+    ScrollToTopProvider,
+    useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import {
-  SuccessOverlayProvider,
-  useSuccessOverlay,
+    SuccessOverlayProvider,
+    useSuccessOverlay,
 } from '@/contexts/success-overlay-context'
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -31,20 +31,20 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import {
-  clearDraft as clearWorkoutDraft,
-  loadDraft as loadWorkoutDraft,
+    clearDraft as clearWorkoutDraft,
+    loadDraft as loadWorkoutDraft,
 } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import React, { useEffect, useState } from 'react'
 import {
-  Alert,
-  Platform,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 
 const MINIMIZE_ON_SCROLL_TABS = new Set(['index', 'analytics', 'profile'])
@@ -379,6 +379,7 @@ function TabLayoutContent() {
       />
       {currentExerciseRankUpgrade && (
         <ExerciseRankOverlay
+          key={currentExerciseRankUpgrade.exerciseName}
           visible={isExerciseRankOverlayVisible}
           onAnimationComplete={dismissCurrentExerciseRankOverlay}
           exerciseName={currentExerciseRankUpgrade.exerciseName}

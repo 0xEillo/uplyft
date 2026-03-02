@@ -133,9 +133,11 @@ export function SuccessOverlayProvider({
   const showExerciseRankOverlays = useCallback(
     (upgrades: ExerciseRankUpgrade[], scoreData?: StrengthScoreData) => {
       if (scoreData) pendingPointsDataRef.current = scoreData
-      if (upgrades.length === 0) {
-        if (scoreData && scoreData.pointsGained > 0) {
-          setPointsData(scoreData)
+      const hasUpgrades = upgrades.length > 0
+      const hasPoints = scoreData && scoreData.pointsGained > 0
+      if (!hasUpgrades) {
+        if (hasPoints) {
+          setPointsData(scoreData!)
           setIsPointsOverlayVisible(true)
           pendingPointsDataRef.current = null
         }
@@ -149,15 +151,13 @@ export function SuccessOverlayProvider({
   const dismissCurrentExerciseRankOverlay = useCallback(() => {
     setExerciseRankQueue((prev) => {
       const next = prev.slice(1)
-      if (next.length === 0) {
-        const pending = pendingPointsDataRef.current
-        if (pending && pending.pointsGained > 0) {
-          setTimeout(() => {
-            setPointsData(pending)
-            setIsPointsOverlayVisible(true)
-            pendingPointsDataRef.current = null
-          }, 400)
-        }
+      const pending = pendingPointsDataRef.current
+      if (next.length === 0 && pending && pending.pointsGained > 0) {
+        setTimeout(() => {
+          setPointsData(pending)
+          setIsPointsOverlayVisible(true)
+          pendingPointsDataRef.current = null
+        }, 400)
       }
       return next
     })

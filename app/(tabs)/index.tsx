@@ -7,7 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     LayoutAnimation,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
     Platform,
     StyleSheet,
     Text,
@@ -41,6 +44,7 @@ import { database } from '@/lib/database'
 import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import { getStrengthGender } from '@/lib/strength-progress'
 import { getStrengthStandard } from '@/lib/strength-standards'
+import type { StrengthLevel } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
   prependProcessedWorkoutToFeed,
@@ -158,6 +162,13 @@ export default function FeedScreen() {
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlashListRef<FeedItem>>(null)
+  const scrollY = useRef(new Animated.Value(0)).current
+  const handleFeedScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.setValue(event.nativeEvent.contentOffset.y)
+    },
+    [scrollY],
+  )
 
   // --- Navigation Header Animations ---
 
@@ -456,6 +467,7 @@ export default function FeedScreen() {
 
         // Compute strength score delta for points gain overlay
         try {
+          console.log('[Overlay] index: computing strength score delta for workout', workout.id)
           const prof =
             cachedProfile ??
             workout.profile ??
@@ -465,12 +477,18 @@ export default function FeedScreen() {
           }
           const strengthGender = getStrengthGender(prof?.gender ?? null)
 
+          if (!strengthGender || !prof?.weight_kg) {
+            console.log('[Overlay] index: skipping overlays - no strengthGender or weight', { strengthGender: !!strengthGender, hasWeight: !!prof?.weight_kg })
+          }
           if (strengthGender && prof?.weight_kg) {
             // Get current exercise data (after this workout) and snapshots
             const [exerciseData, snapshots] = await Promise.all([
               database.stats.getMajorCompoundLiftsData(user.id),
               database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
             ])
+            if (exerciseData.length === 0) {
+              console.log('[Overlay] index: skipping overlays - no exercise data')
+            }
             if (exerciseData.length > 0) {
               // Current score (with new workout PRs)
               const currentResult = calculateOverallStrengthScore({
@@ -508,28 +526,48 @@ export default function FeedScreen() {
               // Detect per-exercise rank upgrades
               const exerciseUpgrades: ExerciseRankUpgrade[] = []
               const genderKey = strengthGender === 'male' ? 'male' : ('female' as 'male' | 'female')
+              console.log('[Overlay] index: checking', exerciseData.length, 'exercises for rank upgrades, workoutId=', workout.id)
               for (const ex of exerciseData) {
                 const snapshot = snapshots[ex.exerciseId]
                 const isNewPR = snapshot?.lastIncreaseSessionId === workout.id
-                if (!isNewPR || !snapshot?.previousBest1RM || !prof.weight_kg) continue
+                const skipReason = !isNewPR ? 'not a new PR' : snapshot?.previousBest1RM == null ? 'no previousBest1RM snapshot' : null
+                if (skipReason) {
+                  console.log('[Overlay] index: skip', ex.exerciseName, '-', skipReason, { lastIncreaseSessionId: snapshot?.lastIncreaseSessionId, previousBest1RM: snapshot?.previousBest1RM })
+                  continue
+                }
 
+                const LEVEL_ORDER = ['Untrained', 'Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class']
                 const currentStd = getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, ex.max1RM)
-                const prevStd = getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, snapshot.previousBest1RM)
+                // previousBest1RM can be 0 (never tracked before = Untrained)
+                const prevStd = snapshot.previousBest1RM > 0
+                  ? getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, snapshot.previousBest1RM)
+                  : null
+                const prevLevel = prevStd?.level ?? 'Untrained'
+                const currLevel = currentStd?.level
 
-                if (currentStd && prevStd && currentStd.level !== prevStd.level) {
-                  const LEVEL_ORDER = ['Untrained', 'Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class']
-                  const prevIdx = LEVEL_ORDER.indexOf(prevStd.level)
-                  const currIdx = LEVEL_ORDER.indexOf(currentStd.level)
+                console.log('[Overlay] index: exercise', ex.exerciseName, '| prev1RM=', snapshot.previousBest1RM, 'curr1RM=', ex.max1RM, '| prevLevel=', prevLevel, 'currLevel=', currLevel)
+
+                if (currentStd && currLevel && currLevel !== prevLevel) {
+                  const prevIdx = LEVEL_ORDER.indexOf(prevLevel)
+                  const currIdx = LEVEL_ORDER.indexOf(currLevel)
                   if (currIdx > prevIdx) {
+                    console.log('[Overlay] index: RANK UP', ex.exerciseName, prevLevel, '->', currLevel)
                     exerciseUpgrades.push({
                       exerciseName: ex.exerciseName,
-                      previousLevel: prevStd.level,
-                      currentLevel: currentStd.level,
+                      previousLevel: prevLevel as StrengthLevel,
+                      currentLevel: currLevel as StrengthLevel,
                     })
+                  } else {
+                    console.log('[Overlay] index: level changed but downgrade/same idx, skipping', ex.exerciseName)
                   }
+                } else if (!currentStd) {
+                  console.log('[Overlay] index: no std found for', ex.exerciseName, '(exercise not in standards config)')
                 }
               }
 
+              if (!(pointsGained > 0 && currentResult.liftsTracked > 0) && exerciseUpgrades.length === 0) {
+                console.log('[Overlay] index: no overlays - pointsGained=', pointsGained, 'liftsTracked=', currentResult.liftsTracked, 'exerciseUpgrades=', exerciseUpgrades.length)
+              }
               if (pointsGained > 0 && currentResult.liftsTracked > 0) {
                 const levelProgress = scoreToOverallLevelProgress(currentResult.score)
                 const baselineLevelProgress = scoreToOverallLevelProgress(baselineResult.score)
@@ -544,13 +582,16 @@ export default function FeedScreen() {
                 }
                 if (exerciseUpgrades.length > 0) {
                   // Show exercise rank overlays first, then points gain overlay
+                  console.log('[Overlay] index: showing exercise rank overlays first, points queued', { exerciseUpgrades: exerciseUpgrades.length, pointsGained })
                   showExerciseRankOverlays(exerciseUpgrades, scoreData)
                 } else {
                   // Delay to show after streak overlay fades
+                  console.log('[Overlay] index: scheduling points overlay in 800ms', { pointsGained })
                   setTimeout(() => showPointsGainOverlay(scoreData), 800)
                 }
               } else if (exerciseUpgrades.length > 0) {
                 // Exercise rank upgrades but no overall points — just show rank overlays
+                console.log('[Overlay] index: exercise rank upgrades only (no points)', { exerciseUpgrades: exerciseUpgrades.length })
                 showExerciseRankOverlays(exerciseUpgrades)
               }
             }
@@ -917,6 +958,8 @@ export default function FeedScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          onScroll={handleFeedScroll}
+          scrollEventThrottle={16}
           ListHeaderComponent={
             <>
               {/* Tutorial checklist (existing) */}

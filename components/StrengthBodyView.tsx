@@ -4,49 +4,49 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
 import { useTheme } from "@/contexts/theme-context";
 import {
-  getLevelColor,
-  getLevelIntensity,
-  useStrengthData,
-  type ExerciseData,
-  type MuscleGroupData,
+    getLevelColor,
+    getLevelIntensity,
+    useStrengthData,
+    type ExerciseData,
+    type MuscleGroupData,
 } from "@/hooks/useStrengthData";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import {
-  BODY_PART_DISPLAY_NAMES,
-  BODY_PART_TO_DATABASE_MUSCLE,
-  type BodyPartSlug,
+    BODY_PART_DISPLAY_NAMES,
+    BODY_PART_TO_DATABASE_MUSCLE,
+    type BodyPartSlug,
 } from "@/lib/body-mapping";
 import {
-  EXERCISE_MUSCLE_MAPPING,
-  getExerciseNameMap,
-  TIER2_WEIGHT,
+    EXERCISE_MUSCLE_MAPPING,
+    getExerciseNameMap,
+    TIER2_WEIGHT,
 } from "@/lib/exercise-standards-config";
 import {
-  calculateExerciseStrengthPoints,
-  LEVEL_POINT_ANCHORS,
+    calculateExerciseStrengthPoints,
+    LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
 import {
-  getProgressDeltaPoints,
-  getStrengthGender,
+    getProgressDeltaPoints,
+    getStrengthGender,
 } from "@/lib/strength-progress";
 import {
-  getStandardsLadder,
-  type StrengthLevel,
-  type StrengthStandard,
+    getStandardsLadder,
+    type StrengthLevel,
+    type StrengthStandard,
 } from "@/lib/strength-standards";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import Body from "react-native-body-highlighter";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
