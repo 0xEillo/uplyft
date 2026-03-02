@@ -19,7 +19,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Easing,
   KeyboardAvoidingView,
   Linking,
@@ -33,16 +32,13 @@ import {
 } from 'react-native'
 import Reanimated, {
   FadeIn,
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const MAX_PHOTOS = 3
-const SLOT_SIZE = (SCREEN_WIDTH - 40 - 24) / 3
 
 const SCANNING_MESSAGES = [
   'Uploading photos',
@@ -60,7 +56,7 @@ export default function BodyScanFlowScreen() {
   const { user } = useAuth()
   const { profile } = useProfile()
   const { isProMember } = useSubscription()
-  const { weightUnit, convertInputToKg, formatWeight } = useUnit()
+  const { weightUnit, convertInputToKg } = useUnit()
 
   const [step, setStep] = useState<Step>('intro')
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null])

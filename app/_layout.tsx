@@ -71,11 +71,6 @@ function RootLayoutNav() {
   // Initialize push notifications
   usePushNotifications()
 
-  const formSheetContentStyle = {
-    backgroundColor: isDark
-      ? getColors(true).surfaceSheet
-      : getColors(false).surfaceSheet,
-  }
   const navigationBackground = isDark
     ? CustomDarkTheme.colors.background
     : CustomLightTheme.colors.background

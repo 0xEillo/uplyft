@@ -294,7 +294,14 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       )
     },
-    [styles, handleSaveRoutine, savingRoutineId, router, trackEvent],
+    [
+      styles,
+      handleSaveRoutine,
+      savingRoutineId,
+      router,
+      trackEvent,
+      colors.textPrimary,
+    ],
   )
 
   return (

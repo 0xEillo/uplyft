@@ -98,7 +98,6 @@ function TabLayoutContent() {
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
   const [workoutElapsedSeconds, setWorkoutElapsedSeconds] = useState(0)
-  const [isDraftCheckComplete, setIsDraftCheckComplete] = useState(false)
 
   // Check for unread welcome message
   useEffect(() => {
@@ -120,7 +119,6 @@ function TabLayoutContent() {
       if (!draft) {
         setHasDraft(false)
         setWorkoutElapsedSeconds(0)
-        setIsDraftCheckComplete(true)
         return
       }
 
@@ -139,7 +137,6 @@ function TabLayoutContent() {
         : Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
 
       setWorkoutElapsedSeconds(Math.max(0, baseSeconds + runningSeconds))
-      setIsDraftCheckComplete(true)
     }
 
     checkDraft()
@@ -355,7 +352,8 @@ function TabLayoutContent() {
         <NativeTabs.Trigger name="create-post" role="search">
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon
-            src={Ionicons.getImageSource('add', 30, '#FFFFFF')}
+            sf={{ default: 'plus', selected: 'plus' }}
+            md="add"
             renderingMode="template"
             selectedColor={createActionColor}
           />

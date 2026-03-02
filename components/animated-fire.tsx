@@ -133,7 +133,18 @@ export function AnimatedFire({
       spark1Opacity.value = 0
       spark2Opacity.value = 0
     }
-  }, [isActive, size])
+  }, [
+    innerScale,
+    innerTranslateY,
+    isActive,
+    mainRotate,
+    mainScale,
+    size,
+    spark1Opacity,
+    spark1TranslateY,
+    spark2Opacity,
+    spark2TranslateY,
+  ])
 
   const mainFlameStyle = useAnimatedStyle(() => ({
     transform: [

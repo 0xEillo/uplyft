@@ -26,7 +26,7 @@ export type AppPost = {
   preview?: AppPostPreviewType
   badge?: string
   ctaText?: string
-  ctaRoute?: Href<string>
+  ctaRoute?: Href
   ctaUrl?: string
 }
 

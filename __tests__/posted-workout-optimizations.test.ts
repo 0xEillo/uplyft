@@ -16,7 +16,9 @@ describe('posted workout optimization helpers', () => {
     const next = prependProcessedWorkoutToFeed(prev, workout)
 
     expect(next.map((w) => w.id)).toEqual(['new-1', 'old-1', 'old-2'])
-    expect(next.some((w) => w.isPending)).toBe(false)
+    expect(next.some((w) => 'isPending' in w && Boolean(w.isPending))).toBe(
+      false,
+    )
   })
 
   test('dedupes when processed workout already exists and still removes pending placeholders', () => {

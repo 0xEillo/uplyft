@@ -2,10 +2,8 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { AppColors } from '@/constants/colors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
-import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useMemo, useState } from 'react'
@@ -23,9 +21,6 @@ import {
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-// AsyncStorage key for trial reminder preference
-export const TRIAL_REMINDER_ENABLED_KEY = '@trial_reminder_enabled'
 
 type PaywallProps = {
   visible: boolean
@@ -53,7 +48,7 @@ export function Paywall({
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(1) // Default to Yearly
-  const [isReminderEnabled, setIsReminderEnabled] = useState(false) // Reminder toggle for notifications
+  const [isReminderEnabled] = useState(false) // Reminder toggle for notifications
 
   const {
     monthly: monthlyPackage,
@@ -138,18 +133,6 @@ export function Paywall({
 
   // Button text based on the presence of a trial
   const buttonText = isYearlySelected ? 'Try 7 days free' : 'Continue'
-
-  const handleReminderToggle = async (value: boolean) => {
-    if (value) {
-      // User wants a reminder - request notification permissions and store preference
-      setIsReminderEnabled(true)
-      await AsyncStorage.setItem(TRIAL_REMINDER_ENABLED_KEY, '1')
-      await registerForPushNotifications()
-    } else {
-      setIsReminderEnabled(false)
-      await AsyncStorage.removeItem(TRIAL_REMINDER_ENABLED_KEY)
-    }
-  }
 
   const handleSubscribe = async () => {
     // Track CTA tap immediately (user expressed intent to subscribe)

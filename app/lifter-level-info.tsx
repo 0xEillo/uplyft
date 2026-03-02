@@ -19,7 +19,7 @@ type InfoSectionKey = 'lifter-level' | 'level-up' | 'your-exercises'
 type InfoContent = {
   title: string
   subtitle: string
-  sections: Array<{ title: string; text: string }>
+  sections: { title: string; text: string }[]
   nextMove: string
 }
 

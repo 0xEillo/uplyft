@@ -133,17 +133,6 @@ export const MUSCLE_OPTIONS = [
 
 export const EQUIPMENT_OPTIONS: any[] = []
 
-const getMuscleData = (optionLabel: string) => {
-  const mapping = MUSCLE_TO_BODY_PARTS[optionLabel]
-  if (!mapping) return []
-  const mappings = Array.isArray(mapping) ? mapping : [mapping]
-  return mappings.map((m) => ({
-    slug: m.slug,
-    intensity: 1,
-    side: m.side,
-  }))
-}
-
 const LOCATION_OPTS = ['Gym', 'Home']
 const WORKOUT_TYPES = [
   'Strength',
@@ -468,7 +457,7 @@ export function WorkoutPlanningWizard({
             Muscle Focus
           </Text>
           <Text style={[styles.sectionDesc, { color: colors.textSecondary }]}>
-            Pick your workout's main muscles. It may include a few more.
+            Pick your workout&apos;s main muscles. It may include a few more.
           </Text>
           <View style={styles.row}>
             {MAIN_MUSCLES.map((opt) => (

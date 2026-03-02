@@ -650,6 +650,8 @@ export function WorkoutChat({
 }: WorkoutChatProps = {}) {
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
+  const launchCameraRef = useRef<() => Promise<void>>(async () => {})
+  const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [inputHeight, setInputHeight] = useState(0)
@@ -682,7 +684,6 @@ export function WorkoutChat({
   >({})
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
   const coach = getCoach(coachId)
-  const coachName = coach.name.split(' ').pop() || 'Coach'
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
@@ -1012,9 +1013,9 @@ export function WorkoutChat({
           const pending = await consumePendingChatAttachment()
           if (!pending || cancelled) return
           if (pending.action === 'launch_camera') {
-            launchCamera()
+            void launchCameraRef.current()
           } else if (pending.action === 'launch_library') {
-            launchLibrary()
+            void launchLibraryRef.current()
           } else if (pending.action === 'photo_selected') {
             if (selectedImages.length < MAX_IMAGES) {
               setSelectedImages((prev) => [...prev, pending.uri])
@@ -1046,7 +1047,7 @@ export function WorkoutChat({
       return () => {
         cancelled = true
       }
-    }, [refreshDailyLogSummary]),
+    }, [refreshDailyLogSummary, selectedImages.length]),
   )
 
   // Combined context: prefer passed prop, fall back to loaded draft
@@ -1465,6 +1466,9 @@ export function WorkoutChat({
       )
     }
   }
+
+  launchCameraRef.current = launchCamera
+  launchLibraryRef.current = launchLibrary
 
   // Remove image from selection
   const removeImage = (index: number) => {

@@ -8,7 +8,7 @@ import { setPendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import type { DailyLogMeal } from '@/types/database.types'
 import { Stack, useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -167,7 +167,7 @@ export default function FoodLibraryScreen() {
       return
     }
     handleClose()
-  }, [handleClose, foodDetail?.closeToFoodLibrary])
+  }, [handleClose, foodDetail])
 
   const handleFoodBankItemDetailChange = useCallback(
     (detail: {

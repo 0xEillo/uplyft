@@ -26,7 +26,6 @@ import Animated, {
     withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Circle, G, Svg } from 'react-native-svg'
 
 import { BlurredHeader } from '@/components/blurred-header'
 import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'

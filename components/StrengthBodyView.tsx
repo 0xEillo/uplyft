@@ -660,7 +660,12 @@ export function StrengthBodyView({
         rank: index + 1,
       };
     });
-  }, [profile?.weight_kg, strengthGender, trackedExercisesWithProgress]);
+  }, [
+    profile?.weight_kg,
+    strengthGender,
+    trackedExercisesWithProgress,
+    overallLevel?.balancedLevel,
+  ]);
 
   const shouldShowPrioritySection = useMemo(() => {
     if (!overallLevel) return false;
@@ -1108,8 +1113,6 @@ export function StrengthBodyView({
               const isExpanded = expandedMuscleGroups.has(group);
               const bodyMapping = DISPLAY_GROUP_BODY_MAPPING[group];
               const bestExercise = exercises[0];
-              const level = bestExercise?.level ?? "Untrained";
-              const bestLevelColor = getLevelColor(level);
 
               return (
                 <View key={group}>

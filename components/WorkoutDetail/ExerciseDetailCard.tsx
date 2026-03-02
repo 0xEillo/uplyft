@@ -169,10 +169,6 @@ export function ExerciseDetailCard({
     setEntries,
   ])
 
-  if (!hasValidSets) {
-    return null
-  }
-
   const hasPr = (prInfo?.prSetIndices.size ?? 0) > 0
   const setPrLabelsByIndex = useMemo(() => {
     const mapping = new Map<number, string[]>()
@@ -199,6 +195,10 @@ export function ExerciseDetailCard({
 
     return mapping
   }, [prInfo])
+
+  if (!hasValidSets) {
+    return null
+  }
 
   let workingSetNumber = 0
   const setRows = setEntries.map(({ set, originalIndex }, index) => {

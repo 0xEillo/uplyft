@@ -195,7 +195,6 @@ function ExerciseRankOverlayComponent({
   }, [fadeAnim, clearAllTimeouts])
 
   const newLevelColor = LEVEL_COLORS[currentLevel] ?? '#FF6B35'
-  const oldLevelColor = LEVEL_COLORS[previousLevel] ?? '#888'
 
   const confetti = useMemo(() => {
     if (!visible) return []
@@ -207,7 +206,6 @@ function ExerciseRankOverlayComponent({
       startX: SCREEN_WIDTH * 0.2 + Math.random() * SCREEN_WIDTH * 0.6,
       startY: SCREEN_HEIGHT * 0.3 + (Math.random() - 0.5) * 60,
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, newLevelColor])
 
   if (!visible && latestFadeValue.current === 0) return null

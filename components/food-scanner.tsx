@@ -13,7 +13,6 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 
 // Supported scanner modes inline with Rep AI
@@ -35,7 +34,6 @@ export function FoodScannerModal({
   onScanFoodLabel,
 }: FoodScannerProps) {
   const themedColors = useThemedColors()
-  const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const colors = {
     ...themedColors,
@@ -63,7 +61,7 @@ export function FoodScannerModal({
     ) {
       requestCameraPermission()
     }
-  }, [visible, cameraPermission])
+  }, [visible, cameraPermission, requestCameraPermission])
 
   const toggleFlash = () => {
     setFlash((prev) => (prev === 'off' ? 'on' : 'off'))
