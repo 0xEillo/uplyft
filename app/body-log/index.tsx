@@ -9,12 +9,12 @@ import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
-import { database } from '@/lib/database'
 import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
+import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
-  getBodyLogImageUrls,
-  getThumbnailUrlsWithPrefetch,
+    getBodyLogImageUrls,
+    getThumbnailUrlsWithPrefetch,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,24 +24,25 @@ import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BodyFatAddSheet } from '@/components/BodyFatAddSheet'
 import { BodyFatInputModal } from '@/components/BodyFatInputModal'
+import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
 import { WeightInputModal } from '@/components/WeightInputModal'
 
 const PAGE_SIZE = 40
@@ -1083,7 +1084,12 @@ export default function BodyLogScreen() {
             initialNumToRender={15}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
-            ListHeaderComponent={<View>{TabsHeader}</View>}
+            ListHeaderComponent={
+              <View>
+                {TabsHeader}
+                {user && <BodyWeightChart userId={user.id} />}
+              </View>
+            }
             ListEmptyComponent={emptySection('weight')}
             ListFooterComponent={footer}
             refreshControl={refreshControl}
