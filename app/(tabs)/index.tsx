@@ -25,6 +25,8 @@ import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
+import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
+import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { NotificationBadge } from '@/components/notification-badge'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -34,7 +36,6 @@ import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
-import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
@@ -43,13 +44,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import { getStrengthGender } from '@/lib/strength-progress'
-import { getStrengthStandard } from '@/lib/strength-standards'
 import type { StrengthLevel } from '@/lib/strength-standards'
+import { getStrengthStandard } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
-  prependProcessedWorkoutToFeed,
-  replaceWorkoutInFeedById,
-  shouldHydratePostedWorkout,
+    prependProcessedWorkoutToFeed,
+    replaceWorkoutInFeedById,
+    shouldHydratePostedWorkout,
 } from '@/lib/utils/posted-workout-optimizations'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -962,6 +963,7 @@ export default function FeedScreen() {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <>
+              <InviteFriendsPrompt />
               {/* Tutorial checklist (existing) */}
               {/* Tutorial checklist (existing) */}
               {!isTutorialDismissed &&
