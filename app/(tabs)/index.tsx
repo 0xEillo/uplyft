@@ -28,6 +28,7 @@ import { EmptyState } from '@/components/EmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { NotificationBadge } from '@/components/notification-badge'
+import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -74,6 +75,9 @@ const DEFAULT_APP_POST_STATE: AppPostState = {
 
 const APP_POST_STORAGE_KEY = '@app_post_state'
 const APP_POST_HIDE_AFTER_WORKOUTS = 6
+const GUEST_SIGN_IN_PROMPT_STORAGE_KEY = '@guest_sign_in_prompt_state'
+const GUEST_SIGN_IN_BASE_MILESTONES = [5, 10, 20] as const
+const GUEST_SIGN_IN_REPEAT_INTERVAL = 20
 
 const FEED_APP_POST_FIRST_AFTER = 2
 const FEED_APP_POST_INTERVAL = 2
@@ -82,6 +86,34 @@ const FEED_APP_POST_PER_WORKOUTS = 2
 
 // BaseNavbar min-height (60) + vertical padding (8 * 2) = ~76
 const NAVBAR_HEIGHT = 76
+
+type GuestSignInPromptState = {
+  lastShownMilestone: number
+}
+
+const getGuestSignInMilestone = (workoutCount: number): number | null => {
+  const safeCount = Math.max(0, Math.floor(workoutCount))
+  const firstMilestone = GUEST_SIGN_IN_BASE_MILESTONES[0]
+  const finalBaseMilestone =
+    GUEST_SIGN_IN_BASE_MILESTONES[GUEST_SIGN_IN_BASE_MILESTONES.length - 1]
+
+  if (safeCount < firstMilestone) return null
+
+  if (safeCount <= finalBaseMilestone) {
+    let milestone: number = firstMilestone
+    GUEST_SIGN_IN_BASE_MILESTONES.forEach((value) => {
+      if (safeCount >= value) {
+        milestone = value
+      }
+    })
+    return milestone
+  }
+
+  const extraMilestones = Math.floor(
+    (safeCount - finalBaseMilestone) / GUEST_SIGN_IN_REPEAT_INTERVAL,
+  )
+  return finalBaseMilestone + extraMilestones * GUEST_SIGN_IN_REPEAT_INTERVAL
+}
 
 const buildFeedItems = (
   workouts: WorkoutSessionWithDetails[],
@@ -154,15 +186,24 @@ const CardDeleteAnimation = {
 // --- Scroll Animations ---
 
 export default function FeedScreen() {
-  const { user } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const router = useRouter()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
-  const { updateWorkoutData, showPointsGainOverlay, showExerciseRankOverlays } = useSuccessOverlay()
+  const {
+    updateWorkoutData,
+    showPointsGainOverlay,
+    showExerciseRankOverlays,
+    isVisible: isSuccessOverlayVisible,
+    isPointsOverlayVisible,
+    isExerciseRankOverlayVisible,
+    showShareScreen,
+  } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
   const flatListRef = useRef<FlashListRef<FeedItem>>(null)
+  const isPresentingGuestPromptRef = useRef(false)
   const scrollY = useRef(new Animated.Value(0)).current
   const handleFeedScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -187,10 +228,23 @@ export default function FeedScreen() {
   const [currentStreak, setCurrentStreak] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
   const [userWorkoutCount, setUserWorkoutCount] = useState(0)
+  const [showGuestSignInPrompt, setShowGuestSignInPrompt] = useState(false)
+  const [guestSignInPromptMilestone, setGuestSignInPromptMilestone] = useState<
+    number | null
+  >(null)
+  const [
+    pendingGuestSignInPromptMilestone,
+    setPendingGuestSignInPromptMilestone,
+  ] = useState<number | null>(null)
   const [appPostState, setAppPostState] = useState<AppPostState>(
     DEFAULT_APP_POST_STATE,
   )
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
+  const isCelebrationUiVisible =
+    isSuccessOverlayVisible ||
+    isPointsOverlayVisible ||
+    isExerciseRankOverlayVisible ||
+    showShareScreen
   const appPosts = useMemo(() => {
     const unlockedCount = Math.min(
       APP_POSTS.length,
@@ -261,6 +315,98 @@ export default function FeedScreen() {
     },
     [handleAppPostCta],
   )
+
+  const maybeQueueGuestSignInPrompt = useCallback(
+    async (workoutCount: number) => {
+      if (!user || !isAnonymous) return
+
+      const milestone = getGuestSignInMilestone(workoutCount)
+      if (!milestone) return
+
+      const storageKey = `${GUEST_SIGN_IN_PROMPT_STORAGE_KEY}:${user.id}`
+
+      try {
+        const stored = await AsyncStorage.getItem(storageKey)
+        const parsed = stored
+          ? (JSON.parse(stored) as Partial<GuestSignInPromptState>)
+          : null
+        const lastShownMilestone =
+          typeof parsed?.lastShownMilestone === 'number'
+            ? parsed.lastShownMilestone
+            : 0
+
+        if (milestone <= lastShownMilestone) {
+          return
+        }
+
+        setPendingGuestSignInPromptMilestone((current) => {
+          if (typeof current === 'number' && current >= milestone) {
+            return current
+          }
+          return milestone
+        })
+      } catch (error) {
+        console.error('Error checking guest sign-in prompt state:', error)
+      }
+    },
+    [user, isAnonymous],
+  )
+
+  useEffect(() => {
+    if (
+      !user ||
+      !isAnonymous ||
+      showGuestSignInPrompt ||
+      isCelebrationUiVisible ||
+      pendingGuestSignInPromptMilestone === null
+    ) {
+      return
+    }
+
+    if (isPresentingGuestPromptRef.current) {
+      return
+    }
+    isPresentingGuestPromptRef.current = true
+
+    const milestoneToShow = pendingGuestSignInPromptMilestone
+    const storageKey = `${GUEST_SIGN_IN_PROMPT_STORAGE_KEY}:${user.id}`
+
+    void (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(storageKey)
+        const parsed = stored
+          ? (JSON.parse(stored) as Partial<GuestSignInPromptState>)
+          : null
+        const lastShownMilestone =
+          typeof parsed?.lastShownMilestone === 'number'
+            ? parsed.lastShownMilestone
+            : 0
+
+        if (milestoneToShow > lastShownMilestone) {
+          await AsyncStorage.setItem(
+            storageKey,
+            JSON.stringify({ lastShownMilestone: milestoneToShow }),
+          )
+        }
+
+        setGuestSignInPromptMilestone(milestoneToShow)
+        setShowGuestSignInPrompt(true)
+      } catch (error) {
+        console.error('Error presenting guest sign-in prompt:', error)
+      } finally {
+        setPendingGuestSignInPromptMilestone((current) =>
+          current === milestoneToShow ? null : current,
+        )
+        isPresentingGuestPromptRef.current = false
+      }
+    })()
+  }, [
+    user,
+    isAnonymous,
+    showGuestSignInPrompt,
+    isCelebrationUiVisible,
+    pendingGuestSignInPromptMilestone,
+  ])
 
   const loadUserWorkoutCount = useCallback(async () => {
     if (!user) return
@@ -613,6 +759,7 @@ export default function FeedScreen() {
             cachedProfile = profile
           }
           setUserWorkoutCount(workoutCount)
+          await maybeQueueGuestSignInPrompt(workoutCount)
 
           // Only prompt if this is the first workout and we haven't asked before
           if (
@@ -684,6 +831,7 @@ export default function FeedScreen() {
     updateWorkoutData,
     showPointsGainOverlay,
     showExerciseRankOverlays,
+    maybeQueueGuestSignInPrompt,
   ])
 
   const handleRefresh = useCallback(async () => {
@@ -1006,6 +1154,16 @@ export default function FeedScreen() {
           progressViewOffset={headerTotalHeight}
         />
       )}
+      <SignInBottomSheet
+        visible={showGuestSignInPrompt}
+        onClose={() => setShowGuestSignInPrompt(false)}
+        title="Save your workouts"
+        subtitle={
+          guestSignInPromptMilestone
+            ? `You've logged ${guestSignInPromptMilestone} workouts as a guest. Sign in to keep your progress synced and protected.`
+            : 'Sign in to keep your progress synced and protected.'
+        }
+      />
     </View>
   )
 }

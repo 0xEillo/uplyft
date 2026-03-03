@@ -27,11 +27,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 interface SignInBottomSheetProps {
   visible: boolean
   onClose: () => void
+  title?: string
+  subtitle?: string
 }
 
 export function SignInBottomSheet({
   visible,
   onClose,
+  title = 'Welcome back',
+  subtitle = 'Sign in to continue your training and pick up where you left off.',
 }: SignInBottomSheetProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -128,10 +132,8 @@ export function SignInBottomSheet({
 
             <View style={styles.headerRow}>
               <View style={styles.headerTextBlock}>
-                <Text style={styles.title}>Welcome back</Text>
-                <Text style={styles.subtitle}>
-                  Sign in to continue your training and pick up where you left off.
-                </Text>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>{subtitle}</Text>
               </View>
 
               <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8}>

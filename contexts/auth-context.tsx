@@ -1,11 +1,11 @@
 import { FacebookEvents } from '@/lib/facebook-sdk'
+import { mixpanel } from '@/lib/mixpanel'
 import { supabase } from '@/lib/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { makeRedirectUri } from 'expo-auth-session'
 import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
-import { mixpanel } from '@/lib/mixpanel'
 import React, {
     createContext,
     ReactNode,
@@ -34,6 +34,51 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const PROVIDER_AVATAR_METADATA_KEYS = [
+  'avatar_url',
+  'picture',
+  'photo_url',
+  'profile_image_url',
+  'image',
+] as const
+
+const toRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+const toNonEmptyString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+const extractProviderAvatarUrl = (authUser: User): string | null => {
+  const metadataSources: (Record<string, unknown> | null)[] = [
+    toRecord(authUser.user_metadata),
+    ...(authUser.identities ?? []).map((identity) =>
+      toRecord(identity.identity_data),
+    ),
+  ]
+
+  for (const source of metadataSources) {
+    if (!source) continue
+
+    for (const key of PROVIDER_AVATAR_METADATA_KEYS) {
+      const value = toNonEmptyString(source[key])
+      if (!value) continue
+
+      if (/^https?:\/\//i.test(value)) {
+        return value
+      }
+    }
+  }
+
+  return null
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -68,6 +113,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  const syncProviderAvatarIfMissing = async (authUser: User | null) => {
+    if (!authUser) return
+
+    const providerAvatarUrl = extractProviderAvatarUrl(authUser)
+    if (!providerAvatarUrl) return
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', authUser.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.warn(
+          '[Auth] Could not check existing avatar before provider sync:',
+          profileError,
+        )
+        return
+      }
+
+      if (!profile || profile.avatar_url?.trim()) return
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: providerAvatarUrl })
+        .eq('id', authUser.id)
+
+      if (updateError) {
+        console.warn('[Auth] Failed to sync provider avatar:', updateError)
+      }
+    } catch (error) {
+      console.warn('[Auth] Failed to sync provider avatar:', error)
+    }
+  }
 
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -228,6 +309,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        await syncProviderAvatarIfMissing(sessionData.user ?? null)
+
         mixpanel.track('Auth Login', {
           method: 'google',
         })
@@ -292,6 +375,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      await syncProviderAvatarIfMissing(data.user ?? null)
+
       mixpanel.track('Auth Login', {
         method: 'apple',
       })
@@ -345,6 +430,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           access_token: accessToken,
           refresh_token: refreshToken,
         })
+
+        await syncProviderAvatarIfMissing(sessionData.user ?? null)
 
         mixpanel.track('Auth Account Linked', {
           method: 'google',
@@ -414,6 +501,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (signInError) throw signInError
       }
+
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
+      await syncProviderAvatarIfMissing(authUser ?? user ?? null)
 
       mixpanel.track('Auth Account Linked', {
         method: 'apple',
