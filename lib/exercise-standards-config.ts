@@ -1139,7 +1139,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'f87f37bd-dfb9-4f88-a178-82423ab0e6a0',
     name: 'Bent Over Row (Barbell)',
     tier: 1,
-    gifUrl: 'X3cqyXz.gif',
+    gifUrl: 'SzX3uzM.gif',
     male: [
       {
         level: 'Beginner',
@@ -3910,7 +3910,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '10d290b0-ada9-44f9-b52f-dfe13e224bd3',
     name: 'T Bar Row (Machine)',
-    aliases: ['T Bar Row', 'T-Bar Row', 'Landmine Row'],
+    aliases: ['T Bar Row', 'T-Bar Row'],
     tier: 2,
     gifUrl: 'aaXr7ld.gif',
     male: [
