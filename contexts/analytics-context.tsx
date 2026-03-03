@@ -1,9 +1,9 @@
-import React, { createContext, ReactNode, useContext, useEffect } from 'react'
-import { usePostHog } from 'posthog-react-native'
-import { useAuth } from './auth-context'
-import Constants from 'expo-constants'
-import { Platform } from 'react-native'
+import { mixpanel } from '@/lib/mixpanel'
 import { getSessionId } from '@/utils/analytics-common'
+import Constants from 'expo-constants'
+import React, { createContext, ReactNode, useContext, useEffect } from 'react'
+import { Platform } from 'react-native'
+import { useAuth } from './auth-context'
 
 type AnalyticsContextValue = {
   trackEvent: (event: string, payload?: Record<string, unknown>) => Promise<void>
@@ -18,51 +18,41 @@ const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(
 )
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
-  const posthog = usePostHog()
   const { user } = useAuth()
 
   // Identify user when they sign in
   useEffect(() => {
-    if (user && posthog) {
+    if (user) {
       const properties: Record<string, any> = {
-        email: user.email || undefined,
-        name: user.user_metadata?.name || undefined,
+        $email: user.email || undefined,
+        $name: user.user_metadata?.name || undefined,
       }
       // Filter out undefined values
       const filteredProps = Object.fromEntries(
         Object.entries(properties).filter(([_, v]) => v !== undefined)
       )
-      posthog.identify(user.id, filteredProps)
+      mixpanel.identify(user.id)
+      mixpanel.getPeople().set(filteredProps)
     }
-  }, [user, posthog])
+  }, [user])
 
   // Register super properties for all events
   useEffect(() => {
-    if (posthog) {
-      const properties: Record<string, any> = {
-        appVersion: Constants.expoConfig?.version || 'unknown',
-        platform: Platform.OS,
-        platformVersion: Platform.Version?.toString?.() ?? 'unknown',
-      }
-      // Filter out undefined values
-      const filteredProps = Object.fromEntries(
-        Object.entries(properties).filter(([_, v]) => v !== undefined)
-      )
-      posthog.register(filteredProps)
+    const properties: Record<string, any> = {
+      appVersion: Constants.expoConfig?.version || 'unknown',
+      platform: Platform.OS,
+      platformVersion: Platform.Version?.toString?.() ?? 'unknown',
     }
-  }, [posthog])
+    // Filter out undefined values
+    const filteredProps = Object.fromEntries(
+      Object.entries(properties).filter(([_, v]) => v !== undefined)
+    )
+    mixpanel.registerSuperProperties(filteredProps)
+  }, [])
 
   const value: AnalyticsContextValue = {
     trackEvent: async (event: string, payload?: Record<string, unknown>) => {
       try {
-        if (!posthog) {
-          // PostHog not available - fail silently in production
-          if (__DEV__) {
-            console.warn('[Analytics] PostHog not initialized, event not tracked:', event)
-          }
-          return
-        }
-
         // Add session ID and timestamp to all events
         const enrichedPayload = {
           ...payload,
@@ -88,7 +78,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        posthog.capture(event, filteredPayload)
+        mixpanel.track(event, filteredPayload)
       } catch (error) {
         // Never let analytics errors crash the app
         if (__DEV__) {
@@ -101,13 +91,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       payload?: Record<string, unknown>,
     ) => {
       try {
-        if (!posthog) {
-          if (__DEV__) {
-            console.warn('[Analytics] PostHog not initialized, user not identified')
-          }
-          return
-        }
-
         if (!distinctId || distinctId.trim() === '') {
           if (__DEV__) {
             console.error('[Analytics] distinctId cannot be empty')
@@ -115,14 +98,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        mixpanel.identify(distinctId)
+
         if (payload) {
           // Filter out undefined values from payload
           const filteredPayload = Object.fromEntries(
             Object.entries(payload).filter(([_, v]) => v !== undefined)
           ) as any
-          posthog.identify(distinctId, filteredPayload)
-        } else {
-          posthog.identify(distinctId)
+          mixpanel.getPeople().set(filteredPayload)
         }
       } catch (error) {
         // Never let analytics errors crash the app

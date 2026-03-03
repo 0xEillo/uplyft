@@ -121,4 +121,4 @@ Use CSS custom properties so you can pivot themes fast. Example:
 - Export SVG versions of logos from `llm/repai-logo*.png` for crisp web rendering.
 - Capture dark-mode screenshots once the app theme parity stabilises.
 - Draft privacy policy copy aligned with App Store requirements; host under `/legal/privacy`.
-- Add analytics (Plausible or PostHog) to mirror in-app telemetry.
+- Add analytics (Plausible or Mixpanel) to mirror in-app telemetry.

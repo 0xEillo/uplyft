@@ -35,7 +35,7 @@ export function clearSession() {
 
 /**
  * Removes undefined values from event properties
- * (PostHog doesn't accept undefined, only null)
+ * (Mixpanel native SDK prefers no undefined values)
  */
 export function filterProperties<T extends Record<string, unknown>>(
   properties: T,

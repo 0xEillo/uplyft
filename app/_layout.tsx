@@ -8,7 +8,6 @@ import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SystemUI from 'expo-system-ui'
-import { PostHogProvider } from 'posthog-react-native'
 import { useEffect, useRef } from 'react'
 import { Appearance, AppState, Platform, UIManager } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -414,26 +413,10 @@ function ThemedRootView({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const posthogApiKey =
-    process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
-    (Constants.expoConfig?.extra?.posthogApiKey as string | undefined)
-  const posthogHost =
-    process.env.EXPO_PUBLIC_POSTHOG_HOST ||
-    (Constants.expoConfig?.extra?.posthogHost as string | undefined) ||
-    'https://us.i.posthog.com'
+
 
   return (
-    <PostHogProvider
-      apiKey={posthogApiKey || ''}
-      options={{
-        host: posthogHost,
-        // Reduce flush frequency to minimize offline errors
-        flushInterval: 30000,
-      }}
-      autocapture={{
-        captureScreens: true,
-      }}
-    >
+    
       <SafeAreaProvider>
         <ThemeProvider>
           <ThemedRootView>
@@ -457,6 +440,6 @@ export default function RootLayout() {
           </ThemedRootView>
         </ThemeProvider>
       </SafeAreaProvider>
-    </PostHogProvider>
+    
   )
 }

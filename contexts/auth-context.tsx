@@ -5,7 +5,7 @@ import * as AppleAuthentication from 'expo-apple-authentication'
 import { makeRedirectUri } from 'expo-auth-session'
 import * as Crypto from 'expo-crypto'
 import * as WebBrowser from 'expo-web-browser'
-import { usePostHog } from 'posthog-react-native'
+import { mixpanel } from '@/lib/mixpanel'
 import React, {
     createContext,
     ReactNode,
@@ -39,7 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const posthog = usePostHog()
 
   // Check if user is anonymous (guest mode)
   const isAnonymous = user?.is_anonymous === true
@@ -79,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     if (!data.user) throw new Error('No user returned from signup')
 
-    posthog?.capture('Auth Sign Up', {
+    mixpanel.track('Auth Sign Up', {
       method: 'password',
       userId: data.user.id,
       email: email.toLowerCase(),
@@ -101,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) throw error
 
-    posthog?.capture('Auth Login', {
+    mixpanel.track('Auth Login', {
       method: 'password',
       email: email.toLowerCase(),
     })
@@ -158,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    posthog?.capture('Auth Anonymous Sign In', {
+    mixpanel.track('Auth Anonymous Sign In', {
       userId: data.user.id,
     })
 
@@ -229,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        posthog?.capture('Auth Login', {
+        mixpanel.track('Auth Login', {
           method: 'google',
         })
       } else {
@@ -293,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      posthog?.capture('Auth Login', {
+      mixpanel.track('Auth Login', {
         method: 'apple',
       })
     } catch (e) {
@@ -347,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           refresh_token: refreshToken,
         })
 
-        posthog?.capture('Auth Account Linked', {
+        mixpanel.track('Auth Account Linked', {
           method: 'google',
         })
 
@@ -416,7 +415,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (signInError) throw signInError
       }
 
-      posthog?.capture('Auth Account Linked', {
+      mixpanel.track('Auth Account Linked', {
         method: 'apple',
       })
 
@@ -450,7 +449,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) throw error
 
-    posthog?.capture('Auth Account Linked', {
+    mixpanel.track('Auth Account Linked', {
       method: 'email',
       email: email.toLowerCase(),
     })
@@ -467,10 +466,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
 
-    posthog?.capture('Auth Logout', {
+    mixpanel.track('Auth Logout', {
       timestamp: Date.now(),
     })
-    posthog?.reset() // Clear user identity on logout
+    mixpanel.reset() // Clear user identity on logout
 
     // Clear Facebook user data
     FacebookEvents.clearUserID()

@@ -237,8 +237,6 @@ module.exports = {
       eas: {
         projectId: 'd92cf9e6-0901-4a68-9f50-741decd5c10f',
       },
-      posthogApiKey: process.env.POSTHOG_API_KEY,
-      posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
       deeplinkNowDomain: deeplinkNowDomain || undefined,
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,

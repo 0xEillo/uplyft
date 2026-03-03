@@ -1,5 +1,5 @@
+import { mixpanel } from '@/lib/mixpanel'
 import * as Crypto from 'expo-crypto'
-import { usePostHog } from 'posthog-react-native'
 import { useCallback, useRef, useState } from 'react'
 
 import { useAuth } from '@/contexts/auth-context'
@@ -10,7 +10,6 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
-import type { WorkoutSong } from '@/types/music'
 import {
     clearPendingArtifacts,
     createPlaceholderWorkout,
@@ -23,6 +22,7 @@ import {
     savePlaceholderWorkout,
 } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
+import type { WorkoutSong } from '@/types/music'
 
 interface SubmitWorkoutArgs {
   notes: string
@@ -76,18 +76,17 @@ export function useSubmitWorkout() {
   const { weightUnit } = useWeightUnits()
   const [isProcessingPending, setIsProcessingPending] = useState(false)
   const isProcessingRef = useRef(false)
-  const posthog = usePostHog()
 
-  // Safe PostHog capture that won't throw on network errors
+  // Safe Mixpanel capture that won't throw on network errors
   const safeCapture = useCallback(
-    (event: string, properties?: Parameters<typeof posthog.capture>[1]) => {
+    (event: string, properties?: Record<string, any>) => {
       try {
-        posthog?.capture(event, properties)
+        mixpanel.track(event, properties)
       } catch {
         // Silently fail - analytics should never block core functionality
       }
     },
-    [posthog],
+    [],
   )
 
   const buildStructuredStats = useCallback(
