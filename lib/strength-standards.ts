@@ -37,7 +37,8 @@ export function getStrengthStandard(
   }
 
   const standards = config[gender]
-  const ratio = oneRepMax / bodyweight
+  const isRepBased = config.isRepBased ?? false
+  const ratio = isRepBased ? oneRepMax : (oneRepMax / bodyweight)
 
   // Find current level
   let currentLevel = standards[0]

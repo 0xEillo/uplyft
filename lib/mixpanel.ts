@@ -1,4 +1,5 @@
 import { Mixpanel } from 'mixpanel-react-native'
+import 'react-native-get-random-values'
 
 const trackAutomaticEvents = true
 const mixpanelToken = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN || ''

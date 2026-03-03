@@ -1,37 +1,37 @@
 import type {
-  BodyLogEntryWithImages,
-  BodyLogImage,
+    BodyLogEntryWithImages,
+    BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
-import { getLeaderboardExercises } from '@/lib/exercise-standards-config'
+import { getLeaderboardExercises, isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
-  DailyLogConfidence,
-  DailyLogEntry,
-  DailyLogMeal,
-  DailyLogMealSource,
-  DailyLogSummary,
-  Exercise,
-  ExploreProgram,
-  ExploreProgramRoutine,
-  ExploreRoutine,
-  ExploreRoutineExercise,
-  Follow,
-  FollowRelationshipStatus,
-  FollowRequest,
-  ParsedWorkout,
-  Profile,
-  RetentionPushPreferences,
-  WorkoutComment,
-  WorkoutCommentLike,
-  WorkoutLike,
-  WorkoutRoutine,
-  WorkoutRoutineExercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSession,
-  WorkoutSessionWithDetails,
-  WorkoutSocialStats,
+    DailyLogConfidence,
+    DailyLogEntry,
+    DailyLogMeal,
+    DailyLogMealSource,
+    DailyLogSummary,
+    Exercise,
+    ExploreProgram,
+    ExploreProgramRoutine,
+    ExploreRoutine,
+    ExploreRoutineExercise,
+    Follow,
+    FollowRelationshipStatus,
+    FollowRequest,
+    ParsedWorkout,
+    Profile,
+    RetentionPushPreferences,
+    WorkoutComment,
+    WorkoutCommentLike,
+    WorkoutLike,
+    WorkoutRoutine,
+    WorkoutRoutineExercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSession,
+    WorkoutSessionWithDetails,
+    WorkoutSocialStats,
 } from '@/types/database.types'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -2861,7 +2861,6 @@ export const database = {
         `,
         )
         .eq('user_id', userId)
-        .not('workout_exercises.sets.weight', 'is', null)
 
       if (error) throw error
 
@@ -2894,19 +2893,21 @@ export const database = {
           if (!exercise) return
 
           we.sets?.forEach((set) => {
-            if (set.reps && set.weight) {
-              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            if (!set.reps || set.reps <= 0) return
 
-              const current = exerciseMax1RMs.get(we.exercise_id)
-              if (!current || estimated1RM > current.max1RM) {
+            const isRepBased = isRepBasedExercise(exercise.name)
+            if (!isRepBased && (!set.weight || set.weight <= 0)) return
+
+            const estimated1RM = isRepBased ? set.reps : estimateOneRepMaxKg(set.weight!, set.reps)
+
+            const current = exerciseMax1RMs.get(we.exercise_id)
+            if (!current || estimated1RM > current.max1RM) {
                 exerciseMax1RMs.set(we.exercise_id, {
                   name: exercise.name,
                   muscleGroup: exercise.muscle_group,
                   max1RM: Math.round(estimated1RM),
                   gifUrl: exercise.gif_url,
                 })
-              }
             }
           })
         })
@@ -3112,7 +3113,6 @@ export const database = {
         `,
         )
         .eq('user_id', userId)
-        .not('workout_exercises.sets.weight', 'is', null)
         .not('workout_exercises.sets.reps', 'is', null)
         .gt('workout_exercises.sets.reps', 0)
         .order('created_at', { ascending: true })
@@ -3193,19 +3193,26 @@ export const database = {
           }
 
           workoutExercise.sets?.forEach((set) => {
-            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
+            if (!set.reps || set.reps <= 0) {
               return
             }
 
-            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const isRepBased = isRepBasedExercise(exercise.name)
+            
+            if (!isRepBased && (!set.weight || set.weight <= 0)) {
+              return
+            }
+
+            const estimated1RM = isRepBased ? set.reps : estimateOneRepMaxKg(set.weight!, set.reps)
             const rounded1RM = Math.round(estimated1RM)
             if (rounded1RM > current.max1RM) {
               current.max1RM = rounded1RM
             }
 
-            const existingRecord = current.recordsByWeight.get(set.weight)
+            const weightKey = isRepBased ? 0 : set.weight!
+            const existingRecord = current.recordsByWeight.get(weightKey)
             if (!existingRecord || set.reps > existingRecord.maxReps) {
-              current.recordsByWeight.set(set.weight, {
+              current.recordsByWeight.set(weightKey, {
                 maxReps: set.reps,
                 date: session.date || session.created_at,
                 estimated1RM: rounded1RM,

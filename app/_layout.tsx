@@ -1,16 +1,16 @@
 import { getColors } from '@/constants/colors'
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from '@react-navigation/native'
-import Constants from 'expo-constants'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SystemUI from 'expo-system-ui'
 import { useEffect, useRef } from 'react'
 import { Appearance, AppState, Platform, UIManager } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import 'react-native-get-random-values'
 import 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -26,8 +26,8 @@ import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import { initializeFacebookSDK } from '@/lib/facebook-sdk'
 import { consumePendingInvite } from '@/lib/deeplinknow'
+import { initializeFacebookSDK } from '@/lib/facebook-sdk'
 import { stopMusicPreview } from '@/lib/music-preview-player'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 

@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthStandard } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
@@ -182,8 +183,12 @@ export function StrengthStandardsView() {
         // Find the multiplier for the next level
         const nextLevelName = strengthInfo.nextLevel.level
         const nextLevelStandard = ladder.find((s: StrengthStandard) => s.level === nextLevelName)
-        if (nextLevelStandard && profile.weight_kg) {
-          targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+        if (nextLevelStandard) {
+          if (isRepBasedExercise(exercise.exerciseName)) {
+            targetWeight = nextLevelStandard.multiplier
+          } else if (profile.weight_kg) {
+            targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+          }
         }
       }
 
@@ -346,10 +351,10 @@ export function StrengthStandardsView() {
                         <View style={styles.goalSection}>
                           <View style={styles.goalLabels}>
                             <Text style={styles.currentWeightText}>
-                              {formatWeight(exercise.max1RM, { maximumFractionDigits: 0 })}
+                              {isRepBasedExercise(exercise.exerciseName) ? `${exercise.max1RM} reps` : formatWeight(exercise.max1RM, { maximumFractionDigits: 0 })}
                             </Text>
                             <Text style={styles.targetWeightText}>
-                              {formatWeight(exercise.targetWeight, { maximumFractionDigits: 0 })}
+                              {isRepBasedExercise(exercise.exerciseName) ? `${exercise.targetWeight} reps` : formatWeight(exercise.targetWeight, { maximumFractionDigits: 0 })}
                             </Text>
                           </View>
 
@@ -486,7 +491,7 @@ export function StrengthStandardsView() {
                                     {exercise.exerciseName}
                                   </Text>
                                   <Text style={styles.exerciseWeight}>
-                                    {formatWeight(exercise.max1RM, {
+                                    {isRepBasedExercise(exercise.exerciseName) ? `${exercise.max1RM} reps` : formatWeight(exercise.max1RM, {
                                       maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
                                     })}
                                   </Text>

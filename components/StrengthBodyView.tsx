@@ -19,6 +19,7 @@ import {
 import {
     EXERCISE_MUSCLE_MAPPING,
     getExerciseNameMap,
+    isRepBasedExercise,
     TIER2_WEIGHT,
 } from "@/lib/exercise-standards-config";
 import {
@@ -239,10 +240,15 @@ export function StrengthBodyView({
           const nextLevelStandard = ladder.find(
             (s: StrengthStandard) => s.level === nextLevelName,
           );
-          if (nextLevelStandard && profile.weight_kg) {
-            targetWeight = Math.ceil(
-              profile.weight_kg * nextLevelStandard.multiplier,
-            );
+          if (nextLevelStandard) {
+            const isRepBased = isRepBasedExercise(exercise.exerciseName)
+            if (isRepBased) {
+              targetWeight = nextLevelStandard.multiplier
+            } else if (profile.weight_kg) {
+              targetWeight = Math.ceil(
+                profile.weight_kg * nextLevelStandard.multiplier,
+              )
+            }
           }
         }
 
@@ -465,9 +471,9 @@ export function StrengthBodyView({
           reliableTarget = ladder.find((s) => s.level === "Novice");
         if (!reliableTarget) return null;
 
-        const targetWeight = Math.ceil(
-          bodyweightKg * reliableTarget.multiplier,
-        );
+        const targetWeight = config.isRepBased
+          ? reliableTarget.multiplier
+          : Math.ceil(bodyweightKg * reliableTarget.multiplier);
         const tier = config.tier === 1 ? 1 : 2;
 
         const forgedExercise: TrackedExerciseWithProgress = {

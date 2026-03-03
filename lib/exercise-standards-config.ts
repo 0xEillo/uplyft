@@ -29,6 +29,7 @@ export interface ExerciseStandardsConfig {
   male: StrengthStandard[]
   female: StrengthStandard[]
   tier?: 1 | 2
+  isRepBased?: boolean
 }
 
 /** Weight applied to tier-2 exercises in strength score calculations (tier-1 = 1.0) */
@@ -2736,41 +2737,42 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
     name: 'Hanging Leg Raise',
     tier: 2,
+    isRepBased: true,
     gifUrl: 'I3tsCnC.gif',
     male: [
       {
         level: 'Beginner',
-        multiplier: 0.05,
+        multiplier: 0,
         color: '#64748B',
         description: 'Just starting out',
       },
       {
         level: 'Novice',
-        multiplier: 0.15,
+        multiplier: 5,
         color: '#3B82F6',
         description: 'A few months training',
       },
       {
         level: 'Intermediate',
-        multiplier: 0.3,
+        multiplier: 18,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
       {
         level: 'Advanced',
-        multiplier: 0.5,
+        multiplier: 34,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 0.7,
+        multiplier: 52,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 0.9,
+        multiplier: 70,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -2778,37 +2780,37 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     female: [
       {
         level: 'Beginner',
-        multiplier: 0.02,
+        multiplier: 0,
         color: '#64748B',
         description: 'Just starting out',
       },
       {
         level: 'Novice',
-        multiplier: 0.1,
+        multiplier: 5,
         color: '#3B82F6',
         description: 'A few months training',
       },
       {
         level: 'Intermediate',
-        multiplier: 0.2,
+        multiplier: 15,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
       {
         level: 'Advanced',
-        multiplier: 0.35,
+        multiplier: 28,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 0.5,
+        multiplier: 43,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 0.7,
+        multiplier: 55,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -4261,6 +4263,11 @@ export function getLeaderboardExercises(): string[] {
     }
   })
   return names
+}
+
+export function isRepBasedExercise(exerciseName: string): boolean {
+  const config = getExerciseNameMap().get(exerciseName)
+  return config?.isRepBased ?? false
 }
 
 export type ExerciseGroup = 'Push' | 'Pull' | 'Lower' | 'Other'

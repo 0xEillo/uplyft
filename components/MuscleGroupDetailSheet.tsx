@@ -1,12 +1,12 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
+import { useTheme } from '@/contexts/theme-context'
 import { type MuscleGroupData, getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
-import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
+import { getTrackableExercisesForMuscle, isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
     getStrengthStandard,
@@ -193,9 +193,11 @@ export function MuscleGroupDetailSheet({
                     </Text>
                     {exercise.isDone ? (
                       <Text style={styles.exerciseWeight}>
-                        Est. 1RM: {formatWeight(exercise.max1RM, {
-                          maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
-                        })}
+                        {isRepBasedExercise(exercise.exerciseName) 
+                          ? `Personal Best: ${exercise.max1RM} reps` 
+                          : `Est. 1RM: ${formatWeight(exercise.max1RM, {
+                              maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+                            })}`}
                       </Text>
                     ) : (
                       <Text style={styles.exerciseStatus}>Not yet tracked</Text>
