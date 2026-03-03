@@ -963,7 +963,7 @@ export default function FeedScreen() {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <>
-              <InviteFriendsPrompt />
+              <InviteFriendsPrompt workoutCount={workouts.length} />
               {/* Tutorial checklist (existing) */}
               {/* Tutorial checklist (existing) */}
               {!isTutorialDismissed &&

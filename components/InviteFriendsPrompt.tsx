@@ -22,23 +22,35 @@ const GYM_AVATARS = [
   'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
 ]
 
-const STORAGE_KEY = '@invite_friends_prompt_dismissed'
+const STORAGE_KEY = '@invite_friends_prompt_v2'
+// Show at these workout count thresholds (show #1, #2, #3)
+const SHOW_THRESHOLDS = [0, 5, 15]
 
-export function InviteFriendsPrompt() {
+interface InviteFriendsPromptState {
+  timesShown: number
+}
+
+interface InviteFriendsPromptProps {
+  workoutCount: number
+}
+
+export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) {
   const colors = useThemedColors()
   const router = useRouter()
   const { profile } = useProfile()
-  const [isDismissed, setIsDismissed] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [timesShown, setTimesShown] = useState(0)
   const [opacity] = useState(new Animated.Value(1))
 
   useEffect(() => {
     const checkState = async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY)
-        if (stored === 'true') {
-          setIsDismissed(true)
-        }
+        const state: InviteFriendsPromptState = stored
+          ? JSON.parse(stored)
+          : { timesShown: 0 }
+        setTimesShown(state.timesShown)
       } catch (error) {
         console.error('Error reading invite prompt state:', error)
       } finally {
@@ -48,27 +60,42 @@ export function InviteFriendsPrompt() {
     checkState()
   }, [])
 
-  const handleDismiss = async () => {
+  useEffect(() => {
+    if (!isLoaded) return
+    // Already shown all 3 times
+    if (timesShown >= SHOW_THRESHOLDS.length) return
+    // Show if workoutCount has reached the next threshold
+    if (workoutCount >= SHOW_THRESHOLDS[timesShown]) {
+      setIsVisible(true)
+    }
+  }, [isLoaded, workoutCount, timesShown])
+
+  const advanceAndHide = async () => {
     Animated.timing(opacity, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
     }).start(async () => {
-      setIsDismissed(true)
+      setIsVisible(false)
+      opacity.setValue(1)
+      const next = timesShown + 1
+      setTimesShown(next)
       try {
-        await AsyncStorage.setItem(STORAGE_KEY, 'true')
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ timesShown: next }))
       } catch (error) {
         console.error('Error saving invite prompt state:', error)
       }
     })
   }
 
+  const handleDismiss = () => advanceAndHide()
+
   const handleConnect = () => {
-    // Navigate to find friends or search page
     router.push('/search')
+    advanceAndHide()
   }
 
-  if (!isLoaded || isDismissed) return null
+  if (!isLoaded || !isVisible) return null
 
   const styles = createStyles(colors)
 
