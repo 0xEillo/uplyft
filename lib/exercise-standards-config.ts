@@ -2732,6 +2732,90 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+  // Smith Machine Shrug
+  {
+    id: '2b17a9be-b411-4afe-a351-d21c0fd72d3f',
+    name: 'Shrug (Smith Machine)',
+    aliases: ['smith machine shrug', 'smith shrug', 'smith machine shrugs'],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.75,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
   // Hanging Leg Raise
   {
     id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
@@ -3149,6 +3233,99 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+  // Reverse Fly (Dumbbell)
+  {
+    id: 'a3e17c18-6b37-4af6-aceb-98e63dbb62da',
+    name: 'Reverse Fly (Dumbbell)',
+    aliases: [
+      'reverse fly',
+      'dumbbell reverse fly',
+      'db reverse fly',
+      'rear delt fly',
+      'rear delt dumbbell fly',
+      'bent over reverse fly',
+      'reverse dumbbell fly',
+      'reverse flyes',
+    ],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.4,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.6,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.8,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.15,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.4,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
   // Lateral Raise
   {
     id: 'a97d866b-b29e-4b25-914a-ada0d59be96b',
@@ -3310,6 +3487,184 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+  // Reverse Wrist Curl (Barbell)
+  {
+    id: '327409bb-abdd-4008-acdc-09616e3e4656',
+    name: 'Reverse Wrist Curl (Barbell)',
+    aliases: [
+      'reverse wrist curl',
+      'reverse barbell wrist curl',
+      'barbell reverse wrist curl',
+      'reverse wrist curls barbell',
+    ],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.0,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.35,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.7,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+  // Reverse Wrist Curl (Dumbbell)
+  {
+    id: '89486ed3-0856-4e03-bb56-02ecf25f330d',
+    name: 'Reverse Wrist Curl (Dumbbell)',
+    aliases: [
+      'reverse dumbbell wrist curl',
+      'dumbbell reverse wrist curl',
+      'db reverse wrist curl',
+      'reverse wrist curls dumbbell',
+    ],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.0,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.4,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.55,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -4293,6 +4648,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Seated Lateral Raise (Dumbbell)': 'Shoulders',
   'Lateral Raise (Dumbbell)': 'Shoulders',
   'Rope Face Pulls (Cable)': 'Shoulders',
+  'Reverse Fly (Dumbbell)': 'Shoulders',
 
   // Back
   'Bent Over Row (Barbell)': 'Back',
@@ -4308,6 +4664,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Traps
   'Shrug (Machine)': 'Traps',
   'Shrug (Dumbbell)': 'Traps',
+  'Shrug (Smith Machine)': 'Traps',
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
@@ -4358,6 +4715,8 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Forearms
   'Wrist Curl (Barbell)': 'Forearms',
+  'Reverse Wrist Curl (Barbell)': 'Forearms',
+  'Reverse Wrist Curl (Dumbbell)': 'Forearms',
 }
 
 /**
@@ -4394,10 +4753,14 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Seated Row': 'Pull',
   'Seated Row (Machine)': 'Pull',
   'Rope Face Pulls (Cable)': 'Pull',
+  'Reverse Fly (Dumbbell)': 'Pull',
   'Shrug (Machine)': 'Pull',
   'Shrug (Dumbbell)': 'Pull',
+  'Shrug (Smith Machine)': 'Pull',
   'Rope Hammer Curl (Cable)': 'Pull',
   'Wrist Curl (Barbell)': 'Pull',
+  'Reverse Wrist Curl (Barbell)': 'Pull',
+  'Reverse Wrist Curl (Dumbbell)': 'Pull',
 
   'Squat (Barbell)': 'Lower',
   'Front Squat (Barbell)': 'Lower',
