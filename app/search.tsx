@@ -481,7 +481,7 @@ export default function SearchScreen() {
             <Ionicons
               name="share-outline"
               size={20}
-              color={colors.bg}
+              color={colors.onPrimary}
               style={styles.inviteIcon}
             />
             <Text style={styles.inviteButtonText}>Invite Friends</Text>
@@ -672,7 +672,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.brandPrimary,
       paddingVertical: 18,
       borderRadius: 32,
     },
@@ -682,6 +682,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     inviteButtonText: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.bg,
+      color: colors.onPrimary,
     },
   })
