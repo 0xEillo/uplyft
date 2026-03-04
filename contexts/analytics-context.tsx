@@ -1,4 +1,5 @@
 import { mixpanel } from '@/lib/mixpanel'
+import { identifySessionReplay, initSessionReplay } from '@/lib/session-replay'
 import { getSessionId } from '@/utils/analytics-common'
 import Constants from 'expo-constants'
 import React, { createContext, ReactNode, useContext, useEffect } from 'react'
@@ -27,12 +28,12 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         $email: user.email || undefined,
         $name: user.user_metadata?.name || undefined,
       }
-      // Filter out undefined values
       const filteredProps = Object.fromEntries(
         Object.entries(properties).filter(([_, v]) => v !== undefined)
       )
       mixpanel.identify(user.id)
       mixpanel.getPeople().set(filteredProps)
+      initSessionReplay(user.id)
     }
   }, [user])
 
@@ -99,6 +100,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         }
 
         mixpanel.identify(distinctId)
+        identifySessionReplay(distinctId)
 
         if (payload) {
           // Filter out undefined values from payload
