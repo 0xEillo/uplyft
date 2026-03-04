@@ -787,7 +787,7 @@ const createStyles = (
       gap: 6,
     },
     goalCardInput: {
-      minWidth: 84,
+      flexShrink: 1,
       fontSize: 36,
       fontWeight: '800',
       color: colors.textPrimary,
