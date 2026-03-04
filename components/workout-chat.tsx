@@ -39,6 +39,10 @@ import { database } from '@/lib/database'
 import { appFetch } from '@/lib/fetch'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import {
+  calculateMaintenanceCalories,
+  resolveCalorieGoal,
+} from '@/lib/nutrition'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
@@ -193,10 +197,14 @@ export interface ExerciseSuggestion {
 }
 
 function getExerciseSuggestionKey(suggestion: ExerciseSuggestion): string {
-  return `${suggestion.name.trim().toLowerCase()}|${suggestion.sets}|${suggestion.reps.trim().toLowerCase()}`
+  return `${suggestion.name.trim().toLowerCase()}|${
+    suggestion.sets
+  }|${suggestion.reps.trim().toLowerCase()}`
 }
 
-function parseRepRangeFromSuggestion(reps: string): {
+function parseRepRangeFromSuggestion(
+  reps: string,
+): {
   targetRepsMin: number | null
   targetRepsMax: number | null
 } {
@@ -685,6 +693,10 @@ export function WorkoutChat({
     Record<string, 'idle' | 'saving' | 'saved' | 'error'>
   >({})
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
+  const maintenanceCalories = useMemo(
+    () => calculateMaintenanceCalories(profile ?? null),
+    [profile],
+  )
   const coach = getCoach(coachId)
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
@@ -1511,13 +1523,13 @@ export function WorkoutChat({
         )
 
         if (!alreadyExists) {
-          const { targetRepsMin, targetRepsMax } =
-            parseRepRangeFromSuggestion(suggestion.reps)
+          const { targetRepsMin, targetRepsMax } = parseRepRangeFromSuggestion(
+            suggestion.reps,
+          )
 
           const newExercise: StructuredExerciseDraft = {
             id:
-              Date.now().toString(36) +
-              Math.random().toString(36).slice(2, 10),
+              Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
             name: suggestion.name,
             sets: Array.from({ length: Math.max(1, suggestion.sets) }, () => ({
               weight: '',
@@ -1583,8 +1595,7 @@ export function WorkoutChat({
 
       setProposedWorkout((prev) => {
         const alreadyAdded = prev.some(
-          (exercise) =>
-            getExerciseSuggestionKey(exercise) === suggestionKey,
+          (exercise) => getExerciseSuggestionKey(exercise) === suggestionKey,
         )
         return alreadyAdded ? prev : [...prev, suggestion]
       })
@@ -2767,908 +2778,840 @@ export function WorkoutChat({
               getItemType={(item: Message) => item.role}
               estimatedItemSize={260}
               renderItem={({ item: message }: { item: Message }) => (
-                    <View
-                      style={[
-                        message.role === 'user'
-                          ? styles.userMessageContainer
-                          : styles.assistantMessageContainer,
-                      ]}
-                    >
-                      {message.role === 'user' ? (
-                        <View style={styles.userMessageBubble}>
-                          <View style={styles.userMessageContent}>
-                            {/* Display images for user messages */}
-                            {message.images && message.images.length > 0 && (
-                              <View style={styles.messageImagesGrid}>
-                                {message.images.map((imageUri: string, index: number) => (
-                                  <TouchableOpacity
-                                    key={index}
-                                    style={styles.messageImageThumbnail}
-                                    onPress={() =>
-                                      openImageViewer(message.images!, index)
-                                    }
-                                  >
-                                    <Image
-                                      source={{ uri: imageUri }}
-                                      style={styles.messageImage}
-                                      contentFit="cover"
-                                    />
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            )}
-                            <TouchableOpacity
-                              activeOpacity={0.9}
-                              onLongPress={() =>
-                                handleCopyMessage(message.content)
-                              }
-                              delayLongPress={220}
-                            >
-                              <Text style={styles.userMessageText}>
-                                {message.content}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          {message.status === 'failed' && (
-                            <View style={styles.userMessageMetaRow}>
-                              <Text
-                                style={[
-                                  styles.messageMetaStatusText,
-                                  styles.messageMetaStatusErrorText,
-                                ]}
-                              >
-                                Failed to send
-                              </Text>
-                              <TouchableOpacity
-                                style={styles.messageMetaActionButton}
-                                onPress={() => handleResendMessage(message.id)}
-                                disabled={isLoading}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons
-                                  name="refresh"
-                                  size={13}
-                                  color={colors.statusError}
-                                />
-                                <Text
-                                  style={[
-                                    styles.messageMetaActionText,
-                                    styles.messageMetaActionErrorText,
-                                  ]}
+                <View
+                  style={[
+                    message.role === 'user'
+                      ? styles.userMessageContainer
+                      : styles.assistantMessageContainer,
+                  ]}
+                >
+                  {message.role === 'user' ? (
+                    <View style={styles.userMessageBubble}>
+                      <View style={styles.userMessageContent}>
+                        {/* Display images for user messages */}
+                        {message.images && message.images.length > 0 && (
+                          <View style={styles.messageImagesGrid}>
+                            {message.images.map(
+                              (imageUri: string, index: number) => (
+                                <TouchableOpacity
+                                  key={index}
+                                  style={styles.messageImageThumbnail}
+                                  onPress={() =>
+                                    openImageViewer(message.images!, index)
+                                  }
                                 >
-                                  Resend
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-                      ) : (
-                        <>
-                          {/* Check if this message contains a parsed workout plan */}
-                          {(() => {
-                            const messageParsedWorkout = parseWorkoutForDisplay(
-                              message.content,
-                            )
-
-                            // Workout cards render full-width with coach branding inside the card
-                            if (messageParsedWorkout) {
-                              return (
-                                <View style={styles.workoutCardContainer}>
-                                  <WorkoutCard
-                                    workout={messageParsedWorkout}
-                                    coachImage={coach.image}
-                                    username={profile?.display_name}
-                                    onStartWorkout={() => {
-                                      setParsedWorkout(messageParsedWorkout)
-                                      setGeneratedPlanContent(message.content)
-                                      setTimeout(handleStartWorkout, 0)
-                                    }}
-                                    onSaveRoutine={() => {
-                                      setParsedWorkout(messageParsedWorkout)
-                                      setGeneratedPlanContent(message.content)
-                                      setTimeout(handleSaveRoutine, 0)
-                                    }}
+                                  <Image
+                                    source={{ uri: imageUri }}
+                                    style={styles.messageImage}
+                                    contentFit="cover"
                                   />
-                                </View>
-                              )
-                            }
+                                </TouchableOpacity>
+                              ),
+                            )}
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onLongPress={() => handleCopyMessage(message.content)}
+                          delayLongPress={220}
+                        >
+                          <Text style={styles.userMessageText}>
+                            {message.content}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
 
-                            // Regular messages show with coach avatar
-                            // Hide partial JSON blocks while streaming
-                            const foodLogPayload = parseFoodLogPayload(
-                              message.content,
-                            )
+                      {message.status === 'failed' && (
+                        <View style={styles.userMessageMetaRow}>
+                          <Text
+                            style={[
+                              styles.messageMetaStatusText,
+                              styles.messageMetaStatusErrorText,
+                            ]}
+                          >
+                            Failed to send
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.messageMetaActionButton}
+                            onPress={() => handleResendMessage(message.id)}
+                            disabled={isLoading}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name="refresh"
+                              size={13}
+                              color={colors.statusError}
+                            />
+                            <Text
+                              style={[
+                                styles.messageMetaActionText,
+                                styles.messageMetaActionErrorText,
+                              ]}
+                            >
+                              Resend
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <>
+                      {/* Check if this message contains a parsed workout plan */}
+                      {(() => {
+                        const messageParsedWorkout = parseWorkoutForDisplay(
+                          message.content,
+                        )
 
-                            // Calculate progress for chart rings
-                            const { calorie_goal, protein_goal_g } =
-                              dailyLogSummary?.goals || {}
-                            const safeCalGoal = calorie_goal || 2500
-                            const safeProtGoal = protein_goal_g || 150
-                            const safeCarbGoal = 250
-                            const safeFatGoal = 70
+                        // Workout cards render full-width with coach branding inside the card
+                        if (messageParsedWorkout) {
+                          return (
+                            <View style={styles.workoutCardContainer}>
+                              <WorkoutCard
+                                workout={messageParsedWorkout}
+                                coachImage={coach.image}
+                                username={profile?.display_name}
+                                onStartWorkout={() => {
+                                  setParsedWorkout(messageParsedWorkout)
+                                  setGeneratedPlanContent(message.content)
+                                  setTimeout(handleStartWorkout, 0)
+                                }}
+                                onSaveRoutine={() => {
+                                  setParsedWorkout(messageParsedWorkout)
+                                  setGeneratedPlanContent(message.content)
+                                  setTimeout(handleSaveRoutine, 0)
+                                }}
+                              />
+                            </View>
+                          )
+                        }
 
-                            const calProgress = foodLogPayload
-                              ? Math.min(
-                                  foodLogPayload.calories / safeCalGoal,
-                                  1,
-                                )
-                              : 0
-                            const protProgress = foodLogPayload
-                              ? Math.min(
-                                  foodLogPayload.protein_g / safeProtGoal,
-                                  1,
-                                )
-                              : 0
-                            const carbProgress = foodLogPayload
-                              ? Math.min(
-                                  foodLogPayload.carbs_g / safeCarbGoal,
-                                  1,
-                                )
-                              : 0
-                            const fatProgress = foodLogPayload
-                              ? Math.min(foodLogPayload.fat_g / safeFatGoal, 1)
-                              : 0
-                            const mealCountToday =
-                              dailyLogSummary?.totals.meal_count ?? 0
-                            const foodCardLabel = foodLogPayload
-                              ? getFoodCardMealLabel(
-                                  foodLogPayload,
-                                  mealCountToday,
-                                )
-                              : `Meal ${Math.max(1, mealCountToday + 1)}`
-                            const foodConfidenceLabel = foodLogPayload
-                              ? formatFoodConfidenceLabel(
-                                  foodLogPayload.confidence,
-                                )
-                              : 'Medium'
-                            const confidenceTone =
-                              foodLogPayload?.confidence || 'medium'
-                            const {
-                              bg: foodConfidenceBadgeBg,
-                              border: foodConfidenceBadgeBorder,
-                            } =
-                              confidenceTone === 'high'
-                                ? isDark
-                                  ? {
-                                      bg: 'rgba(52, 199, 89, 0.14)',
-                                      border: 'rgba(52, 199, 89, 0.28)',
-                                    }
-                                  : {
-                                      bg: 'rgba(52, 199, 89, 0.12)',
-                                      border: 'rgba(52, 199, 89, 0.22)',
-                                    }
-                                : confidenceTone === 'low'
-                                ? isDark
-                                  ? {
-                                      bg: 'rgba(255, 159, 10, 0.14)',
-                                      border: 'rgba(255, 159, 10, 0.28)',
-                                    }
-                                  : {
-                                      bg: 'rgba(255, 159, 10, 0.12)',
-                                      border: 'rgba(255, 159, 10, 0.22)',
-                                    }
-                                : isDark
-                                ? {
-                                    bg: 'rgba(255,255,255,0.06)',
-                                    border: 'rgba(255,255,255,0.16)',
-                                  }
-                                : {
-                                    bg: 'rgba(255,255,255,0.52)',
-                                    border: 'rgba(255,255,255,0.38)',
-                                  }
-                            const foodConfidenceColor =
-                              confidenceTone === 'high'
-                                ? '#34C759'
-                                : confidenceTone === 'low'
-                                ? '#FF9F0A'
-                                : colors.textSecondary
+                        // Regular messages show with coach avatar
+                        // Hide partial JSON blocks while streaming
+                        const foodLogPayload = parseFoodLogPayload(
+                          message.content,
+                        )
 
-                            const calCircumference = 28 * 2 * Math.PI
-                            const smallCircumference = 16 * 2 * Math.PI
-                            const displayContent = getVisibleAssistantMessageText(
-                              message.content,
-                            )
+                        // Calculate progress for chart rings
+                        const { calorie_goal, protein_goal_g } =
+                          dailyLogSummary?.goals || {}
+                        const safeCalGoal = resolveCalorieGoal(
+                          calorie_goal,
+                          profile ?? null,
+                        )
+                        const safeProtGoal = protein_goal_g || 150
+                        const safeCarbGoal = 250
+                        const safeFatGoal = 70
 
-                            const exerciseSuggestions = parseExerciseSuggestions(
-                              message.content,
-                            )
+                        const calProgress = foodLogPayload
+                          ? Math.min(foodLogPayload.calories / safeCalGoal, 1)
+                          : 0
+                        const protProgress = foodLogPayload
+                          ? Math.min(foodLogPayload.protein_g / safeProtGoal, 1)
+                          : 0
+                        const carbProgress = foodLogPayload
+                          ? Math.min(foodLogPayload.carbs_g / safeCarbGoal, 1)
+                          : 0
+                        const fatProgress = foodLogPayload
+                          ? Math.min(foodLogPayload.fat_g / safeFatGoal, 1)
+                          : 0
+                        const mealCountToday =
+                          dailyLogSummary?.totals.meal_count ?? 0
+                        const foodCardLabel = foodLogPayload
+                          ? getFoodCardMealLabel(foodLogPayload, mealCountToday)
+                          : `Meal ${Math.max(1, mealCountToday + 1)}`
+                        const foodConfidenceLabel = foodLogPayload
+                          ? formatFoodConfidenceLabel(foodLogPayload.confidence)
+                          : 'Medium'
+                        const confidenceTone =
+                          foodLogPayload?.confidence || 'medium'
+                        const {
+                          bg: foodConfidenceBadgeBg,
+                          border: foodConfidenceBadgeBorder,
+                        } =
+                          confidenceTone === 'high'
+                            ? isDark
+                              ? {
+                                  bg: 'rgba(52, 199, 89, 0.14)',
+                                  border: 'rgba(52, 199, 89, 0.28)',
+                                }
+                              : {
+                                  bg: 'rgba(52, 199, 89, 0.12)',
+                                  border: 'rgba(52, 199, 89, 0.22)',
+                                }
+                            : confidenceTone === 'low'
+                            ? isDark
+                              ? {
+                                  bg: 'rgba(255, 159, 10, 0.14)',
+                                  border: 'rgba(255, 159, 10, 0.28)',
+                                }
+                              : {
+                                  bg: 'rgba(255, 159, 10, 0.12)',
+                                  border: 'rgba(255, 159, 10, 0.22)',
+                                }
+                            : isDark
+                            ? {
+                                bg: 'rgba(255,255,255,0.06)',
+                                border: 'rgba(255,255,255,0.16)',
+                              }
+                            : {
+                                bg: 'rgba(255,255,255,0.52)',
+                                border: 'rgba(255,255,255,0.38)',
+                              }
+                        const foodConfidenceColor =
+                          confidenceTone === 'high'
+                            ? '#34C759'
+                            : confidenceTone === 'low'
+                            ? '#FF9F0A'
+                            : colors.textSecondary
 
-                            // Don't render empty bubbles (prevents glitch when streaming JSON)
-                            if (
-                              !displayContent &&
-                              exerciseSuggestions.length === 0 &&
-                              !foodLogPayload
-                            ) {
-                              return null
-                            }
+                        const calCircumference = 28 * 2 * Math.PI
+                        const smallCircumference = 16 * 2 * Math.PI
+                        const displayContent = getVisibleAssistantMessageText(
+                          message.content,
+                        )
 
-                            return (
-                              <>
-                                <View style={styles.assistantMessageContent}>
-                                  {displayContent && (
-                                    <View style={styles.assistantCoachRow}>
-                                      <View
-                                        style={styles.messageAvatarContainer}
-                                      >
-                                        <Image
-                                          source={coach.image}
-                                          style={styles.messageAvatar}
-                                        />
-                                      </View>
-                                      <View
-                                        style={styles.assistantCoachBubbleWrap}
-                                      >
-                                        <TouchableOpacity
-                                          activeOpacity={1}
-                                          onLongPress={() =>
-                                            handleCopyMessage(displayContent)
-                                          }
-                                          delayLongPress={220}
-                                        >
-                                          <View
-                                            style={
-                                              styles.assistantMessageBubble
-                                            }
-                                          >
-                                            <Markdown
-                                              style={{
-                                                body: {
-                                                  fontSize: 16,
-                                                  lineHeight: 23,
-                                                  color: colors.textPrimary,
-                                                  margin: 0,
-                                                },
-                                                paragraph: {
-                                                  marginTop: 0,
-                                                  marginBottom: 2,
-                                                },
-                                                heading1: {
-                                                  fontSize: 22,
-                                                  fontWeight: '700',
-                                                  color: colors.textPrimary,
-                                                  marginTop: 16,
-                                                  marginBottom: 8,
-                                                },
-                                                heading2: {
-                                                  fontSize: 20,
-                                                  fontWeight: '700',
-                                                  color: colors.textPrimary,
-                                                  marginTop: 14,
-                                                  marginBottom: 6,
-                                                },
-                                                heading3: {
-                                                  fontSize: 18,
-                                                  fontWeight: '600',
-                                                  color: colors.textPrimary,
-                                                  marginTop: 12,
-                                                  marginBottom: 6,
-                                                },
-                                                code_inline: {
-                                                  backgroundColor: colors.bg,
-                                                  paddingHorizontal: 4,
-                                                  paddingVertical: 2,
-                                                  borderRadius: 4,
-                                                  fontSize: 15,
-                                                  fontFamily:
-                                                    Platform.OS === 'ios'
-                                                      ? 'Menlo'
-                                                      : 'monospace',
-                                                  color: colors.textPrimary,
-                                                },
-                                                code_block: {
-                                                  backgroundColor: colors.bg,
-                                                  padding: 12,
-                                                  borderRadius: 12,
-                                                  fontSize: 15,
-                                                  fontFamily:
-                                                    Platform.OS === 'ios'
-                                                      ? 'Menlo'
-                                                      : 'monospace',
-                                                  color: colors.textPrimary,
-                                                  marginVertical: 8,
-                                                  overflow: 'hidden',
-                                                },
-                                                fence: {
-                                                  backgroundColor: colors.bg,
-                                                  padding: 12,
-                                                  borderRadius: 12,
-                                                  fontSize: 15,
-                                                  fontFamily:
-                                                    Platform.OS === 'ios'
-                                                      ? 'Menlo'
-                                                      : 'monospace',
-                                                  color: colors.textPrimary,
-                                                  marginVertical: 8,
-                                                },
-                                                strong: {
-                                                  fontWeight: '600',
-                                                  color: colors.textPrimary,
-                                                },
-                                                em: {
-                                                  fontStyle: 'italic',
-                                                },
-                                                bullet_list: {
-                                                  marginTop: 0,
-                                                  marginBottom: 12,
-                                                },
-                                                ordered_list: {
-                                                  marginTop: 0,
-                                                  marginBottom: 12,
-                                                },
-                                                list_item: {
-                                                  marginTop: 4,
-                                                  marginBottom: 4,
-                                                },
-                                                hr: {
-                                                  backgroundColor:
-                                                    colors.border,
-                                                  height: 1,
-                                                  marginVertical: 16,
-                                                },
-                                                blockquote: {
-                                                  borderLeftWidth: 3,
-                                                  borderLeftColor:
-                                                    colors.brandPrimary,
-                                                  paddingLeft: 12,
-                                                  marginVertical: 8,
-                                                  backgroundColor: colors.bg,
-                                                  paddingVertical: 8,
-                                                  paddingRight: 8,
-                                                  borderRadius: 4,
-                                                },
-                                                link: {
-                                                  color: colors.brandPrimary,
-                                                  textDecorationLine:
-                                                    'underline',
-                                                },
-                                              }}
-                                            >
-                                              {displayContent}
-                                            </Markdown>
-                                          </View>
-                                        </TouchableOpacity>
-                                      </View>
-                                    </View>
-                                  )}
+                        const exerciseSuggestions = parseExerciseSuggestions(
+                          message.content,
+                        )
 
-                                  {foodLogPayload && (
+                        // Don't render empty bubbles (prevents glitch when streaming JSON)
+                        if (
+                          !displayContent &&
+                          exerciseSuggestions.length === 0 &&
+                          !foodLogPayload
+                        ) {
+                          return null
+                        }
+
+                        return (
+                          <>
+                            <View style={styles.assistantMessageContent}>
+                              {displayContent && (
+                                <View style={styles.assistantCoachRow}>
+                                  <View style={styles.messageAvatarContainer}>
+                                    <Image
+                                      source={coach.image}
+                                      style={styles.messageAvatar}
+                                    />
+                                  </View>
+                                  <View style={styles.assistantCoachBubbleWrap}>
                                     <TouchableOpacity
-                                      activeOpacity={0.9}
-                                      onPress={() => {
-                                        if (dailyLogSummary?.logDate) {
-                                          router.push({
-                                            pathname:
-                                              '/body-log/daily-food-log',
-                                            params: {
-                                              entryId:
-                                                dailyLogSummary.entryId ||
-                                                'new',
-                                              logDate: dailyLogSummary.logDate,
-                                              totalsJson: JSON.stringify(
-                                                dailyLogSummary.totals,
-                                              ),
-                                              goalsJson: JSON.stringify(
-                                                dailyLogSummary.goals,
-                                              ),
-                                            },
-                                          })
-                                        } else {
-                                          router.push(
-                                            '/body-log/daily-food-log',
-                                          )
-                                        }
-                                      }}
-                                      style={[
-                                        styles.foodLogCard,
-                                        !displayContent &&
-                                          styles.foodLogCardStandalone,
-                                      ]}
+                                      activeOpacity={1}
+                                      onLongPress={() =>
+                                        handleCopyMessage(displayContent)
+                                      }
+                                      delayLongPress={220}
                                     >
-                                      <View style={styles.foodLogHeaderRow}>
-                                        <View
-                                          style={[
-                                            styles.foodConfidenceBadge,
-                                            {
-                                              backgroundColor: isDark
-                                                ? 'rgba(255,255,255,0.06)'
-                                                : 'rgba(255,255,255,0.52)',
-                                              borderWidth: 1,
-                                              borderColor: isDark
-                                                ? 'rgba(255,255,255,0.16)'
-                                                : 'rgba(255,255,255,0.38)',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              marginRight: 10,
+                                      <View
+                                        style={styles.assistantMessageBubble}
+                                      >
+                                        <Markdown
+                                          style={{
+                                            body: {
+                                              fontSize: 16,
+                                              lineHeight: 23,
+                                              color: colors.textPrimary,
+                                              margin: 0,
                                             },
-                                          ]}
-                                        >
-                                          <Text style={styles.foodLogEyebrow}>
-                                            {foodCardLabel}
-                                          </Text>
-                                        </View>
-                                        <TouchableOpacity
-                                          activeOpacity={0.7}
-                                          style={[
-                                            styles.foodConfidenceBadge,
-                                            {
-                                              backgroundColor: foodConfidenceBadgeBg,
-                                              borderWidth: 1,
-                                              borderColor: foodConfidenceBadgeBorder,
-                                              flexDirection: 'row',
-                                              alignItems: 'center',
-                                              gap: 4,
+                                            paragraph: {
+                                              marginTop: 0,
+                                              marginBottom: 2,
                                             },
-                                          ]}
-                                          onPress={() => {
-                                            haptic('light')
-                                            Alert.alert(
-                                              'AI Confidence',
-                                              'This indicates how certain the AI is about its nutritional estimate based on your input: \n\n• High: Very certain (e.g., clear photo, exact description). \n• Medium: Good estimate, standard portion assumption.\n• Low: Best guess, details unclear.',
-                                              [{ text: 'Got it' }],
-                                            )
+                                            heading1: {
+                                              fontSize: 22,
+                                              fontWeight: '700',
+                                              color: colors.textPrimary,
+                                              marginTop: 16,
+                                              marginBottom: 8,
+                                            },
+                                            heading2: {
+                                              fontSize: 20,
+                                              fontWeight: '700',
+                                              color: colors.textPrimary,
+                                              marginTop: 14,
+                                              marginBottom: 6,
+                                            },
+                                            heading3: {
+                                              fontSize: 18,
+                                              fontWeight: '600',
+                                              color: colors.textPrimary,
+                                              marginTop: 12,
+                                              marginBottom: 6,
+                                            },
+                                            code_inline: {
+                                              backgroundColor: colors.bg,
+                                              paddingHorizontal: 4,
+                                              paddingVertical: 2,
+                                              borderRadius: 4,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                            },
+                                            code_block: {
+                                              backgroundColor: colors.bg,
+                                              padding: 12,
+                                              borderRadius: 12,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                              marginVertical: 8,
+                                              overflow: 'hidden',
+                                            },
+                                            fence: {
+                                              backgroundColor: colors.bg,
+                                              padding: 12,
+                                              borderRadius: 12,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                              marginVertical: 8,
+                                            },
+                                            strong: {
+                                              fontWeight: '600',
+                                              color: colors.textPrimary,
+                                            },
+                                            em: {
+                                              fontStyle: 'italic',
+                                            },
+                                            bullet_list: {
+                                              marginTop: 0,
+                                              marginBottom: 12,
+                                            },
+                                            ordered_list: {
+                                              marginTop: 0,
+                                              marginBottom: 12,
+                                            },
+                                            list_item: {
+                                              marginTop: 4,
+                                              marginBottom: 4,
+                                            },
+                                            hr: {
+                                              backgroundColor: colors.border,
+                                              height: 1,
+                                              marginVertical: 16,
+                                            },
+                                            blockquote: {
+                                              borderLeftWidth: 3,
+                                              borderLeftColor:
+                                                colors.brandPrimary,
+                                              paddingLeft: 12,
+                                              marginVertical: 8,
+                                              backgroundColor: colors.bg,
+                                              paddingVertical: 8,
+                                              paddingRight: 8,
+                                              borderRadius: 4,
+                                            },
+                                            link: {
+                                              color: colors.brandPrimary,
+                                              textDecorationLine: 'underline',
+                                            },
                                           }}
                                         >
-                                          <Text
-                                            style={[
-                                              styles.foodConfidenceText,
-                                              { color: foodConfidenceColor },
-                                            ]}
-                                          >
-                                            {foodConfidenceLabel}
-                                          </Text>
-                                          <Ionicons
-                                            name="information-circle-outline"
-                                            size={14}
-                                            color={foodConfidenceColor}
-                                          />
-                                        </TouchableOpacity>
+                                          {displayContent}
+                                        </Markdown>
                                       </View>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              )}
 
-                                      {/* Calories Row (Full Width) */}
-                                      <View style={styles.foodCaloriesCard}>
-                                        <View>
-                                          <Text
-                                            style={styles.foodCaloriesValue}
-                                          >
-                                            {roundMacro(
-                                              foodLogPayload.calories,
-                                            )}
-                                          </Text>
-                                          <Text
-                                            style={styles.foodCaloriesLabel}
-                                          >
-                                            Calories
-                                          </Text>
-                                        </View>
-                                        <View style={styles.chartContainer}>
-                                          <Svg width={70} height={70}>
-                                            <G rotation="-90" origin="35, 35">
-                                              <Circle
-                                                cx="35"
-                                                cy="35"
-                                                r="28"
-                                                stroke={
-                                                  isDark
-                                                    ? colors.border
-                                                    : '#E5E5E5'
-                                                }
-                                                strokeWidth="6"
-                                                fill="transparent"
-                                              />
-                                              <Circle
-                                                cx="35"
-                                                cy="35"
-                                                r="28"
-                                                stroke={colors.textPrimary}
-                                                strokeWidth="6"
-                                                fill="transparent"
-                                                strokeDasharray={`${calCircumference}`}
-                                                strokeDashoffset={`${
-                                                  calCircumference *
-                                                  (1 - calProgress)
-                                                }`}
-                                                strokeLinecap="round"
-                                              />
-                                            </G>
-                                          </Svg>
-                                          <View style={styles.chartIcon}>
-                                            <Ionicons
-                                              name="flame"
-                                              size={20}
-                                              color={colors.textPrimary}
-                                            />
-                                          </View>
-                                        </View>
-                                      </View>
-
-                                      {/* Macros Grid (3 Cols) */}
-                                      <View style={styles.foodMacroGrid}>
-                                        {/* Protein */}
-                                        <View style={styles.foodMacroCard}>
-                                          <Text
-                                            style={styles.foodMacroValueSmall}
-                                          >
-                                            {roundMacro(
-                                              foodLogPayload.protein_g,
-                                            )}
-                                            g
-                                          </Text>
-                                          <Text
-                                            style={styles.foodMacroLabelSmall}
-                                          >
-                                            Protein
-                                          </Text>
-                                          <View
-                                            style={styles.smallChartContainer}
-                                          >
-                                            <Svg width={40} height={40}>
-                                              <G rotation="-90" origin="20, 20">
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="rgba(248, 113, 113, 0.2)"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                />
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="#F87171"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                  strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${
-                                                    smallCircumference *
-                                                    (1 - protProgress)
-                                                  }`}
-                                                  strokeLinecap="round"
-                                                />
-                                              </G>
-                                            </Svg>
-                                            <View style={styles.chartIcon}>
-                                              <MaterialCommunityIcons
-                                                name="food-drumstick"
-                                                size={12}
-                                                color="#F87171"
-                                              />
-                                            </View>
-                                          </View>
-                                        </View>
-
-                                        {/* Carbs */}
-                                        <View style={styles.foodMacroCard}>
-                                          <Text
-                                            style={styles.foodMacroValueSmall}
-                                          >
-                                            {roundMacro(foodLogPayload.carbs_g)}
-                                            g
-                                          </Text>
-                                          <Text
-                                            style={styles.foodMacroLabelSmall}
-                                          >
-                                            Carbs
-                                          </Text>
-                                          <View
-                                            style={styles.smallChartContainer}
-                                          >
-                                            <Svg width={40} height={40}>
-                                              <G rotation="-90" origin="20, 20">
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="rgba(251, 191, 36, 0.2)"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                />
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="#FBBF24"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                  strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${
-                                                    smallCircumference *
-                                                    (1 - carbProgress)
-                                                  }`}
-                                                  strokeLinecap="round"
-                                                />
-                                              </G>
-                                            </Svg>
-                                            <View style={styles.chartIcon}>
-                                              <Ionicons
-                                                name="nutrition"
-                                                size={12}
-                                                color="#FBBF24"
-                                              />
-                                            </View>
-                                          </View>
-                                        </View>
-
-                                        {/* Fat */}
-                                        <View style={styles.foodMacroCard}>
-                                          <Text
-                                            style={styles.foodMacroValueSmall}
-                                          >
-                                            {roundMacro(foodLogPayload.fat_g)}g
-                                          </Text>
-                                          <Text
-                                            style={styles.foodMacroLabelSmall}
-                                          >
-                                            Fats
-                                          </Text>
-                                          <View
-                                            style={styles.smallChartContainer}
-                                          >
-                                            <Svg width={40} height={40}>
-                                              <G rotation="-90" origin="20, 20">
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="rgba(96, 165, 250, 0.2)"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                />
-                                                <Circle
-                                                  cx="20"
-                                                  cy="20"
-                                                  r="16"
-                                                  stroke="#60A5FA"
-                                                  strokeWidth="4"
-                                                  fill="transparent"
-                                                  strokeDasharray={`${smallCircumference}`}
-                                                  strokeDashoffset={`${
-                                                    smallCircumference *
-                                                    (1 - fatProgress)
-                                                  }`}
-                                                  strokeLinecap="round"
-                                                />
-                                              </G>
-                                            </Svg>
-                                            <View style={styles.chartIcon}>
-                                              <Ionicons
-                                                name="water"
-                                                size={12}
-                                                color="#60A5FA"
-                                              />
-                                            </View>
-                                          </View>
-                                        </View>
-                                      </View>
-
-                                      {(() => {
-                                        const state =
-                                          foodActionState[message.id] || 'idle'
-                                        const isSaving = state === 'saving'
-                                        const isSaved = state === 'saved'
-
-                                        // Only show 'Update' if the LLM thinks it's an update AND there's actually a meal we can update
-                                        // (either logged via this specific message before, or a previous one)
-                                        const canActuallyUpdate = !!(
-                                          loggedMealIdByMessage[message.id] ||
-                                          latestLoggedMealId
+                              {foodLogPayload && (
+                                <TouchableOpacity
+                                  activeOpacity={0.9}
+                                  onPress={() => {
+                                    if (dailyLogSummary?.logDate) {
+                                      router.push({
+                                        pathname: '/body-log/daily-food-log',
+                                        params: {
+                                          entryId:
+                                            dailyLogSummary.entryId || 'new',
+                                          logDate: dailyLogSummary.logDate,
+                                          totalsJson: JSON.stringify(
+                                            dailyLogSummary.totals,
+                                          ),
+                                          goalsJson: JSON.stringify(
+                                            dailyLogSummary.goals,
+                                          ),
+                                        },
+                                      })
+                                    } else {
+                                      router.push('/body-log/daily-food-log')
+                                    }
+                                  }}
+                                  style={[
+                                    styles.foodLogCard,
+                                    !displayContent &&
+                                      styles.foodLogCardStandalone,
+                                  ]}
+                                >
+                                  <View style={styles.foodLogHeaderRow}>
+                                    <View
+                                      style={[
+                                        styles.foodConfidenceBadge,
+                                        {
+                                          backgroundColor: isDark
+                                            ? 'rgba(255,255,255,0.06)'
+                                            : 'rgba(255,255,255,0.52)',
+                                          borderWidth: 1,
+                                          borderColor: isDark
+                                            ? 'rgba(255,255,255,0.16)'
+                                            : 'rgba(255,255,255,0.38)',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          marginRight: 10,
+                                        },
+                                      ]}
+                                    >
+                                      <Text style={styles.foodLogEyebrow}>
+                                        {foodCardLabel}
+                                      </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                      activeOpacity={0.7}
+                                      style={[
+                                        styles.foodConfidenceBadge,
+                                        {
+                                          backgroundColor: foodConfidenceBadgeBg,
+                                          borderWidth: 1,
+                                          borderColor: foodConfidenceBadgeBorder,
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                        },
+                                      ]}
+                                      onPress={() => {
+                                        haptic('light')
+                                        Alert.alert(
+                                          'AI Confidence',
+                                          'This indicates how certain the AI is about its nutritional estimate based on your input: \n\n• High: Very certain (e.g., clear photo, exact description). \n• Medium: Good estimate, standard portion assumption.\n• Low: Best guess, details unclear.',
+                                          [{ text: 'Got it' }],
                                         )
-                                        const isUpdateAction =
-                                          foodLogPayload.action ===
-                                            'update_last' && canActuallyUpdate
+                                      }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.foodConfidenceText,
+                                          { color: foodConfidenceColor },
+                                        ]}
+                                      >
+                                        {foodConfidenceLabel}
+                                      </Text>
+                                      <Ionicons
+                                        name="information-circle-outline"
+                                        size={14}
+                                        color={foodConfidenceColor}
+                                      />
+                                    </TouchableOpacity>
+                                  </View>
 
-                                        const buttonLabel = isSaved
-                                          ? 'Logged'
-                                          : isUpdateAction
-                                          ? 'Update'
-                                          : 'Log Meal'
+                                  {/* Calories Row (Full Width) */}
+                                  <View style={styles.foodCaloriesCard}>
+                                    <View>
+                                      <Text style={styles.foodCaloriesValue}>
+                                        {roundMacro(foodLogPayload.calories)}
+                                      </Text>
+                                      <Text style={styles.foodCaloriesLabel}>
+                                        Calories
+                                      </Text>
+                                    </View>
+                                    <View style={styles.chartContainer}>
+                                      <Svg width={70} height={70}>
+                                        <G rotation="-90" origin="35, 35">
+                                          <Circle
+                                            cx="35"
+                                            cy="35"
+                                            r="28"
+                                            stroke={
+                                              isDark ? colors.border : '#E5E5E5'
+                                            }
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                          />
+                                          <Circle
+                                            cx="35"
+                                            cy="35"
+                                            r="28"
+                                            stroke={colors.textPrimary}
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                            strokeDasharray={`${calCircumference}`}
+                                            strokeDashoffset={`${
+                                              calCircumference *
+                                              (1 - calProgress)
+                                            }`}
+                                            strokeLinecap="round"
+                                          />
+                                        </G>
+                                      </Svg>
+                                      <View style={styles.chartIcon}>
+                                        <Ionicons
+                                          name="flame"
+                                          size={20}
+                                          color={colors.textPrimary}
+                                        />
+                                      </View>
+                                    </View>
+                                  </View>
 
-                                        return (
+                                  {/* Macros Grid (3 Cols) */}
+                                  <View style={styles.foodMacroGrid}>
+                                    {/* Protein */}
+                                    <View style={styles.foodMacroCard}>
+                                      <Text style={styles.foodMacroValueSmall}>
+                                        {roundMacro(foodLogPayload.protein_g)}g
+                                      </Text>
+                                      <Text style={styles.foodMacroLabelSmall}>
+                                        Protein
+                                      </Text>
+                                      <View style={styles.smallChartContainer}>
+                                        <Svg width={40} height={40}>
+                                          <G rotation="-90" origin="20, 20">
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="rgba(248, 113, 113, 0.2)"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                            />
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="#F87171"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                              strokeDasharray={`${smallCircumference}`}
+                                              strokeDashoffset={`${
+                                                smallCircumference *
+                                                (1 - protProgress)
+                                              }`}
+                                              strokeLinecap="round"
+                                            />
+                                          </G>
+                                        </Svg>
+                                        <View style={styles.chartIcon}>
+                                          <MaterialCommunityIcons
+                                            name="food-drumstick"
+                                            size={12}
+                                            color="#F87171"
+                                          />
+                                        </View>
+                                      </View>
+                                    </View>
+
+                                    {/* Carbs */}
+                                    <View style={styles.foodMacroCard}>
+                                      <Text style={styles.foodMacroValueSmall}>
+                                        {roundMacro(foodLogPayload.carbs_g)}g
+                                      </Text>
+                                      <Text style={styles.foodMacroLabelSmall}>
+                                        Carbs
+                                      </Text>
+                                      <View style={styles.smallChartContainer}>
+                                        <Svg width={40} height={40}>
+                                          <G rotation="-90" origin="20, 20">
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="rgba(251, 191, 36, 0.2)"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                            />
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="#FBBF24"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                              strokeDasharray={`${smallCircumference}`}
+                                              strokeDashoffset={`${
+                                                smallCircumference *
+                                                (1 - carbProgress)
+                                              }`}
+                                              strokeLinecap="round"
+                                            />
+                                          </G>
+                                        </Svg>
+                                        <View style={styles.chartIcon}>
+                                          <Ionicons
+                                            name="nutrition"
+                                            size={12}
+                                            color="#FBBF24"
+                                          />
+                                        </View>
+                                      </View>
+                                    </View>
+
+                                    {/* Fat */}
+                                    <View style={styles.foodMacroCard}>
+                                      <Text style={styles.foodMacroValueSmall}>
+                                        {roundMacro(foodLogPayload.fat_g)}g
+                                      </Text>
+                                      <Text style={styles.foodMacroLabelSmall}>
+                                        Fats
+                                      </Text>
+                                      <View style={styles.smallChartContainer}>
+                                        <Svg width={40} height={40}>
+                                          <G rotation="-90" origin="20, 20">
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="rgba(96, 165, 250, 0.2)"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                            />
+                                            <Circle
+                                              cx="20"
+                                              cy="20"
+                                              r="16"
+                                              stroke="#60A5FA"
+                                              strokeWidth="4"
+                                              fill="transparent"
+                                              strokeDasharray={`${smallCircumference}`}
+                                              strokeDashoffset={`${
+                                                smallCircumference *
+                                                (1 - fatProgress)
+                                              }`}
+                                              strokeLinecap="round"
+                                            />
+                                          </G>
+                                        </Svg>
+                                        <View style={styles.chartIcon}>
+                                          <Ionicons
+                                            name="water"
+                                            size={12}
+                                            color="#60A5FA"
+                                          />
+                                        </View>
+                                      </View>
+                                    </View>
+                                  </View>
+
+                                  {(() => {
+                                    const state =
+                                      foodActionState[message.id] || 'idle'
+                                    const isSaving = state === 'saving'
+                                    const isSaved = state === 'saved'
+
+                                    // Only show 'Update' if the LLM thinks it's an update AND there's actually a meal we can update
+                                    // (either logged via this specific message before, or a previous one)
+                                    const canActuallyUpdate = !!(
+                                      loggedMealIdByMessage[message.id] ||
+                                      latestLoggedMealId
+                                    )
+                                    const isUpdateAction =
+                                      foodLogPayload.action === 'update_last' &&
+                                      canActuallyUpdate
+
+                                    const buttonLabel = isSaved
+                                      ? 'Logged'
+                                      : isUpdateAction
+                                      ? 'Update'
+                                      : 'Log Meal'
+
+                                    return (
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.foodLogActionButton,
+                                          isSaved &&
+                                            styles.foodLogActionButtonDone,
+                                        ]}
+                                        onPress={() =>
+                                          handleFoodLogAction(
+                                            message.id,
+                                            foodLogPayload,
+                                          )
+                                        }
+                                        disabled={isSaving || isSaved}
+                                        activeOpacity={0.85}
+                                      >
+                                        {isSaving ? (
+                                          <ActivityIndicator
+                                            size="small"
+                                            color={colors.bg}
+                                          />
+                                        ) : (
+                                          <Ionicons
+                                            name={
+                                              isSaved
+                                                ? 'checkmark-circle'
+                                                : 'add-circle'
+                                            }
+                                            size={24}
+                                            color={colors.bg}
+                                          />
+                                        )}
+                                        <Text
+                                          style={styles.foodLogActionButtonText}
+                                        >
+                                          {isSaving
+                                            ? 'Logging...'
+                                            : buttonLabel}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    )
+                                  })()}
+                                </TouchableOpacity>
+                              )}
+
+                              {exerciseSuggestions.length > 0 && (
+                                <View style={styles.exerciseCardsContainer}>
+                                  {exerciseSuggestions.map(
+                                    (suggestion, idx) => {
+                                      const exerciseMatch = findExerciseByName(
+                                        suggestion.name,
+                                      )
+                                      const gifUrl = exerciseMatch?.gifUrl
+                                      const exerciseId = exerciseMatch?.id
+                                      const canNavigate = !!exerciseId
+                                      const suggestionKey = getExerciseSuggestionKey(
+                                        suggestion,
+                                      )
+                                      const addState =
+                                        exerciseActionState[suggestionKey] ||
+                                        'idle'
+                                      const isSavingAdd = addState === 'saving'
+                                      const isAdded = addState === 'saved'
+                                      const isLast =
+                                        idx === exerciseSuggestions.length - 1
+
+                                      const handleNavigateToExercise = () => {
+                                        if (exerciseId) {
+                                          router.push(`/exercise/${exerciseId}`)
+                                        }
+                                      }
+
+                                      return (
+                                        <View
+                                          key={idx}
+                                          style={[
+                                            styles.exerciseCard,
+                                            isLast
+                                              ? null
+                                              : styles.exerciseCardSpacing,
+                                          ]}
+                                        >
                                           <TouchableOpacity
                                             style={[
-                                              styles.foodLogActionButton,
-                                              isSaved &&
-                                                styles.foodLogActionButtonDone,
+                                              styles.exerciseCardThumbnail,
+                                              gifUrl
+                                                ? styles.exerciseCardThumbnailImage
+                                                : null,
                                             ]}
-                                            onPress={() =>
-                                              handleFoodLogAction(
-                                                message.id,
-                                                foodLogPayload,
-                                              )
+                                            onPress={handleNavigateToExercise}
+                                            disabled={
+                                              !canNavigate || mode === 'sheet'
                                             }
-                                            disabled={isSaving || isSaved}
-                                            activeOpacity={0.85}
+                                            activeOpacity={
+                                              canNavigate && mode !== 'sheet'
+                                                ? 0.7
+                                                : 1
+                                            }
                                           >
-                                            {isSaving ? (
+                                            {gifUrl ? (
+                                              <ExerciseMediaThumbnail
+                                                gifUrl={gifUrl}
+                                                style={
+                                                  styles.suggestionThumbnailImage
+                                                }
+                                              />
+                                            ) : (
+                                              <Ionicons
+                                                name="barbell-outline"
+                                                size={18}
+                                                color={colors.textSecondary}
+                                              />
+                                            )}
+                                          </TouchableOpacity>
+
+                                          <View style={styles.exerciseCardInfo}>
+                                            <TouchableOpacity
+                                              onPress={handleNavigateToExercise}
+                                              disabled={
+                                                !canNavigate || mode === 'sheet'
+                                              }
+                                              activeOpacity={
+                                                canNavigate && mode !== 'sheet'
+                                                  ? 0.7
+                                                  : 1
+                                              }
+                                            >
+                                              <Text
+                                                style={styles.exerciseCardName}
+                                              >
+                                                {suggestion.name}
+                                              </Text>
+                                            </TouchableOpacity>
+                                            <Text
+                                              style={styles.exerciseCardDetails}
+                                            >
+                                              {suggestion.sets} sets ×{' '}
+                                              {suggestion.reps} reps
+                                            </Text>
+                                          </View>
+                                          <TouchableOpacity
+                                            style={[
+                                              styles.addExerciseButton,
+                                              isAdded &&
+                                                styles.addExerciseButtonSaved,
+                                            ]}
+                                            onPress={() => {
+                                              if (exerciseToReplace) {
+                                                handleReplaceExercise(
+                                                  suggestion,
+                                                )
+                                                return
+                                              }
+
+                                              handleAddExercise(suggestion)
+                                            }}
+                                            disabled={isSavingAdd || isAdded}
+                                          >
+                                            {isSavingAdd ? (
                                               <ActivityIndicator
                                                 size="small"
-                                                color={colors.bg}
+                                                color={colors.surface}
                                               />
                                             ) : (
                                               <Ionicons
                                                 name={
-                                                  isSaved
-                                                    ? 'checkmark-circle'
-                                                    : 'add-circle'
+                                                  isAdded
+                                                    ? 'checkmark'
+                                                    : exerciseToReplace
+                                                    ? 'swap-horizontal'
+                                                    : 'add'
                                                 }
-                                                size={24}
-                                                color={colors.bg}
+                                                size={20}
+                                                color={colors.surface}
                                               />
                                             )}
-                                            <Text
-                                              style={
-                                                styles.foodLogActionButtonText
-                                              }
-                                            >
-                                              {isSaving
-                                                ? 'Logging...'
-                                                : buttonLabel}
-                                            </Text>
                                           </TouchableOpacity>
-                                        )
-                                      })()}
-                                    </TouchableOpacity>
-                                  )}
-
-                                  {exerciseSuggestions.length > 0 && (
-                                    <View style={styles.exerciseCardsContainer}>
-                                      {exerciseSuggestions.map(
-                                        (suggestion, idx) => {
-                                          const exerciseMatch = findExerciseByName(
-                                            suggestion.name,
-                                          )
-                                          const gifUrl = exerciseMatch?.gifUrl
-                                          const exerciseId = exerciseMatch?.id
-                                          const canNavigate = !!exerciseId
-                                          const suggestionKey =
-                                            getExerciseSuggestionKey(suggestion)
-                                          const addState =
-                                            exerciseActionState[suggestionKey] ||
-                                            'idle'
-                                          const isSavingAdd =
-                                            addState === 'saving'
-                                          const isAdded = addState === 'saved'
-                                          const isLast =
-                                            idx ===
-                                            exerciseSuggestions.length - 1
-
-                                          const handleNavigateToExercise = () => {
-                                            if (exerciseId) {
-                                              router.push(
-                                                `/exercise/${exerciseId}`,
-                                              )
-                                            }
-                                          }
-
-                                          return (
-                                            <View
-                                              key={idx}
-                                              style={[
-                                                styles.exerciseCard,
-                                                isLast
-                                                  ? null
-                                                  : styles.exerciseCardSpacing,
-                                              ]}
-                                            >
-                                              <TouchableOpacity
-                                                style={[
-                                                  styles.exerciseCardThumbnail,
-                                                  gifUrl
-                                                    ? styles.exerciseCardThumbnailImage
-                                                    : null,
-                                                ]}
-                                                onPress={
-                                                  handleNavigateToExercise
-                                                }
-                                                disabled={
-                                                  !canNavigate ||
-                                                  mode === 'sheet'
-                                                }
-                                                activeOpacity={
-                                                  canNavigate && mode !== 'sheet'
-                                                    ? 0.7
-                                                    : 1
-                                                }
-                                              >
-                                                {gifUrl ? (
-                                                  <ExerciseMediaThumbnail
-                                                    gifUrl={gifUrl}
-                                                    style={
-                                                      styles.suggestionThumbnailImage
-                                                    }
-                                                  />
-                                                ) : (
-                                                  <Ionicons
-                                                    name="barbell-outline"
-                                                    size={18}
-                                                    color={colors.textSecondary}
-                                                  />
-                                                )}
-                                              </TouchableOpacity>
-
-                                              <View style={styles.exerciseCardInfo}>
-                                                <TouchableOpacity
-                                                  onPress={
-                                                    handleNavigateToExercise
-                                                  }
-                                                  disabled={
-                                                    !canNavigate ||
-                                                    mode === 'sheet'
-                                                  }
-                                                  activeOpacity={
-                                                    canNavigate && mode !== 'sheet'
-                                                      ? 0.7
-                                                      : 1
-                                                  }
-                                                >
-                                                  <Text
-                                                    style={
-                                                      styles.exerciseCardName
-                                                    }
-                                                  >
-                                                    {suggestion.name}
-                                                  </Text>
-                                                </TouchableOpacity>
-                                                <Text
-                                                  style={
-                                                    styles.exerciseCardDetails
-                                                  }
-                                                >
-                                                  {suggestion.sets} sets ×{' '}
-                                                  {suggestion.reps} reps
-                                                </Text>
-                                              </View>
-                                              <TouchableOpacity
-                                                style={[
-                                                  styles.addExerciseButton,
-                                                  isAdded &&
-                                                    styles.addExerciseButtonSaved,
-                                                ]}
-                                                onPress={() => {
-                                                  if (exerciseToReplace) {
-                                                    handleReplaceExercise(
-                                                      suggestion,
-                                                    )
-                                                    return
-                                                  }
-
-                                                  handleAddExercise(suggestion)
-                                                }}
-                                                disabled={isSavingAdd || isAdded}
-                                              >
-                                                {isSavingAdd ? (
-                                                  <ActivityIndicator
-                                                    size="small"
-                                                    color={colors.surface}
-                                                  />
-                                                ) : (
-                                                  <Ionicons
-                                                    name={
-                                                      isAdded
-                                                        ? 'checkmark'
-                                                        : exerciseToReplace
-                                                        ? 'swap-horizontal'
-                                                        : 'add'
-                                                    }
-                                                    size={20}
-                                                    color={colors.surface}
-                                                  />
-                                                )}
-                                              </TouchableOpacity>
-                                            </View>
-                                          )
-                                        },
-                                      )}
-                                    </View>
+                                        </View>
+                                      )
+                                    },
                                   )}
                                 </View>
-                              </>
-                            )
-                          })()}
-                        </>
-                      )}
-                    </View>
+                              )}
+                            </View>
+                          </>
+                        )
+                      })()}
+                    </>
+                  )}
+                </View>
               )}
               contentContainerStyle={[
                 styles.messagesContent,
@@ -3718,7 +3661,10 @@ export function WorkoutChat({
                   {isLoading && (
                     <View style={styles.loadingMessageContainer}>
                       <View style={styles.messageAvatarContainer}>
-                        <Image source={coach.image} style={styles.messageAvatar} />
+                        <Image
+                          source={coach.image}
+                          style={styles.messageAvatar}
+                        />
                       </View>
                       <View style={styles.typingIndicator}>
                         <TypingDot delay={0} colors={colors} />
@@ -3731,7 +3677,6 @@ export function WorkoutChat({
                 </>
               }
             />
-
 
             {/* Suggestions Row */}
             {!generatedPlanContent &&
@@ -4221,7 +4166,9 @@ export function WorkoutChat({
       <CoachSelectionSheet
         visible={isCoachSheetVisible}
         onClose={() => setIsCoachSheetVisible(false)}
-        currentCalorieGoal={dailyLogSummary?.goals.calorie_goal}
+        currentCalorieGoal={
+          dailyLogSummary?.goals.calorie_goal ?? maintenanceCalories ?? null
+        }
         onUpdateCalorieGoal={handleUpdateCalorieGoal}
       />
       {dailyLogSummary && Platform.OS !== 'ios' && (
@@ -4230,22 +4177,8 @@ export function WorkoutChat({
           onClose={() => setIsDailyMacrosSheetVisible(false)}
           totals={dailyLogSummary.totals}
           goals={dailyLogSummary.goals}
-          onPressContent={() => {
-            setIsDailyMacrosSheetVisible(false)
-            if (dailyLogSummary.logDate) {
-              router.push({
-                pathname: '/body-log/daily-food-log',
-                params: {
-                  entryId: dailyLogSummary.entryId || 'new',
-                  logDate: dailyLogSummary.logDate,
-                  totalsJson: JSON.stringify(dailyLogSummary.totals),
-                  goalsJson: JSON.stringify(dailyLogSummary.goals),
-                },
-              })
-            } else {
-              router.push('/body-log/daily-food-log')
-            }
-          }}
+          maintenanceCalories={maintenanceCalories}
+          onUpdateCalorieGoal={handleUpdateCalorieGoal}
         />
       )}
     </>

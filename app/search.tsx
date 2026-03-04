@@ -7,7 +7,6 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import { createInviteShareLink } from '@/lib/deeplinknow'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -15,20 +14,19 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -236,54 +234,12 @@ export default function SearchScreen() {
     [user, followingInProgress],
   )
 
-  const handleInvite = useCallback(async () => {
-    try {
-      if (!user?.id) {
-        Alert.alert('Sign In Required', 'Please sign in before sharing invites.')
-        return
-      }
-
-      haptic('light')
-
-      const inviterProfile = await database.profiles.getByIdOrNull(user.id)
-      const inviteLink = await createInviteShareLink({
-        inviterId: user.id,
-        inviterTag: inviterProfile?.user_tag ?? null,
-        inviterName: inviterProfile?.display_name ?? null,
-      }, {
-        accessToken: session?.access_token,
-        platform: Platform.OS,
-      })
-
-      const inviterLabel =
-        inviterProfile?.display_name ||
-        inviterProfile?.user_tag ||
-        'your friend'
-      const message = `${inviterLabel} invited you to Rep AI! Track your workouts, share progress, and train together.\n\n${inviteLink}`
-
-      const result = await Share.share(
-        Platform.OS === 'ios'
-          ? {
-              message: `${inviterLabel} invited you to Rep AI! Track your workouts, share progress, and train together.`,
-              url: inviteLink,
-            }
-          : {
-              message,
-            },
-      )
-
-      if (result.action === Share.sharedAction) {
-        trackEvent(AnalyticsEvents.SEARCH_INVITE_SHARED, {
-          inviter_id: user.id,
-          invite_url: inviteLink,
-        })
-        hapticSuccess()
-      }
-    } catch (error) {
-      console.error('Error sharing:', error)
-      Alert.alert('Error', 'Failed to share invite. Please try again.')
-    }
-  }, [session?.access_token, trackEvent, user?.id])
+  const handleInvite = useCallback(() => {
+    haptic('light')
+    markSearchEntrySkipFlag()
+    shouldSkipNextEntryRef.current = true
+    router.push('/invite-friends' as any)
+  }, [router])
 
   const markNextFocusAsChildReturn = useCallback(() => {
     markSearchEntrySkipFlag()
@@ -525,10 +481,10 @@ export default function SearchScreen() {
             <Ionicons
               name="share-outline"
               size={20}
-              color={colors.surface}
+              color={colors.bg}
               style={styles.inviteIcon}
             />
-            <Text style={styles.inviteButtonText}>Invite</Text>
+            <Text style={styles.inviteButtonText}>Invite Friends</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -716,16 +672,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.brandPrimary,
-      paddingVertical: 14,
-      borderRadius: 28,
+      backgroundColor: colors.textPrimary,
+      paddingVertical: 18,
+      borderRadius: 32,
     },
     inviteIcon: {
       marginRight: 8,
     },
     inviteButtonText: {
       fontSize: 16,
-      fontWeight: '600',
-      color: colors.surface,
+      fontWeight: '700',
+      color: colors.bg,
     },
   })

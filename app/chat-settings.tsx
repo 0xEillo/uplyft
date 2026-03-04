@@ -1,16 +1,13 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
-import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
-import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
-import { Gender } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -24,14 +21,6 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const getLocalDateString = (): string => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = `${now.getMonth() + 1}`.padStart(2, '0')
-  const day = `${now.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const SHEET_SPACING = {
   top: 32,
   section: 28,
@@ -40,17 +29,34 @@ const SHEET_SPACING = {
 
 export default function ChatSettingsScreen() {
   const router = useRouter()
-  const { user } = useAuth()
   const { profile, updateProfile } = useProfile()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isLoadingGoal, setIsLoadingGoal] = useState(true)
-  const [calorieInput, setCalorieInput] = useState('')
-  const [currentCalorieGoal, setCurrentCalorieGoal] = useState<number | null>(
-    null,
+  const [contextText, setContextText] = useState(profile?.bio ?? '')
+  const contextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const saveContext = useCallback(
+    async (text: string) => {
+      if (!profile) return
+      try {
+        await updateProfile({ bio: text.trim() || null })
+      } catch (error) {
+        console.error('Error saving AI context:', error)
+      }
+    },
+    [profile, updateProfile],
+  )
+
+  const handleContextChange = useCallback(
+    (text: string) => {
+      setContextText(text)
+      if (contextTimerRef.current) clearTimeout(contextTimerRef.current)
+      contextTimerRef.current = setTimeout(() => saveContext(text), 800)
+    },
+    [saveContext],
   )
 
   const hasProfileStats = useMemo(
@@ -60,85 +66,6 @@ export default function ChatSettingsScreen() {
       ),
     [profile?.weight_kg, profile?.height_cm, profile?.age, profile?.gender],
   )
-
-  const calculateTDEE = (
-    weight: number,
-    height: number,
-    age: number,
-    gender: Gender | null,
-  ) => {
-    let bmr = 10 * weight + 6.25 * height - 5 * age
-    bmr += gender === 'male' ? 5 : -161
-    return Math.round(bmr * 1.375)
-  }
-
-  const recommendations = useMemo(() => {
-    if (
-      !hasProfileStats ||
-      !profile?.weight_kg ||
-      !profile?.height_cm ||
-      !profile?.age ||
-      !profile?.gender
-    ) {
-      return null
-    }
-    const tdee = calculateTDEE(
-      profile.weight_kg,
-      profile.height_cm,
-      profile.age,
-      profile.gender,
-    )
-    return [
-      { label: 'Aggressive Cut', calories: Math.round(tdee * 0.75), color: '#ef4444' },
-      { label: 'Cut', calories: Math.round(tdee * 0.85), color: '#f97316' },
-      { label: 'Maintenance', calories: tdee, color: '#3b82f6' },
-      { label: 'Bulk', calories: Math.round(tdee * 1.1), color: '#10b981' },
-    ]
-  }, [hasProfileStats, profile?.age, profile?.gender, profile?.height_cm, profile?.weight_kg])
-
-  useEffect(() => {
-    const loadCurrentGoal = async () => {
-      if (!user?.id) {
-        setIsLoadingGoal(false)
-        return
-      }
-      try {
-        const summary = await database.dailyLog.getDaySummary(user.id, getLocalDateString())
-        const goal = summary.goals.calorie_goal ?? null
-        setCurrentCalorieGoal(goal)
-        setCalorieInput(goal ? String(goal) : '')
-      } catch {
-        setCurrentCalorieGoal(null)
-        setCalorieInput('')
-      } finally {
-        setIsLoadingGoal(false)
-      }
-    }
-
-    loadCurrentGoal()
-  }, [user?.id])
-
-  const saveCalorieGoal = async (goal: number) => {
-    if (!user?.id) return
-    try {
-      setIsUpdating(true)
-      await database.dailyLog.updateDay(user.id, { calorieGoal: goal })
-      setCurrentCalorieGoal(goal)
-      setCalorieInput(String(goal))
-      haptic('medium')
-    } catch (error) {
-      console.error('Error updating calorie goal:', error)
-      Alert.alert('Error', 'Unable to update calorie goal.')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const handleSaveCalories = async () => {
-    const parsedGoal = parseInt(calorieInput.replace(/[^0-9]/g, ''), 10)
-    if (Number.isNaN(parsedGoal)) return
-    await saveCalorieGoal(parsedGoal)
-  }
 
   const handleSelectCoach = async (coachId: CoachId) => {
     if (!profile || profile.coach === coachId) return
@@ -178,67 +105,6 @@ export default function ChatSettingsScreen() {
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
       >
-        {!hasProfileStats && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Physical Attributes</Text>
-            <TouchableOpacity
-              style={styles.missingStatsContainer}
-              onPress={handleNavigateToProfile}
-            >
-              <View style={styles.missingStatsIconContainer}>
-                <Ionicons name="body-outline" size={24} color={colors.brandPrimary} />
-              </View>
-              <View style={styles.missingStatsTextContainer}>
-                <Text style={styles.missingStatsTitle}>Complete Profile</Text>
-                <Text style={styles.missingStatsDescription}>
-                  Add weight, height, and age to get personalized calorie goals.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nutrition Targets</Text>
-          <View style={styles.settingRow}>
-            <View>
-              <Text style={styles.settingLabel}>Daily Calorie Goal</Text>
-              <Text style={styles.settingDescription}>Your target for today</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={calorieInput}
-                onChangeText={setCalorieInput}
-                keyboardType="numeric"
-                placeholder={currentCalorieGoal ? String(currentCalorieGoal) : '2000'}
-                placeholderTextColor={colors.textTertiary}
-                onBlur={handleSaveCalories}
-                returnKeyType="done"
-              />
-              <Text style={styles.unitText}>kcal</Text>
-            </View>
-          </View>
-
-          {recommendations && (
-            <View style={styles.recommendationsGrid}>
-              {recommendations.map((rec) => (
-                <TouchableOpacity
-                  key={rec.label}
-                  style={styles.recommendationCard}
-                  onPress={() => saveCalorieGoal(rec.calories)}
-                >
-                  <Text style={[styles.recommendationLabel, { color: rec.color }]}>
-                    {rec.label}
-                  </Text>
-                  <Text style={styles.recommendationValue}>{rec.calories} kcal</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Coach</Text>
 
@@ -283,9 +149,30 @@ export default function ChatSettingsScreen() {
             })}
           </ScrollView>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI Context</Text>
+          <Text style={styles.sectionDescription}>
+            Anything your coach should know — injuries, preferences, goals, etc.
+          </Text>
+          <TextInput
+            style={styles.contextInput}
+            value={contextText}
+            onChangeText={handleContextChange}
+            placeholder="E.g., I have a knee injury, I prefer powerlifting, cut to 180 lbs..."
+            placeholderTextColor={colors.textTertiary}
+            multiline
+            textAlignVertical="top"
+            maxLength={500}
+            onBlur={() => saveContext(contextText)}
+          />
+          <Text style={styles.contextCharCount}>
+            {contextText.length}/500
+          </Text>
+        </View>
       </ScrollView>
 
-      {(isUpdating || isLoadingGoal) && (
+      {isUpdating && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
@@ -322,115 +209,29 @@ const createStyles = (
       color: colors.textPrimary,
       marginBottom: 0,
     },
-    sectionSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginBottom: 0,
-    },
-    settingRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
-      padding: 16,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
-    },
-    settingLabel: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
-    settingDescription: {
+    sectionDescription: {
       fontSize: 13,
-      color: colors.textSecondary,
-    },
-    inputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(0,0,0,0.30)' : colors.bg,
-      borderRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      minWidth: 104,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.14)' : colors.border,
-    },
-    input: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      textAlign: 'right',
-      marginRight: 4,
-    },
-    unitText: {
-      fontSize: 14,
-      color: colors.textSecondary,
       fontWeight: '500',
-    },
-    recommendationsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 4,
-    },
-    recommendationCard: {
-      width: '48%',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
-      borderRadius: 16,
-      padding: 12,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
-      alignItems: 'center',
-    },
-    recommendationLabel: {
-      fontSize: 12,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      marginBottom: 4,
-      color: colors.textSecondary,
-    },
-    recommendationValue: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-    missingStatsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
-      padding: 16,
-      borderRadius: 16,
-      gap: 12,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
-    },
-    missingStatsIconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: isDark ? 'rgba(0,0,0,0.30)' : colors.bg,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.12)' : colors.border,
-    },
-    missingStatsTextContainer: {
-      flex: 1,
-    },
-    missingStatsTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 2,
-    },
-    missingStatsDescription: {
-      fontSize: 13,
       color: colors.textSecondary,
       lineHeight: 18,
+    },
+    contextInput: {
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8F8FA',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED',
+      padding: 14,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      minHeight: 100,
+      lineHeight: 21,
+    },
+    contextCharCount: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      textAlign: 'right',
     },
     coachScroll: {
       marginHorizontal: -20,

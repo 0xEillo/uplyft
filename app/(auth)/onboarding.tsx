@@ -29,7 +29,7 @@ import { Picker } from '@react-native-picker/picker'
 import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Dimensions,
@@ -2001,7 +2001,7 @@ export default function OnboardingScreen() {
     )
   }
 
-  const calculateEstimatedTDEE = () => {
+  const calculateEstimatedTDEE = useCallback(() => {
     let heightCm = parseFloat(data.height_cm)
     if (weightUnit === 'lb') {
       const feet = parseFloat(data.height_feet)
@@ -2034,7 +2034,32 @@ export default function OnboardingScreen() {
       bmr -= 161
     }
     return Math.round(bmr * 1.375)
-  }
+  }, [
+    convertInputToKg,
+    data.birth_day,
+    data.birth_month,
+    data.birth_year,
+    data.gender,
+    data.height_cm,
+    data.height_feet,
+    data.height_inches,
+    data.weight_kg,
+    weightUnit,
+  ])
+
+  // If user doesn't explicitly choose a cut/bulk plan, default to maintenance.
+  useEffect(() => {
+    if (step !== 15 || data.calorieGoal !== null) return
+    const maintenanceCalories = calculateEstimatedTDEE()
+    setData((prev) => {
+      if (prev.calorieGoal !== null) return prev
+      return { ...prev, calorieGoal: maintenanceCalories }
+    })
+  }, [
+    calculateEstimatedTDEE,
+    data.calorieGoal,
+    step,
+  ])
 
   const canProceed = () => {
     switch (step) {
@@ -3237,6 +3262,7 @@ export default function OnboardingScreen() {
       case 15: {
         // Calorie Goal Selection Step
         const tdee = calculateEstimatedTDEE()
+        const selectedCalorieGoal = data.calorieGoal ?? tdee
 
         const calorieOptions = [
           { label: 'Bulk', description: '10% surplus', calories: Math.round(tdee * 1.1), color: '#10B981', icon: 'trending-up' as keyof typeof Ionicons.glyphMap },
@@ -3260,8 +3286,8 @@ export default function OnboardingScreen() {
                     key={option.label}
                     style={[
                       styles.card,
-                      data.calorieGoal === option.calories && styles.cardSelected,
-                      data.calorieGoal === option.calories && { borderColor: option.color },
+                      selectedCalorieGoal === option.calories && styles.cardSelected,
+                      selectedCalorieGoal === option.calories && { borderColor: option.color },
                     ]}
                     onPress={() => {
                       setData({ ...data, calorieGoal: option.calories })
@@ -3295,11 +3321,11 @@ export default function OnboardingScreen() {
                       <View
                         style={[
                           styles.radioButton,
-                          data.calorieGoal === option.calories && styles.radioButtonSelected,
-                          data.calorieGoal === option.calories && { borderColor: option.color },
+                          selectedCalorieGoal === option.calories && styles.radioButtonSelected,
+                          selectedCalorieGoal === option.calories && { borderColor: option.color },
                         ]}
                       >
-                        {data.calorieGoal === option.calories && (
+                        {selectedCalorieGoal === option.calories && (
                           <View style={[styles.radioButtonInner, { backgroundColor: option.color }]} />
                         )}
                       </View>

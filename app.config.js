@@ -122,6 +122,7 @@ module.exports = {
       usesAppleSignIn: true,
       associatedDomains: deeplinkNowAssociatedDomains,
       infoPlist: {
+        LSApplicationQueriesSchemes: ['whatsapp', 'twitter', 'fb-messenger', 'fb', 'fbapi', 'fbauth2', 'fbshareextension'],
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription:
           'This app needs access to your microphone to record workout notes via voice.',

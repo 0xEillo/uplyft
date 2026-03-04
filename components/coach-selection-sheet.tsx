@@ -2,10 +2,10 @@ import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
-import { Gender } from '@/types/database.types'
+import { calculateMaintenanceCalories } from '@/lib/nutrition'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -41,6 +41,10 @@ export function CoachSelectionSheet({
   const insets = useSafeAreaInsets()
   const [isUpdating, setIsUpdating] = useState(false)
   const [calorieInput, setCalorieInput] = useState('')
+  const maintenanceCalories = useMemo(
+    () => calculateMaintenanceCalories(profile ?? null),
+    [profile],
+  )
 
   // Check if user has all necessary data
   const hasProfileStats = 
@@ -49,43 +53,25 @@ export function CoachSelectionSheet({
       profile?.age && 
       profile?.gender
 
-  // Calorie Calculation Helpers
-  const calculateTDEE = (weight: number, height: number, age: number, gender: Gender | null) => {
-      // Mifflin-St Jeor Equation
-      let bmr = (10 * weight) + (6.25 * height) - (5 * age)
-      if (gender === 'male') {
-          bmr += 5
-      } else {
-          bmr -= 161
-      }
-      
-      // Standard Activity Multiplier (Lightly Active - Base for workout app users)
-      const activityMultiplier = 1.375 
-      return Math.round(bmr * activityMultiplier)
-  }
+  const recommendations = useMemo(() => {
+    if (!hasProfileStats || !maintenanceCalories) return null
 
-  const getCalorieRecommendations = () => {
-      if (!hasProfileStats || !profile?.weight_kg || !profile?.height_cm || !profile?.age || !profile?.gender) return null
-
-      const tdee = calculateTDEE(profile.weight_kg, profile.height_cm, profile.age, profile.gender)
-
-      return [
-          { label: 'Aggressive Cut', calories: Math.round(tdee * 0.75), color: '#ef4444' },
-          { label: 'Cut', calories: Math.round(tdee * 0.85), color: '#f97316' },
-          { label: 'Maintenance', calories: tdee, color: '#3b82f6' },
-          { label: 'Bulk', calories: Math.round(tdee * 1.1), color: '#10b981' },
-      ]
-  }
-
-  const recommendations = getCalorieRecommendations()
+    return [
+      { label: 'Aggressive Cut', calories: Math.round(maintenanceCalories * 0.75), color: '#ef4444' },
+      { label: 'Cut', calories: Math.round(maintenanceCalories * 0.85), color: '#f97316' },
+      { label: 'Maintenance', calories: maintenanceCalories, color: '#3b82f6' },
+      { label: 'Bulk', calories: Math.round(maintenanceCalories * 1.1), color: '#10b981' },
+    ]
+  }, [hasProfileStats, maintenanceCalories])
 
   useEffect(() => {
-    if (currentCalorieGoal) {
-      setCalorieInput(currentCalorieGoal.toString())
+    const effectiveGoal = currentCalorieGoal ?? maintenanceCalories ?? null
+    if (effectiveGoal) {
+      setCalorieInput(effectiveGoal.toString())
     } else {
       setCalorieInput('')
     }
-  }, [currentCalorieGoal, visible])
+  }, [currentCalorieGoal, maintenanceCalories, visible])
 
   const handleSelectCoach = async (coachId: CoachId) => {
     haptic('light')
@@ -185,7 +171,7 @@ export function CoachSelectionSheet({
                 value={calorieInput}
                 onChangeText={setCalorieInput}
                 keyboardType="numeric"
-                placeholder="2000"
+                placeholder={maintenanceCalories ? String(maintenanceCalories) : '2000'}
                 placeholderTextColor={colors.textTertiary}
                 onBlur={handleSaveCalories}
                 returnKeyType="done"

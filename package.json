@@ -35,6 +35,7 @@
     "expo-auth-session": "~55.0.4",
     "expo-blur": "~55.0.5",
     "expo-camera": "~55.0.6",
+    "expo-clipboard": "~55.0.8",
     "expo-constants": "~55.0.4",
     "expo-crypto": "~55.0.5",
     "expo-dev-client": "~55.0.5",

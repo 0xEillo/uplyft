@@ -18,14 +18,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -232,65 +232,73 @@ export default function ExploreScreen() {
       }
 
       return (
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.routineCard}
-          onPress={() => {
-            trackEvent(AnalyticsEvents.EXPLORE_CARD_TAPPED, {
-              card_type: 'routine',
-              destination: item.id,
-            })
-            router.push({
-              pathname: '/routine/[routineId]',
-              params: { routineId: item.id },
-            })
+        <View
+          style={{
+            paddingLeft: index % 2 === 0 ? 20 : 8,
+            paddingRight: index % 2 === 0 ? 8 : 20,
+            paddingBottom: 16,
           }}
         >
-          <Image
-            source={getRoutineImage(item)}
-            style={styles.routineImage}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            priority="normal"
-            transition={200}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
-            style={styles.routineOverlay}
-          />
-          <View
-            style={[
-              styles.colorTint,
-              { backgroundColor: tintColor, opacity: 0.25 },
-            ]}
-          />
-          <View style={styles.routineContent}>
-            <Text style={styles.routineTitle} numberOfLines={2}>
-              {item.name}
-            </Text>
-            <View style={styles.premiumContainer}>
-              <Text style={[styles.premiumText, { color: tintColor }]}>
-                Pro
-              </Text>
-              <Ionicons name="star" size={12} color={tintColor} />
-            </View>
-          </View>
-
           <TouchableOpacity
-            style={styles.saveButton}
-            onPress={() => handleSaveRoutine(item.id)}
-            disabled={isSaving}
-            activeOpacity={0.9}
+            activeOpacity={0.8}
+            style={styles.routineCard}
+            onPress={() => {
+              trackEvent(AnalyticsEvents.EXPLORE_CARD_TAPPED, {
+                card_type: 'routine',
+                destination: item.id,
+              })
+              router.push({
+                pathname: '/routine/[routineId]',
+                params: { routineId: item.id },
+              })
+            }}
           >
-            <LiquidGlassSurface style={styles.saveButtonGlass}>
-              {isSaving ? (
-                <ActivityIndicator size="small" color={colors.textPrimary} />
-              ) : (
-                <Ionicons name="add" size={18} color={colors.textPrimary} />
-              )}
-            </LiquidGlassSurface>
+            <Image
+              source={getRoutineImage(item)}
+              style={styles.routineImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              priority="normal"
+              transition={200}
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
+              style={styles.routineOverlay}
+            />
+            <View
+              style={[
+                styles.colorTint,
+                { backgroundColor: tintColor, opacity: 0.25 },
+              ]}
+            />
+            <View style={styles.routineContent}>
+              <Text style={styles.routineTitle} numberOfLines={2}>
+                {item.name}
+              </Text>
+              <View style={styles.premiumContainer}>
+                <Text style={[styles.premiumText, { color: tintColor }]}>
+                  Pro
+                </Text>
+                <Ionicons name="star" size={12} color={tintColor} />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => handleSaveRoutine(item.id)}
+              disabled={isSaving}
+              activeOpacity={0.9}
+            >
+              <LiquidGlassSurface style={styles.saveButtonGlass}>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={colors.textPrimary} />
+                ) : (
+                  <Ionicons name="add" size={18} color={colors.textPrimary} />
+                )}
+              </LiquidGlassSurface>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       )
     },
     [
@@ -328,7 +336,6 @@ export default function ExploreScreen() {
             keyExtractor={(item: ExploreRoutine) => item.id}
             numColumns={2}
             estimatedItemSize={248}
-            columnWrapperStyle={styles.routineRow}
             contentContainerStyle={[
               styles.scrollContent,
               { paddingTop: insets.top + HEADER_ROW_HEIGHT },
@@ -478,14 +485,6 @@ const createStyles = (
       color: 'rgba(255,255,255,0.8)',
       fontSize: 12,
       fontWeight: '600',
-    },
-    routineRow: {
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      marginBottom: 16,
-    },
-    routineWrapper: {
-      width: (width - 56) / 2,
     },
     routineCard: {
       height: 240,

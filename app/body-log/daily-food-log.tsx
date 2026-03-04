@@ -2,24 +2,26 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { haptic, hapticSuccess } from '@/lib/haptics'
 import { database } from '@/lib/database'
+import { haptic, hapticSuccess } from '@/lib/haptics'
+import { resolveCalorieGoal } from '@/lib/nutrition'
 import { supabase } from '@/lib/supabase'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Circle, G, Svg } from 'react-native-svg'
@@ -148,6 +150,7 @@ export default function DailyFoodLogScreen() {
 
   const router = useRouter()
   const { user } = useAuth()
+  const { profile } = useProfile()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
@@ -315,7 +318,7 @@ export default function DailyFoodLogScreen() {
   const fat = totals.fat_g ?? 0
   const mealCount = totals.meal_count ?? meals.length
 
-  const calorieGoal = goals.calorie_goal || 2500
+  const calorieGoal = resolveCalorieGoal(goals.calorie_goal, profile)
   const proteinGoal = goals.protein_goal_g || 150
   const carbGoal = 250
   const fatGoal = 70
@@ -333,8 +336,8 @@ export default function DailyFoodLogScreen() {
   const heroRadius = (heroSize - heroStroke) / 2
   const heroCircumference = heroRadius * 2 * Math.PI
 
-  const macroRingSize = 54
-  const macroRingStroke = 5
+  const macroRingSize = 48
+  const macroRingStroke = 4.5
   const macroRingRadius = (macroRingSize - macroRingStroke) / 2
   const macroRingCircumference = macroRingRadius * 2 * Math.PI
 
@@ -428,33 +431,14 @@ export default function DailyFoodLogScreen() {
             />
           }
         >
-          <View style={styles.heroCard}>
-            <View style={styles.heroCardAccent} />
+          <View style={styles.heroSection}>
             <View style={styles.heroTopRow}>
-              <View>
-                <Text style={[styles.heroEyebrow, { color: colors.textSecondary }]}>
-                  Daily Food Log
-                </Text>
-                <Text style={[styles.heroDate, { color: colors.textPrimary }]}>
-                  {formatHeaderDate(activeDate)}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.mealBadge,
-                  {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'rgba(17,17,17,0.04)',
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Ionicons name="restaurant-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.mealBadgeText, { color: colors.textSecondary }]}>
-                  {mealCount} {mealCount === 1 ? 'meal' : 'meals'}
-                </Text>
-              </View>
+              <Text style={[styles.heroDate, { color: colors.textPrimary }]}>
+                {formatHeaderDate(activeDate)}
+              </Text>
+              <Text style={[styles.heroMealCount, { color: colors.textSecondary }]}>
+                {mealCount} {mealCount === 1 ? 'meal' : 'meals'}
+              </Text>
             </View>
 
             <View style={styles.heroBody}>
@@ -463,10 +447,7 @@ export default function DailyFoodLogScreen() {
                   {calDelta}
                 </Text>
                 <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>
-                  {calOver ? 'Calories over target' : 'Calories remaining'}
-                </Text>
-                <Text style={[styles.heroSubValue, { color: colors.textPrimary }]}>
-                  {round(calories)} / {round(calorieGoal)} kcal
+                  {calOver ? 'over' : 'remaining'}
                 </Text>
               </View>
 
@@ -477,7 +458,7 @@ export default function DailyFoodLogScreen() {
                       cx={heroSize / 2}
                       cy={heroSize / 2}
                       r={heroRadius}
-                      stroke={isDark ? 'rgba(255,255,255,0.10)' : '#E8E8ED'}
+                      stroke={isDark ? 'rgba(255,255,255,0.08)' : '#EFEFEF'}
                       strokeWidth={heroStroke}
                       fill="transparent"
                     />
@@ -495,24 +476,22 @@ export default function DailyFoodLogScreen() {
                   </G>
                 </Svg>
                 <View style={styles.heroRingCenter}>
-                  <Ionicons
-                    name={calOver ? 'warning-outline' : 'flame-outline'}
-                    size={24}
-                    color={calOver ? '#FF6B6B' : colors.textPrimary}
-                  />
+                  <Text style={[styles.heroRingText, { color: colors.textSecondary }]}>
+                    {round(calories)}
+                  </Text>
+                  <Text style={[styles.heroRingUnit, { color: colors.textTertiary }]}>
+                    kcal
+                  </Text>
                 </View>
               </View>
             </View>
-          </View>
 
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Macros</Text>
-            <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>
-              Targets + actuals
+            <Text style={[styles.heroSubtext, { color: colors.textSecondary }]}>
+              {round(calories)} of {round(calorieGoal)} kcal
             </Text>
           </View>
 
-          <View style={styles.macroGrid}>
+          <View style={styles.macroRow}>
             {[
               {
                 key: 'protein',
@@ -520,10 +499,8 @@ export default function DailyFoodLogScreen() {
                 value: protein,
                 goal: proteinGoal,
                 color: '#F87171',
-                icon: (
-                  <MaterialCommunityIcons name="food-drumstick" size={16} color="#F87171" />
-                ),
                 progress: proteinProgress,
+                icon: <MaterialCommunityIcons name="food-drumstick" size={15} color="#F87171" />,
               },
               {
                 key: 'carbs',
@@ -531,8 +508,8 @@ export default function DailyFoodLogScreen() {
                 value: carbs,
                 goal: carbGoal,
                 color: '#FBBF24',
-                icon: <Ionicons name="nutrition-outline" size={16} color="#FBBF24" />,
                 progress: carbProgress,
+                icon: <Ionicons name="nutrition" size={15} color="#FBBF24" />,
               },
               {
                 key: 'fat',
@@ -540,106 +517,68 @@ export default function DailyFoodLogScreen() {
                 value: fat,
                 goal: fatGoal,
                 color: '#60A5FA',
-                icon: <Ionicons name="water-outline" size={16} color="#60A5FA" />,
                 progress: fatProgress,
+                icon: <Ionicons name="water" size={15} color="#60A5FA" />,
               },
             ].map((macro) => (
-              <View key={macro.key} style={styles.macroCard}>
-                <View style={styles.macroCardTop}>
-                  <Text style={[styles.macroValue, { color: colors.textPrimary }]}>
-                    {round(macro.value)}g
-                  </Text>
-                  <View style={styles.macroRingWrap}>
-                    <Svg width={macroRingSize} height={macroRingSize}>
-                      <G
-                        rotation="-90"
-                        origin={`${macroRingSize / 2}, ${macroRingSize / 2}`}
-                      >
-                        <Circle
-                          cx={macroRingSize / 2}
-                          cy={macroRingSize / 2}
-                          r={macroRingRadius}
-                          stroke={`${macro.color}24`}
-                          strokeWidth={macroRingStroke}
-                          fill="transparent"
-                        />
-                        <Circle
-                          cx={macroRingSize / 2}
-                          cy={macroRingSize / 2}
-                          r={macroRingRadius}
-                          stroke={macro.color}
-                          strokeWidth={macroRingStroke}
-                          fill="transparent"
-                          strokeDasharray={`${macroRingCircumference}`}
-                          strokeDashoffset={`${
-                            macroRingCircumference * (1 - macro.progress)
-                          }`}
-                          strokeLinecap="round"
-                        />
-                      </G>
-                    </Svg>
-                    <View style={styles.macroRingIcon}>{macro.icon}</View>
-                  </View>
+              <View key={macro.key} style={styles.macroItem}>
+                <View style={styles.macroRingWrap}>
+                  <Svg width={macroRingSize} height={macroRingSize}>
+                    <G rotation="-90" origin={`${macroRingSize / 2}, ${macroRingSize / 2}`}>
+                      <Circle
+                        cx={macroRingSize / 2}
+                        cy={macroRingSize / 2}
+                        r={macroRingRadius}
+                        stroke={`${macro.color}20`}
+                        strokeWidth={macroRingStroke}
+                        fill="transparent"
+                      />
+                      <Circle
+                        cx={macroRingSize / 2}
+                        cy={macroRingSize / 2}
+                        r={macroRingRadius}
+                        stroke={macro.color}
+                        strokeWidth={macroRingStroke}
+                        fill="transparent"
+                        strokeDasharray={`${macroRingCircumference}`}
+                        strokeDashoffset={`${macroRingCircumference * (1 - macro.progress)}`}
+                        strokeLinecap="round"
+                      />
+                    </G>
+                  </Svg>
+                  <View style={styles.macroRingIcon}>{macro.icon}</View>
                 </View>
+                <Text style={[styles.macroValue, { color: colors.textPrimary }]}>
+                  {round(macro.value)}g
+                </Text>
                 <Text style={[styles.macroLabel, { color: colors.textSecondary }]}>
                   {macro.label}
-                </Text>
-                <Text style={[styles.macroGoalText, { color: colors.textSecondary }]}>
-                  Goal {round(macro.goal)}g
                 </Text>
               </View>
             ))}
           </View>
 
-          <View style={styles.breakdownCard}>
-            <View style={styles.breakdownHeader}>
-              <Text style={[styles.breakdownTitle, { color: colors.textPrimary }]}>
-                Energy split
-              </Text>
-              <Text style={[styles.breakdownCaption, { color: colors.textSecondary }]}>
-                Calories by macro
-              </Text>
-            </View>
-
+          <View style={styles.energySplit}>
             <View
               style={[
-                styles.breakdownBar,
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#ECECF1' },
+                styles.energyBar,
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F3' },
               ]}
             >
-              <View
-                style={[
-                  styles.breakdownSegment,
-                  { flex: protein * 4 || 0.01, backgroundColor: '#F87171' },
-                ]}
-              />
-              <View
-                style={[
-                  styles.breakdownSegment,
-                  { flex: carbs * 4 || 0.01, backgroundColor: '#FBBF24' },
-                ]}
-              />
-              <View
-                style={[
-                  styles.breakdownSegment,
-                  { flex: fat * 9 || 0.01, backgroundColor: '#60A5FA' },
-                ]}
-              />
+              <View style={[styles.energySegment, { flex: protein * 4 || 0.01, backgroundColor: '#F87171' }]} />
+              <View style={[styles.energySegment, { flex: carbs * 4 || 0.01, backgroundColor: '#FBBF24' }]} />
+              <View style={[styles.energySegment, { flex: fat * 9 || 0.01, backgroundColor: '#60A5FA' }]} />
             </View>
-
-            <View style={styles.breakdownLegend}>
+            <View style={styles.energyLegend}>
               {[
-                ['Protein', proteinPct, '#F87171'],
-                ['Carbs', carbsPct, '#FBBF24'],
-                ['Fat', fatPct, '#60A5FA'],
+                ['P', proteinPct, '#F87171'],
+                ['C', carbsPct, '#FBBF24'],
+                ['F', fatPct, '#60A5FA'],
               ].map(([label, pct, color]) => (
-                <View key={String(label)} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: String(color) }]} />
-                  <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>
-                    {String(label)}
-                  </Text>
-                  <Text style={[styles.legendValue, { color: colors.textPrimary }]}>
-                    {Number(pct)}%
+                <View key={String(label)} style={styles.energyLegendItem}>
+                  <View style={[styles.energyLegendDot, { backgroundColor: String(color) }]} />
+                  <Text style={[styles.energyLegendText, { color: colors.textSecondary }]}>
+                    {String(label)} {Number(pct)}%
                   </Text>
                 </View>
               ))}
@@ -945,86 +884,51 @@ export default function DailyFoodLogScreen() {
             </Text>
           </View>
 
-          <View style={styles.mealsCard}>
-            {isLoading ? (
-              <View style={styles.loadingState}>
-                <ActivityIndicator color={colors.brandPrimary} />
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                  Loading meals...
-                </Text>
-              </View>
-            ) : meals.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View
-                  style={[
-                    styles.emptyIconWrap,
-                    { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F4F4F7' },
-                  ]}
-                >
-                  <Ionicons name="restaurant-outline" size={22} color={colors.textSecondary} />
-                </View>
-                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-                  No meals logged
-                </Text>
-                <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                  Log food in chat to see your meals and macros for this day.
-                </Text>
-              </View>
-            ) : (
-              meals.map((meal, index) => (
+          {isLoading ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator color={colors.brandPrimary} />
+            </View>
+          ) : meals.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="restaurant-outline" size={28} color={colors.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                No meals logged
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
+                Log food in chat to see your meals and macros for this day.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.mealsList}>
+              {meals.map((meal, index) => (
                 <View
                   key={meal.id}
                   style={[
                     styles.mealRow,
                     index < meals.length - 1 && {
                       borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: colors.border,
+                      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F3',
                     },
                   ]}
                 >
                   <View style={styles.mealRowTop}>
-                    <View style={styles.mealRowTitleWrap}>
-                      <View
-                        style={[
-                          styles.mealSourceChip,
-                          {
-                            backgroundColor: isDark
-                              ? 'rgba(255,255,255,0.06)'
-                              : 'rgba(17,17,17,0.04)',
-                            borderColor: colors.border,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={getMealSourceIcon(meal.source)}
-                          size={13}
-                          color={colors.textSecondary}
-                        />
-                      </View>
-                      <Text
-                        numberOfLines={2}
-                        style={[styles.mealDescription, { color: colors.textPrimary }]}
-                      >
-                        {meal.description}
-                      </Text>
-                    </View>
-                    <Text style={[styles.mealTime, { color: colors.textSecondary }]}>
+                    <Text
+                      numberOfLines={2}
+                      style={[styles.mealDescription, { color: colors.textPrimary }]}
+                    >
+                      {meal.description}
+                    </Text>
+                    <Text style={[styles.mealTime, { color: colors.textTertiary }]}>
                       {formatMealTime(meal.created_at)}
                     </Text>
                   </View>
-
-                  <View style={styles.mealStatsRow}>
-                    <Text style={[styles.mealCalories, { color: colors.textPrimary }]}>
-                      {round(meal.calories)} kcal
-                    </Text>
-                    <Text style={[styles.mealMacros, { color: colors.textSecondary }]}>
-                      P {round(meal.protein_g)}g  •  C {round(meal.carbs_g)}g  •  F {round(meal.fat_g)}g
-                    </Text>
-                  </View>
+                  <Text style={[styles.mealMacros, { color: colors.textSecondary }]}>
+                    {round(meal.calories)} kcal  ·  P {round(meal.protein_g)}g  ·  C {round(meal.carbs_g)}g  ·  F {round(meal.fat_g)}g
+                  </Text>
                 </View>
-              ))
-            )}
-          </View>
+              ))}
+            </View>
+          )}
 
           {resolveError && (
             <Text style={[styles.errorText, { color: '#FF6B6B' }]}>{resolveError}</Text>
@@ -1044,83 +948,48 @@ const createStyles = (
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: 16,
-      gap: 12,
+      paddingHorizontal: 20,
+      gap: 24,
     },
-    heroCard: {
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 26,
-      padding: 18,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
+    heroSection: {
       gap: 16,
-    },
-    heroCardAccent: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 4,
-      backgroundColor: '#111111',
-      opacity: isDark ? 0.35 : 0.12,
     },
     heroTopRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'baseline',
       justifyContent: 'space-between',
-      gap: 12,
-    },
-    heroEyebrow: {
-      fontSize: 12,
-      fontWeight: '600',
-      letterSpacing: 0.8,
-      textTransform: 'uppercase',
     },
     heroDate: {
-      marginTop: 4,
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '700',
-      letterSpacing: -0.6,
+      letterSpacing: -0.4,
     },
-    mealBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-      borderWidth: 1,
-    },
-    mealBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
+    heroMealCount: {
+      fontSize: 13,
+      fontWeight: '500',
     },
     heroBody: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
     },
     heroTextCol: {
       flex: 1,
-      gap: 4,
     },
     heroValue: {
-      fontSize: 42,
+      fontSize: 56,
       fontWeight: '800',
-      letterSpacing: -1.6,
-      lineHeight: 46,
+      letterSpacing: -2,
+      lineHeight: 60,
     },
     heroLabel: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '500',
-    },
-    heroSubValue: {
       marginTop: 2,
-      fontSize: 14,
-      fontWeight: '600',
-      letterSpacing: -0.2,
+    },
+    heroSubtext: {
+      fontSize: 13,
+      fontWeight: '500',
     },
     heroRingWrap: {
       position: 'relative',
@@ -1132,57 +1001,23 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
     },
-    sectionHeader: {
-      marginTop: 6,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 2,
-      gap: 8,
-    },
-    sectionTitle: {
-      fontSize: 18,
+    heroRingText: {
+      fontSize: 16,
       fontWeight: '700',
-      letterSpacing: -0.4,
+      letterSpacing: -0.5,
     },
-    sectionMeta: {
-      fontSize: 12,
+    heroRingUnit: {
+      fontSize: 10,
       fontWeight: '600',
-      letterSpacing: 0.2,
+      marginTop: -1,
     },
-    macroGrid: {
+    macroRow: {
       flexDirection: 'row',
-      gap: 10,
+      justifyContent: 'space-around',
     },
-    macroCard: {
-      flex: 1,
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 20,
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      gap: 2,
-    },
-    macroCardTop: {
-      flexDirection: 'row',
+    macroItem: {
       alignItems: 'center',
-      justifyContent: 'space-between',
       gap: 6,
-      marginBottom: 4,
-    },
-    macroValue: {
-      fontSize: 18,
-      fontWeight: '700',
-      letterSpacing: -0.4,
-    },
-    macroLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    macroGoalText: {
-      fontSize: 11,
-      fontWeight: '500',
     },
     macroRingWrap: {
       position: 'relative',
@@ -1194,62 +1029,59 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
     },
-    breakdownCard: {
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 20,
-      padding: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      gap: 10,
-    },
-    breakdownHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: 10,
-    },
-    breakdownTitle: {
-      fontSize: 14,
+    macroValue: {
+      fontSize: 16,
       fontWeight: '700',
-      letterSpacing: -0.2,
+      letterSpacing: -0.3,
     },
-    breakdownCaption: {
+    macroLabel: {
       fontSize: 12,
       fontWeight: '500',
     },
-    breakdownBar: {
-      flexDirection: 'row',
-      height: 8,
-      borderRadius: 999,
-      overflow: 'hidden',
-    },
-    breakdownSegment: {
-      height: '100%',
-    },
-    breakdownLegend: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+    energySplit: {
       gap: 8,
     },
-    legendItem: {
-      flex: 1,
+    energyBar: {
+      flexDirection: 'row',
+      height: 6,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    energySegment: {
+      height: '100%',
+    },
+    energyLegend: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 16,
+    },
+    energyLegendItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
       gap: 5,
     },
-    legendDot: {
+    energyLegendDot: {
       width: 6,
       height: 6,
       borderRadius: 3,
     },
-    legendLabel: {
+    energyLegendText: {
       fontSize: 12,
       fontWeight: '500',
     },
-    legendValue: {
-      fontSize: 12,
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    sectionTitle: {
+      fontSize: 18,
       fontWeight: '700',
+      letterSpacing: -0.4,
+    },
+    sectionMeta: {
+      fontSize: 13,
+      fontWeight: '500',
     },
     recentMealsShell: {
       borderRadius: 22,
@@ -1422,103 +1254,60 @@ const createStyles = (
       height: 20,
       borderRadius: 999,
     },
-    mealsCard: {
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
     loadingState: {
-      paddingVertical: 30,
+      paddingVertical: 40,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
-    },
-    loadingText: {
-      fontSize: 13,
-      fontWeight: '500',
     },
     emptyState: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 30,
-      gap: 10,
-    },
-    emptyIconWrap: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
+      paddingVertical: 40,
+      gap: 8,
     },
     emptyTitle: {
       fontSize: 15,
-      fontWeight: '700',
-      letterSpacing: -0.2,
+      fontWeight: '600',
+      marginTop: 4,
     },
     emptySubtitle: {
       fontSize: 13,
       fontWeight: '500',
       textAlign: 'center',
       lineHeight: 18,
+      maxWidth: 260,
+    },
+    mealsList: {
+      gap: 0,
     },
     mealRow: {
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      gap: 8,
+      paddingVertical: 14,
+      gap: 6,
     },
     mealRowTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: 10,
-    },
-    mealRowTitleWrap: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-    },
-    mealSourceChip: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      marginTop: 1,
+      gap: 12,
     },
     mealDescription: {
       flex: 1,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
-      lineHeight: 18,
-      letterSpacing: -0.15,
+      lineHeight: 20,
+      letterSpacing: -0.2,
     },
     mealTime: {
       fontSize: 12,
       fontWeight: '500',
       marginTop: 2,
     },
-    mealStatsRow: {
-      paddingLeft: 32,
-      gap: 2,
-    },
-    mealCalories: {
-      fontSize: 13,
-      fontWeight: '700',
-    },
     mealMacros: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '500',
-      lineHeight: 16,
+      lineHeight: 18,
     },
     errorText: {
-      marginTop: 2,
       paddingHorizontal: 4,
       fontSize: 12,
       fontWeight: '600',
