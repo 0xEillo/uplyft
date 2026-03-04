@@ -94,3 +94,35 @@ export function estimateOneRepMaxKg(weightKg: number, reps: number): number {
 
   return weightKg * (1 + reps / 30)
 }
+
+/**
+ * Calculates a safe average level from a list of exercises.
+ * Averages their scores and naturally rounds down (floors) the level.
+ */
+export function getAverageExerciseLevel(
+  exercises: { level: StrengthLevel; progress: number }[],
+  fallbackLevel: StrengthLevel = 'Novice',
+  minimumLevel: StrengthLevel = 'Novice',
+): StrengthLevel {
+  if (exercises.length === 0) {
+    const expectedLevelIndex = STRENGTH_LEVEL_SCORES[fallbackLevel]
+    const bumpedDownIndex = Math.max(
+      STRENGTH_LEVEL_SCORES[minimumLevel],
+      expectedLevelIndex - 1,
+    )
+    return STRENGTH_LEVEL_ORDER[bumpedDownIndex]
+  }
+
+  const groupScoreSum = exercises.reduce(
+    (acc, e) => acc + toLevelScore(e.level, e.progress),
+    0,
+  )
+  const averageScore = groupScoreSum / exercises.length
+
+  const flooredLevelIndex = Math.floor(averageScore)
+  const finalIndex = Math.max(
+    STRENGTH_LEVEL_SCORES[minimumLevel],
+    flooredLevelIndex,
+  )
+  return STRENGTH_LEVEL_ORDER[finalIndex]
+}

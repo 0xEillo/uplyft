@@ -4,50 +4,51 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
 import { useTheme } from "@/contexts/theme-context";
 import {
-    getLevelColor,
-    getLevelIntensity,
-    useStrengthData,
-    type ExerciseData,
-    type MuscleGroupData,
+  getLevelColor,
+  getLevelIntensity,
+  useStrengthData,
+  type ExerciseData,
+  type MuscleGroupData,
 } from "@/hooks/useStrengthData";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import {
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
-    type BodyPartSlug,
+  BODY_PART_DISPLAY_NAMES,
+  BODY_PART_TO_DATABASE_MUSCLE,
+  type BodyPartSlug,
 } from "@/lib/body-mapping";
 import {
-    EXERCISE_MUSCLE_MAPPING,
-    getExerciseNameMap,
-    isRepBasedExercise,
-    TIER2_WEIGHT,
+  EXERCISE_MUSCLE_MAPPING,
+  getExerciseNameMap,
+  isRepBasedExercise,
+  TIER2_WEIGHT,
 } from "@/lib/exercise-standards-config";
 import {
-    calculateExerciseStrengthPoints,
-    LEVEL_POINT_ANCHORS,
+  calculateExerciseStrengthPoints,
+  LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
 import {
-    getProgressDeltaPoints,
-    getStrengthGender,
+  getAverageExerciseLevel,
+  getProgressDeltaPoints,
+  getStrengthGender
 } from "@/lib/strength-progress";
 import {
-    getStandardsLadder,
-    type StrengthLevel,
-    type StrengthStandard,
+  getStandardsLadder,
+  type StrengthLevel,
+  type StrengthStandard,
 } from "@/lib/strength-standards";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import Body from "react-native-body-highlighter";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -445,23 +446,21 @@ export function StrengthBodyView({
         const specificMuscle = EXERCISE_MUSCLE_MAPPING[canonicalName] ?? null;
         const focusGroup = mapMuscleToFocusGroup(specificMuscle);
 
-        let projectedLevel: StrengthLevel =
+        let fallbackLevel: StrengthLevel =
           overallLevel?.balancedLevel ?? "Novice";
-        if (projectedLevel === "Untrained") projectedLevel = "Novice";
+        if (fallbackLevel === "Untrained") fallbackLevel = "Novice";
 
-        let maxGroupIntensity = getLevelIntensity("Untrained");
-        trackedExercisesWithProgress.forEach((e) => {
+        const focusGroupExercises = trackedExercisesWithProgress.filter((e) => {
           const fallback =
             EXERCISE_MUSCLE_MAPPING[e.exerciseName] ?? e.muscleGroup ?? null;
-          const g = mapMuscleToFocusGroup(fallback);
-          if (g === focusGroup) {
-            const intensity = getLevelIntensity(e.level);
-            if (intensity > maxGroupIntensity) {
-              maxGroupIntensity = intensity;
-              projectedLevel = e.level;
-            }
-          }
+          return mapMuscleToFocusGroup(fallback) === focusGroup;
         });
+
+        const projectedLevel = getAverageExerciseLevel(
+          focusGroupExercises,
+          fallbackLevel,
+          "Novice"
+        );
 
         const ladder = getStandardsLadder(canonicalName, strengthGender);
         if (!ladder) return null;
