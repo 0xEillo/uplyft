@@ -23,7 +23,7 @@ import Svg, {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TimeRange = '1M' | '6M' | 'ALL'
+type TimeRange = '1M' | '3M' | '6M' | 'ALL'
 
 interface WeightDataPoint {
   date: Date
@@ -46,6 +46,7 @@ const CHART_W = SCREEN_W - 40 // 20px outer padding each side
 
 const TIME_RANGES: { key: TimeRange; label: string; days: number | null }[] = [
   { key: '1M', label: '1M', days: 30 },
+  { key: '3M', label: '3M', days: 90 },
   { key: '6M', label: '6M', days: 180 },
   { key: 'ALL', label: 'All', days: null },
 ]
@@ -65,6 +66,7 @@ function formatAxisDate(date: Date, range: TimeRange): string {
   if (range === '1M') {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
+  // 3M, 6M, ALL: use month + year
   return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
 }
 
