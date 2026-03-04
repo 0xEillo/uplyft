@@ -2772,8 +2772,8 @@ export default function CreatePostScreen() {
               style={styles.headerIconShell}
               debugLabel="create-post-close-button"
             >
-              <TouchableOpacity
-                onPress={handleCancel}
+            <TouchableOpacity
+              onPress={handleCancel}
                 style={styles.headerButton}
                 disabled={isLoading}
               >
@@ -2785,18 +2785,6 @@ export default function CreatePostScreen() {
                 />
               </TouchableOpacity>
             </LiquidGlassSurface>
-            <TouchableOpacity
-              style={styles.headerButton}
-              activeOpacity={0.7}
-              onPress={() => router.push('/create-post-settings')}
-              disabled={isLoading}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
           </View>
 
           <View pointerEvents="none" style={styles.headerCenter}>
@@ -2826,6 +2814,18 @@ export default function CreatePostScreen() {
             )}
           </View>
           <View style={styles.headerRightButtons}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              activeOpacity={0.7}
+              onPress={() => router.push('/create-post-settings')}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
             {shouldShowWorkoutTimer && (
               <TouchableOpacity
                 onPress={handleDiscardWorkout}
