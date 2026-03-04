@@ -170,7 +170,7 @@ module.exports = {
       policy: 'appVersion',
     },
     web: {
-      output: 'server',
+      output: 'static',
       favicon: './assets/images/favicon.png',
     },
     plugins: [
