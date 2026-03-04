@@ -107,7 +107,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     title: {
       fontSize: 24, // Slightly larger for better status presence
-      fontWeight: '900', // Even bolder
+      fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: 12,
@@ -135,6 +135,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     buttonText: {
       color: '#FFFFFF',
       fontSize: 16, // Slightly larger text
-      fontWeight: '800', // Bolder text
+      fontWeight: '700',
     },
   })

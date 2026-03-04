@@ -30,6 +30,7 @@ import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { NotificationBadge } from '@/components/notification-badge'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
+import { WeeklySnapshot } from '@/components/WeeklySnapshot'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -917,6 +918,8 @@ export default function FeedScreen() {
     ]),
   )
 
+  const [isInvitePromptVisible, setIsInvitePromptVisible] = useState(false)
+
   const styles = createStyles(colors)
   const appPostsToShow = useMemo(
     () => (userDismissedAppPostThisSession ? [] : appPosts),
@@ -1060,7 +1063,7 @@ export default function FeedScreen() {
                   onPress={() => router.push('/search')}
                   style={styles.iconButton}
                 >
-                  <Ionicons name="search-outline" size={24} color={colors.textPrimary} />
+                  <Ionicons name="person-add-outline" size={24} color={colors.textPrimary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push('/notifications')}
@@ -1118,7 +1121,11 @@ export default function FeedScreen() {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <>
-              <InviteFriendsPrompt workoutCount={workouts.length} />
+              <InviteFriendsPrompt
+                workoutCount={workouts.length}
+                onVisibilityChange={setIsInvitePromptVisible}
+              />
+              {!isInvitePromptVisible && <WeeklySnapshot />}
               {/* Tutorial checklist (existing) */}
               {/* Tutorial checklist (existing) */}
               {!isTutorialDismissed &&

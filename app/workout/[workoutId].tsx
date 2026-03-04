@@ -1,6 +1,7 @@
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { WorkoutDetailView } from '@/components/WorkoutDetail/WorkoutDetailView'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -9,6 +10,7 @@ import { PrService } from '@/lib/pr'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
+import { publishWorkoutSocialUpdate } from '@/lib/utils/workout-social-updates'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -44,6 +46,7 @@ export default function WorkoutDetailScreen() {
   const router = useRouter()
   const pathname = usePathname()
   const { user } = useAuth()
+  const { profile } = useProfile()
   useTheme() // for theme context subscription
   const { shareWorkoutWidget } = useWorkoutShare()
   const { weightUnit } = useWeightUnits()
@@ -231,15 +234,39 @@ export default function WorkoutDetailScreen() {
         await database.workoutLikes.unlike(workoutId, user.id)
         setIsLiked(false)
         setLikeCount((prev) => Math.max(0, prev - 1))
+        publishWorkoutSocialUpdate({
+          workoutId,
+          likeCountDelta: -1,
+          isLiked: false,
+          likerIdToRemove: user.id,
+        })
       } else {
         await database.workoutLikes.like(workoutId, user.id)
         setIsLiked(true)
         setLikeCount((prev) => prev + 1)
+        publishWorkoutSocialUpdate({
+          workoutId,
+          likeCountDelta: 1,
+          isLiked: true,
+          likerToAdd: {
+            id: user.id,
+            display_name: profile?.display_name ?? undefined,
+            user_tag: profile?.user_tag ?? undefined,
+            avatar_url: profile?.avatar_url ?? null,
+          },
+        })
       }
     } catch (error) {
       console.error('Error toggling like:', error)
     }
-  }, [user, workoutId, isLiked])
+  }, [
+    isLiked,
+    profile?.avatar_url,
+    profile?.display_name,
+    profile?.user_tag,
+    user,
+    workoutId,
+  ])
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {

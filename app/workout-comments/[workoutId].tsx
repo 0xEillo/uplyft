@@ -6,6 +6,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { formatTimeAgo } from '@/lib/utils/formatters'
+import { publishWorkoutSocialUpdate } from '@/lib/utils/workout-social-updates'
 import { Profile, WorkoutComment } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
@@ -489,6 +490,10 @@ export default function WorkoutCommentsScreen() {
       }
 
       setComments((prev) => [...prev, commentWithProfile])
+      publishWorkoutSocialUpdate({
+        workoutId,
+        commentCountDelta: 1,
+      })
       setCommentText('')
       setReplyTarget(null)
       Keyboard.dismiss()

@@ -26,7 +26,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -296,7 +296,11 @@ export default function SearchScreen() {
                   activeOpacity={0.6}
                   hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
-                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </NavbarIsland>
             }
@@ -304,12 +308,17 @@ export default function SearchScreen() {
           />
         </BlurredHeader>
 
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={[styles.contentWrapper, { paddingTop: insets.top + NAVBAR_HEIGHT }]}>
+            <View
+              style={[
+                styles.contentWrapper,
+                { paddingTop: insets.top + NAVBAR_HEIGHT },
+              ]}
+            >
               {/* Search Input */}
               <View style={styles.searchContainer}>
                 <Ionicons
@@ -322,7 +331,7 @@ export default function SearchScreen() {
                   style={styles.searchInput}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Search for people on Rep AI"
+                  placeholder="Search for friends on Rep AI"
                   placeholderTextColor={colors.textPlaceholder}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -434,7 +443,8 @@ export default function SearchScreen() {
                         const textStyles = [
                           styles.followButtonText,
                           userProfile.isFollowing && styles.followingButtonText,
-                          (isPending || hasIncoming) && styles.pendingButtonText,
+                          (isPending || hasIncoming) &&
+                            styles.pendingButtonText,
                         ]
 
                         return (

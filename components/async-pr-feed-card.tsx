@@ -1,5 +1,6 @@
 import { FeedCard } from '@/components/feed-card'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
@@ -7,6 +8,12 @@ import { PrService } from '@/lib/pr'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
+import {
+  consumeWorkoutSocialUpdate,
+  subscribeWorkoutSocialUpdates,
+  type PendingWorkoutSocialUpdate,
+  type WorkoutSocialUpdate,
+} from '@/lib/utils/workout-social-updates'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
 import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import { usePathname, useRouter } from 'expo-router'
@@ -53,6 +60,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
+  const { profile } = useProfile()
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
@@ -93,36 +101,111 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const [isLiked, setIsLiked] = useState(false)
   const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
 
-  // Fetch social stats
-  useEffect(() => {
+  const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
+    if (!user?.id) return null
+
+    return {
+      id: user.id,
+      display_name: profile?.display_name ?? undefined,
+      user_tag: profile?.user_tag ?? undefined,
+      avatar_url: profile?.avatar_url ?? null,
+    }
+  }, [profile?.avatar_url, profile?.display_name, profile?.user_tag, user?.id])
+
+  const applySocialUpdate = useCallback(
+    (
+      update:
+        | Pick<
+            WorkoutSocialUpdate,
+            | 'likeCountDelta'
+            | 'commentCountDelta'
+            | 'isLiked'
+            | 'likerToAdd'
+            | 'likerIdToRemove'
+          >
+        | PendingWorkoutSocialUpdate,
+    ) => {
+      if (typeof update.likeCountDelta === 'number' && update.likeCountDelta !== 0) {
+        setLikeCount((prev) => Math.max(0, prev + update.likeCountDelta))
+      }
+      if (
+        typeof update.commentCountDelta === 'number' &&
+        update.commentCountDelta !== 0
+      ) {
+        setCommentCount((prev) => Math.max(0, prev + update.commentCountDelta))
+      }
+      if (typeof update.isLiked === 'boolean') {
+        setIsLiked(update.isLiked)
+      }
+      if (update.likerIdToRemove) {
+        setRecentLikers((prev) =>
+          prev.filter((liker) => liker.id !== update.likerIdToRemove),
+        )
+      }
+      if (update.likerToAdd?.id) {
+        setRecentLikers((prev) => {
+          const filtered = prev.filter((liker) => liker.id !== update.likerToAdd?.id)
+          return [update.likerToAdd!, ...filtered].slice(0, 3)
+        })
+      }
+    },
+    [],
+  )
+
+  const fetchSocialStats = useCallback(async () => {
     if (!user || !workout.id || workout.isPending) return
 
-    const fetchSocialStats = async () => {
-      try {
-        // Fetch like count and check if user has liked
-        const [
-          likeCountResult,
-          hasLikedResult,
-          commentCountResult,
-          recentLikersResult,
-        ] = await Promise.all([
-          database.workoutLikes.getCount(workout.id),
-          database.workoutLikes.hasLiked(workout.id, user.id),
-          database.workoutComments.getCount(workout.id),
-          database.workoutLikes.getRecentLikers(workout.id),
-        ])
+    try {
+      // Fetch like count and check if user has liked
+      const [
+        likeCountResult,
+        hasLikedResult,
+        commentCountResult,
+        recentLikersResult,
+      ] = await Promise.all([
+        database.workoutLikes.getCount(workout.id),
+        database.workoutLikes.hasLiked(workout.id, user.id),
+        database.workoutComments.getCount(workout.id),
+        database.workoutLikes.getRecentLikers(workout.id),
+      ])
 
-        setLikeCount(likeCountResult)
-        setIsLiked(hasLikedResult)
-        setCommentCount(commentCountResult)
-        setRecentLikers(recentLikersResult)
-      } catch (error) {
-        console.error('Error fetching social stats:', error)
-      }
+      setLikeCount(likeCountResult)
+      setIsLiked(hasLikedResult)
+      setCommentCount(commentCountResult)
+      setRecentLikers(recentLikersResult)
+    } catch (error) {
+      console.error('Error fetching social stats:', error)
+    }
+  }, [user, workout.id, workout.isPending])
+
+  // Fetch social stats
+  useEffect(() => {
+    void fetchSocialStats()
+  }, [fetchSocialStats])
+
+  // Keep this card in sync with social changes made from other screens
+  useEffect(() => {
+    if (!workout.id || workout.isPending) return
+
+    const pendingUpdate = consumeWorkoutSocialUpdate(workout.id)
+    if (pendingUpdate) {
+      applySocialUpdate(pendingUpdate)
+      void fetchSocialStats()
     }
 
-    fetchSocialStats()
-  }, [user, workout.id, workout.isPending])
+    const unsubscribe = subscribeWorkoutSocialUpdates((update) => {
+      if (update.workoutId !== workout.id) return
+      applySocialUpdate(update)
+      void fetchSocialStats()
+    })
+
+    return unsubscribe
+  }, [
+    applySocialUpdate,
+    fetchSocialStats,
+    workout.id,
+    workout.isPending,
+  ])
 
   // Handle like toggle
   const handleLike = useCallback(async () => {
@@ -139,15 +222,33 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
         await database.workoutLikes.unlike(workout.id, user.id)
         setIsLiked(false)
         setLikeCount((prev) => Math.max(0, prev - 1))
+        setRecentLikers((prev) =>
+          prev.filter((liker) => liker.id !== user.id),
+        )
       } else {
         await database.workoutLikes.like(workout.id, user.id)
         setIsLiked(true)
         setLikeCount((prev) => prev + 1)
+        if (currentUserAsLiker?.id) {
+          setRecentLikers((prev) => {
+            const filtered = prev.filter(
+              (liker) => liker.id !== currentUserAsLiker.id,
+            )
+            return [currentUserAsLiker, ...filtered].slice(0, 3)
+          })
+        }
       }
     } catch (error) {
       console.error('Error toggling like:', error)
     }
-  }, [user, workout.id, isLiked, isAnonymous, router])
+  }, [
+    user,
+    workout.id,
+    isLiked,
+    isAnonymous,
+    router,
+    currentUserAsLiker,
+  ])
 
   // Handle comment - navigate to comments screen
   const handleComment = useCallback(() => {

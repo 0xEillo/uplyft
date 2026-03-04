@@ -4,7 +4,13 @@ import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -32,9 +38,13 @@ interface InviteFriendsPromptState {
 
 interface InviteFriendsPromptProps {
   workoutCount: number
+  onVisibilityChange?: (visible: boolean) => void
 }
 
-export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) {
+export function InviteFriendsPrompt({
+  workoutCount,
+  onVisibilityChange,
+}: InviteFriendsPromptProps) {
   const colors = useThemedColors()
   const router = useRouter()
   const { profile } = useProfile()
@@ -67,6 +77,7 @@ export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) 
     // Show if workoutCount has reached the next threshold
     if (workoutCount >= SHOW_THRESHOLDS[timesShown]) {
       setIsVisible(true)
+      onVisibilityChange?.(true)
     }
   }, [isLoaded, workoutCount, timesShown])
 
@@ -77,11 +88,15 @@ export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) 
       useNativeDriver: true,
     }).start(async () => {
       setIsVisible(false)
+      onVisibilityChange?.(false)
       opacity.setValue(1)
       const next = timesShown + 1
       setTimesShown(next)
       try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ timesShown: next }))
+        await AsyncStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ timesShown: next }),
+        )
       } catch (error) {
         console.error('Error saving invite prompt state:', error)
       }
@@ -104,17 +119,26 @@ export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) 
       <View style={styles.graphicContainer}>
         <View style={styles.avatarStack}>
           <View style={[styles.avatar, styles.avatar1]}>
-            <Image source={{ uri: AVATAR_IMAGES[0] }} style={styles.avatarImage} />
+            <Image
+              source={{ uri: AVATAR_IMAGES[0] }}
+              style={styles.avatarImage}
+            />
             <BlurView intensity={3} tint="light" style={styles.avatarBlur} />
           </View>
           <View style={[styles.avatar, styles.avatar2]}>
-            <Image source={{ uri: AVATAR_IMAGES[2] }} style={styles.avatarImage} />
+            <Image
+              source={{ uri: AVATAR_IMAGES[2] }}
+              style={styles.avatarImage}
+            />
             <BlurView intensity={3} tint="light" style={styles.avatarBlur} />
           </View>
           <View style={styles.mainCircleWrapper}>
             <View style={[styles.mainCircle]}>
               {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.mainCircleImage} />
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.mainCircleImage}
+                />
               ) : (
                 <Text style={styles.mainCircleText}>0</Text>
               )}
@@ -124,11 +148,17 @@ export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) 
             </View>
           </View>
           <View style={[styles.avatar, styles.avatar3]}>
-            <Image source={{ uri: GYM_AVATARS[0] }} style={styles.avatarImage} />
+            <Image
+              source={{ uri: GYM_AVATARS[0] }}
+              style={styles.avatarImage}
+            />
             <BlurView intensity={3} tint="light" style={styles.avatarBlur} />
           </View>
           <View style={[styles.avatar, styles.avatar4]}>
-            <Image source={{ uri: GYM_AVATARS[1] }} style={styles.avatarImage} />
+            <Image
+              source={{ uri: GYM_AVATARS[1] }}
+              style={styles.avatarImage}
+            />
             <BlurView intensity={3} tint="light" style={styles.avatarBlur} />
           </View>
         </View>
@@ -136,14 +166,18 @@ export function InviteFriendsPrompt({ workoutCount }: InviteFriendsPromptProps) 
 
       <Text style={styles.title}>Rep AI is more fun with your gym friends</Text>
       <Text style={styles.description}>
-        Invite and connect with your friends on Rep AI! A little friendly competition never hurts 😉
+        Invite and connect with your friends on Rep AI! A little friendly
+        competition never hurts 😉
       </Text>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.primaryButton} onPress={handleConnect}>
           <Text style={styles.primaryButtonText}>Connect with Friends</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleDismiss}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleDismiss}
+        >
           <Text style={styles.secondaryButtonText}>Dismiss</Text>
         </TouchableOpacity>
       </View>

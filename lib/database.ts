@@ -1894,6 +1894,38 @@ export const database = {
       return workoutsWithProfiles as WorkoutSessionWithDetails[]
     },
 
+    async getWorkoutsByDateRange(userId: string, startDate: Date, endDate: Date) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          *,
+          routine:workout_routines (id, name),
+          workout_exercises (
+            *,
+            exercise:exercises (*),
+            sets (*)
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .gte('date', startDate.toISOString())
+        .lte('date', endDate.toISOString())
+        .order('date', { ascending: false })
+
+      if (error) {
+        throwIfPrivacyViolation(error)
+      }
+
+      if (!data || data.length === 0) {
+        return []
+      }
+
+      await hydrateMissingWorkoutExerciseRelations(data)
+
+      return data as WorkoutSessionWithDetails[]
+    },
+
     async getThisWeekCount(userId: string, startOfWeek: Date) {
       const { data, error } = await supabase
         .from('workout_sessions')
