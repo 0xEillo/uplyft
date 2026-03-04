@@ -223,7 +223,6 @@ export function ExerciseDetailCard({
           index % 2 === 0 && {
             backgroundColor: isDark ? colors.surfaceCard : colors.surfaceSubtle,
           },
-          setHasPr && { backgroundColor: colors.brandPrimarySoft },
         ]}
       >
         <View style={[styles.setCell, styles.setCol, styles.centerCell]}>
