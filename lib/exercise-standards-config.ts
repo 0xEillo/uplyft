@@ -1894,7 +1894,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 
   // Dumbbell Bulgarian Split Squat
   {
-    id: 'f709f0a1-f934-4b25-8b30-115035bf53a3',
+    id: '9ae7a12b-0e56-43e1-bb95-3446f0f3c932',
     name: 'Bulgarian Split Squat (Dumbbell)',
     tier: 1,
     gifUrl: 'qx4fgX7.gif',

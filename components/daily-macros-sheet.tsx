@@ -60,6 +60,8 @@ export function DailyMacrosSheet({
   const [activePage, setActivePage] = useState(0)
   const [calorieInput, setCalorieInput] = useState('')
   const [isSavingGoal, setIsSavingGoal] = useState(false)
+  const [goalSaved, setGoalSaved] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const styles = createStyles(colors, insets, isDark)
 
   const { calories, protein_g, carbs_g, fat_g, meal_count } = totals
@@ -127,7 +129,11 @@ export function DailyMacrosSheet({
   )
 
   useEffect(() => {
-    if (!visible) return
+    if (!visible) {
+      setGoalSaved(false)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+      return
+    }
     setActivePage(0)
     requestAnimationFrame(() => {
       pagerRef.current?.scrollTo({ x: 0, animated: false })
@@ -150,12 +156,19 @@ export function DailyMacrosSheet({
     [activePage, pageWidth],
   )
 
+  const parsedCalorieInput = parseInt(calorieInput.replace(/[^0-9]/g, ''), 10)
+  const isDirty =
+    !Number.isNaN(parsedCalorieInput) && parsedCalorieInput !== safeCalGoal
+
   const saveGoal = useCallback(
     async (nextGoal: number) => {
       if (!onUpdateCalorieGoal) return
       try {
         setIsSavingGoal(true)
         await onUpdateCalorieGoal(nextGoal)
+        setGoalSaved(true)
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+        savedTimerRef.current = setTimeout(() => setGoalSaved(false), 1500)
       } catch (error) {
         console.error('[DailyMacrosSheet] Failed to update calorie goal:', error)
         Alert.alert('Error', 'Unable to update calorie goal right now.')
@@ -167,6 +180,7 @@ export function DailyMacrosSheet({
   )
 
   const handleSaveGoal = useCallback(async () => {
+    if (!isDirty) return
     const parsedGoal = parseInt(calorieInput.replace(/[^0-9]/g, ''), 10)
     if (Number.isNaN(parsedGoal)) {
       Alert.alert('Invalid Goal', 'Enter a number like 2200 kcal.')
@@ -176,7 +190,7 @@ export function DailyMacrosSheet({
     const boundedGoal = Math.max(1200, Math.min(6000, parsedGoal))
     setCalorieInput(boundedGoal.toString())
     await saveGoal(boundedGoal)
-  }, [calorieInput, saveGoal])
+  }, [calorieInput, isDirty, saveGoal])
 
   const handlePresetPress = useCallback(
     async (presetCalories: number) => {
@@ -500,29 +514,43 @@ export function DailyMacrosSheet({
                         <TextInput
                           style={styles.goalCardInput}
                           value={calorieInput}
-                          onChangeText={setCalorieInput}
+                          onChangeText={(v) => {
+                            setCalorieInput(v)
+                            setGoalSaved(false)
+                          }}
                           keyboardType="numeric"
                           placeholder="2200"
                           placeholderTextColor={colors.textTertiary}
                           returnKeyType="done"
                           onSubmitEditing={() => void handleSaveGoal()}
-                          onBlur={() => void handleSaveGoal()}
                         />
                         <Text style={styles.goalCardUnit}>kcal</Text>
                       </View>
                       <TouchableOpacity
                         style={[
                           styles.goalCardSave,
-                          !onUpdateCalorieGoal && styles.goalCardSaveDisabled,
+                          goalSaved && styles.goalCardSaveDone,
+                          (!isDirty || !onUpdateCalorieGoal) &&
+                            !goalSaved &&
+                            styles.goalCardSaveDisabled,
                         ]}
                         onPress={() => void handleSaveGoal()}
                         activeOpacity={0.85}
-                        disabled={!onUpdateCalorieGoal || isSavingGoal}
+                        disabled={!onUpdateCalorieGoal || isSavingGoal || !isDirty}
                       >
                         {isSavingGoal ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : goalSaved ? (
+                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                         ) : (
-                          <Text style={styles.goalCardSaveText}>Save</Text>
+                          <Text
+                            style={[
+                              styles.goalCardSaveText,
+                              !isDirty && styles.goalCardSaveTextDisabled,
+                            ]}
+                          >
+                            Save
+                          </Text>
                         )}
                       </TouchableOpacity>
                     </View>
@@ -810,12 +838,18 @@ const createStyles = (
       paddingHorizontal: 16,
     },
     goalCardSaveDisabled: {
-      opacity: 0.5,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB',
+    },
+    goalCardSaveDone: {
+      backgroundColor: '#10B981',
     },
     goalCardSaveText: {
       color: '#FFFFFF',
       fontSize: 14,
       fontWeight: '700',
+    },
+    goalCardSaveTextDisabled: {
+      color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)',
     },
     goalPresetSectionLabel: {
       fontSize: 13,

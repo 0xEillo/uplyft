@@ -146,6 +146,7 @@ interface Message {
 type FoodLogAction = 'log' | 'update_last'
 type FoodLogConfidence = 'low' | 'medium' | 'high'
 type FoodLogSource = 'text' | 'photo' | 'voice' | 'manual' | 'correction'
+type StatsTrend = 'up' | 'down' | 'flat'
 
 interface FoodLogPayload {
   action: FoodLogAction
@@ -172,6 +173,37 @@ interface DailyLogSummaryState {
     calorie_goal: number | null
     protein_goal_g: number | null
   }
+}
+
+interface StatsReportMetric {
+  id: string
+  label: string
+  value: string
+  delta?: string
+  trend?: StatsTrend
+}
+
+interface StatsReportLift {
+  exercise: string
+  value: string
+  delta?: string
+  trend?: StatsTrend
+}
+
+interface StatsReportMuscle {
+  muscle_group: string
+  percentage: number
+}
+
+interface StatsReportPayload {
+  version: number
+  title?: string
+  period_label?: string
+  summary?: string
+  highlights: StatsReportMetric[]
+  top_lifts: StatsReportLift[]
+  muscle_balance: StatsReportMuscle[]
+  focus_areas: string[]
 }
 
 interface PlanningState {
@@ -411,6 +443,11 @@ const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
       icon: 'nutrition',
     },
     {
+      id: 'view_stats',
+      text: 'Get Stats',
+      icon: 'stats-chart-outline',
+    },
+    {
       id: 'tell_me_about',
       text: 'Tell me about...',
       icon: 'book-outline',
@@ -450,6 +487,50 @@ const MAX_IMAGES = 10
 
 const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
 const FOOD_LOG_BLOCK_REGEX = /<food_log>([\s\S]*?)<\/food_log>/i
+const STATS_REPORT_BLOCK_REGEX = /<stats_report>([\s\S]*?)<\/stats_report>/i
+
+const getStatsSnapshotPrompt = (weightUnit: 'kg' | 'lb'): string =>
+  `
+Generate a training stats snapshot using only my real app data and tool outputs.
+Do not guess. If a metric is unavailable, omit it.
+Use ${weightUnit === 'lb' ? 'lb' : 'kg'} for weight-based stats.
+Use the stats tools as needed (especially strength progress, strength score, and muscle balance) before finalizing values.
+
+Respond in two parts:
+1) A short coach summary (2-4 lines max, plain language).
+2) Append exactly one machine-readable block at the very end:
+<stats_report>{
+  "version": 1,
+  "title": "Stats Snapshot",
+  "period_label": "Last 90 days",
+  "summary": "One sentence trend summary.",
+  "highlights": [
+    { "id": "strength_score", "label": "Strength Score", "value": "742", "delta": "+28", "trend": "up" },
+    { "id": "workouts", "label": "Workouts", "value": "14", "delta": "+2", "trend": "flat" },
+    { "id": "duration", "label": "Time Trained", "value": "18h 30m", "delta": "+2h", "trend": "up" },
+    { "id": "volume", "label": "Volume", "value": "92,400 lb", "delta": "+12%", "trend": "up" }
+  ],
+  "top_lifts": [
+    { "exercise": "Bench Press", "value": "225 lb", "delta": "+5 lb", "trend": "up" }
+  ],
+  "muscle_balance": [
+    { "muscle_group": "Chest", "percentage": 24 },
+    { "muscle_group": "Back", "percentage": 22 },
+    { "muscle_group": "Shoulders", "percentage": 14 }
+  ],
+  "focus_areas": ["Hamstrings", "Rear Delts"]
+}</stats_report>
+
+Required core stats to include when available (Heavy-style):
+- Strength score trend
+- Workout consistency (workouts count) and total training duration
+- Total training volume trend
+- Top 3 lifts by 1RM (value as plain number + unit only, e.g. "225 lb" or "102 kg")
+- Muscle balance split with percentages
+- Focus areas (lagging muscles based on balance data, e.g., "Back (18% below target) — Add 2-3 extra sets/week")
+
+Deltas: change only (e.g. "+5 lb", "+12%", "+28"); no timeline suffix like "vs 30d" or "vs prior" - period_label defines the timeframe for all stats.
+`.trim()
 
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
@@ -561,14 +642,122 @@ const stripFoodLogBlock = (content: string): string =>
     .replace(/<food_log>[\s\S]*$/i, '')
     .trim()
 
+const stripStatsReportBlock = (content: string): string =>
+  content
+    .replace(/<stats_report>[\s\S]*?<\/stats_report>/gi, '')
+    .replace(/<stats_report>[\s\S]*$/i, '')
+    .trim()
+
 const getVisibleAssistantMessageText = (content: string): string =>
-  stripFoodLogBlock(content)
+  stripStatsReportBlock(stripFoodLogBlock(content))
     .replace(JSON_BLOCK_REGEX, '')
     .replace(/```(?:json|).*/gs, '')
     .replace(/\[\s*\{.*/gs, '')
     .replace(/\{\s*"exercises".*/gs, '')
     .replace(/\{\s*"title".*/gs, '')
     .trim()
+
+const toNonEmptyString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+const toStatsTrend = (value: unknown): StatsTrend | undefined => {
+  if (value === 'up' || value === 'down' || value === 'flat') return value
+  return undefined
+}
+
+const parseStatsReportPayload = (
+  content: string,
+): StatsReportPayload | null => {
+  const match = content.match(STATS_REPORT_BLOCK_REGEX)
+  if (!match?.[1]) return null
+
+  try {
+    const parsed = JSON.parse(match[1]) as Record<string, unknown>
+    const highlights = Array.isArray(parsed.highlights)
+      ? parsed.highlights.reduce<StatsReportMetric[]>((acc, item) => {
+          if (!item || typeof item !== 'object') return acc
+          const row = item as Record<string, unknown>
+          const label = toNonEmptyString(row.label)
+          const value = toNonEmptyString(row.value)
+          if (!label || !value) return acc
+          acc.push({
+            id: toNonEmptyString(row.id) || label.toLowerCase(),
+            label,
+            value,
+            delta: toNonEmptyString(row.delta) || undefined,
+            trend: toStatsTrend(row.trend),
+          })
+          return acc
+        }, [])
+      : []
+
+    const topLifts = Array.isArray(parsed.top_lifts)
+      ? parsed.top_lifts.reduce<StatsReportLift[]>((acc, item) => {
+          if (!item || typeof item !== 'object') return acc
+          const row = item as Record<string, unknown>
+          const exercise = toNonEmptyString(row.exercise)
+          const value = toNonEmptyString(row.value)
+          if (!exercise || !value) return acc
+          acc.push({
+            exercise,
+            value,
+            delta: toNonEmptyString(row.delta) || undefined,
+            trend: toStatsTrend(row.trend),
+          })
+          return acc
+        }, [])
+      : []
+
+    const muscleBalance = Array.isArray(parsed.muscle_balance)
+      ? parsed.muscle_balance.reduce<StatsReportMuscle[]>((acc, item) => {
+          if (!item || typeof item !== 'object') return acc
+          const row = item as Record<string, unknown>
+          const muscleGroup = toNonEmptyString(row.muscle_group)
+          const percentageRaw = Number(row.percentage)
+          if (!muscleGroup || !Number.isFinite(percentageRaw)) return acc
+          acc.push({
+            muscle_group: muscleGroup,
+            percentage: Math.max(0, Math.min(100, Math.round(percentageRaw))),
+          })
+          return acc
+        }, [])
+      : []
+
+    const focusAreas = Array.isArray(parsed.focus_areas)
+      ? parsed.focus_areas
+          .map((item) => toNonEmptyString(item))
+          .filter((item): item is string => Boolean(item))
+      : []
+
+    if (
+      highlights.length === 0 &&
+      topLifts.length === 0 &&
+      muscleBalance.length === 0
+    ) {
+      return null
+    }
+
+    return {
+      version:
+        typeof parsed.version === 'number' && Number.isFinite(parsed.version)
+          ? parsed.version
+          : 1,
+      title: toNonEmptyString(parsed.title) || undefined,
+      period_label: toNonEmptyString(parsed.period_label) || undefined,
+      summary: toNonEmptyString(parsed.summary) || undefined,
+      highlights: highlights.slice(0, 4),
+      top_lifts: topLifts.slice(0, 3),
+      muscle_balance: muscleBalance.slice(0, 6),
+      focus_areas: focusAreas.slice(0, 4),
+    }
+  } catch {
+    console.warn('[WorkoutChat] Failed to parse <stats_report> payload block')
+    return null
+  }
+}
 
 const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
   const match = content.match(FOOD_LOG_BLOCK_REGEX)
@@ -1179,7 +1368,9 @@ export function WorkoutChat({
           acc.includes('\n[') ||
           acc.includes('\n{') ||
           acc.includes(': [') ||
-          acc.includes(': {')
+          acc.includes(': {') ||
+          acc.includes('<food_log>') ||
+          acc.includes('<stats_report>')
 
         if (!options?.silent && assistantMessageId && !isHiddenStream) {
           if (!hasDisabledLoading) {
@@ -1223,7 +1414,9 @@ export function WorkoutChat({
           acc.includes('\n[') ||
           acc.includes('\n{') ||
           acc.includes(': [') ||
-          acc.includes(': {')
+          acc.includes(': {') ||
+          acc.includes('<food_log>') ||
+          acc.includes('<stats_report>')
 
         if (!options?.silent && assistantMessageId && !isHiddenStream) {
           if (!hasDisabledLoading) {
@@ -1258,7 +1451,9 @@ export function WorkoutChat({
         const isHiddenStream =
           /^\s*(\[|```)/.test(acc) ||
           acc.includes('```json') ||
-          acc.includes('\n[')
+          acc.includes('\n[') ||
+          acc.includes('<food_log>') ||
+          acc.includes('<stats_report>')
         if (!options?.silent && assistantMessageId && !isHiddenStream) {
           if (!hasDisabledLoading) {
             setIsLoading(false)
@@ -2112,6 +2307,13 @@ export function WorkoutChat({
         return
       }
 
+      if (item.id === 'view_stats') {
+        haptic('light')
+        handleSendMessage(getStatsSnapshotPrompt(weightUnit))
+        setSuggestionMode('main')
+        return
+      }
+
       if (item.id === 'back_to_main') {
         setSuggestionMode('main')
         return
@@ -2747,6 +2949,7 @@ export function WorkoutChat({
                           ? handleNewChat
                           : () => {
                               haptic('light')
+                              Keyboard.dismiss()
                               if (Platform.OS === 'ios') {
                                 router.push('/chat-settings')
                                 return
@@ -2973,12 +3176,16 @@ export function WorkoutChat({
                         const exerciseSuggestions = parseExerciseSuggestions(
                           message.content,
                         )
+                        const statsReportPayload = parseStatsReportPayload(
+                          message.content,
+                        )
 
                         // Don't render empty bubbles (prevents glitch when streaming JSON)
                         if (
                           !displayContent &&
                           exerciseSuggestions.length === 0 &&
-                          !foodLogPayload
+                          !foodLogPayload &&
+                          !statsReportPayload
                         ) {
                           return null
                         }
@@ -3466,6 +3673,259 @@ export function WorkoutChat({
                                   })()}
                                 </TouchableOpacity>
                               )}
+
+                              {statsReportPayload && (() => {
+                                const stripDelta = (s: string | undefined) =>
+                                  (s || '')
+                                    .replace(/\s+vs\s+[\w\s]+$/i, '')
+                                    .trim()
+                                return (
+                                <View
+                                  style={[
+                                    styles.statsCard,
+                                    !displayContent &&
+                                      !foodLogPayload &&
+                                      styles.statsCardStandalone,
+                                  ]}
+                                >
+                                  {/* Header */}
+                                  <View style={styles.statsHeaderRow}>
+                                    <View>
+                                      <Text style={styles.statsTitle}>
+                                        {statsReportPayload.title ||
+                                          'Stats Snapshot'}
+                                      </Text>
+                                      {statsReportPayload.period_label ? (
+                                        <Text style={styles.statsPeriod}>
+                                          {statsReportPayload.period_label}
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                  </View>
+
+                                  {/* Highlights as table rows */}
+                                  {statsReportPayload.highlights.length > 0 ? (
+                                    <View style={styles.statsTable}>
+                                      <Text style={styles.statsTableLabel}>
+                                        Highlights
+                                      </Text>
+                                      {statsReportPayload.highlights.map(
+                                        (metric, idx) => {
+                                          const trendColor =
+                                            metric.trend === 'up'
+                                              ? '#34C759'
+                                              : metric.trend === 'down'
+                                              ? '#FF3B30'
+                                              : undefined
+                                          const trendIcon =
+                                            metric.trend === 'up'
+                                              ? 'arrow-up'
+                                              : metric.trend === 'down'
+                                              ? 'arrow-down'
+                                              : null
+                                          return (
+                                            <View
+                                              key={`${metric.id}-${idx}`}
+                                              style={[
+                                                styles.statsRow,
+                                                idx <
+                                                  statsReportPayload.highlights
+                                                    .length -
+                                                    1 &&
+                                                  styles.statsRowBorder,
+                                              ]}
+                                            >
+                                              <Text
+                                                style={styles.statsRowLabel}
+                                              >
+                                                {metric.label}
+                                              </Text>
+                                              <View
+                                                style={styles.statsRowRight}
+                                              >
+                                                <Text
+                                                  style={styles.statsRowValue}
+                                                >
+                                                  {metric.value}
+                                                </Text>
+                                                {stripDelta(metric.delta) ? (
+                                                  <View
+                                                    style={styles.statsRowDeltaPill}
+                                                  >
+                                                    {trendIcon ? (
+                                                      <Ionicons
+                                                        name={trendIcon as any}
+                                                        size={10}
+                                                        color={trendColor}
+                                                      />
+                                                    ) : null}
+                                                    <Text
+                                                      style={[
+                                                        styles.statsRowDelta,
+                                                        trendColor ? { color: trendColor } : { color: colors.textSecondary }
+                                                      ]}
+                                                    >
+                                                      {stripDelta(metric.delta)}
+                                                    </Text>
+                                                  </View>
+                                                ) : null}
+                                              </View>
+                                            </View>
+                                          )
+                                        },
+                                      )}
+                                    </View>
+                                  ) : null}
+
+                                  {/* Top Lifts */}
+                                  {statsReportPayload.top_lifts.length > 0 ? (
+                                    <View style={styles.statsTable}>
+                                      <Text style={styles.statsTableLabel}>
+                                        Top Lifts
+                                      </Text>
+                                      {statsReportPayload.top_lifts.map(
+                                        (lift, idx) => {
+                                          const trendColor =
+                                            lift.trend === 'up'
+                                              ? '#34C759'
+                                              : lift.trend === 'down'
+                                              ? '#FF3B30'
+                                              : undefined
+                                          const trendIcon =
+                                            lift.trend === 'up'
+                                              ? 'arrow-up'
+                                              : lift.trend === 'down'
+                                              ? 'arrow-down'
+                                              : null
+                                          return (
+                                            <View
+                                              key={`${lift.exercise}-${idx}`}
+                                              style={[
+                                                styles.statsRow,
+                                                idx <
+                                                  statsReportPayload.top_lifts
+                                                    .length -
+                                                    1 &&
+                                                  styles.statsRowBorder,
+                                              ]}
+                                            >
+                                              <Text
+                                                style={styles.statsRowLabel}
+                                                numberOfLines={1}
+                                              >
+                                                {lift.exercise}
+                                              </Text>
+                                              <View
+                                                style={styles.statsRowRight}
+                                              >
+                                                <Text
+                                                  style={styles.statsRowValue}
+                                                >
+                                                  {lift.value}
+                                                </Text>
+                                                {stripDelta(lift.delta) ? (
+                                                  <View
+                                                    style={styles.statsRowDeltaPill}
+                                                  >
+                                                    {trendIcon ? (
+                                                      <Ionicons
+                                                        name={trendIcon as any}
+                                                        size={10}
+                                                        color={trendColor}
+                                                      />
+                                                    ) : null}
+                                                    <Text
+                                                      style={[
+                                                        styles.statsRowDelta,
+                                                        trendColor ? { color: trendColor } : { color: colors.textSecondary }
+                                                      ]}
+                                                    >
+                                                      {stripDelta(lift.delta)}
+                                                    </Text>
+                                                  </View>
+                                                ) : null}
+                                              </View>
+                                            </View>
+                                          )
+                                        },
+                                      )}
+                                    </View>
+                                  ) : null}
+
+                                  {/* Muscle Balance */}
+                                  {statsReportPayload.muscle_balance.length >
+                                  0 ? (
+                                    <View style={styles.statsTable}>
+                                      <Text style={styles.statsTableLabel}>
+                                        Muscle Balance
+                                      </Text>
+                                      {statsReportPayload.muscle_balance.map(
+                                        (muscle, idx) => (
+                                          <View
+                                            key={`${muscle.muscle_group}-${idx}`}
+                                            style={styles.statsMuscleRow}
+                                          >
+                                            <Text
+                                              style={styles.statsMuscleLabel}
+                                            >
+                                              {muscle.muscle_group}
+                                            </Text>
+                                            <View
+                                              style={
+                                                styles.statsMuscleTrack
+                                              }
+                                            >
+                                              <View
+                                                style={[
+                                                  styles.statsMuscleFill,
+                                                  {
+                                                    width: `${Math.max(
+                                                      muscle.percentage,
+                                                      4,
+                                                    )}%`,
+                                                  },
+                                                ]}
+                                              />
+                                            </View>
+                                            <Text
+                                              style={styles.statsMuscleValue}
+                                            >
+                                              {muscle.percentage}%
+                                            </Text>
+                                          </View>
+                                        ),
+                                      )}
+                                    </View>
+                                  ) : null}
+
+                                  {/* Focus Areas (Insights) */}
+                                  {statsReportPayload.focus_areas && statsReportPayload.focus_areas.length > 0 ? (
+                                    <View style={styles.statsInsightsCard}>
+                                      <View style={styles.statsInsightsHeader}>
+                                        <Ionicons
+                                          name="bulb"
+                                          size={14}
+                                          color={colors.brandPrimary}
+                                        />
+                                        <Text style={styles.statsInsightsTitle}>
+                                          Focus Areas
+                                        </Text>
+                                      </View>
+                                      <View style={styles.statsInsightsContent}>
+                                        {statsReportPayload.focus_areas.map((area, idx) => (
+                                          <View key={idx} style={styles.statsInsightItem}>
+                                            <View style={styles.statsInsightBullet} />
+                                            <Text style={styles.statsInsightsText}>
+                                              {area}
+                                            </Text>
+                                          </View>
+                                        ))}
+                                      </View>
+                                    </View>
+                                  ) : null}
+                                </View>
+                                )
+                              })()}
 
                               {exerciseSuggestions.length > 0 && (
                                 <View style={styles.exerciseCardsContainer}>
@@ -4543,6 +5003,180 @@ function createStyles(
       color: colors.bg,
       fontSize: 16,
       fontWeight: '700',
+    },
+    statsCard: {
+      marginTop: 12,
+      width: '100%',
+      borderRadius: 20,
+      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      paddingHorizontal: 18,
+      paddingVertical: 18,
+      gap: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.2 : 0.05,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    statsCardStandalone: {
+      marginTop: 0,
+    },
+    statsHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: 4,
+    },
+    statsTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -0.2,
+      textTransform: 'uppercase',
+    },
+    statsPeriod: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    statsTable: {
+      gap: 0,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9F9FB',
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    },
+    statsTableLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 8,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+    },
+    statsRowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: isDark
+        ? 'rgba(255,255,255,0.06)'
+        : 'rgba(0,0,0,0.05)',
+    },
+    statsRowLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      flex: 1,
+      minWidth: 0,
+    },
+    statsRowRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    statsRowValue: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.2,
+    },
+    statsRowDeltaPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 2,
+    },
+    statsRowDelta: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statsMuscleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 6,
+    },
+    statsMuscleLabel: {
+      width: 85,
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    statsMuscleTrack: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+    },
+    statsMuscleFill: {
+      height: '100%',
+      borderRadius: 3,
+      backgroundColor: colors.brandPrimary,
+    },
+    statsMuscleValue: {
+      width: 40,
+      textAlign: 'right',
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    statsInsightsCard: {
+      backgroundColor: isDark ? 'rgba(255,107,53,0.1)' : 'rgba(255,107,53,0.06)',
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,107,53,0.2)' : 'rgba(255,107,53,0.15)',
+      marginTop: 4,
+    },
+    statsInsightsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 10,
+    },
+    statsInsightsTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.brandPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    statsInsightsContent: {
+      gap: 8,
+    },
+    statsInsightItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    statsInsightBullet: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.brandPrimary,
+      marginTop: 8,
+      opacity: 0.8,
+    },
+    statsInsightsText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '500',
+      color: isDark ? '#FFF' : '#000',
+      lineHeight: 20,
     },
     welcomeHintContainer: {
       alignItems: 'center',
