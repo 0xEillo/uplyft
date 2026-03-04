@@ -5,18 +5,18 @@ import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    LayoutAnimation,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  LayoutAnimation,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -50,9 +50,9 @@ import type { StrengthLevel } from '@/lib/strength-standards'
 import { getStrengthStandard } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
-    prependProcessedWorkoutToFeed,
-    replaceWorkoutInFeedById,
-    shouldHydratePostedWorkout,
+  prependProcessedWorkoutToFeed,
+  replaceWorkoutInFeedById,
+  shouldHydratePostedWorkout,
 } from '@/lib/utils/posted-workout-optimizations'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
