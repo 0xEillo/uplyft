@@ -239,6 +239,8 @@ export default function FeedScreen() {
   const [appPostState, setAppPostState] = useState<AppPostState>(
     DEFAULT_APP_POST_STATE,
   )
+  const [userDismissedAppPostThisSession, setUserDismissedAppPostThisSession] =
+    useState(false)
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible =
     isSuccessOverlayVisible ||
@@ -310,6 +312,7 @@ export default function FeedScreen() {
 
   const handleAppPostDismiss = useCallback(
     (post: AppPost) => {
+      setUserDismissedAppPostThisSession(true)
       LayoutAnimation.configureNext(CardDeleteAnimation)
       handleAppPostCta(post.id)
     },
@@ -915,9 +918,13 @@ export default function FeedScreen() {
   )
 
   const styles = createStyles(colors)
+  const appPostsToShow = useMemo(
+    () => (userDismissedAppPostThisSession ? [] : appPosts),
+    [appPosts, userDismissedAppPostThisSession],
+  )
   const feedItems = useMemo(
-    () => buildFeedItems(workouts, appPosts),
-    [workouts, appPosts],
+    () => buildFeedItems(workouts, appPostsToShow),
+    [workouts, appPostsToShow],
   )
 
   useEffect(() => {
