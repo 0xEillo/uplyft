@@ -1222,11 +1222,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'absolute',
       bottom: 4,
       right: 4,
-      backgroundColor: colors.bg,
-      borderRadius: 12,
-      paddingHorizontal: 2,
-      borderWidth: 1,
-      borderColor: colors.bg,
     },
     streakBadgeText: {
       fontSize: 10,
