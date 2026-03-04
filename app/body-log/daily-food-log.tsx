@@ -585,6 +585,8 @@ export default function DailyFoodLogScreen() {
             </View>
           </View>
 
+          <View style={[styles.sectionDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#ECECF0' }]} />
+
           {false && (isRecentMealsLoading || recentMeals.length > 0) && (
             <>
               <View style={styles.sectionHeader}>
@@ -949,10 +951,10 @@ const createStyles = (
     },
     scrollContent: {
       paddingHorizontal: 20,
-      gap: 24,
     },
     heroSection: {
       gap: 16,
+      marginBottom: 28,
     },
     heroTopRow: {
       flexDirection: 'row',
@@ -1014,6 +1016,7 @@ const createStyles = (
     macroRow: {
       flexDirection: 'row',
       justifyContent: 'space-around',
+      marginBottom: 20,
     },
     macroItem: {
       alignItems: 'center',
@@ -1040,6 +1043,11 @@ const createStyles = (
     },
     energySplit: {
       gap: 8,
+      marginBottom: 4,
+    },
+    sectionDivider: {
+      height: StyleSheet.hairlineWidth,
+      marginVertical: 8,
     },
     energyBar: {
       flexDirection: 'row',
@@ -1073,6 +1081,8 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'space-between',
+      marginTop: 20,
+      marginBottom: 12,
     },
     sectionTitle: {
       fontSize: 18,
