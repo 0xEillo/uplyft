@@ -93,22 +93,21 @@ export default function WorkoutDetailScreen() {
     try {
       setIsLoading(true)
       const data = await database.workoutSessions.getById(workoutId)
+      setWorkout(data)
 
-      // Fetch the profile data separately
+      // Fetch profile data in the background so the workout details can render immediately.
       if (data.user_id) {
-        try {
-          const profile = await database.profiles.getById(data.user_id)
-          setWorkout({
-            ...data,
-            profile,
+        void database.profiles
+          .getById(data.user_id)
+          .then((profile) => {
+            setWorkout((current) => {
+              if (!current || current.id !== data.id) return current
+              return { ...current, profile }
+            })
           })
-        } catch (profileError) {
-          console.error('Error loading profile:', profileError)
-          // Set workout without profile if profile fetch fails
-          setWorkout(data)
-        }
-      } else {
-        setWorkout(data)
+          .catch((profileError) => {
+            console.error('Error loading profile:', profileError)
+          })
       }
     } catch (error) {
       console.error('Error loading workout:', error)
@@ -124,11 +123,12 @@ export default function WorkoutDetailScreen() {
     if (!workoutId || !user) return
 
     try {
-      const stats = await database.workoutSocial.getStatsForWorkout(workoutId)
+      const [stats, liked] = await Promise.all([
+        database.workoutSocial.getStatsForWorkout(workoutId),
+        database.workoutLikes.hasLiked(workoutId, user.id),
+      ])
       setLikeCount(stats?.like_count || 0)
       setCommentCount(stats?.comment_count || 0)
-
-      const liked = await database.workoutLikes.hasLiked(workoutId, user.id)
       setIsLiked(liked)
     } catch (error) {
       console.error('Error loading social stats:', error)

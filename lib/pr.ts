@@ -49,40 +49,42 @@ export interface PrResult {
 
 export class PrService {
   static async computePrsForSession(ctx: SessionContext): Promise<PrResult> {
-    const perExerciseResults: PrResult['perExercise'] = []
-
-    for (const exercise of ctx.exercises) {
-      try {
-        const { prs, baseline1RM } = await this.computePrsForExercise(
-          ctx.userId,
-          exercise.exerciseId,
-          exercise.exerciseName,
-          ctx.createdAt,
-          ctx.date,
-          exercise.sets,
-        )
-        // Always include the exercise in the result to provide baseline stats,
-        // even if no PRs were achieved.
-        perExerciseResults.push({
-          exerciseId: exercise.exerciseId,
-          exerciseName: exercise.exerciseName,
-          prs,
-          baseline1RM,
-        })
-      } catch (error) {
-        const normalizedError = this.normalizeSupabaseError(error)
-        console.warn('PR compute skipped exercise due to upstream error:', {
-          exerciseId: exercise.exerciseId,
-          message: normalizedError.message,
-        })
-        perExerciseResults.push({
-          exerciseId: exercise.exerciseId,
-          exerciseName: exercise.exerciseName,
-          prs: [],
-          baseline1RM: 0,
-        })
-      }
-    }
+    const perExerciseResults = await this.mapWithConcurrency(
+      ctx.exercises,
+      4,
+      async (exercise) => {
+        try {
+          const { prs, baseline1RM } = await this.computePrsForExercise(
+            ctx.userId,
+            exercise.exerciseId,
+            exercise.exerciseName,
+            ctx.createdAt,
+            ctx.date,
+            exercise.sets,
+          )
+          // Always include the exercise in the result to provide baseline stats,
+          // even if no PRs were achieved.
+          return {
+            exerciseId: exercise.exerciseId,
+            exerciseName: exercise.exerciseName,
+            prs,
+            baseline1RM,
+          }
+        } catch (error) {
+          const normalizedError = this.normalizeSupabaseError(error)
+          console.warn('PR compute skipped exercise due to upstream error:', {
+            exerciseId: exercise.exerciseId,
+            message: normalizedError.message,
+          })
+          return {
+            exerciseId: exercise.exerciseId,
+            exerciseName: exercise.exerciseName,
+            prs: [],
+            baseline1RM: 0,
+          }
+        }
+      },
+    )
 
     const totalPrs = perExerciseResults.reduce(
       (sum, e) => sum + e.prs.length,
@@ -107,20 +109,11 @@ export class PrService {
     prs: PrResult['perExercise'][number]['prs']
     baseline1RM: number
   }> {
-    const historic = await this.fetchHistoricSets(
-      userId,
-      exerciseId,
-      beforeCreatedAtISO,
-      logDate,
-    )
-
-    // Fetch future sets to determine if PRs are still current
-    const future = await this.fetchFutureSets(
-      userId,
-      exerciseId,
-      beforeCreatedAtISO,
-      logDate,
-    )
+    const [historic, future] = await Promise.all([
+      this.fetchHistoricSets(userId, exerciseId, beforeCreatedAtISO, logDate),
+      // Fetch future sets to determine if PRs are still current
+      this.fetchFutureSets(userId, exerciseId, beforeCreatedAtISO, logDate),
+    ])
 
     // Warm-up sets should never count toward PR calculations.
     const currentWorkingSets = currentSets.filter((s) => !s.isWarmup)
@@ -389,5 +382,29 @@ export class PrService {
     }
 
     return { message }
+  }
+
+  private static async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>,
+  ): Promise<R[]> {
+    if (items.length === 0) return []
+
+    const results: R[] = new Array(items.length)
+    let nextIndex = 0
+    const workerCount = Math.min(concurrency, items.length)
+
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const currentIndex = nextIndex
+        nextIndex += 1
+        if (currentIndex >= items.length) return
+        results[currentIndex] = await mapper(items[currentIndex], currentIndex)
+      }
+    })
+
+    await Promise.all(workers)
+    return results
   }
 }

@@ -315,7 +315,7 @@ export default function ExerciseDetailScreen() {
 
   const getStrengthInfo = useCallback(() => {
     const strengthGender = getStrengthGender(profile?.gender)
-    if (!strengthGender || !profile?.weight_kg || !exercise?.name || !max1RM) {
+    if (!strengthGender || !profile?.weight_kg || !exercise?.name) {
       return null
     }
 

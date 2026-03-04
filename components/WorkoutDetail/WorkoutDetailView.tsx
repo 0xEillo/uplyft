@@ -126,6 +126,35 @@ export function WorkoutDetailView({
     () => normalizeReturnToParam(params.returnTo),
     [params.returnTo],
   )
+  const sortedWorkoutExercises = useMemo(
+    () =>
+      [...(workout?.workout_exercises || [])].sort(
+        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
+      ),
+    [workout?.workout_exercises],
+  )
+  const prCount = useMemo(
+    () => prInfo.reduce((total, ex) => total + ex.prSetIndices.size, 0),
+    [prInfo],
+  )
+  const prInfoByExerciseId = useMemo(() => {
+    const mapping = new Map<string, ExercisePRInfo>()
+    prInfo.forEach((info) => {
+      if (info.exerciseId) {
+        mapping.set(info.exerciseId, info)
+      }
+    })
+    return mapping
+  }, [prInfo])
+  const prInfoByExerciseName = useMemo(() => {
+    const mapping = new Map<string, ExercisePRInfo>()
+    prInfo.forEach((info) => {
+      if (info.exerciseName) {
+        mapping.set(info.exerciseName, info)
+      }
+    })
+    return mapping
+  }, [prInfo])
 
   // Get workout metadata
   const muscleGroups = workout ? getWorkoutMuscleGroups(workout) : ''
@@ -425,7 +454,7 @@ export function WorkoutDetailView({
               <View style={styles.statsContainer}>
                 <WorkoutStatsGrid 
                   workout={workout} 
-                  prCount={prInfo.reduce((total, ex) => total + ex.prSetIndices.size, 0)}
+                  prCount={prCount}
                 />
               </View>
 
@@ -521,33 +550,30 @@ export function WorkoutDetailView({
               >
                 Workout
               </Text>
-              {/* Sort exercises by order_index to preserve original order */}
-              {[...(workout?.workout_exercises || [])]
-                .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-                .map((workoutExercise, index) => {
-                  const exercisePR = prInfo.find(
-                    (pr) =>
-                      pr.exerciseId === workoutExercise.exercise_id ||
-                      pr.exerciseName === workoutExercise.exercise?.name,
-                  )
-                  return (
-                    <ExerciseDetailCard
-                      key={workoutExercise.id || index}
-                      workoutExercise={workoutExercise}
-                      prInfo={exercisePR}
-                      profile={workout.profile}
-                      previousBest1RMKg={
-                        previousMax1RMByExerciseId
-                          ? (previousMax1RMByExerciseId[
-                              workoutExercise.exercise_id
-                            ] ?? 0)
-                          : undefined
-                      }
-                      onExercisePress={onExercisePress}
-                      hideWarmupSets={hideWarmupSets}
-                    />
-                  )
-                })}
+              {sortedWorkoutExercises.map((workoutExercise, index) => {
+                const exercisePR =
+                  prInfoByExerciseId.get(workoutExercise.exercise_id) ||
+                  (workoutExercise.exercise?.name
+                    ? prInfoByExerciseName.get(workoutExercise.exercise.name)
+                    : undefined)
+                return (
+                  <ExerciseDetailCard
+                    key={workoutExercise.id || index}
+                    workoutExercise={workoutExercise}
+                    prInfo={exercisePR}
+                    profile={workout.profile}
+                    previousBest1RMKg={
+                      previousMax1RMByExerciseId
+                        ? (previousMax1RMByExerciseId[
+                            workoutExercise.exercise_id
+                          ] ?? 0)
+                        : undefined
+                    }
+                    onExercisePress={onExercisePress}
+                    hideWarmupSets={hideWarmupSets}
+                  />
+                )
+              })}
             </View>
           </ScrollView>
         ) : null}
