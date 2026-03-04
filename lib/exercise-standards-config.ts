@@ -1729,7 +1729,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '715479a2-4676-4ae1-a94e-b469d7c387e0',
     name: 'Bicep Curl (Barbell)',
     tier: 1,
-    gifUrl: 'Yza7XrQ.gif',
+    gifUrl: 'BicepCurlBarbell.png',
     male: [
       {
         level: 'Beginner',
