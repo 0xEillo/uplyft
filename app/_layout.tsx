@@ -106,6 +106,22 @@ function RootLayoutNav() {
           },
         }
       : transparentModalFallback
+  const postPaywallSignupOptions =
+    Platform.OS === 'ios'
+      ? {
+          presentation: 'transparentModal' as const,
+          animation: 'fade' as const,
+          contentStyle: { backgroundColor: 'transparent' },
+          headerShown: false,
+          gestureEnabled: false,
+        }
+      : {
+          presentation: 'transparentModal' as const,
+          animation: 'fade' as const,
+          contentStyle: { backgroundColor: 'transparent' },
+          headerShown: false,
+          gestureEnabled: false,
+        }
 
   // Pre-load exercise cache for faster lookups throughout the app
   useEffect(() => {
@@ -391,7 +407,7 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="post-paywall-signup"
-            options={getNativeFormSheetOptions([0.48, 0.75])}
+            options={postPaywallSignupOptions}
           />
         </Stack>
       </NavigationThemeProvider>

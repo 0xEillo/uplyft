@@ -1,21 +1,27 @@
 import { HapticButton } from '@/components/haptic-button'
-import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
-import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
+import { BlurView } from 'expo-blur'
 import { router } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const BENEFITS = [
+  'Save workouts and progress across devices',
+  'Keep your streak and personal records protected',
+] as const
 
 export default function PostPaywallSignupScreen() {
   const colors = useThemedColors()
@@ -24,6 +30,7 @@ export default function PostPaywallSignupScreen() {
   const { signInWithGoogle, signInWithApple } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
+  const isAnyLoading = isGoogleLoading || isAppleLoading
   const styles = createStyles(colors, isDark)
 
   const handleAppleSignUp = async () => {
@@ -60,71 +67,118 @@ export default function PostPaywallSignupScreen() {
     router.replace('/(auth)/signup-email')
   }
 
+  const handleDismiss = () => {
+    router.back()
+  }
+
   return (
     <View style={styles.container}>
-      <LiquidGlassSurface
-        style={StyleSheet.absoluteFill}
-        fallbackStyle={styles.fallbackSurface}
-      />
+      <Pressable
+        style={styles.backdrop}
+        onPress={handleDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss sign up prompt"
+      >
+        <BlurView
+          intensity={isDark ? 40 : 34}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+          experimentalBlurMethod="dimezisBlurView"
+        />
+        <View style={styles.backdropTint} />
+      </Pressable>
 
-      <View
+      <Animated.View
+        entering={FadeInDown.duration(240)}
         style={[
-          styles.content,
+          styles.popupFrame,
           {
-            paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
-            paddingBottom:
-              insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding,
+            marginTop: Math.max(insets.top + 10, 14),
+            marginBottom: Math.max(insets.bottom + 10, 14),
           },
         ]}
       >
-        <View style={styles.headerTextBlock}>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>
-            Sign up to sync your workouts and keep your progress safe.
-          </Text>
-        </View>
+        <View style={[styles.popupSurface, styles.popupSurfaceFallback]}>
+          <View style={styles.glassDensityOverlay} />
 
-        <View style={styles.buttonsContainer}>
-          {Platform.OS === 'ios' && (
-            <HapticButton
-              style={[styles.appleButton, isAppleLoading && styles.buttonDisabled]}
-              onPress={handleAppleSignUp}
-              disabled={isAppleLoading}
-              hapticEnabled={!isAppleLoading}
-            >
-              {isAppleLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
-                  <Text style={styles.appleButtonText}>Continue with Apple</Text>
-                </>
+          <View style={styles.content}>
+            <View style={styles.heroBlock}>
+              <Text style={styles.title}>Save your progress</Text>
+              <Text style={styles.subtitle}>
+                You unlocked Pro. Finish account setup so your training data is safe.
+              </Text>
+            </View>
+
+            <View style={styles.benefitsList}>
+              {BENEFITS.map((benefit) => (
+                <View key={benefit} style={styles.benefitRow}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={colors.statusSuccess}
+                  />
+                  <Text style={styles.benefitText}>{benefit}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.buttonsContainer}>
+              {Platform.OS === 'ios' && (
+                <HapticButton
+                  style={[styles.appleButton, isAppleLoading && styles.buttonDisabled]}
+                  onPress={handleAppleSignUp}
+                  disabled={isAppleLoading}
+                  hapticEnabled={!isAppleLoading}
+                >
+                  {isAppleLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
+                      <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                    </>
+                  )}
+                </HapticButton>
               )}
-            </HapticButton>
-          )}
 
-          <HapticButton
-            style={[styles.glassButton, isGoogleLoading && styles.buttonDisabled]}
-            onPress={handleGoogleSignUp}
-            disabled={isGoogleLoading}
-            hapticEnabled={!isGoogleLoading}
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator color={colors.textPrimary} />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
-                <Text style={styles.glassButtonText}>Continue with Google</Text>
-              </>
-            )}
-          </HapticButton>
+              <HapticButton
+                style={[styles.glassButton, isGoogleLoading && styles.buttonDisabled]}
+                onPress={handleGoogleSignUp}
+                disabled={isGoogleLoading}
+                hapticEnabled={!isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={colors.textPrimary} />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
+                    <Text style={styles.glassButtonText}>Continue with Google</Text>
+                  </>
+                )}
+              </HapticButton>
 
-          <HapticButton style={styles.primaryButton} onPress={handleEmailSignUp}>
-            <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
-            <Text style={styles.primaryButtonText}>Continue with Email</Text>
-          </HapticButton>
+              <HapticButton
+                style={[styles.primaryButton, isAnyLoading && styles.buttonDisabled]}
+                onPress={handleEmailSignUp}
+                disabled={isAnyLoading}
+                hapticEnabled={!isAnyLoading}
+              >
+                <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
+                <Text style={styles.primaryButtonText}>Continue with Email</Text>
+              </HapticButton>
+
+              <Pressable
+                onPress={handleDismiss}
+                style={styles.dismissLink}
+                accessibilityRole="button"
+                accessibilityLabel="Continue as guest"
+              >
+                <Text style={styles.dismissLinkText}>Continue as guest</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   )
 }
@@ -136,39 +190,107 @@ const createStyles = (
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 20,
     },
-    fallbackSurface: {
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    backdropTint: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(7, 10, 20, 0.2)',
+    },
+    popupFrame: {
+      width: '100%',
+      maxWidth: 460,
+      maxHeight: '76%',
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.85)',
+      shadowColor: '#000000',
+      shadowOpacity: isDark ? 0.34 : 0.18,
+      shadowRadius: 28,
+      shadowOffset: { width: 0, height: 14 },
+      elevation: 22,
+    },
+    popupSurface: {
+      width: '100%',
+      borderRadius: 24,
+      overflow: 'hidden',
+    },
+    popupSurfaceFallback: {
+      backgroundColor: isDark ? 'rgba(18, 18, 20, 0.84)' : 'rgba(255,255,255,0.84)',
+    },
+    glassDensityOverlay: {
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: isDark
-        ? 'rgba(24, 24, 28, 0.84)'
-        : 'rgba(248, 249, 255, 0.85)',
+        ? 'rgba(18, 18, 20, 0.24)'
+        : 'rgba(255,255,255,0.26)',
     },
     content: {
-      flex: 1,
-      paddingHorizontal: NATIVE_SHEET_LAYOUT.horizontalPadding,
-      gap: 20,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 18,
+      gap: 14,
     },
-    headerTextBlock: {
+    heroBlock: {
       gap: 6,
     },
     title: {
-      fontSize: 24,
-      fontWeight: '700',
+      fontSize: 30,
+      lineHeight: 32,
+      fontWeight: '800',
       color: colors.textPrimary,
-      letterSpacing: -0.4,
+      letterSpacing: -0.8,
     },
     subtitle: {
-      fontSize: 14,
-      lineHeight: 20,
+      fontSize: 15,
+      lineHeight: 21,
       color: colors.textSecondary,
+    },
+    benefitsList: {
+      gap: 8,
+    },
+    benefitRow: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'flex-start',
+      paddingVertical: 2,
+    },
+    benefitText: {
+      flex: 1,
+      fontSize: 14,
+      lineHeight: 19,
+      color: colors.textSecondary,
+      marginTop: -1,
     },
     buttonsContainer: {
       gap: 10,
+      marginTop: 2,
+    },
+    primaryButton: {
+      height: 54,
+      backgroundColor: colors.brandPrimary,
+      borderRadius: 18,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      shadowColor: colors.brandPrimary,
+      shadowOpacity: 0.28,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+    },
+    primaryButtonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '700',
     },
     appleButton: {
-      height: 54,
+      height: 52,
       backgroundColor: '#000000',
-      borderRadius: 20,
+      borderRadius: 18,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -182,8 +304,8 @@ const createStyles = (
       fontWeight: '600',
     },
     glassButton: {
-      height: 54,
-      borderRadius: 20,
+      height: 52,
+      borderRadius: 18,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -191,33 +313,26 @@ const createStyles = (
       borderWidth: 1,
       borderColor: isDark
         ? 'rgba(255,255,255,0.14)'
-        : 'rgba(255,255,255,0.62)',
+        : 'rgba(0,0,0,0.08)',
       backgroundColor: isDark
-        ? 'rgba(255,255,255,0.08)'
-        : 'rgba(255,255,255,0.46)',
+        ? 'rgba(255,255,255,0.07)'
+        : 'rgba(255,255,255,0.88)',
     },
     glassButtonText: {
       color: colors.textPrimary,
       fontSize: 16,
       fontWeight: '600',
     },
-    primaryButton: {
-      height: 56,
-      backgroundColor: colors.brandPrimary,
-      borderRadius: 20,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 10,
-      shadowColor: colors.brandPrimary,
-      shadowOpacity: 0.3,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 6 },
+    dismissLink: {
+      alignSelf: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      marginTop: 2,
     },
-    primaryButtonText: {
-      color: colors.onPrimary,
-      fontSize: 16,
-      fontWeight: '700',
+    dismissLinkText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
     },
     buttonDisabled: {
       opacity: 0.6,

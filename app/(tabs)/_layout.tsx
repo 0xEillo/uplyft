@@ -2,7 +2,6 @@ import { ExerciseRankOverlay } from '@/components/exercise-rank-overlay'
 import { Paywall } from '@/components/paywall'
 import { PointsGainOverlay } from '@/components/points-gain-overlay'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
-import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { SubmitSuccessOverlay } from '@/components/submit-success-overlay'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
@@ -93,7 +92,6 @@ function TabLayoutContent() {
   const { stopWorkoutActivity } = useLiveActivity()
   const { user, isAnonymous } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
-  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false)
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
@@ -168,11 +166,7 @@ function TabLayoutContent() {
     }
 
     const timer = setTimeout(() => {
-      if (Platform.OS === 'ios') {
-        router.push('/post-paywall-signup')
-      } else {
-        setShowSignUpPrompt(true)
-      }
+      router.push('/post-paywall-signup')
       setHasShownSignUpPrompt(true)
     }, 500)
 
@@ -412,12 +406,6 @@ function TabLayoutContent() {
         />
       )}
       <RatingPromptModal />
-      {Platform.OS !== 'ios' && (
-        <SignInBottomSheet
-          visible={showSignUpPrompt}
-          onClose={() => setShowSignUpPrompt(false)}
-        />
-      )}
       <Paywall
         visible={showGlobalPaywall}
         onClose={() => {}} // No-op, cannot close

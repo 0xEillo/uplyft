@@ -193,7 +193,6 @@ export default function CreatePostScreen() {
   // UI STATE
   // =============================================================================
   const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
-  const [showDraftSaved, setShowDraftSaved] = useState(false)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
     false,
@@ -486,7 +485,6 @@ export default function CreatePostScreen() {
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
 
   const { showStreakOverlay } = useSuccessOverlay()
-  const fadeAnim = useRef(new Animated.Value(0)).current
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
   const imageOpacity = useRef(new Animated.Value(0)).current
@@ -520,7 +518,6 @@ export default function CreatePostScreen() {
   const hasHydratedRef = useRef(false)
   const isScreenFocusedRef = useRef(false)
   const suppressLocalEditTrackingRef = useRef(false)
-  const suppressDraftToastRef = useRef(false)
   // Skip counter - decrements each time auto-save would run, skips while > 0
   const skipPersistCountRef = useRef(0)
   const isHydratingRef = useRef(true)
@@ -966,7 +963,6 @@ export default function CreatePostScreen() {
 
   const resetLocalWorkoutDraftState = useCallback(() => {
     suppressLocalEditTrackingRef.current = true
-    suppressDraftToastRef.current = true
     // Skip the next few autosaves while reset state propagates.
     skipPersistCountRef.current = 3
 
@@ -1104,25 +1100,6 @@ export default function CreatePostScreen() {
     ...insets,
     bottom: bottomSafeInset,
   })
-
-  // Animate draft saved indicator
-  useEffect(() => {
-    if (showDraftSaved) {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1800),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    }
-  }, [showDraftSaved, fadeAnim])
 
   // Animate camera processing and audio transcription spinner
   useEffect(() => {
@@ -1400,7 +1377,6 @@ export default function CreatePostScreen() {
       })
 
       if (plan.notes !== undefined) {
-        suppressDraftToastRef.current = true
         setNotes(plan.notes)
       }
 
@@ -1663,43 +1639,6 @@ export default function CreatePostScreen() {
       subscription.remove()
     }
   }, [logDraftDebug, persistDraft])
-
-  // Show "Draft saved" indicator with debounce (UI only)
-  useEffect(() => {
-    if (isHydratingRef.current) {
-      return
-    }
-
-    if (suppressDraftToastRef.current) {
-      suppressDraftToastRef.current = false
-      return
-    }
-
-    const trimmedNotes = notes.trim()
-
-    if (!trimmedNotes) {
-      setShowDraftSaved(false)
-      return
-    }
-
-    let hideTimer: ReturnType<typeof setTimeout> | undefined
-    const showTimer = setTimeout(() => {
-      setShowDraftSaved(true)
-      trackEvent(AnalyticsEvents.WORKOUT_DRAFT_AUTO_SAVED, {
-        length: trimmedNotes.length,
-        hasTitle: Boolean(workoutTitle.trim()),
-      })
-
-      hideTimer = setTimeout(() => setShowDraftSaved(false), 2000)
-    }, 2500)
-
-    return () => {
-      clearTimeout(showTimer)
-      if (hideTimer) {
-        clearTimeout(hideTimer)
-      }
-    }
-  }, [notes, trackEvent, workoutTitle])
 
   const handleCancel = async () => {
     if (isRecording) {
@@ -2785,35 +2724,6 @@ export default function CreatePostScreen() {
                 />
               </TouchableOpacity>
             </LiquidGlassSurface>
-          </View>
-
-          <View pointerEvents="none" style={styles.headerCenter}>
-            {(shouldShowWorkoutTimer || showDraftSaved) && (
-              <View style={styles.headerCenterContainer}>
-                {shouldShowWorkoutTimer && !showDraftSaved && (
-                  <Text style={styles.headerTimerText}>
-                    {headerTimerDisplay}
-                  </Text>
-                )}
-                {showDraftSaved && (
-                  <Animated.View
-                    style={[
-                      styles.draftSavedContainer,
-                      { opacity: fadeAnim, position: 'absolute' },
-                    ]}
-                  >
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={colors.brandPrimary}
-                    />
-                    <Text style={styles.draftSavedText}>Draft saved</Text>
-                  </Animated.View>
-                )}
-              </View>
-            )}
-          </View>
-          <View style={styles.headerRightButtons}>
             <TouchableOpacity
               style={styles.headerButton}
               activeOpacity={0.7}
@@ -2826,6 +2736,18 @@ export default function CreatePostScreen() {
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
+          </View>
+
+          <View pointerEvents="none" style={styles.headerCenter}>
+            {shouldShowWorkoutTimer && (
+              <View style={styles.headerCenterContainer}>
+                <Text style={styles.headerTimerText}>
+                  {headerTimerDisplay}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.headerRightButtons}>
             {shouldShowWorkoutTimer && (
               <TouchableOpacity
                 onPress={handleDiscardWorkout}
@@ -3350,20 +3272,6 @@ const createStyles = (
       borderRadius: 22,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    draftSavedContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: colors.surfaceSubtle,
-      borderRadius: 16,
-    },
-    draftSavedText: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.brandPrimary,
     },
     loaderContainer: {
       width: 28,
