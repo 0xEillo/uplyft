@@ -6,6 +6,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
@@ -63,9 +64,9 @@ export default function TrialOfferScreen() {
     if (!onboardingData) return
 
     try {
-      const userTag = await database.profiles.generateUniqueUserTag(
-        onboardingData.name || 'Guest',
-      )
+      const displayName = resolveOnboardingDisplayName(onboardingData.name)
+      const userTagBase = resolveUserTagBase(displayName)
+      const userTag = await database.profiles.generateUniqueUserTag(userTagBase)
 
       const profileUpdates: {
         id: string
@@ -84,7 +85,7 @@ export default function TrialOfferScreen() {
       } = {
         id: userId,
         user_tag: userTag,
-        display_name: onboardingData.name || 'Guest',
+        display_name: displayName,
         gender: onboardingData.gender,
         height_cm: onboardingData.height_cm,
         weight_kg: onboardingData.weight_kg,

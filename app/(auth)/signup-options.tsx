@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import { supabase } from '@/lib/supabase'
 import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -44,6 +45,52 @@ export default function SignupOptionsScreen() {
     ? JSON.parse(params.onboarding_data as string)
     : null
 
+  const updateProfileWithOnboardingData = async (userId: string) => {
+    if (!onboardingData) return
+
+    const displayName = resolveOnboardingDisplayName(onboardingData.name)
+    const userTagBase = resolveUserTagBase(displayName)
+
+    let userTag: string | null = null
+    try {
+      userTag = await database.profiles.generateUniqueUserTag(userTagBase)
+    } catch (tagError) {
+      console.warn(
+        '[SignupOptions] Failed to generate user tag from onboarding name. Keeping existing tag.',
+        tagError,
+      )
+    }
+
+    const profileUpdates: {
+      user_tag?: string
+      display_name: string
+      gender: Gender | null
+      height_cm: number | null
+      weight_kg: number | null
+      age: number | null
+      goals: Goal[] | null
+      commitment: string[]
+      experience_level: ExperienceLevel | null
+      bio: string | null
+    } = {
+      display_name: displayName,
+      gender: onboardingData.gender,
+      height_cm: onboardingData.height_cm,
+      weight_kg: onboardingData.weight_kg,
+      age: onboardingData.age,
+      goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
+      commitment: onboardingData.commitment,
+      experience_level: onboardingData.experience_level,
+      bio: onboardingData.bio,
+    }
+
+    if (userTag) {
+      profileUpdates.user_tag = userTag
+    }
+
+    await database.profiles.update(userId, profileUpdates)
+  }
+
   const handleAppleSignup = async () => {
     setIsAppleLoading(true)
     try {
@@ -57,23 +104,7 @@ export default function SignupOptionsScreen() {
 
       if (currentUser && onboardingData) {
         try {
-          // Generate a unique user_tag based on the display name
-          const userTag = await database.profiles.generateUniqueUserTag(
-            onboardingData.name,
-          )
-
-          await database.profiles.update(currentUser.id, {
-            user_tag: userTag,
-            display_name: onboardingData.name,
-            gender: onboardingData.gender,
-            height_cm: onboardingData.height_cm,
-            weight_kg: onboardingData.weight_kg,
-            age: onboardingData.age,
-            goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-            commitment: onboardingData.commitment,
-            experience_level: onboardingData.experience_level,
-            bio: onboardingData.bio,
-          })
+          await updateProfileWithOnboardingData(currentUser.id)
         } catch (profileError) {
           console.error(
             'Error updating profile with onboarding data:',
@@ -118,23 +149,7 @@ export default function SignupOptionsScreen() {
 
       if (currentUser && onboardingData) {
         try {
-          // Generate a unique user_tag based on the display name
-          const userTag = await database.profiles.generateUniqueUserTag(
-            onboardingData.name,
-          )
-
-          await database.profiles.update(currentUser.id, {
-            user_tag: userTag,
-            display_name: onboardingData.name,
-            gender: onboardingData.gender,
-            height_cm: onboardingData.height_cm,
-            weight_kg: onboardingData.weight_kg,
-            age: onboardingData.age,
-            goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-            commitment: onboardingData.commitment,
-            experience_level: onboardingData.experience_level,
-            bio: onboardingData.bio,
-          })
+          await updateProfileWithOnboardingData(currentUser.id)
         } catch (profileError) {
           console.error(
             'Error updating profile with onboarding data:',
