@@ -71,3 +71,38 @@ export async function hapticError(): Promise<void> {
   if (Platform.OS !== 'ios') return
   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
 }
+
+/**
+ * Escalating haptic sequence for level-up moments.
+ *
+ * Mimics a progress bar filling up: rapid light taps → medium → heavy climax
+ * when the rank badge and "RANK UP!" label fully animate in (~700ms).
+ *
+ * Timeline:
+ *   0ms        light  (overlay fades in)
+ *   130ms      light
+ *   240ms      light  (tile springs in)
+ *   380ms      medium
+ *   490ms      medium
+ *   590ms      medium
+ *   690ms      heavy  (RANK UP! label appears)
+ *   760ms      heavy  (final punch)
+ */
+export function hapticLevelUp(): void {
+  if (Platform.OS !== 'ios') return
+
+  const steps: Array<{ delay: number; style: Haptics.ImpactFeedbackStyle }> = [
+    { delay: 0, style: Haptics.ImpactFeedbackStyle.Light },
+    { delay: 130, style: Haptics.ImpactFeedbackStyle.Light },
+    { delay: 240, style: Haptics.ImpactFeedbackStyle.Light },
+    { delay: 380, style: Haptics.ImpactFeedbackStyle.Medium },
+    { delay: 490, style: Haptics.ImpactFeedbackStyle.Medium },
+    { delay: 590, style: Haptics.ImpactFeedbackStyle.Medium },
+    { delay: 690, style: Haptics.ImpactFeedbackStyle.Heavy },
+    { delay: 760, style: Haptics.ImpactFeedbackStyle.Heavy },
+  ]
+
+  for (const { delay, style } of steps) {
+    setTimeout(() => Haptics.impactAsync(style), delay)
+  }
+}

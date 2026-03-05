@@ -1,7 +1,9 @@
 import {
     OVERALL_STRENGTH_SCORE_CAP,
+    calculateOverallStrengthScoreDeltaForSession,
     calculateExerciseStrengthPoints,
     calculateOverallStrengthScore,
+    getLatestStrengthIncreaseSession,
     scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
 
@@ -163,5 +165,101 @@ describe('overall strength score', () => {
     expect(result.liftsTracked).toBe(0)
     expect(result.score).toBe(0)
     expect(result.level).toBe('Untrained')
+  })
+
+  test('picks the latest strength increase session from snapshots', () => {
+    const exercises = [
+      {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 130,
+      },
+      {
+        exerciseId: 'squat',
+        exerciseName: 'Squat (Barbell)',
+        muscleGroup: 'Quads',
+        max1RM: 180,
+      },
+    ]
+
+    const latest = getLatestStrengthIncreaseSession({
+      exercises,
+      best1RMSnapshotByExerciseId: {
+        bench: {
+          currentBest1RM: 130,
+          previousBest1RM: 120,
+          lastIncreaseAt: '2026-02-10T12:00:00.000Z',
+          lastIncreaseSessionId: 'session-old',
+        },
+        squat: {
+          currentBest1RM: 180,
+          previousBest1RM: 170,
+          lastIncreaseAt: '2026-02-14T08:30:00.000Z',
+          lastIncreaseSessionId: 'session-new',
+        },
+      },
+    })
+
+    expect(latest).toEqual({
+      sessionId: 'session-new',
+      lastIncreaseAt: '2026-02-14T08:30:00.000Z',
+    })
+  })
+
+  test('calculates session delta using only exercises improved in that session', () => {
+    const exercises = [
+      {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 130,
+      },
+      {
+        exerciseId: 'squat',
+        exerciseName: 'Squat (Barbell)',
+        muscleGroup: 'Quads',
+        max1RM: 180,
+      },
+    ]
+
+    const snapshots = {
+      bench: {
+        currentBest1RM: 130,
+        previousBest1RM: 120,
+        lastIncreaseAt: '2026-02-10T12:00:00.000Z',
+        lastIncreaseSessionId: 'session-old',
+      },
+      squat: {
+        currentBest1RM: 180,
+        previousBest1RM: 170,
+        lastIncreaseAt: '2026-02-14T08:30:00.000Z',
+        lastIncreaseSessionId: 'session-new',
+      },
+    }
+
+    const delta = calculateOverallStrengthScoreDeltaForSession({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises,
+      best1RMSnapshotByExerciseId: snapshots,
+      baselineSessionId: 'session-new',
+    })
+
+    const expectedBaseline = calculateOverallStrengthScore({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises: [
+        exercises[0],
+        {
+          ...exercises[1],
+          max1RM: 170,
+        },
+      ],
+    })
+
+    expect(delta.currentResult.score).toBeGreaterThan(delta.baselineResult.score)
+    expect(delta.baselineResult.score).toBe(expectedBaseline.score)
+    expect(delta.pointsGained).toBe(delta.currentResult.score - delta.baselineResult.score)
   })
 })

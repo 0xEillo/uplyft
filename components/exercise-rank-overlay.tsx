@@ -3,6 +3,7 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { hapticLevelUp } from '@/lib/haptics'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -145,6 +146,8 @@ function ExerciseRankOverlayComponent({
     tileScale.setValue(0)
     labelOpacity.setValue(0)
     labelScale.setValue(0.5)
+
+    hapticLevelUp()
 
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),

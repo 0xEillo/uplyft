@@ -1,8 +1,11 @@
 import { useAuth } from '@/contexts/auth-context'
-import { database } from '@/lib/database'
 import { EXERCISE_MUSCLE_MAPPING, getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config-secondary'
-import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
+import {
+    calculateStrengthScoreDelta,
+    loadStrengthScoreDeltaContext,
+    STRENGTH_SCORE_DELTA_SEMANTICS,
+} from '@/lib/strength-score-delta'
 import {
     getStrengthGender,
     getLevelIntensity as getStrengthLevelIntensity,
@@ -39,6 +42,7 @@ export interface ExerciseBest1RMSnapshot {
   currentBest1RM: number
   previousBest1RM: number
   lastIncreaseAt: string | null
+  lastIncreaseSessionId: string | null
 }
 
 export interface MuscleGroupData {
@@ -84,16 +88,18 @@ export function useStrengthData() {
     if (!user?.id) return
 
     try {
-      const [profileData, data, snapshots] = await Promise.all([
-        database.profiles.getById(user.id),
-        database.stats.getMajorCompoundLiftsData(user.id),
-        database.stats.getExerciseCurrentAndPreviousBest1RMs(user.id),
-      ])
-      setProfile(profileData)
-      setBest1RMSnapshotByExerciseId(snapshots)
+      const strengthContext = await loadStrengthScoreDeltaContext<ExerciseData>(
+        user.id,
+      )
+      setProfile(strengthContext.profile)
+      setBest1RMSnapshotByExerciseId(
+        strengthContext.best1RMSnapshotByExerciseId,
+      )
 
       // Sort by max1RM descending
-      const sorted = data.sort((a, b) => b.max1RM - a.max1RM)
+      const sorted = [...strengthContext.exercises].sort(
+        (a, b) => b.max1RM - a.max1RM,
+      )
       setExerciseData(sorted)
     } catch (error) {
       console.error('Error loading strength stats:', error)
@@ -193,60 +199,34 @@ export function useStrengthData() {
       return null
     }
 
-    const strengthGender = getStrengthGender(profile.gender)
-    if (!strengthGender) {
+    const scoreDelta = calculateStrengthScoreDelta({
+      semantics: STRENGTH_SCORE_DELTA_SEMANTICS.latestIncreaseSession,
+      context: {
+        profile,
+        strengthGender: getStrengthGender(profile.gender),
+        exercises: exerciseData,
+        best1RMSnapshotByExerciseId,
+      },
+    })
+
+    if (!scoreDelta) {
       return null
     }
 
-    const currentOverall = calculateOverallStrengthScore({
-      gender: strengthGender,
-      bodyweightKg: profile.weight_kg,
-      exercises: exerciseData,
-    })
-
-    if (currentOverall.liftsTracked === 0) {
-      return null
-    }
-
-    const baselineExercises = exerciseData.map((exercise) => {
-      const previousBest1RM =
-        best1RMSnapshotByExerciseId[exercise.exerciseId]?.previousBest1RM ?? 0
-      const baseline1RM = previousBest1RM > 0 ? previousBest1RM : exercise.max1RM
-
-      return {
-        ...exercise,
-        max1RM: baseline1RM,
-      }
-    })
-
-    const baselineOverall = calculateOverallStrengthScore({
-      gender: strengthGender,
-      bodyweightKg: profile.weight_kg,
-      exercises: baselineExercises,
-    })
-
-    const progressDelta = Math.max(
-      0,
-      Math.round(currentOverall.score - baselineOverall.score),
-    )
-
-    const lastIncreaseAt = exerciseData
-      .map((e) => best1RMSnapshotByExerciseId[e.exerciseId]?.lastIncreaseAt)
-      .filter((date): date is string => !!date)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+    const { currentResult, pointsGained, lastIncreaseAt } = scoreDelta
 
     return {
-      currentLevel: currentOverall.level,
-      nextLevel: currentOverall.nextLevel,
-      progress: currentOverall.progress,
-      progressDelta,
-      liftsTracked: currentOverall.liftsTracked,
-      balancedLevel: currentOverall.level,
-      balancedNextLevel: currentOverall.nextLevel,
-      balancedProgress: currentOverall.progress,
-      balancedScore: currentOverall.score,
-      score: currentOverall.score,
-      weakestGroup: currentOverall.weakestGroup,
+      currentLevel: currentResult.level,
+      nextLevel: currentResult.nextLevel,
+      progress: currentResult.progress,
+      progressDelta: pointsGained,
+      liftsTracked: currentResult.liftsTracked,
+      balancedLevel: currentResult.level,
+      balancedNextLevel: currentResult.nextLevel,
+      balancedProgress: currentResult.progress,
+      balancedScore: currentResult.score,
+      score: currentResult.score,
+      weakestGroup: currentResult.weakestGroup,
       lastIncreaseAt,
     }
   }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])

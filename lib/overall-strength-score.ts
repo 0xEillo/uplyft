@@ -28,6 +28,18 @@ export interface OverallStrengthExerciseInput {
   lastTrainedAt?: string | null
 }
 
+export interface OverallStrengthBest1RMSnapshot {
+  currentBest1RM: number
+  previousBest1RM: number
+  lastIncreaseAt: string | null
+  lastIncreaseSessionId: string | null
+}
+
+export interface LatestStrengthIncreaseSession {
+  sessionId: string | null
+  lastIncreaseAt: string | null
+}
+
 export interface OverallStrengthGroupBreakdown {
   group: OverallStrengthGroup
   weight: number
@@ -47,6 +59,12 @@ export interface OverallStrengthScoreResult {
   liftsTracked: number
   weakestGroup: OverallStrengthGroup | null
   groupBreakdown: Record<OverallStrengthGroup, OverallStrengthGroupBreakdown>
+}
+
+export interface OverallStrengthScoreDeltaForSessionResult {
+  currentResult: OverallStrengthScoreResult
+  baselineResult: OverallStrengthScoreResult
+  pointsGained: number
 }
 
 export const OVERALL_STRENGTH_SCORE_CAP = 1000
@@ -143,6 +161,30 @@ function resolveSpecificMuscleName(
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 0
   return Math.max(0, Math.min(OVERALL_STRENGTH_SCORE_CAP, score))
+}
+
+function buildSessionBaselineExercises(input: {
+  exercises: OverallStrengthExerciseInput[]
+  best1RMSnapshotByExerciseId: Record<
+    string,
+    OverallStrengthBest1RMSnapshot | undefined
+  >
+  baselineSessionId: string | null | undefined
+}): OverallStrengthExerciseInput[] {
+  const { exercises, best1RMSnapshotByExerciseId, baselineSessionId } = input
+  if (!baselineSessionId) return exercises
+
+  return exercises.map((exercise) => {
+    const snapshot = best1RMSnapshotByExerciseId[exercise.exerciseId]
+    if (!snapshot || snapshot.lastIncreaseSessionId !== baselineSessionId) {
+      return exercise
+    }
+
+    return {
+      ...exercise,
+      max1RM: snapshot.previousBest1RM,
+    }
+  })
 }
 
 function computeDecayFactor(
@@ -368,5 +410,95 @@ export function calculateOverallStrengthScore(input: {
     liftsTracked,
     weakestGroup,
     groupBreakdown,
+  }
+}
+
+export function getLatestStrengthIncreaseSession(input: {
+  exercises: OverallStrengthExerciseInput[]
+  best1RMSnapshotByExerciseId: Record<
+    string,
+    OverallStrengthBest1RMSnapshot | undefined
+  >
+}): LatestStrengthIncreaseSession {
+  const { exercises, best1RMSnapshotByExerciseId } = input
+
+  let latestSessionId: string | null = null
+  let latestIncreaseAt: string | null = null
+  let latestIncreaseTime = Number.NEGATIVE_INFINITY
+
+  exercises.forEach((exercise) => {
+    const snapshot = best1RMSnapshotByExerciseId[exercise.exerciseId]
+    if (!snapshot?.lastIncreaseSessionId || !snapshot.lastIncreaseAt) {
+      return
+    }
+
+    const increaseDate = asDateOrNull(snapshot.lastIncreaseAt)
+    if (!increaseDate) {
+      return
+    }
+    const increaseTime = increaseDate.getTime()
+
+    if (increaseTime > latestIncreaseTime) {
+      latestIncreaseTime = increaseTime
+      latestSessionId = snapshot.lastIncreaseSessionId
+      latestIncreaseAt = snapshot.lastIncreaseAt
+    }
+  })
+
+  return {
+    sessionId: latestSessionId,
+    lastIncreaseAt: latestIncreaseAt,
+  }
+}
+
+export function calculateOverallStrengthScoreDeltaForSession(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: OverallStrengthExerciseInput[]
+  best1RMSnapshotByExerciseId: Record<
+    string,
+    OverallStrengthBest1RMSnapshot | undefined
+  >
+  baselineSessionId: string | null | undefined
+  now?: Date
+}): OverallStrengthScoreDeltaForSessionResult {
+  const {
+    gender,
+    bodyweightKg,
+    exercises,
+    best1RMSnapshotByExerciseId,
+    baselineSessionId,
+    now,
+  } = input
+
+  const currentResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises,
+    now,
+  })
+
+  const baselineExercises = buildSessionBaselineExercises({
+    exercises,
+    best1RMSnapshotByExerciseId,
+    baselineSessionId,
+  })
+
+  const baselineResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises: baselineExercises,
+    now,
+  })
+
+  const pointsGained = Math.max(
+    0,
+    Math.round(currentResult.score - baselineResult.score),
+  )
+
+  return {
+    currentResult,
+    baselineResult,
+    pointsGained,
   }
 }
