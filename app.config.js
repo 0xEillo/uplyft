@@ -108,11 +108,13 @@ const deeplinkNowIntentFilters = deeplinkNowDomain
     ]
   : []
 
+const appVersion = '1.0.20'
+
 module.exports = {
   expo: {
     name: 'Rep AI',
     slug: 'repai',
-    version: '1.0.20',
+    version: appVersion,
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'repai',
@@ -167,9 +169,7 @@ module.exports = {
       url: 'https://u.expo.dev/d92cf9e6-0901-4a68-9f50-741decd5c10f',
       enableBsdiffPatchSupport: true,
     },
-    runtimeVersion: {
-      policy: 'appVersion',
-    },
+    runtimeVersion: appVersion,
     web: {
       output: 'static',
       favicon: './assets/images/favicon.png',
