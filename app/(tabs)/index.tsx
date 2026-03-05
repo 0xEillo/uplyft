@@ -562,20 +562,8 @@ export default function FeedScreen() {
   const handlePendingPost = useCallback(async () => {
     if (!user || isProcessingPending) return
 
-    if (__DEV__) {
-      console.log('[Home] handlePendingPost start', {
-        userId: user.id,
-        isProcessingPending,
-      })
-    }
-
     try {
       const result = await processPendingWorkout()
-      if (__DEV__) {
-        console.log('[Home] handlePendingPost result', {
-          status: result.status,
-        })
-      }
 
       if (
         result.status === 'none' ||
@@ -589,11 +577,6 @@ export default function FeedScreen() {
       if (result.status === 'success') {
         let { workout } = result
         let cachedProfile = workout.profile ?? null
-        if (__DEV__) {
-          console.log('[Home] pending post success', {
-            workoutId: workout.id,
-          })
-        }
 
         setNewWorkoutId(workout.id)
         LayoutAnimation.configureNext(CustomSlideAnimation)
@@ -648,7 +631,6 @@ export default function FeedScreen() {
 
         // Compute strength score delta for points gain overlay
         try {
-          console.log('[Overlay] index: computing strength score delta for workout', workout.id)
           const strengthContext = await loadStrengthScoreDeltaContext(user.id, {
             profileOverride: cachedProfile ?? workout.profile ?? undefined,
           })
@@ -658,25 +640,17 @@ export default function FeedScreen() {
           }
           const { strengthGender } = strengthContext
 
-          if (!strengthGender || !prof?.weight_kg) {
-            console.log('[Overlay] index: skipping overlays - no strengthGender or weight', { strengthGender: !!strengthGender, hasWeight: !!prof?.weight_kg })
-          }
           if (strengthGender && prof?.weight_kg) {
             const exerciseData = strengthContext.exercises
             const snapshots = strengthContext.best1RMSnapshotByExerciseId
 
-            if (exerciseData.length === 0) {
-              console.log('[Overlay] index: skipping overlays - no exercise data')
-            }
             if (exerciseData.length > 0) {
               const scoreDelta = calculateStrengthScoreDelta({
                 semantics: STRENGTH_SCORE_DELTA_SEMANTICS.postedWorkoutSession,
                 postedWorkoutSessionId: workout.id,
                 context: strengthContext,
               })
-              if (!scoreDelta) {
-                console.log('[Overlay] index: skipping points overlay - unable to compute score delta')
-              } else {
+              if (scoreDelta) {
                 const {
                   currentResult,
                   baselineResult,
@@ -686,15 +660,11 @@ export default function FeedScreen() {
                 // Detect per-exercise rank upgrades
                 const exerciseUpgrades: ExerciseRankUpgrade[] = []
                 const genderKey = strengthGender === 'male' ? 'male' : ('female' as 'male' | 'female')
-                console.log('[Overlay] index: checking', exerciseData.length, 'exercises for rank upgrades, workoutId=', workout.id)
                 for (const ex of exerciseData) {
                   const snapshot = snapshots[ex.exerciseId]
                   const isNewPR = snapshot?.lastIncreaseSessionId === workout.id
                   const skipReason = !isNewPR ? 'not a new PR' : snapshot?.previousBest1RM == null ? 'no previousBest1RM snapshot' : null
-                  if (skipReason) {
-                    console.log('[Overlay] index: skip', ex.exerciseName, '-', skipReason, { lastIncreaseSessionId: snapshot?.lastIncreaseSessionId, previousBest1RM: snapshot?.previousBest1RM })
-                    continue
-                  }
+                  if (skipReason) continue
 
                   const LEVEL_ORDER = ['Untrained', 'Beginner', 'Novice', 'Intermediate', 'Advanced', 'Elite', 'World Class']
                   const currentStd = getStrengthStandard(ex.exerciseName, genderKey, prof.weight_kg, ex.max1RM)
@@ -705,29 +675,19 @@ export default function FeedScreen() {
                   const prevLevel = prevStd?.level ?? 'Untrained'
                   const currLevel = currentStd?.level
 
-                  console.log('[Overlay] index: exercise', ex.exerciseName, '| prev1RM=', snapshot.previousBest1RM, 'curr1RM=', ex.max1RM, '| prevLevel=', prevLevel, 'currLevel=', currLevel)
-
                   if (currentStd && currLevel && currLevel !== prevLevel) {
                     const prevIdx = LEVEL_ORDER.indexOf(prevLevel)
                     const currIdx = LEVEL_ORDER.indexOf(currLevel)
                     if (currIdx > prevIdx) {
-                      console.log('[Overlay] index: RANK UP', ex.exerciseName, prevLevel, '->', currLevel)
                       exerciseUpgrades.push({
                         exerciseName: ex.exerciseName,
                         previousLevel: prevLevel as StrengthLevel,
                         currentLevel: currLevel as StrengthLevel,
                       })
-                    } else {
-                      console.log('[Overlay] index: level changed but downgrade/same idx, skipping', ex.exerciseName)
                     }
-                  } else if (!currentStd) {
-                    console.log('[Overlay] index: no std found for', ex.exerciseName, '(exercise not in standards config)')
                   }
                 }
 
-                if (!(pointsGained > 0 && currentResult.liftsTracked > 0) && exerciseUpgrades.length === 0) {
-                  console.log('[Overlay] index: no overlays - pointsGained=', pointsGained, 'liftsTracked=', currentResult.liftsTracked, 'exerciseUpgrades=', exerciseUpgrades.length)
-                }
                 if (pointsGained > 0 && currentResult.liftsTracked > 0) {
                   const levelProgress = scoreToOverallLevelProgress(currentResult.score)
                   const baselineLevelProgress = scoreToOverallLevelProgress(baselineResult.score)
@@ -742,19 +702,14 @@ export default function FeedScreen() {
                   }
                   if (exerciseUpgrades.length > 0) {
                     // Show exercise rank overlays first, then points gain overlay
-                    console.log('[Overlay] index: showing exercise rank overlays first, points queued', { exerciseUpgrades: exerciseUpgrades.length, pointsGained })
                     showExerciseRankOverlays(exerciseUpgrades, scoreData)
                   } else {
                     // Delay to show after streak overlay fades
-                    console.log('[Overlay] index: scheduling points overlay in 800ms', { pointsGained })
                     setTimeout(() => showPointsGainOverlay(scoreData), 800)
                   }
-                } else {
+                } else if (exerciseUpgrades.length > 0) {
                   // Exercise rank upgrades but no overall points — just show rank overlays
-                  if (exerciseUpgrades.length > 0) {
-                    console.log('[Overlay] index: exercise rank upgrades only (no points)', { exerciseUpgrades: exerciseUpgrades.length })
-                    showExerciseRankOverlays(exerciseUpgrades)
-                  }
+                  showExerciseRankOverlays(exerciseUpgrades)
                 }
               }
             }
@@ -821,12 +776,6 @@ export default function FeedScreen() {
       }
 
       const { error } = result
-      if (__DEV__) {
-        console.log('[Home] pending post non-success', {
-          status: result.status,
-          errorMessage: error instanceof Error ? error.message : null,
-        })
-      }
       setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
 
       if (error instanceof Error && error.message.includes('idempotency')) {
@@ -841,11 +790,6 @@ export default function FeedScreen() {
       )
     } catch (error) {
       console.error('Error processing pending post:', error)
-      if (__DEV__) {
-        console.log('[Home] handlePendingPost exception', {
-          errorMessage: error instanceof Error ? error.message : String(error),
-        })
-      }
       // Also ensure placeholder is removed if an unexpected error occurs
       setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
     }
@@ -887,13 +831,6 @@ export default function FeedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (__DEV__) {
-        console.log('[Home] focus', {
-          isInitialLoad,
-          workoutsCount: workouts.length,
-          isProcessingPending,
-        })
-      }
       trackEvent(AnalyticsEvents.FEED_VIEWED, {
         timestamp: Date.now(),
         workoutCount: workouts.length,
