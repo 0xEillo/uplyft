@@ -1265,10 +1265,10 @@ export default function BodyLogDetailScreen() {
 
   const imageCount = imageUrls.length
   const getPhysiqueScoreTone = (value: number) => {
-    if (value >= 75) return '#10B981'
-    if (value >= 65) return '#0EA5E9'
-    if (value >= 55) return '#F59E0B'
-    return '#EF4444'
+    if (value >= 75) return '#8B5CF6' // Advanced  — purple
+    if (value >= 65) return '#10B981' // Intermediate — green
+    if (value >= 55) return '#3B82F6' // Novice — blue
+    return '#9CA3AF'                  // Beginner — gray
   }
 
   const getPhysiqueScoreTier = (value: number): string => {
@@ -1366,112 +1366,109 @@ export default function BodyLogDetailScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Primary Metrics — Industrial dashboard style */}
-            <Animated.View
-              entering={FadeInDown.duration(400).delay(80)}
-              style={[styles.metricsDashboard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
-            >
-              <View style={styles.metricsTopRow}>
-                <TouchableOpacity style={styles.metricPill} onPress={handleLogWeight} activeOpacity={0.7}>
-                  <View style={styles.metricPillValueRow}>
-                    <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
-                      {metrics.weight_kg ? formatWeight(metrics.weight_kg).split(' ')[0] : '—'}
-                    </Text>
-                    {metrics.weight_kg !== null && (
-                      <Text style={[styles.metricPillUnit, { color: colors.textSecondary }]}>{weightUnit}</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>Weight</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.metricPill}
-                  onPress={() => {
-                    if (metrics.body_fat_percentage !== null) {
-                      handleInfoPress('bodyFat', metrics.body_fat_percentage.toString(), getBodyFatStatus(metrics.body_fat_percentage, userGender))
-                    } else {
-                      handleRunBodyScan()
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.metricPillValueRow}>
-                    <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
-                      {metrics.body_fat_percentage !== null ? `${metrics.body_fat_percentage}` : '—'}
-                    </Text>
-                    {metrics.body_fat_percentage !== null && (
-                      <Text style={[styles.metricPillUnit, { color: colors.textSecondary }]}>%</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>Body Fat</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.metricPill}
-                  onPress={() => {
-                    if (metrics.bmi !== null) {
-                      handleInfoPress('bmi', metrics.bmi.toString(), getBMIStatus(metrics.bmi, userGender))
-                    } else if (metrics.weight_kg && userHeight) {
-                      handleInfoPress('bmi', '--', null)
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.metricPillValue, { color: colors.textPrimary }]}>
-                    {metrics.bmi !== null ? metrics.bmi.toFixed(1) : '—'}
-                  </Text>
-                  <Text style={[styles.metricPillLabel, { color: colors.textSecondary }]}>BMI</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Composition bar — Lean vs Fat ratio */}
-              {(metrics.lean_mass_kg !== null || metrics.fat_mass_kg !== null) && (
+            {/* Primary Metrics */}
+            {(() => {
+              const lean = metrics.lean_mass_kg ?? 0
+              const fat = metrics.fat_mass_kg ?? 0
+              const total = lean + fat
+              const leanPct = total > 0 ? (lean / total) * 100 : 0
+              const hasComposition = metrics.lean_mass_kg !== null || metrics.fat_mass_kg !== null
+              return (
                 <Animated.View
-                  entering={FadeInDown.duration(350).delay(180)}
-                  style={styles.compositionBarWrap}
+                  entering={FadeInDown.duration(400).delay(80)}
+                  style={[styles.metricsDashboard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
                 >
-                  <View style={[styles.compositionBarTrack, { backgroundColor: colors.surfaceSubtle }]}>
-                    {(() => {
-                      const lean = metrics.lean_mass_kg ?? 0
-                      const fat = metrics.fat_mass_kg ?? 0
-                      const total = lean + fat
-                      const leanPct = total > 0 ? (lean / total) * 100 : 0
-                      const fatPct = total > 0 ? (fat / total) * 100 : 0
-                      return (
-                        <>
-                          {lean > 0 && (
-                            <View
-                              style={[styles.compositionBarSegment, { width: `${leanPct}%`, backgroundColor: colors.statusSuccess }]}
-                            />
-                          )}
-                          {fat > 0 && (
-                            <View
-                              style={[styles.compositionBarSegment, { width: `${fatPct}%`, backgroundColor: colors.brandPrimary }]}
-                            />
-                          )}
-                        </>
-                      )
-                    })()}
-                  </View>
-                  <View style={styles.compositionBarLabels}>
-                    {metrics.lean_mass_kg !== null && (
-                      <View style={styles.compositionBarItem}>
-                        <View style={[styles.compositionBarDot, { backgroundColor: colors.statusSuccess }]} />
-                        <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.lean_mass_kg)}</Text>
-                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Lean Muscle</Text>
+                  {/* Top row: Weight · Body Fat · BMI */}
+                  <View style={[styles.metricsTopRow, { borderBottomColor: colors.border }]}>
+                    <TouchableOpacity style={styles.metricCell} onPress={handleLogWeight} activeOpacity={0.7}>
+                      <View style={styles.metricCellValueRow}>
+                        <Text style={[styles.metricCellValue, { color: colors.textPrimary }]}>
+                          {metrics.weight_kg ? formatWeight(metrics.weight_kg).split(' ')[0] : '—'}
+                        </Text>
+                        {metrics.weight_kg !== null && (
+                          <Text style={[styles.metricCellUnit, { color: colors.textSecondary }]}>{weightUnit}</Text>
+                        )}
                       </View>
-                    )}
-                    {metrics.fat_mass_kg !== null && (
-                      <View style={styles.compositionBarItem}>
-                        <View style={[styles.compositionBarDot, { backgroundColor: colors.brandPrimary }]} />
-                        <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.fat_mass_kg)}</Text>
-                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Body Fat</Text>
+                      <Text style={[styles.metricCellLabel, { color: colors.textSecondary }]}>Weight</Text>
+                    </TouchableOpacity>
+
+                    <View style={[styles.metricCellDivider, { backgroundColor: colors.border }]} />
+
+                    <TouchableOpacity
+                      style={styles.metricCell}
+                      onPress={() => {
+                        if (metrics.body_fat_percentage !== null) {
+                          handleInfoPress('bodyFat', metrics.body_fat_percentage.toString(), getBodyFatStatus(metrics.body_fat_percentage, userGender))
+                        } else {
+                          handleRunBodyScan()
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.metricCellValueRow}>
+                        <Text style={[styles.metricCellValue, { color: colors.textPrimary }]}>
+                          {metrics.body_fat_percentage !== null ? `${metrics.body_fat_percentage}` : '—'}
+                        </Text>
+                        {metrics.body_fat_percentage !== null && (
+                          <Text style={[styles.metricCellUnit, { color: colors.textSecondary }]}>%</Text>
+                        )}
                       </View>
-                    )}
+                      <Text style={[styles.metricCellLabel, { color: colors.textSecondary }]}>Body Fat</Text>
+                    </TouchableOpacity>
+
+                    <View style={[styles.metricCellDivider, { backgroundColor: colors.border }]} />
+
+                    <TouchableOpacity
+                      style={styles.metricCell}
+                      onPress={() => {
+                        if (metrics.bmi !== null) {
+                          handleInfoPress('bmi', metrics.bmi.toString(), getBMIStatus(metrics.bmi, userGender))
+                        } else if (metrics.weight_kg && userHeight) {
+                          handleInfoPress('bmi', '--', null)
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.metricCellValue, { color: colors.textPrimary }]}>
+                        {metrics.bmi !== null ? metrics.bmi.toFixed(1) : '—'}
+                      </Text>
+                      <Text style={[styles.metricCellLabel, { color: colors.textSecondary }]}>BMI</Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {/* Composition bar */}
+                  {hasComposition && (
+                    <Animated.View entering={FadeInDown.duration(350).delay(160)} style={styles.compositionSection}>
+                      <View style={[styles.compositionTrack, { backgroundColor: colors.surfaceSubtle }]}>
+                        {leanPct > 0 && (
+                          <View
+                            style={[styles.compositionFill, { width: `${leanPct}%` as any, backgroundColor: colors.textPrimary }]}
+                          />
+                        )}
+                      </View>
+                      <View style={styles.compositionEndLabels}>
+                        {metrics.lean_mass_kg !== null && (
+                          <View>
+                            <Text style={[styles.compositionEndValue, { color: colors.textPrimary }]}>
+                              {formatWeight(metrics.lean_mass_kg)}
+                            </Text>
+                            <Text style={[styles.compositionEndName, { color: colors.textSecondary }]}>Lean Muscle</Text>
+                          </View>
+                        )}
+                        {metrics.fat_mass_kg !== null && (
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={[styles.compositionEndValue, { color: colors.textPrimary }]}>
+                              {formatWeight(metrics.fat_mass_kg)}
+                            </Text>
+                            <Text style={[styles.compositionEndName, { color: colors.textSecondary }]}>Body Fat</Text>
+                          </View>
+                        )}
+                      </View>
+                    </Animated.View>
+                  )}
                 </Animated.View>
-              )}
-            </Animated.View>
+              )
+            })()}
 
             {/* Scan Results (Physique scores, Coach notes) */}
             {(metrics.lean_mass_kg !== null ||
@@ -1503,10 +1500,10 @@ export default function BodyLogDetailScreen() {
                     {/* Legend */}
                     <View style={[styles.scoreLegendRow, { borderBottomColor: colors.border }]}>
                       {[
-                        { label: 'Elite', color: '#10B981' },
-                        { label: 'Good', color: '#0EA5E9' },
-                        { label: 'Fair', color: '#F59E0B' },
-                        { label: 'Needs Work', color: '#EF4444' },
+                        { label: 'Elite', color: '#8B5CF6' },
+                        { label: 'Good', color: '#10B981' },
+                        { label: 'Fair', color: '#3B82F6' },
+                        { label: 'Needs Work', color: '#9CA3AF' },
                       ].map((tier) => (
                         <View key={tier.label} style={styles.scoreLegendItem}>
                           <View style={[styles.scoreLegendDot, { backgroundColor: tier.color }]} />
@@ -2708,15 +2705,13 @@ const createStyles = (colors: Colors) =>
     fontWeight: '500',
   },
 
-  // Metrics Dashboard — industrial / clinical style
+  // Metrics Dashboard
   metricsDashboard: {
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
-    padding: 20,
-    gap: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -2725,83 +2720,74 @@ const createStyles = (colors: Colors) =>
   },
   metricsTopRow: {
     flexDirection: 'row',
-    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  metricPill: {
+  metricCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 8,
-    borderRadius: 14,
-    backgroundColor: 'transparent',
-    position: 'relative',
-    overflow: 'hidden',
+    gap: 4,
   },
-  metricPillValueRow: {
+  metricCellValueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 2,
   },
-  metricPillValue: {
+  metricCellValue: {
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -1,
     lineHeight: 30,
   },
-  metricPillUnit: {
+  metricCellUnit: {
     fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 0.2,
-    opacity: 0.85,
+    opacity: 0.7,
   },
-  metricPillLabel: {
-    fontSize: 9,
-    fontWeight: '800',
+  metricCellLabel: {
+    fontSize: 10,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginTop: 4,
-    opacity: 0.8,
+    letterSpacing: 1,
+    opacity: 0.55,
   },
-  compositionBarWrap: {
-    gap: 12,
+  metricCellDivider: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 14,
   },
-  compositionBarTrack: {
-    height: 8,
-    borderRadius: 4,
-    flexDirection: 'row',
+  compositionSection: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 10,
+  },
+  compositionTrack: {
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
   },
-  compositionBarSegment: {
+  compositionFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
-  compositionBarLabels: {
+  compositionEndLabels: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
+    justifyContent: 'space-between',
   },
-  compositionBarItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  compositionBarDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  compositionBarValue: {
-    fontSize: 16,
+  compositionEndValue: {
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  compositionBarLabel: {
-    fontSize: 11,
+  compositionEndName: {
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    opacity: 0.75,
+    marginTop: 2,
+    opacity: 0.6,
   },
 
   // Scan Section
