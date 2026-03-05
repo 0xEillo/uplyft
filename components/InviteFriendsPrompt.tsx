@@ -1,11 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
-import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { memo } from 'react'
 import {
-  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,94 +25,22 @@ const GYM_AVATARS = [
   'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=facearea&facepad=2&w=300&h=300&q=80',
 ]
 
-const STORAGE_KEY = '@invite_friends_prompt_v2'
-// Show at these workout count thresholds (show #1, #2, #3)
-const SHOW_THRESHOLDS = [0, 5, 15]
-
-interface InviteFriendsPromptState {
-  timesShown: number
-}
-
 interface InviteFriendsPromptProps {
-  workoutCount: number
-  onVisibilityChange?: (visible: boolean) => void
+  onConnect: () => void
+  onDismiss: () => void
 }
 
-export function InviteFriendsPrompt({
-  workoutCount,
-  onVisibilityChange,
+export const InviteFriendsPrompt = memo(function InviteFriendsPrompt({
+  onConnect,
+  onDismiss,
 }: InviteFriendsPromptProps) {
   const colors = useThemedColors()
-  const router = useRouter()
   const { profile } = useProfile()
-  const [isVisible, setIsVisible] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [timesShown, setTimesShown] = useState(0)
-  const [opacity] = useState(new Animated.Value(1))
-
-  useEffect(() => {
-    const checkState = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY)
-        const state: InviteFriendsPromptState = stored
-          ? JSON.parse(stored)
-          : { timesShown: 0 }
-        setTimesShown(state.timesShown)
-      } catch (error) {
-        console.error('Error reading invite prompt state:', error)
-      } finally {
-        setIsLoaded(true)
-      }
-    }
-    checkState()
-  }, [])
-
-  useEffect(() => {
-    if (!isLoaded) return
-    // Already shown all 3 times
-    if (timesShown >= SHOW_THRESHOLDS.length) return
-    // Show if workoutCount has reached the next threshold
-    if (workoutCount >= SHOW_THRESHOLDS[timesShown]) {
-      setIsVisible(true)
-      onVisibilityChange?.(true)
-    }
-  }, [isLoaded, workoutCount, timesShown])
-
-  const advanceAndHide = async () => {
-    Animated.timing(opacity, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(async () => {
-      setIsVisible(false)
-      onVisibilityChange?.(false)
-      opacity.setValue(1)
-      const next = timesShown + 1
-      setTimesShown(next)
-      try {
-        await AsyncStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ timesShown: next }),
-        )
-      } catch (error) {
-        console.error('Error saving invite prompt state:', error)
-      }
-    })
-  }
-
-  const handleDismiss = () => advanceAndHide()
-
-  const handleConnect = () => {
-    router.push('/search')
-    advanceAndHide()
-  }
-
-  if (!isLoaded || !isVisible) return null
 
   const styles = createStyles(colors)
 
   return (
-    <Animated.View style={[styles.container, { opacity }]}>
+    <View style={styles.container}>
       <View style={styles.graphicContainer}>
         <View style={styles.avatarStack}>
           <View style={[styles.avatar, styles.avatar1]}>
@@ -171,19 +96,16 @@ export function InviteFriendsPrompt({
       </Text>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleConnect}>
+        <TouchableOpacity style={styles.primaryButton} onPress={onConnect}>
           <Text style={styles.primaryButtonText}>Connect with Friends</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleDismiss}
-        >
+        <TouchableOpacity style={styles.secondaryButton} onPress={onDismiss}>
           <Text style={styles.secondaryButtonText}>Dismiss</Text>
         </TouchableOpacity>
       </View>
-    </Animated.View>
+    </View>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({

@@ -3503,7 +3503,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       'reverse wrist curls barbell',
     ],
     tier: 2,
-    gifUrl: null,
+    gifUrl: 'LsZkfU6.gif',
     male: [
       {
         level: 'Beginner',
@@ -3592,7 +3592,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       'reverse wrist curls dumbbell',
     ],
     tier: 2,
-    gifUrl: null,
+    gifUrl: 'BLCvwr2.gif',
     male: [
       {
         level: 'Beginner',

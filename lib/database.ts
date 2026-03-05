@@ -3,7 +3,11 @@ import type {
     BodyLogImage,
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
-import { getLeaderboardExercises, isRepBasedExercise } from '@/lib/exercise-standards-config'
+import {
+  getExerciseNameMap,
+  getLeaderboardExercises,
+  isRepBasedExercise,
+} from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
@@ -2260,6 +2264,7 @@ export const database = {
     // Key exercises for percentile tracking and strength standards (main compound lifts only)
     // Imported from centralized configuration to ensure consistency with strength standards
     LEADERBOARD_EXERCISES: getLeaderboardExercises(),
+    STANDARDS_EXERCISE_NAME_MAP: getExerciseNameMap(),
 
     async getExerciseMaxWeight(
       userId: string,
@@ -3203,10 +3208,12 @@ export const database = {
           }
 
           if (!exerciseMap.has(workoutExercise.exercise_id)) {
+            const canonicalGifUrl =
+              this.STANDARDS_EXERCISE_NAME_MAP.get(exercise.name)?.gifUrl ?? null
             exerciseMap.set(workoutExercise.exercise_id, {
               exerciseName: exercise.name,
               muscleGroup: exercise.muscle_group,
-              gifUrl: exercise.gif_url,
+              gifUrl: exercise.gif_url || canonicalGifUrl,
               max1RM: 0,
               lastTrainedAt: session.created_at,
               recordsByWeight: new Map(),

@@ -43,6 +43,7 @@ import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
 import { database } from '@/lib/database'
 import { calculateOverallStrengthScore, scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import { getStrengthGender } from '@/lib/strength-progress'
@@ -242,6 +243,14 @@ export default function FeedScreen() {
   )
   const [userDismissedAppPostThisSession, setUserDismissedAppPostThisSession] =
     useState(false)
+  const {
+    isReady: isInvitePromptReady,
+    isVisible: isInvitePromptVisible,
+    advancePrompt: advanceInvitePrompt,
+  } = useInviteFriendsPrompt({
+    userId: user?.id,
+    workoutCount: userWorkoutCount,
+  })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible =
     isSuccessOverlayVisible ||
@@ -918,9 +927,14 @@ export default function FeedScreen() {
     ]),
   )
 
-  const [isInvitePromptVisible, setIsInvitePromptVisible] = useState(false)
-
   const styles = createStyles(colors)
+  const handleInvitePromptDismiss = useCallback(() => {
+    advanceInvitePrompt()
+  }, [advanceInvitePrompt])
+  const handleInvitePromptConnect = useCallback(() => {
+    advanceInvitePrompt()
+    router.push('/search')
+  }, [advanceInvitePrompt, router])
   const appPostsToShow = useMemo(
     () => (userDismissedAppPostThisSession ? [] : appPosts),
     [appPosts, userDismissedAppPostThisSession],
@@ -1121,11 +1135,14 @@ export default function FeedScreen() {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <>
-              <InviteFriendsPrompt
-                workoutCount={workouts.length}
-                onVisibilityChange={setIsInvitePromptVisible}
-              />
-              {!isInvitePromptVisible && <WeeklySnapshot />}
+              {isInvitePromptReady && isInvitePromptVisible ? (
+                <InviteFriendsPrompt
+                  onConnect={handleInvitePromptConnect}
+                  onDismiss={handleInvitePromptDismiss}
+                />
+              ) : (
+                <WeeklySnapshot />
+              )}
               {/* Tutorial checklist (existing) */}
               {/* Tutorial checklist (existing) */}
               {!isTutorialDismissed &&

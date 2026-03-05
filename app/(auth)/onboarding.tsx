@@ -4180,6 +4180,9 @@ export default function OnboardingScreen() {
     )
   }
 
+  const isSectionDividerStep = step === 5 || step === 9 || step === 17
+  const useOverlayHeader = step === 25 || isSectionDividerStep
+
   return (
     <SafeAreaView
       style={styles.container}
@@ -4196,15 +4199,10 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.header,
+            useOverlayHeader && styles.overlayHeader,
             step === 25 && {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 1000,
               paddingTop:
                 Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0) + 20,
-              backgroundColor: 'transparent',
             },
           ]}
         >
@@ -4250,7 +4248,9 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              (step === 24 || step === 25) && { paddingBottom: 0 },
+              (step === 24 || step === 25 || isSectionDividerStep) && {
+                paddingBottom: 0,
+              },
               !hasAutoSwipe() &&
                 step !== 24 &&
                 step !== 25 && { paddingBottom: 140 },
@@ -4260,7 +4260,12 @@ export default function OnboardingScreen() {
             keyboardDismissMode="on-drag"
             bounces={step !== 23}
           >
-            <View style={styles.contentWrapper}>
+            <View
+              style={[
+                styles.contentWrapper,
+                isSectionDividerStep && styles.sectionDividerContentWrapper,
+              ]}
+            >
               <Animated.View
                 style={[
                   stepHasNativePicker
@@ -4339,6 +4344,14 @@ const createStyles = (
       paddingTop: 20,
       paddingBottom: 16,
     },
+    overlayHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: 'transparent',
+    },
     backButton: {
       padding: 4,
     },
@@ -4386,6 +4399,9 @@ const createStyles = (
       flex: 1,
       justifyContent: 'flex-start', // Top aligned
       paddingTop: 20,
+    },
+    sectionDividerContentWrapper: {
+      paddingTop: 0,
     },
     animatedContent: {
       flex: 1,
