@@ -21,6 +21,9 @@ npm run start:test -- --clear   # test Supabase
 - Production: apply `supabase/migrations/*.sql` in timestamp order
 - Test: apply `supabase/migrations/migrations-test/20251112T0001_*` → `20251112T0011_*`
 
+## Lifecycle Emails
+- Setup guide: `docs/email-automation.md`
+
 ## Reset starter app
 ```bash
 npm run reset-project
