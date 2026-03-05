@@ -1271,6 +1271,13 @@ export default function BodyLogDetailScreen() {
     return '#EF4444'
   }
 
+  const getPhysiqueScoreTier = (value: number): string => {
+    if (value >= 75) return 'Elite'
+    if (value >= 65) return 'Good'
+    if (value >= 55) return 'Fair'
+    return 'Needs Work'
+  }
+
   return (
     <SlideInView
       style={{ flex: 1, backgroundColor: colors.bg }}
@@ -1451,14 +1458,14 @@ export default function BodyLogDetailScreen() {
                       <View style={styles.compositionBarItem}>
                         <View style={[styles.compositionBarDot, { backgroundColor: colors.statusSuccess }]} />
                         <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.lean_mass_kg)}</Text>
-                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Lean</Text>
+                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Lean Muscle</Text>
                       </View>
                     )}
                     {metrics.fat_mass_kg !== null && (
                       <View style={styles.compositionBarItem}>
                         <View style={[styles.compositionBarDot, { backgroundColor: colors.brandPrimary }]} />
                         <Text style={[styles.compositionBarValue, { color: colors.textPrimary }]}>{formatWeight(metrics.fat_mass_kg)}</Text>
-                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Fat</Text>
+                        <Text style={[styles.compositionBarLabel, { color: colors.textSecondary }]}>Body Fat</Text>
                       </View>
                     )}
                   </View>
@@ -1482,6 +1489,33 @@ export default function BodyLogDetailScreen() {
                   metrics.score_back !== null ||
                   metrics.score_legs !== null) && (
                   <View style={[styles.scoresCard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
+
+                    {/* Header */}
+                    <View style={[styles.scoresHeader, { borderBottomColor: colors.border }]}>
+                      <View style={styles.scoresHeaderText}>
+                        <Text style={[styles.scoresTitle, { color: colors.textPrimary }]}>Physique Scores</Text>
+                        <Text style={[styles.scoresSubtitle, { color: colors.textSecondary }]}>
+                          AI-analyzed from your photos · each area rated 0–100
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Legend */}
+                    <View style={[styles.scoreLegendRow, { borderBottomColor: colors.border }]}>
+                      {[
+                        { label: 'Elite', color: '#10B981' },
+                        { label: 'Good', color: '#0EA5E9' },
+                        { label: 'Fair', color: '#F59E0B' },
+                        { label: 'Needs Work', color: '#EF4444' },
+                      ].map((tier) => (
+                        <View key={tier.label} style={styles.scoreLegendItem}>
+                          <View style={[styles.scoreLegendDot, { backgroundColor: tier.color }]} />
+                          <Text style={[styles.scoreLegendLabel, { color: colors.textSecondary }]}>{tier.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Score rows */}
                     {[
                       { key: 'score_v_taper', label: 'V-Taper', val: metrics.score_v_taper },
                       { key: 'score_chest', label: 'Chest', val: metrics.score_chest },
@@ -1492,6 +1526,7 @@ export default function BodyLogDetailScreen() {
                       { key: 'score_legs', label: 'Legs', val: metrics.score_legs },
                     ].filter((item) => item.val !== null).map((item, idx, arr) => {
                       const tone = getPhysiqueScoreTone(item.val!)
+                      const tier = getPhysiqueScoreTier(item.val!)
                       return (
                         <View
                           key={item.key}
@@ -1500,11 +1535,14 @@ export default function BodyLogDetailScreen() {
                             idx < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
                           ]}
                         >
-                          <Text style={[styles.scoreRowLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+                          <Text style={[styles.scoreRowLabel, { color: colors.textPrimary }]}>{item.label}</Text>
                           <View style={[styles.scoreBarTrack, { backgroundColor: colors.surfaceSubtle }]}>
                             <View style={[styles.scoreBarFill, { width: `${item.val}%` as any, backgroundColor: tone }]} />
                           </View>
-                          <Text style={[styles.scoreRowValue, { color: tone }]}>{item.val}</Text>
+                          <View style={[styles.scoreBadge, { backgroundColor: tone + '1A' }]}>
+                            <Text style={[styles.scoreBadgeTier, { color: tone }]}>{tier}</Text>
+                            <Text style={[styles.scoreBadgeNum, { color: tone }]}>{item.val}</Text>
+                          </View>
                         </View>
                       )
                     })}
@@ -2777,33 +2815,90 @@ const createStyles = (colors: Colors) =>
     borderWidth: 1,
     overflow: 'hidden',
   },
+  scoresHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  scoresHeaderText: {
+    gap: 3,
+  },
+  scoresTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  scoresSubtitle: {
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 16,
+    opacity: 0.75,
+  },
+  scoreLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  scoreLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  scoreLegendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  scoreLegendLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     paddingHorizontal: 16,
     gap: 12,
   },
   scoreRowLabel: {
-    width: 74,
+    width: 76,
     fontSize: 13,
     fontWeight: '600',
   },
   scoreBarTrack: {
     flex: 1,
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   scoreBarFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
-  scoreRowValue: {
-    width: 28,
-    fontSize: 13,
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    minWidth: 80,
+    justifyContent: 'center',
+  },
+  scoreBadgeTier: {
+    fontSize: 11,
     fontWeight: '700',
-    textAlign: 'right',
+    letterSpacing: 0.1,
+  },
+  scoreBadgeNum: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.65,
   },
   coachNotes: {
     borderRadius: 16,
