@@ -1,12 +1,17 @@
-import React from 'react'
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeeklyProgress } from '@/hooks/useWeeklyProgress'
 import { Ionicons } from '@expo/vector-icons'
+import React from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
-export function WeeklySnapshot() {
+interface WeeklySnapshotProps {
+  refreshToken?: number
+}
+
+export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
   const colors = useThemedColors()
-  const { workouts, durationSeconds, volumeKg, isLoading } = useWeeklyProgress()
+  const { workouts, durationSeconds, volumeKg, isLoading } =
+    useWeeklyProgress(refreshToken)
 
   const styles = createStyles(colors)
 
@@ -58,9 +63,9 @@ export function WeeklySnapshot() {
     const isPositive = !noData && diff > 0
     const isNegative = !noData && diff < 0
 
-    let pillBg = colors.surfaceSubtle
-    let pillText = colors.textTertiary
-    let iconColor = colors.textTertiary
+    let pillBg: string = colors.surfaceSubtle
+    let pillText: string = colors.textTertiary
+    let iconColor: string = colors.textTertiary
     let iconName: 'caret-up' | 'caret-down' | 'remove' = 'remove'
 
     if (isPositive) {
@@ -77,7 +82,12 @@ export function WeeklySnapshot() {
 
     return (
       <View style={[styles.diffPill, { backgroundColor: pillBg }]}>
-        <Ionicons name={iconName} size={10} color={iconColor} style={styles.diffIcon} />
+        <Ionicons
+          name={iconName}
+          size={10}
+          color={iconColor}
+          style={styles.diffIcon}
+        />
         <Text style={[styles.diffText, { color: pillText }]}>
           {noData || diff === 0
             ? `0${suffix}`
@@ -98,24 +108,39 @@ export function WeeklySnapshot() {
         <View style={styles.metricColumn}>
           <Text style={styles.metricValue}>{workouts.current}</Text>
           <Text style={styles.metricLabel}>Workouts</Text>
-          {renderDiffPill(workouts.diff, workouts.previous, (val) => val.toString())}
+          {renderDiffPill(workouts.diff, workouts.previous, (val) =>
+            val.toString(),
+          )}
         </View>
 
         {/* Duration Column */}
         <View style={styles.metricColumn}>
-          <Text style={styles.metricValue}>{formatTotalDuration(durationSeconds.current)}</Text>
+          <Text style={styles.metricValue}>
+            {formatTotalDuration(durationSeconds.current)}
+          </Text>
           <Text style={styles.metricLabel}>Time</Text>
-          {renderDiffPill(durationSeconds.diff, durationSeconds.previous, formatDiffDuration)}
+          {renderDiffPill(
+            durationSeconds.diff,
+            durationSeconds.previous,
+            formatDiffDuration,
+          )}
         </View>
 
         {/* Volume Column */}
         <View style={styles.metricColumn}>
           <View style={styles.valueRow}>
-            <Text style={styles.metricValue}>{formatVolume(volumeKg.current)}</Text>
+            <Text style={styles.metricValue}>
+              {formatVolume(volumeKg.current)}
+            </Text>
             <Text style={styles.metricValueUnit}> kg</Text>
           </View>
           <Text style={styles.metricLabel}>Volume</Text>
-          {renderDiffPill(volumeKg.diff, volumeKg.previous, formatVolume, ' kg')}
+          {renderDiffPill(
+            volumeKg.diff,
+            volumeKg.previous,
+            formatVolume,
+            ' kg',
+          )}
         </View>
       </View>
     </View>

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
-import { useAuth } from '@/contexts/auth-context'
+import { LayoutAnimation } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
 
 export interface WeeklyProgressStats {
   workouts: { current: number; previous: number; diff: number }
@@ -10,27 +11,47 @@ export interface WeeklyProgressStats {
   isLoading: boolean
 }
 
-export function useWeeklyProgress(): WeeklyProgressStats {
+export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
   const { user } = useAuth()
+  const userId = user?.id
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<Omit<WeeklyProgressStats, 'isLoading'>>({
     workouts: { current: 0, previous: 0, diff: 0 },
     durationSeconds: { current: 0, previous: 0, diff: 0 },
     volumeKg: { current: 0, previous: 0, diff: 0 },
   })
+  const hasLoadedRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   useEffect(() => {
-    async function fetchStats() {
-      if (!user) return
+    if (!userId) {
+      hasLoadedRef.current = false
+      setStats({
+        workouts: { current: 0, previous: 0, diff: 0 },
+        durationSeconds: { current: 0, previous: 0, diff: 0 },
+        volumeKg: { current: 0, previous: 0, diff: 0 },
+      })
+      setIsLoading(false)
+      return
+    }
 
+    let isActive = true
+    const activeUserId = userId
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    const shouldShowLoading = !hasLoadedRef.current
+
+    async function fetchStats() {
       try {
-        setIsLoading(true)
+        if (shouldShowLoading) {
+          setIsLoading(true)
+        }
 
         // Calculate current week (Monday to Sunday)
         const now = new Date()
         const day = now.getDay()
         const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1)
-        
+
         const startOfCurrentWeek = new Date(now)
         startOfCurrentWeek.setDate(diffToMonday)
         startOfCurrentWeek.setHours(0, 0, 0, 0)
@@ -39,14 +60,11 @@ export function useWeeklyProgress(): WeeklyProgressStats {
         const startOfLastWeek = new Date(startOfCurrentWeek)
         startOfLastWeek.setDate(startOfCurrentWeek.getDate() - 7)
 
-        const endOfLastWeek = new Date(startOfCurrentWeek)
-        endOfLastWeek.setMilliseconds(-1)
-
         // Fetch all workouts from start of last week to now
         const workouts = await database.workoutSessions.getWorkoutsByDateRange(
-          user.id,
+          activeUserId,
           startOfLastWeek,
-          now
+          now,
         )
 
         // Split workouts into current and previous week
@@ -78,6 +96,14 @@ export function useWeeklyProgress(): WeeklyProgressStats {
           previousVolume += wStats.totalVolume
         })
 
+        if (!isActive || requestId !== requestIdRef.current) {
+          return
+        }
+
+        if (hasLoadedRef.current) {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+        }
+
         setStats({
           workouts: {
             current: currentWeekWorkouts.length,
@@ -95,15 +121,26 @@ export function useWeeklyProgress(): WeeklyProgressStats {
             diff: currentVolume - previousVolume,
           },
         })
+        hasLoadedRef.current = true
       } catch (error) {
         console.error('Failed to fetch weekly progress:', error)
       } finally {
-        setIsLoading(false)
+        if (
+          isActive &&
+          requestId === requestIdRef.current &&
+          shouldShowLoading
+        ) {
+          setIsLoading(false)
+        }
       }
     }
 
-    fetchStats()
-  }, [user])
+    void fetchStats()
+
+    return () => {
+      isActive = false
+    }
+  }, [refreshToken, userId])
 
   return { ...stats, isLoading }
 }

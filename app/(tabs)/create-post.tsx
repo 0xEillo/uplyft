@@ -19,10 +19,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-    getExerciseSuggestion,
-    parseRepRange,
-    useExerciseAutocompleteGroup,
-    useShowConvertButton,
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocompleteGroup,
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -38,65 +38,65 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import {
-    getToolbarButtons,
-    getWarmupCalculatorEnabled,
-    type ToolbarButtonId,
+  getToolbarButtons,
+  getWarmupCalculatorEnabled,
+  type ToolbarButtonId,
 } from '@/lib/utils/create-post-settings'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    compactDraft as compactWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
-    saveDraftPatch as saveWorkoutDraftPatch,
+  clearDraft as clearWorkoutDraft,
+  compactDraft as compactWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
+  saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import {
-    TabActions,
-    useFocusEffect,
-    useNavigation,
+  TabActions,
+  useFocusEffect,
+  useNavigation,
 } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Animated,
-    AppState,
-    Easing,
-    Keyboard,
-    type LayoutChangeEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  Keyboard,
+  type LayoutChangeEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native'
 import Reanimated, {
-    Easing as ReanimatedEasing,
-    useAnimatedKeyboard,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+  Easing as ReanimatedEasing,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
