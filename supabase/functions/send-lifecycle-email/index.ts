@@ -188,8 +188,8 @@ function makeTemplate(input: {
   <a href="${escapeHtml(
     input.ctaUrl,
   )}" style="color:#0f172a;text-decoration:underline;word-break:break-all;">${escapeHtml(
-    input.ctaUrl,
-  )}</a>
+          input.ctaUrl,
+        )}</a>
 </p>`
       : ''
 
@@ -230,8 +230,8 @@ function makeTemplate(input: {
         <a href="mailto:${escapeHtml(
           input.supportEmail,
         )}" style="color:#0f172a;text-decoration:underline;">${escapeHtml(
-          input.supportEmail,
-        )}</a>.
+    input.supportEmail,
+  )}</a>.
       </p>
               </td>
             </tr>
@@ -260,7 +260,6 @@ function makeTemplate(input: {
 
 function buildWelcomeTemplate(input: {
   appName: string
-  appBaseUrl: string
   displayName: string | null
   supportEmail: string
 }): EmailTemplate {
@@ -270,16 +269,14 @@ function buildWelcomeTemplate(input: {
   const content = makeTemplate({
     appName: input.appName,
     preheader:
-      'Your account is ready. Log your first workout to start building momentum.',
+      'Thanks for signing up. Track your workouts, stay consistent, and get stronger.',
     title: `Welcome to ${input.appName}`,
     intro: greeting,
     lines: [
-      'Your account is active and ready to use.',
-      'Start by logging a quick workout so we can personalize your progress insights.',
-      'Consistent check-ins are what make the app useful, so your first session matters most.',
+      'Thanks for signing up and giving the app a shot.',
+      'The core value is simple: track your workouts, rank your lifts, and get stronger over time.',
+      'When you can see your training, it is easier to improve it.',
     ],
-    ctaLabel: `Open ${input.appName}`,
-    ctaUrl: input.appBaseUrl,
     footer: 'You are receiving this because you created an account.',
     supportEmail: input.supportEmail,
   })
@@ -345,7 +342,8 @@ function buildBillingIssueTemplate(input: {
 }): EmailTemplate {
   const content = makeTemplate({
     appName: input.appName,
-    preheader: 'Update your payment method to avoid interruption to Pro access.',
+    preheader:
+      'Update your payment method to avoid interruption to Pro access.',
     title: 'Action needed: billing issue',
     intro: `Hey ${firstName(input.displayName)}, we had trouble renewing your ${
       input.appName
@@ -621,13 +619,11 @@ async function prepareFromSupabaseWebhook(
   }
 
   const appName = asString(Deno.env.get('EMAIL_APP_NAME')) ?? DEFAULT_APP_NAME
-  const appBaseUrl = normalizeUrl(Deno.env.get('EMAIL_APP_BASE_URL'))
   const supportEmail =
     normalizeEmail(asString(Deno.env.get('EMAIL_SUPPORT_ADDRESS'))) ??
     DEFAULT_SUPPORT_EMAIL
   const template = buildWelcomeTemplate({
     appName,
-    appBaseUrl,
     displayName: contact.displayName,
     supportEmail,
   })
