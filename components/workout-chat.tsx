@@ -551,7 +551,7 @@ export async function hasUnreadWelcomeMessage(
 
 // Get personalized welcome message based on coach personality
 function getWelcomeMessage(coachId: string, userName?: string): string {
-  const name = userName ? ` ${userName}` : ''
+  const name = userName && userName !== 'Guest' ? ` ${userName}` : ''
 
   switch (coachId) {
     case 'kino':
@@ -1070,6 +1070,21 @@ export function WorkoutChat({
     profile?.display_name,
     isProfileLoading,
   ])
+
+  // Update welcome message when the real display name arrives (fixes race with "Guest" default)
+  useEffect(() => {
+    const firstName = profile?.display_name?.split(' ')[0]
+    if (!firstName || firstName === 'Guest' || !hasLoadedWelcome) return
+
+    setMessages((prev) => {
+      if (prev.length > 0 && prev[0].id === 'welcome-message') {
+        const updatedContent = getWelcomeMessage(coachId, firstName)
+        if (prev[0].content === updatedContent) return prev
+        return [{ ...prev[0], content: updatedContent }, ...prev.slice(1)]
+      }
+      return prev
+    })
+  }, [profile?.display_name, coachId, hasLoadedWelcome])
 
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress

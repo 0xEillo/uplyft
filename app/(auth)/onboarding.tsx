@@ -6,11 +6,7 @@ import {
   WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
-import {
-  COMMITMENTS,
-  GENDERS,
-  GOALS
-} from '@/constants/options'
+import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -142,8 +138,8 @@ const TOTAL_STEPS = 25
 
 const GOAL_COLORS: Record<string, string> = {
   gain_strength: '#EF4444', // Red
-  build_muscle: '#F59E0B',  // Amber
-  lose_fat: '#3B82F6',      // Blue
+  build_muscle: '#F59E0B', // Amber
+  lose_fat: '#3B82F6', // Blue
   improve_cardio: '#EC4899', // Pink
   become_flexible: '#8B5CF6', // Purple
   general_fitness: '#10B981', // Green
@@ -164,7 +160,11 @@ const calculateAgeFromBirthDate = (
   const month = parseInt(birthMonth, 10)
   const day = parseInt(birthDay, 10)
 
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
     return null
   }
 
@@ -464,10 +464,7 @@ const AnimatedChatMockup = ({
             </Text>
           </View>
           <View
-            style={[
-              chatMockupStyles.sendButton,
-              { backgroundColor: '#000' },
-            ]}
+            style={[chatMockupStyles.sendButton, { backgroundColor: '#000' }]}
           >
             <Ionicons name="send" size={12} color="#fff" />
           </View>
@@ -627,8 +624,14 @@ const HabitReinforcementStepContent = ({
     build_muscle: { text: 'GAIN MUSCLE', color: GOAL_COLORS.build_muscle },
     lose_fat: { text: 'LOSE FAT', color: GOAL_COLORS.lose_fat },
     gain_strength: { text: 'GET STRONGER', color: GOAL_COLORS.gain_strength },
-    improve_cardio: { text: 'IMPROVE CARDIO', color: GOAL_COLORS.improve_cardio },
-    become_flexible: { text: 'STAY FLEXIBLE', color: GOAL_COLORS.become_flexible },
+    improve_cardio: {
+      text: 'IMPROVE CARDIO',
+      color: GOAL_COLORS.improve_cardio,
+    },
+    become_flexible: {
+      text: 'STAY FLEXIBLE',
+      color: GOAL_COLORS.become_flexible,
+    },
     general_fitness: { text: 'STAY FIT', color: GOAL_COLORS.general_fitness },
   }
   const currentHabitGoal =
@@ -815,7 +818,13 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress1}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${progress1}%`,
+                  backgroundColor: getGoalColor(data.goal[0]),
+                },
+              ]}
             />
           </View>
         </View>
@@ -827,7 +836,13 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress2}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${progress2}%`,
+                  backgroundColor: getGoalColor(data.goal[0]),
+                },
+              ]}
             />
           </View>
         </View>
@@ -841,7 +856,13 @@ const ProcessingStepContent = ({
           </View>
           <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.progressBarFill, { width: `${progress3}%`, backgroundColor: getGoalColor(data.goal[0]) }]}
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${progress3}%`,
+                  backgroundColor: getGoalColor(data.goal[0]),
+                },
+              ]}
             />
           </View>
         </View>
@@ -1230,9 +1251,7 @@ const CommitmentStepContent = ({
                     lineHeight: 24,
                   }}
                 >
-                  {isCommitted
-                    ? ""
-                    : 'Commitment takes discipline.'}
+                  {isCommitted ? '' : 'Commitment takes discipline.'}
                 </Text>
               </View>
             </View>
@@ -1404,9 +1423,7 @@ const CommitmentStepContent = ({
               onPress={onNext}
               hapticIntensity="medium"
             >
-              <Text
-                style={[styles.nextButtonText, { color: waveColor }]}
-              >
+              <Text style={[styles.nextButtonText, { color: waveColor }]}>
                 Continue
               </Text>
             </HapticButton>
@@ -1533,8 +1550,9 @@ export default function OnboardingScreen() {
   const { refreshProfile } = useProfile()
   const insets = useSafeAreaInsets()
   const [step, setStep] = useState(1)
-  const [strengthIntroPhase, setStrengthIntroPhase] =
-    useState<StrengthIntroPhase>('select')
+  const [strengthIntroPhase, setStrengthIntroPhase] = useState<
+    StrengthIntroPhase
+  >('select')
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
@@ -1719,7 +1737,7 @@ export default function OnboardingScreen() {
   const handleNext = () => {
     // Collect step-specific metadata for analytics
     const stepMetadata: Record<string, any> = {}
-    
+
     switch (step) {
       case 1:
         stepMetadata.coach_id = data.coach
@@ -2055,11 +2073,7 @@ export default function OnboardingScreen() {
       if (prev.calorieGoal !== null) return prev
       return { ...prev, calorieGoal: maintenanceCalories }
     })
-  }, [
-    calculateEstimatedTDEE,
-    data.calorieGoal,
-    step,
-  ])
+  }, [calculateEstimatedTDEE, data.calorieGoal, step])
 
   const canProceed = () => {
     switch (step) {
@@ -2325,12 +2339,15 @@ export default function OnboardingScreen() {
         )
       case 7: {
         // Goal Validation / Social Proof Step
-        const goalValidation: Record<string, {
-          title: string
-          stat: string
-          statLabel: string
-          color: string
-        }> = {
+        const goalValidation: Record<
+          string,
+          {
+            title: string
+            stat: string
+            statLabel: string
+            color: string
+          }
+        > = {
           gain_strength: {
             title: 'Building strength is the best investment you can make.',
             stat: '15%',
@@ -2364,45 +2381,59 @@ export default function OnboardingScreen() {
         }
 
         const primaryGoal = data.goal[0] || 'general_fitness'
-        const validation = goalValidation[primaryGoal] || goalValidation.general_fitness
+        const validation =
+          goalValidation[primaryGoal] || goalValidation.general_fitness
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={[styles.stepTitle, { fontSize: 28, lineHeight: 36, fontWeight: '800' }]}>
+              <Text
+                style={[
+                  styles.stepTitle,
+                  { fontSize: 28, lineHeight: 36, fontWeight: '800' },
+                ]}
+              >
                 {validation.title}
               </Text>
             </View>
 
-            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 20 }}>
+            <View
+              style={{ flex: 1, alignItems: 'center', paddingHorizontal: 20 }}
+            >
               {/* Dynamic spacers to hit the optical center regardless of screen size */}
               <View style={{ flex: 1.5 }} />
-              
+
               {/* Hero Stat Group */}
-              <View style={{
-                alignItems: 'center',
-                width: '100%',
-              }}>
-                <Text style={{
-                  fontSize: 72,
-                  fontWeight: '900',
-                  color: validation.color,
-                  letterSpacing: -3,
-                  marginBottom: 12,
-                  textAlign: 'center',
-                  lineHeight: 72,
-                }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  width: '100%',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 72,
+                    fontWeight: '900',
+                    color: validation.color,
+                    letterSpacing: -3,
+                    marginBottom: 12,
+                    textAlign: 'center',
+                    lineHeight: 72,
+                  }}
+                >
                   {validation.stat}
                 </Text>
-                <Text style={{
-                  fontSize: 20,
-                  fontWeight: '700',
-                  color: colors.textPrimary,
-                  textAlign: 'center',
-                  letterSpacing: -0.5,
-                  lineHeight: 26,
-                  maxWidth: '85%',
-                }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: colors.textPrimary,
+                    textAlign: 'center',
+                    letterSpacing: -0.5,
+                    lineHeight: 26,
+                    maxWidth: '85%',
+                  }}
+                >
                   {validation.statLabel}
                 </Text>
               </View>
@@ -2545,7 +2576,12 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionIndex}>2</Text>
             <Text style={styles.sectionTitle}>Your Body</Text>
             <View style={styles.sectionProgressTrack}>
-              <View style={[styles.sectionProgressFill, { width: '66%', backgroundColor: getGoalColor(data.goal[0]) }]} />
+              <View
+                style={[
+                  styles.sectionProgressFill,
+                  { width: '66%', backgroundColor: getGoalColor(data.goal[0]) },
+                ]}
+              />
             </View>
             <Text style={styles.sectionSubtitle}>
               We&apos;ll set your stats and nutrition target.
@@ -2668,7 +2704,6 @@ export default function OnboardingScreen() {
               <Text style={styles.stepTitle}>
                 Enter your weight to get your strength ranks.
               </Text>
-
             </View>
 
             <View
@@ -2748,7 +2783,7 @@ export default function OnboardingScreen() {
                     setData((prev) => ({ ...prev, weight_kg: itemValue }))
                   }
                   style={{
-                     color: colors.bg === '#000000' ? '#FFFFFF' : '#000000',
+                    color: colors.bg === '#000000' ? '#FFFFFF' : '#000000',
                   }}
                   itemStyle={{
                     color: colors.bg === '#000000' ? '#FFFFFF' : '#000000',
@@ -2797,7 +2832,12 @@ export default function OnboardingScreen() {
               <Text style={styles.stepTitle}>
                 Want to track your nutrition?
               </Text>
-              <Text style={[styles.stepSubtitle, { marginTop: 8, fontSize: 16, color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.stepSubtitle,
+                  { marginTop: 8, fontSize: 16, color: colors.textSecondary },
+                ]}
+              >
                 We can calculate your daily calorie target based on your goals.
               </Text>
             </View>
@@ -2823,7 +2863,8 @@ export default function OnboardingScreen() {
                     <View
                       style={[
                         styles.radioButton,
-                        data.wantsCalorieTracking === true && styles.radioButtonSelected,
+                        data.wantsCalorieTracking === true &&
+                          styles.radioButtonSelected,
                       ]}
                     >
                       {data.wantsCalorieTracking === true && (
@@ -2846,13 +2887,18 @@ export default function OnboardingScreen() {
                 >
                   <View style={styles.cardContent}>
                     <View style={styles.iconContainer}>
-                      <Ionicons name="close-circle-outline" size={24} color={colors.textSecondary} />
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={24}
+                        color={colors.textSecondary}
+                      />
                     </View>
                     <Text style={styles.cardLabel}>Skip for now</Text>
                     <View
                       style={[
                         styles.radioButton,
-                        data.wantsCalorieTracking === false && styles.radioButtonSelected,
+                        data.wantsCalorieTracking === false &&
+                          styles.radioButtonSelected,
                       ]}
                     >
                       {data.wantsCalorieTracking === false && (
@@ -2897,7 +2943,10 @@ export default function OnboardingScreen() {
           }))
         }
 
-        const setHeightFromImperial = (feetInput: number, inchesInput: number) => {
+        const setHeightFromImperial = (
+          feetInput: number,
+          inchesInput: number,
+        ) => {
           const rawTotalInches = feetInput * 12 + inchesInput
           const totalInches = clamp(rawTotalInches, MIN_TOTAL_IN, MAX_TOTAL_IN)
           const feet = Math.floor(totalInches / 12)
@@ -2963,9 +3012,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>
-                How tall are you?
-              </Text>
+              <Text style={styles.stepTitle}>How tall are you?</Text>
             </View>
 
             <View style={styles.stepContent}>
@@ -2977,7 +3024,13 @@ export default function OnboardingScreen() {
                     weightUnit === 'kg' && styles.heightUnitButtonActive,
                   ]}
                 >
-                  <Text style={weightUnit === 'kg' ? styles.heightUnitTextActive : styles.heightUnitText}>
+                  <Text
+                    style={
+                      weightUnit === 'kg'
+                        ? styles.heightUnitTextActive
+                        : styles.heightUnitText
+                    }
+                  >
                     CM
                   </Text>
                 </TouchableOpacity>
@@ -2988,16 +3041,20 @@ export default function OnboardingScreen() {
                     weightUnit === 'lb' && styles.heightUnitButtonActive,
                   ]}
                 >
-                  <Text style={weightUnit === 'lb' ? styles.heightUnitTextActive : styles.heightUnitText}>
+                  <Text
+                    style={
+                      weightUnit === 'lb'
+                        ? styles.heightUnitTextActive
+                        : styles.heightUnitText
+                    }
+                  >
                     FT/IN
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.heightSummaryCard}>
-                <Text style={styles.heightSummaryValue}>
-                  {currentCm} cm
-                </Text>
+                <Text style={styles.heightSummaryValue}>{currentCm} cm</Text>
                 <Text style={styles.heightSummarySubvalue}>
                   {displayFeet}&apos;{displayInches}&quot;
                 </Text>
@@ -3053,9 +3110,7 @@ export default function OnboardingScreen() {
                       const inches = item % 12
                       const feet = Math.floor(item / 12)
                       const label =
-                        weightUnit === 'kg'
-                          ? `${item}`
-                          : `${feet}'${inches}`
+                        weightUnit === 'kg' ? `${item}` : `${feet}'${inches}`
 
                       return (
                         <View style={styles.heightRulerTickWrap}>
@@ -3066,7 +3121,10 @@ export default function OnboardingScreen() {
                             ]}
                           />
                           {isMajorTick && (
-                            <Text numberOfLines={1} style={styles.heightRulerTickLabel}>
+                            <Text
+                              numberOfLines={1}
+                              style={styles.heightRulerTickLabel}
+                            >
                               {label}
                             </Text>
                           )}
@@ -3074,7 +3132,10 @@ export default function OnboardingScreen() {
                       )
                     }}
                   />
-                  <View pointerEvents="none" style={styles.heightRulerCenterLine} />
+                  <View
+                    pointerEvents="none"
+                    style={styles.heightRulerCenterLine}
+                  />
                 </View>
               </View>
             </View>
@@ -3084,13 +3145,29 @@ export default function OnboardingScreen() {
       case 14: {
         // Age/Birthday Entry Step
         const currentYear = new Date().getFullYear()
-        const years = Array.from({ length: 82 }, (_, i) => (currentYear - 16 - i).toString()) // Ages 16-97
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const years = Array.from({ length: 82 }, (_, i) =>
+          (currentYear - 16 - i).toString(),
+        ) // Ages 16-97
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ]
         const monthValues = months.map((_, idx) => (idx + 1).toString())
 
         const safeString = (value: unknown, fallback: string) => {
           if (typeof value === 'string') return value
-          if (typeof value === 'number' && Number.isFinite(value)) return value.toString()
+          if (typeof value === 'number' && Number.isFinite(value))
+            return value.toString()
           return fallback
         }
 
@@ -3098,12 +3175,19 @@ export default function OnboardingScreen() {
           const monthNumber = parseInt(monthValue, 10)
           const yearNumber = parseInt(yearValue, 10)
           const safeMonth = Number.isFinite(monthNumber) ? monthNumber : 1
-          const safeYear = Number.isFinite(yearNumber) ? yearNumber : currentYear
+          const safeYear = Number.isFinite(yearNumber)
+            ? yearNumber
+            : currentYear
           return new Date(safeYear, safeMonth, 0).getDate()
         }
 
-        const maxDayForSelection = getMaxDaysInMonth(data.birth_month, data.birth_year)
-        const days = Array.from({ length: maxDayForSelection }, (_, i) => (i + 1).toString())
+        const maxDayForSelection = getMaxDaysInMonth(
+          data.birth_month,
+          data.birth_year,
+        )
+        const days = Array.from({ length: maxDayForSelection }, (_, i) =>
+          (i + 1).toString(),
+        )
 
         const normalizePickerValue = (
           itemValue: unknown,
@@ -3124,21 +3208,20 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <View style={[styles.stepHeader, { paddingBottom: 32 }]}>
-              <Text style={styles.stepTitle}>
-                When were you born?
-              </Text>
-            
+              <Text style={styles.stepTitle}>When were you born?</Text>
             </View>
 
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               {/* Age Display */}
               <View style={styles.birthAgeBlock}>
-                <Text style={styles.birthAgeValue}>
-                  {displayAge}
-                </Text>
-                <Text style={styles.birthAgeLabel}>
-                  years old
-                </Text>
+                <Text style={styles.birthAgeValue}>{displayAge}</Text>
+                <Text style={styles.birthAgeLabel}>years old</Text>
               </View>
 
               {/* Date Picker Card */}
@@ -3166,10 +3249,18 @@ export default function OnboardingScreen() {
                           data.birth_month || '1',
                         )
                         setData((prev) => {
-                          const maxDay = getMaxDaysInMonth(nextMonth, prev.birth_year)
+                          const maxDay = getMaxDaysInMonth(
+                            nextMonth,
+                            prev.birth_year,
+                          )
                           const prevDayNumber = parseInt(prev.birth_day, 10)
-                          const safePrevDay = Number.isFinite(prevDayNumber) ? prevDayNumber : 1
-                          const nextDay = Math.min(safePrevDay, maxDay).toString()
+                          const safePrevDay = Number.isFinite(prevDayNumber)
+                            ? prevDayNumber
+                            : 1
+                          const nextDay = Math.min(
+                            safePrevDay,
+                            maxDay,
+                          ).toString()
                           return {
                             ...prev,
                             birth_month: nextMonth,
@@ -3228,10 +3319,18 @@ export default function OnboardingScreen() {
                           data.birth_year || years[0],
                         )
                         setData((prev) => {
-                          const maxDay = getMaxDaysInMonth(prev.birth_month, nextYear)
+                          const maxDay = getMaxDaysInMonth(
+                            prev.birth_month,
+                            nextYear,
+                          )
                           const prevDayNumber = parseInt(prev.birth_day, 10)
-                          const safePrevDay = Number.isFinite(prevDayNumber) ? prevDayNumber : 1
-                          const nextDay = Math.min(safePrevDay, maxDay).toString()
+                          const safePrevDay = Number.isFinite(prevDayNumber)
+                            ? prevDayNumber
+                            : 1
+                          const nextDay = Math.min(
+                            safePrevDay,
+                            maxDay,
+                          ).toString()
                           return {
                             ...prev,
                             birth_year: nextYear,
@@ -3265,19 +3364,41 @@ export default function OnboardingScreen() {
         const selectedCalorieGoal = data.calorieGoal ?? tdee
 
         const calorieOptions = [
-          { label: 'Bulk', description: '10% surplus', calories: Math.round(tdee * 1.1), color: '#10B981', icon: 'trending-up' as keyof typeof Ionicons.glyphMap },
-          { label: 'Maintenance', description: 'Stay the same', calories: tdee, color: '#3B82F6', icon: 'swap-horizontal' as keyof typeof Ionicons.glyphMap },
-          { label: 'Cut', description: '15% deficit', calories: Math.round(tdee * 0.85), color: '#F97316', icon: 'trending-down' as keyof typeof Ionicons.glyphMap },
-          { label: 'Aggressive Cut', description: '25% deficit', calories: Math.round(tdee * 0.75), color: '#EF4444', icon: 'flash' as keyof typeof Ionicons.glyphMap },
+          {
+            label: 'Bulk',
+            description: '10% surplus',
+            calories: Math.round(tdee * 1.1),
+            color: '#10B981',
+            icon: 'trending-up' as keyof typeof Ionicons.glyphMap,
+          },
+          {
+            label: 'Maintenance',
+            description: 'Stay the same',
+            calories: tdee,
+            color: '#3B82F6',
+            icon: 'swap-horizontal' as keyof typeof Ionicons.glyphMap,
+          },
+          {
+            label: 'Cut',
+            description: '15% deficit',
+            calories: Math.round(tdee * 0.85),
+            color: '#F97316',
+            icon: 'trending-down' as keyof typeof Ionicons.glyphMap,
+          },
+          {
+            label: 'Aggressive Cut',
+            description: '25% deficit',
+            calories: Math.round(tdee * 0.75),
+            color: '#EF4444',
+            icon: 'flash' as keyof typeof Ionicons.glyphMap,
+          },
         ]
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>
-                Choose your daily target.
-              </Text>
-              </View>
+              <Text style={styles.stepTitle}>Choose your daily target.</Text>
+            </View>
 
             <View style={styles.stepContent}>
               <View style={styles.optionsContainer}>
@@ -3286,8 +3407,11 @@ export default function OnboardingScreen() {
                     key={option.label}
                     style={[
                       styles.card,
-                      selectedCalorieGoal === option.calories && styles.cardSelected,
-                      selectedCalorieGoal === option.calories && { borderColor: option.color },
+                      selectedCalorieGoal === option.calories &&
+                        styles.cardSelected,
+                      selectedCalorieGoal === option.calories && {
+                        borderColor: option.color,
+                      },
                     ]}
                     onPress={() => {
                       setData({ ...data, calorieGoal: option.calories })
@@ -3306,27 +3430,51 @@ export default function OnboardingScreen() {
                             alignItems: 'center',
                           }}
                         >
-                          <Ionicons name={option.icon} size={22} color={option.color} />
+                          <Ionicons
+                            name={option.icon}
+                            size={22}
+                            color={option.color}
+                          />
                         </View>
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardLabel}>{option.label}</Text>
-                        <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                          }}
+                        >
                           {option.description}
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: option.color }}>
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: '700',
+                          color: option.color,
+                        }}
+                      >
                         {option.calories}
                       </Text>
                       <View
                         style={[
                           styles.radioButton,
-                          selectedCalorieGoal === option.calories && styles.radioButtonSelected,
-                          selectedCalorieGoal === option.calories && { borderColor: option.color },
+                          selectedCalorieGoal === option.calories &&
+                            styles.radioButtonSelected,
+                          selectedCalorieGoal === option.calories && {
+                            borderColor: option.color,
+                          },
                         ]}
                       >
                         {selectedCalorieGoal === option.calories && (
-                          <View style={[styles.radioButtonInner, { backgroundColor: option.color }]} />
+                          <View
+                            style={[
+                              styles.radioButtonInner,
+                              { backgroundColor: option.color },
+                            ]}
+                          />
                         )}
                       </View>
                     </View>
@@ -3365,7 +3513,8 @@ export default function OnboardingScreen() {
           { title: string; description: string }
         > = {
           bulk: {
-            title: 'Strong choice. You are set up to build muscle and strength.',
+            title:
+              'Strong choice. You are set up to build muscle and strength.',
             description: `Your target is ${targetCalories} kcal/day, aiming for about ${weeklyRateText}. Stay consistent and your lifts will keep climbing.`,
           },
           maintenance: {
@@ -3373,7 +3522,8 @@ export default function OnboardingScreen() {
             description: `Your target is ${targetCalories} kcal/day. You can gain strength and improve definition without big swings on the scale.`,
           },
           cut: {
-            title: 'Great pick. This cut is balanced, sustainable, and effective.',
+            title:
+              'Great pick. This cut is balanced, sustainable, and effective.',
             description: `Your target is ${targetCalories} kcal/day, aiming for about ${weeklyRateText}. You can lean out while keeping strong training momentum.`,
           },
           aggressive_cut: {
@@ -3387,7 +3537,12 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>{selectedAffirmation.title}</Text>
-              <Text style={[styles.stepSubtitle, { marginTop: 10, fontSize: 16, lineHeight: 23 }]}>
+              <Text
+                style={[
+                  styles.stepSubtitle,
+                  { marginTop: 10, fontSize: 16, lineHeight: 23 },
+                ]}
+              >
                 {selectedAffirmation.description}
               </Text>
             </View>
@@ -3401,7 +3556,15 @@ export default function OnboardingScreen() {
             <Text style={styles.sectionIndex}>3</Text>
             <Text style={styles.sectionTitle}>Your Plan</Text>
             <View style={styles.sectionProgressTrack}>
-              <View style={[styles.sectionProgressFill, { width: '100%', backgroundColor: getGoalColor(data.goal[0]) }]} />
+              <View
+                style={[
+                  styles.sectionProgressFill,
+                  {
+                    width: '100%',
+                    backgroundColor: getGoalColor(data.goal[0]),
+                  },
+                ]}
+              />
             </View>
             <Text style={styles.sectionSubtitle}>
               Finalizing your personalized plan and focus areas.
@@ -3509,7 +3672,10 @@ export default function OnboardingScreen() {
                     style={[
                       styles.focusMuscleButton,
                       isFullBody && styles.focusMuscleButtonSelected,
-                      isFullBody && { backgroundColor: getGoalColor(data.goal[0]) + '20', borderColor: getGoalColor(data.goal[0]) }
+                      isFullBody && {
+                        backgroundColor: getGoalColor(data.goal[0]) + '20',
+                        borderColor: getGoalColor(data.goal[0]),
+                      },
                     ]}
                     onPress={() => {
                       if (isFullBody) {
@@ -3523,7 +3689,7 @@ export default function OnboardingScreen() {
                       style={[
                         styles.focusMuscleButtonText,
                         isFullBody && styles.focusMuscleButtonTextSelected,
-                        isFullBody && { color: getGoalColor(data.goal[0]) }
+                        isFullBody && { color: getGoalColor(data.goal[0]) },
                       ]}
                     >
                       Full body
@@ -3548,7 +3714,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) }
+                            isSelected && { color: getGoalColor(data.goal[0]) },
                           ]}
                         >
                           {group.label}
@@ -3578,7 +3744,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) }
+                            isSelected && { color: getGoalColor(data.goal[0]) },
                           ]}
                         >
                           {group.label}
@@ -3601,7 +3767,10 @@ export default function OnboardingScreen() {
                         style={[
                           styles.focusMuscleButton,
                           isSelected && styles.focusMuscleButtonSelected,
-                          isSelected && { backgroundColor: getGoalColor(data.goal[0]) + '20', borderColor: getGoalColor(data.goal[0]) }
+                          isSelected && {
+                            backgroundColor: getGoalColor(data.goal[0]) + '20',
+                            borderColor: getGoalColor(data.goal[0]),
+                          },
                         ]}
                         onPress={() => toggleArea(key)}
                       >
@@ -3609,7 +3778,7 @@ export default function OnboardingScreen() {
                           style={[
                             styles.focusMuscleButtonText,
                             isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) }
+                            isSelected && { color: getGoalColor(data.goal[0]) },
                           ]}
                         >
                           {group.label}
@@ -3644,9 +3813,9 @@ export default function OnboardingScreen() {
               <Text style={styles.bodyScanTitle}>
                 Body Scan analyzes your lean muscle so you can accurately track
                 your{' '}
-                <Text 
-                  style={{ 
-                    color: getGoalColor(data.goal[0]), 
+                <Text
+                  style={{
+                    color: getGoalColor(data.goal[0]),
                     fontStyle: 'italic',
                     fontWeight: '900',
                     fontFamily: 'System',
@@ -4147,10 +4316,11 @@ const createStyles = (
   weightUnit: 'kg' | 'lb',
 ) => {
   const isDarkMode = colors.bg === '#000000'
-  const heightPanelBackground = isDarkMode ? colors.surfaceSheet : colors.surface
+  const heightPanelBackground = isDarkMode
+    ? colors.surfaceSheet
+    : colors.surface
 
-  return (
-  StyleSheet.create({
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.bg, // Light/Dark background
@@ -5469,5 +5639,4 @@ const createStyles = (
       backgroundColor: 'rgba(255,255,255,0.2)',
     },
   })
-  )
 }
