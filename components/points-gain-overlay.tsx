@@ -2,6 +2,7 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { hapticProgressBarFill, hapticProgressBarFillShort } from '@/lib/haptics'
 import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -285,6 +286,7 @@ function PointsGainOverlayComponent({
 
       // Stage 4: Bar fills to 100%
       schedule(() => {
+        hapticProgressBarFill()
         Animated.timing(progressAnim, {
           toValue: 100,
           duration: 1200,
@@ -367,6 +369,7 @@ function PointsGainOverlayComponent({
           }).start()
 
           // Animate from 0 to current progress
+          hapticProgressBarFillShort()
           Animated.timing(newProgressAnim, {
             toValue: progress,
             duration: 800,
@@ -392,6 +395,7 @@ function PointsGainOverlayComponent({
 
       // Stage 4: Bar fills to new position
       schedule(() => {
+        hapticProgressBarFill()
         Animated.timing(progressAnim, {
           toValue: progress,
           duration: 1200,
