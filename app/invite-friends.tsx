@@ -41,6 +41,10 @@ export default function InviteFriendsScreen() {
     }
   }, [user?.id])
 
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.INVITE_FRIENDS_VIEWED)
+  }, [trackEvent])
+
   const generateInviteData = async () => {
     if (!user) {
       Alert.alert('Sign In Required', 'Please sign in before sharing invites.')

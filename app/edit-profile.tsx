@@ -6,6 +6,8 @@ import {
     GENDERS,
     GOALS,
 } from '@/constants/options'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -34,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function EditProfileScreen() {
   const { user } = useAuth()
   const router = useRouter()
+  const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const insets = useSafeAreaInsets()
@@ -93,6 +96,10 @@ export default function EditProfileScreen() {
   useEffect(() => {
     loadProfile()
   }, [loadProfile])
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.EDIT_PROFILE_VIEWED)
+  }, [trackEvent])
 
   const styles = createStyles(colors, weightUnit)
 

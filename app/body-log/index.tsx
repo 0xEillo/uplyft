@@ -642,9 +642,10 @@ export default function BodyLogScreen() {
         loadEntries(true, true) // silent refresh when returning from sub-page
       } else {
         hasFocusedOnce.current = true
+        trackEvent(AnalyticsEvents.BODY_LOG_VIEWED)
         loadEntries(false) // initial load with spinner
       }
-    }, [loadEntries]),
+    }, [loadEntries, trackEvent]),
   )
 
   useEffect(() => {

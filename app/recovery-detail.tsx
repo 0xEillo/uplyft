@@ -8,7 +8,9 @@
 
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideUpView } from '@/components/slide-up-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
+import { useAnalytics } from '@/contexts/analytics-context'
 import {
   getRecoveryColor,
   getRecoveryLabel,
@@ -18,7 +20,7 @@ import {
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Platform,
   ScrollView,
@@ -33,6 +35,7 @@ export default function RecoveryDetailScreen() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const { trackEvent } = useAnalytics()
   const isIOSFormSheet = Platform.OS === 'ios'
   const [shouldExit, setShouldExit] = useState(false)
   const params = useLocalSearchParams<{
@@ -59,6 +62,12 @@ export default function RecoveryDetailScreen() {
   const recoveryPercentage = params.recoveryPercentage
     ? parseInt(params.recoveryPercentage, 10)
     : 100
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.RECOVERY_DETAIL_VIEWED, {
+      muscle_group: muscleGroup,
+    })
+  }, [trackEvent, muscleGroup])
 
   const formatTimeAgo = (hours: number | null): string => {
     if (hours === null) return 'Never trained'

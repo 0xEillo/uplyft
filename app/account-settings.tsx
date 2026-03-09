@@ -129,6 +129,10 @@ export default function SettingsScreen() {
     loadPendingRequests()
   }, [loadProfile, loadPendingRequests])
 
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.SETTINGS_VIEWED)
+  }, [trackEvent])
+
   useFocusEffect(
     useCallback(() => {
       loadPendingRequests()

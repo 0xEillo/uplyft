@@ -1,6 +1,8 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { ScreenHeader } from '@/components/screen-header'
 import { FoodLibrarySheet, type FoodLibraryMealDraft } from '@/components/food-library-sheet'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -108,6 +110,7 @@ const getLocalDateString = (): string => {
 
 export default function FoodLibraryScreen() {
   const router = useRouter()
+  const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
@@ -124,6 +127,10 @@ export default function FoodLibraryScreen() {
     onSave: () => void
     closeToFoodLibrary: (() => void) | null
   } | null>(null)
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.FOOD_LIBRARY_VIEWED)
+  }, [trackEvent])
 
   useEffect(() => {
     let cancelled = false
@@ -220,13 +227,22 @@ export default function FoodLibraryScreen() {
         logDate: getLocalDateString(),
       })
 
+      trackEvent(AnalyticsEvents.FOOD_LOGGED, {
+        source:
+          (meal.metadata as { from?: string })?.from ?? 'food_library',
+        calories: meal.calories,
+        has_macros: Boolean(
+          meal.protein_g || meal.carbs_g || meal.fat_g,
+        ),
+      })
+
       await hapticSuccess()
 
       if (Platform.OS === 'android') {
         ToastAndroid.show('Meal logged', ToastAndroid.SHORT)
       }
     },
-    [user?.id],
+    [user?.id, trackEvent],
   )
 
   const handleUseFoodText = useCallback(async (text: string) => {

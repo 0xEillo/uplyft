@@ -1911,6 +1911,14 @@ export function WorkoutChat({
       setLatestLoggedMealId(savedMealId)
       await refreshDailyLogSummary()
       setFoodActionState((prev) => ({ ...prev, [messageId]: 'saved' }))
+      trackEvent(AnalyticsEvents.FOOD_LOGGED, {
+        source: payload.action === 'update_last' ? 'chat_correction' : 'chat',
+        action: payload.action,
+        calories: payload.calories,
+        has_macros: Boolean(
+          payload.protein_g || payload.carbs_g || payload.fat_g,
+        ),
+      })
       console.log('[FoodLog] Log action completed:', {
         messageId,
         savedMealId,

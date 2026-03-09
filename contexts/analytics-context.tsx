@@ -5,6 +5,7 @@ import Constants from 'expo-constants'
 import React, { createContext, ReactNode, useContext, useEffect } from 'react'
 import { Platform } from 'react-native'
 import { useAuth } from './auth-context'
+import { useProfile } from './profile-context'
 
 type AnalyticsContextValue = {
   trackEvent: (event: string, payload?: Record<string, unknown>) => Promise<void>
@@ -20,8 +21,9 @@ const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const { profile } = useProfile()
 
-  // Identify user when they sign in
+  // Identify user when they sign in and sync profile demographics to Mixpanel People
   useEffect(() => {
     if (user) {
       const properties: Record<string, any> = {
@@ -36,6 +38,21 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       initSessionReplay(user.id)
     }
   }, [user])
+
+  // Sync profile demographics (age, gender) to Mixpanel People for segmentation
+  useEffect(() => {
+    if (!user?.id || !profile) return
+    const props: Record<string, any> = {}
+    if (typeof profile.age === 'number') props.age = profile.age
+    if (profile.gender) props.gender = profile.gender
+    if (profile.height_cm != null) props.height_cm = profile.height_cm
+    if (profile.weight_kg != null) props.weight_kg = profile.weight_kg
+    if (profile.goals?.length) props.goals = profile.goals
+    if (profile.experience_level) props.experience_level = profile.experience_level
+    if (Object.keys(props).length > 0) {
+      mixpanel.getPeople().set(props)
+    }
+  }, [user?.id, profile])
 
   // Register super properties for all events
   useEffect(() => {

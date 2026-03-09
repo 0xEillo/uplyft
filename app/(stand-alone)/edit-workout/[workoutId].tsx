@@ -1,6 +1,8 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -59,6 +61,7 @@ export default function EditWorkoutScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const { user } = useAuth()
+  const { trackEvent } = useAnalytics()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -236,6 +239,12 @@ export default function EditWorkoutScreen() {
   useEffect(() => {
     loadWorkout()
   }, [loadWorkout])
+
+  useEffect(() => {
+    if (workoutId) {
+      trackEvent(AnalyticsEvents.EDIT_WORKOUT_VIEWED, { workout_id: workoutId })
+    }
+  }, [workoutId, trackEvent])
 
   const handleSelectExercise = useCallback(
     async (selectedExercise: Exercise, workoutExerciseId: string) => {

@@ -1,6 +1,8 @@
 import { AnimatedFire } from '@/components/animated-fire'
 import { CalendarShareScreen } from '@/components/calendar-share-screen'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
@@ -40,6 +42,7 @@ const PILL_PADDING = 4
 export default function WorkoutCalendarScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const indicatorLeft = useRef(new Animated.Value(PILL_PADDING)).current
   const [isLoading, setIsLoading] = useState(true)
@@ -50,6 +53,10 @@ export default function WorkoutCalendarScreen() {
   const [currentStreak, setCurrentStreak] = useState<number | null>(null)
   const [isNavigatingToWorkout, setIsNavigatingToWorkout] = useState(false)
   const { shareWorkoutWidget } = useWorkoutShare()
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.WORKOUT_CALENDAR_VIEWED)
+  }, [trackEvent])
 
   const loadWorkoutDates = useCallback(async () => {
     if (!user?.id) return

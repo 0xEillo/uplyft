@@ -2,6 +2,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { VolumeProgressChart } from '@/components/volume-progress-chart'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -56,6 +58,7 @@ export default function VolumeStatsScreen() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
   const colors = useThemedColors()
+  const { trackEvent } = useAnalytics()
   const [timeRange, setTimeRange] = useState<TimeRange>('30D')
   const [isLoading, setIsLoading] = useState(true)
   const [weeklyData, setWeeklyData] = useState<WeeklyVolumeData[]>([])
@@ -98,6 +101,10 @@ export default function VolumeStatsScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.VOLUME_STATS_VIEWED)
+  }, [trackEvent])
 
   const handleBack = () => {
     router.back()

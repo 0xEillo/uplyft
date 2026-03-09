@@ -1,6 +1,8 @@
 import { EmptyState } from '@/components/EmptyState'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -35,6 +37,7 @@ export default function RoutinesScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { trackEvent } = useAnalytics()
   const { callCallback } = useRoutineSelection()
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
@@ -64,6 +67,10 @@ export default function RoutinesScreen() {
   useEffect(() => {
     loadRoutines()
   }, [loadRoutines])
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.ROUTINES_VIEWED)
+  }, [trackEvent])
 
   // Refresh routines when returning to this screen
   useFocusEffect(

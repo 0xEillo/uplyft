@@ -1,5 +1,7 @@
 import { WorkoutShareScreen } from '@/components/workout-share-screen'
 import { WorkoutDetailView } from '@/components/WorkoutDetail/WorkoutDetailView'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -47,6 +49,7 @@ export default function WorkoutDetailScreen() {
   const pathname = usePathname()
   const { user } = useAuth()
   const { profile } = useProfile()
+  const { trackEvent } = useAnalytics()
   useTheme() // for theme context subscription
   const { shareWorkoutWidget } = useWorkoutShare()
   const { weightUnit } = useWeightUnits()
@@ -64,12 +67,11 @@ export default function WorkoutDetailScreen() {
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [workoutCount, setWorkoutCount] = useState(1)
 
-  // Log when component mounts/unmounts
   useEffect(() => {
-    return () => {
-      // Cleanup on unmount
+    if (workoutId) {
+      trackEvent(AnalyticsEvents.WORKOUT_DETAIL_VIEWED, { workout_id: workoutId })
     }
-  }, [workoutId, params])
+  }, [workoutId, trackEvent])
 
   // Compute context for PR calculation
   const computeContext = useMemo(() => {

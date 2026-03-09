@@ -1,6 +1,8 @@
 import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -151,6 +153,7 @@ export default function DailyFoodLogScreen() {
   const router = useRouter()
   const { user } = useAuth()
   const { profile } = useProfile()
+  const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
@@ -285,6 +288,14 @@ export default function DailyFoodLogScreen() {
     }
   }, [fetchFoodLogData, resolvedLogDate, user?.id])
 
+  useEffect(() => {
+    if (resolvedLogDate && user?.id) {
+      trackEvent(AnalyticsEvents.FOOD_LOG_VIEWED, {
+        log_date: resolvedLogDate,
+      })
+    }
+  }, [resolvedLogDate, user?.id, trackEvent])
+
   const handleRefresh = async () => {
     if (!user?.id || !resolvedLogDate) return
 
@@ -381,6 +392,14 @@ export default function DailyFoodLogScreen() {
           reloggedFromMealId: meal.id,
         },
         logDate: resolvedLogDate,
+      })
+
+      trackEvent(AnalyticsEvents.FOOD_LOGGED, {
+        source: 'recent_meals_relog',
+        calories: meal.calories,
+        has_macros: Boolean(
+          meal.protein_g || meal.carbs_g || meal.fat_g,
+        ),
       })
 
       await hapticSuccess()

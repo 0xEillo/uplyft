@@ -91,9 +91,15 @@ export const AnalyticsEvents = {
   BODY_SCAN_IMAGE_VIEWED: 'Body Scan Image Viewed',
 
   // Body Log
+  BODY_LOG_VIEWED: 'Body Log Viewed',
   BODY_LOG_ENTRY_VIEWED: 'Body Log Entry Viewed',
   BODY_LOG_ENTRY_STARTED: 'Body Log Entry Started',
   BODY_LOG_ENTRY_SAVED: 'Body Log Entry Saved',
+
+  // Food & Nutrition
+  FOOD_LOGGED: 'Food Logged',
+  FOOD_LIBRARY_VIEWED: 'Food Library Viewed',
+  FOOD_LOG_VIEWED: 'Food Log Viewed',
 
   // Analytics & Insights
   STRENGTH_SCORE_VIEWED: 'Strength Score Viewed',
@@ -140,6 +146,7 @@ export const AnalyticsEvents = {
   SEARCH_INVITE_SHARED: 'Search Invite Shared',
 
   // Routines
+  ROUTINES_VIEWED: 'Routines Viewed',
   ROUTINE_VIEWED: 'Routine Viewed',
   ROUTINE_SELECTED: 'Routine Selected',
   ROUTINE_CREATED: 'Routine Created',
@@ -157,6 +164,19 @@ export const AnalyticsEvents = {
 
   // Explore
   EXPLORE_CARD_TAPPED: 'Explore Card Tapped',
+
+  // Screens & Features
+  WORKOUT_CALENDAR_VIEWED: 'Workout Calendar Viewed',
+  WORKOUT_DETAIL_VIEWED: 'Workout Detail Viewed',
+  WORKOUT_COMMENTS_VIEWED: 'Workout Comments Viewed',
+  EDIT_WORKOUT_VIEWED: 'Edit Workout Viewed',
+  EDIT_PROFILE_VIEWED: 'Edit Profile Viewed',
+  INVITE_FRIENDS_VIEWED: 'Invite Friends Viewed',
+  COMPARE_VIEWED: 'Compare Viewed',
+  STRENGTH_STATS_VIEWED: 'Strength Stats Viewed',
+  VOLUME_STATS_VIEWED: 'Volume Stats Viewed',
+  RECOVERY_DETAIL_VIEWED: 'Recovery Detail Viewed',
+  TUTORIAL_VIEWED: 'Tutorial Viewed',
 
   // Errors & Performance
   API_ERROR: 'API Error',
@@ -450,6 +470,13 @@ export interface ExploreCardProperties extends BaseEventProperties {
   destination?: string
 }
 
+export interface FoodLoggedProperties extends BaseEventProperties {
+  source?: string
+  action?: string
+  calories?: number
+  has_macros?: boolean
+}
+
 // ============================================================================
 // TYPE MAP - Maps event names to their property types
 // ============================================================================
@@ -539,4 +566,20 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.TUTORIAL_STEP_COMPLETED]: TutorialProperties
   [AnalyticsEvents.TUTORIAL_DISMISSED]: TutorialProperties
   [AnalyticsEvents.EXPLORE_CARD_TAPPED]: ExploreCardProperties
+  [AnalyticsEvents.FOOD_LOGGED]: FoodLoggedProperties
+  [AnalyticsEvents.BODY_LOG_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.FOOD_LIBRARY_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.FOOD_LOG_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.ROUTINES_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.WORKOUT_CALENDAR_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.WORKOUT_DETAIL_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.WORKOUT_COMMENTS_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.EDIT_WORKOUT_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.EDIT_PROFILE_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.INVITE_FRIENDS_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.COMPARE_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.STRENGTH_STATS_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.VOLUME_STATS_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.RECOVERY_DETAIL_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.TUTORIAL_VIEWED]: BaseEventProperties
 }

@@ -2,6 +2,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { Paywall } from '@/components/paywall'
 import { ProBadge } from '@/components/pro-badge'
 import { StrengthInfoSheet } from '@/components/StrengthInfoSheet'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { getLevelColor } from '@/hooks/useStrengthData'
@@ -53,6 +55,7 @@ type TabType = 'standards' | 'records'
 export default function StrengthStatsScreen() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -97,6 +100,10 @@ export default function StrengthStatsScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.STRENGTH_STATS_VIEWED)
+  }, [trackEvent])
 
   useFocusEffect(
     useCallback(() => {

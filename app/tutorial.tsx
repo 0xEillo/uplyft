@@ -1,15 +1,23 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Stack, useRouter } from 'expo-router'
+import { useEffect } from 'react'
 import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function TutorialScreen() {
   const colors = useThemedColors()
   const router = useRouter()
+  const { trackEvent } = useAnalytics()
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.TUTORIAL_VIEWED)
+  }, [trackEvent])
 
   const handleBack = () => {
     haptic('light')

@@ -1,5 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -145,6 +147,7 @@ export default function WorkoutCommentsScreen() {
   }>()
   const { user, isAnonymous } = useAuth()
   const { profile } = useProfile()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const pathname = usePathname()
   const segments = useSegments()
@@ -272,6 +275,12 @@ export default function WorkoutCommentsScreen() {
   }, [])
 
   // Fetch comments
+  useEffect(() => {
+    if (workoutId) {
+      trackEvent(AnalyticsEvents.WORKOUT_COMMENTS_VIEWED, { workout_id: workoutId })
+    }
+  }, [workoutId, trackEvent])
+
   useEffect(() => {
     if (!workoutId) return
 

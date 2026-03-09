@@ -3,6 +3,8 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -61,6 +63,7 @@ export default function CompareScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>()
   const { user } = useAuth()
   const router = useRouter()
+  const { trackEvent } = useAnalytics()
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
@@ -120,6 +123,12 @@ export default function CompareScreen() {
     markCompareEntrySkipFlag()
     shouldSkipNextEntryRef.current = true
   }, [shouldSkipNextEntryRef])
+
+  useEffect(() => {
+    if (userId) {
+      trackEvent(AnalyticsEvents.COMPARE_VIEWED, { target_user_id: userId })
+    }
+  }, [userId, trackEvent])
 
   useEffect(() => {
     return () => {
