@@ -64,7 +64,7 @@ export default function InviteFriendsScreen() {
 
       const username = inviterProfile?.user_tag || 'user'
 
-      const message = `Hey, follow me on Rep AI! It's a social workout tracking app. You can build routines, log your lifts, get analytics, and compete with friends.\n\nMy username is ${username}\n\n${inviteLink}`
+      const message = `Train with me on Rep AI.\n\nMy username is ${username}\n\n${inviteLink}`
 
       return { message, inviteLink }
     } catch (error) {

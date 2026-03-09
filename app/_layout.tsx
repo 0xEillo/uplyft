@@ -219,12 +219,12 @@ function RootLayoutNav() {
     const resolvePendingInvite = async () => {
       const invite = await consumePendingInvite()
       if (!invite || cancelled) return
-      if (invite.inviterId === user.id) return
+      if (invite === user.id) return
 
       router.replace({
-        pathname: '/user/[userId]',
+        pathname: '/invite/[inviteId]',
         params: {
-          userId: invite.inviterId,
+          inviteId: invite,
         },
       })
     }
@@ -279,6 +279,10 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="invite"
+            options={{ presentation: 'card', animation: 'default' }}
+          />
+          <Stack.Screen
+            name="invite/[inviteId]"
             options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen

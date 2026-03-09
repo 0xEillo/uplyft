@@ -50,33 +50,14 @@ function buildQueryString(
 
 function buildInviteDeepLink(
   inviterId: string,
-  inviterTag?: string | null,
-  inviterName?: string | null,
 ): string {
-  const query = buildQueryString({
-    inviterId,
-    inviterTag: inviterTag ?? undefined,
-    inviterName: inviterName ?? undefined,
-  })
-
-  return query.length > 0 ? `repai://invite?${query}` : 'repai://invite'
+  return `repai://invite/${encodeURIComponent(inviterId)}`
 }
 
-function buildDomainInviteUrl(
-  domain: string | null,
+function buildInviteWebUrl(
   inviterId: string,
-  inviterTag?: string | null,
-  inviterName?: string | null,
-): string | null {
-  if (!domain) return null
-  const query = buildQueryString({
-    inviterId,
-    inviterTag: inviterTag ?? undefined,
-    inviterName: inviterName ?? undefined,
-  })
-  return query.length > 0
-    ? `https://${domain}/invite?${query}`
-    : `https://${domain}/invite`
+): string {
+  return `${WEB_FALLBACK_URL}/invite/${encodeURIComponent(inviterId)}`
 }
 
 function extractCreatedLinkUrl(payload: unknown): string | null {
@@ -152,20 +133,13 @@ serve(async (req) => {
     const inviterName =
       (profile?.display_name as string | null | undefined) ?? null
 
-    const deepLinkUrl = buildInviteDeepLink(user.id, inviterTag, inviterName)
-    const fallbackUrl = getFallbackUrl(platform)
-    const deeplinkDomain = normalizeDomain(Deno.env.get('DEEPLINKNOW_DOMAIN'))
-    const domainInviteUrl = buildDomainInviteUrl(
-      deeplinkDomain,
-      user.id,
-      inviterTag,
-      inviterName,
-    )
+    const deepLinkUrl = buildInviteDeepLink(user.id)
+    const fallbackUrl = buildInviteWebUrl(user.id)
 
     const privateApiKey = Deno.env.get('DEEPLINKNOW_PRIVATE_API_KEY')
     if (!privateApiKey) {
       return jsonResponse({
-        url: domainInviteUrl || deepLinkUrl,
+        url: fallbackUrl,
         deepLinkUrl,
         fallbackUrl,
         provider: 'fallback',
@@ -203,7 +177,7 @@ serve(async (req) => {
     const createdUrl = extractCreatedLinkUrl(deeplinkPayload)
 
     return jsonResponse({
-      url: createdUrl || domainInviteUrl || deepLinkUrl,
+      url: createdUrl || fallbackUrl,
       deepLinkUrl,
       fallbackUrl,
       provider: createdUrl ? 'deeplinknow' : 'fallback',

@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
-import { consumePendingInvite, parseInvitePayload, savePendingInvite } from '@/lib/deeplinknow'
+import { parseInvitePayload } from '@/lib/deeplinknow'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
@@ -28,27 +28,10 @@ export default function InviteEntryScreen() {
       return
     }
 
-    if (!user) {
-      savePendingInvite(invitePayload)
-        .catch((error) => {
-          console.warn('[Invite] Failed to save pending invite:', error)
-        })
-        .finally(() => {
-          router.replace('/(auth)/welcome')
-        })
-      return
-    }
-
-    if (invitePayload.inviterId === user.id) {
-      consumePendingInvite().catch(() => {})
-      router.replace('/(tabs)')
-      return
-    }
-
     router.replace({
-      pathname: '/user/[userId]',
+      pathname: '/invite/[inviteId]',
       params: {
-        userId: invitePayload.inviterId,
+        inviteId: invitePayload.inviterId,
       },
     })
   }, [isLoading, params, router, user])
