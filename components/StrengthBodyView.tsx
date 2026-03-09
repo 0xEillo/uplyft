@@ -10,6 +10,7 @@ import {
   type ExerciseData,
   type MuscleGroupData,
 } from "@/hooks/useStrengthData";
+import { useBodyDiagramGender } from "@/hooks/useBodyDiagramGender";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import {
   BODY_PART_DISPLAY_NAMES,
@@ -824,7 +825,7 @@ export function StrengthBodyView({
   const styles = createStyles(colors);
 
   // Determine gender for body display
-  const bodyGender = profile?.gender === "female" ? "female" : "male";
+  const bodyGender = useBodyDiagramGender();
 
   // When embedded, render content without ScrollView wrapper
   const content = (
@@ -1153,7 +1154,7 @@ export function StrengthBodyView({
                           >
                             <Body
                               data={[{ slug: bodyMapping.slug, intensity: 1 }]}
-                              gender="male"
+                              gender={bodyGender}
                               side={bodyMapping.side}
                               scale={bodyMapping.scale}
                               colors={MUSCLE_HIGHLIGHT_COLORS}

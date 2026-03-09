@@ -1,4 +1,5 @@
 import type { BodyPartSlug } from '@/lib/body-mapping'
+import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
@@ -204,6 +205,7 @@ export function WorkoutPlanningWizard({
   onCancel,
   initialData,
 }: WorkoutPlanningWizardProps) {
+  const bodyGender = useBodyDiagramGender()
   const insets = useSafeAreaInsets()
 
   const [location, setLocation] = useState('Gym')
@@ -505,7 +507,7 @@ export function WorkoutPlanningWizard({
                     >
                       <Body
                         data={chipData.bodyData}
-                        gender="male"
+                        gender={bodyGender}
                         side={chipData.side}
                         scale={chipData.scale}
                         colors={[MUSCLE_HIGHLIGHT_COLOR]}

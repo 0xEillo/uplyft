@@ -6,6 +6,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -337,6 +338,8 @@ const MuscleFilterChip = memo(function MuscleFilterChip({
   onToggle: (group: string) => void
   brandPrimary: string
 }) {
+  const bodyGender = useBodyDiagramGender()
+
   const handlePress = useCallback(() => {
     onToggle(chipData.group)
   }, [chipData.group, onToggle])
@@ -363,7 +366,7 @@ const MuscleFilterChip = memo(function MuscleFilterChip({
         >
           <Body
             data={chipData.bodyData}
-            gender="male"
+            gender={bodyGender}
             side={chipData.side}
             scale={chipData.scale}
             colors={MUSCLE_HIGHLIGHT_COLORS}
