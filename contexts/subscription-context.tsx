@@ -72,9 +72,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const googleApiKey = Constants.expoConfig?.extra
           ?.revenueCatGoogleApiKey as string | undefined
 
-        const shouldUseTestStore = Boolean(
-          Constants.expoConfig?.extra?.revenueCatUseTestStore,
-        )
+        const wantsTestStore =
+          Constants.expoConfig?.extra?.revenueCatUseTestStore === true
+        const shouldUseTestStore = __DEV__ && wantsTestStore
+
+        if (wantsTestStore && !__DEV__) {
+          console.warn(
+            '[RevenueCat] Ignoring Test Store configuration outside a development build.',
+          )
+        }
 
         // Prioritize Test Store key for testing
         let apiKeyToUse: string | undefined

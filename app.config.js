@@ -27,6 +27,8 @@ envFiles
 
 const appEnv = process.env.APP_ENV || 'production'
 const revenueCatUseTestStoreEnv = process.env.REVENUECAT_USE_TEST_STORE
+const allowRevenueCatTestStore =
+  buildProfile !== 'production' && revenueCatUseTestStoreEnv === 'true'
 
 const supabaseUrl =
   appEnv === 'production'
@@ -60,9 +62,10 @@ const facebookPluginConfig =
           clientToken: facebookClientToken,
           displayName: 'Rep AI',
           scheme: `fb${facebookAppId}`,
-          // IMPORTANT: Disable auto-tracking until ATT consent is granted
+          // Keep automatic app events enabled for install/open attribution.
+          // Advertiser tracking/ID collection still stays gated at runtime on iOS.
           advertiserIDCollectionEnabled: false,
-          autoLogAppEventsEnabled: false,
+          autoLogAppEventsEnabled: true,
           isAutoInitEnabled: false,
           iosUserTrackingPermission:
             'This identifier will be used to deliver personalized ads to you.',
@@ -241,13 +244,10 @@ module.exports = {
       deeplinkNowDomain: deeplinkNowDomain || undefined,
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,
-      revenueCatTestStoreKey: process.env.REVENUECAT_TEST_STORE_KEY,
-      revenueCatUseTestStore:
-        revenueCatUseTestStoreEnv === 'true'
-          ? true
-          : revenueCatUseTestStoreEnv === 'false'
-          ? false
-          : undefined,
+      revenueCatTestStoreKey: allowRevenueCatTestStore
+        ? process.env.REVENUECAT_TEST_STORE_KEY
+        : undefined,
+      revenueCatUseTestStore: allowRevenueCatTestStore ? true : false,
     },
   },
 }

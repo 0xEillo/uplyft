@@ -1,12 +1,14 @@
 import {
-    getTrackingPermissionsAsync,
-    requestTrackingPermissionsAsync,
+  getTrackingPermissionsAsync,
+  requestTrackingPermissionsAsync,
 } from 'expo-tracking-transparency'
 import { Platform } from 'react-native'
 
 // Only import Facebook SDK on native platforms to avoid server-side bundling errors
 // react-native-fbsdk-next uses requireNativeComponent which isn't available on server
-let AppEventsLogger: typeof import('react-native-fbsdk-next').AppEventsLogger | null = null
+let AppEventsLogger:
+  | typeof import('react-native-fbsdk-next').AppEventsLogger
+  | null = null
 let Settings: typeof import('react-native-fbsdk-next').Settings | null = null
 
 // Check if we're in a native environment (not web/server)
@@ -20,7 +22,10 @@ if (isNative) {
     Settings = fbsdk.Settings
   } catch (error) {
     if (__DEV__ && DEBUG_SDK_LOGS) {
-      console.log('[FacebookSDK] Failed to load react-native-fbsdk-next:', error)
+      console.log(
+        '[FacebookSDK] Failed to load react-native-fbsdk-next:',
+        error,
+      )
     }
   }
 }
@@ -37,22 +42,27 @@ export type TrackingPermissionResult = {
 }
 
 /**
- * Initialize Facebook SDK (called early, but NO tracking until ATT consent)
+ * Initialize Facebook SDK early so Meta can receive install/open app events.
+ * On iOS, advertiser tracking + ID collection remain gated by ATT consent.
  * Since isAutoInitEnabled=false, we must manually initialize.
  */
 export async function initializeFacebookSDK() {
   if (!Settings) {
-    if (__DEV__ && DEBUG_SDK_LOGS) console.log('[FacebookSDK] SDK not available')
+    if (__DEV__ && DEBUG_SDK_LOGS)
+      console.log('[FacebookSDK] SDK not available')
     return
   }
 
   try {
-    // Initialize the SDK (no events are logged yet due to autoLogAppEventsEnabled=false)
+    // Keep automatic app events enabled so Meta can attribute installs/app opens.
+    // ATT still gates advertiser tracking + ID collection on iOS.
+    Settings!.setAutoLogAppEventsEnabled(true)
     await Settings!.initializeSDK()
 
     // On Android, enable tracking immediately (no ATT required)
     if (Platform.OS === 'android') {
       await Settings!.setAdvertiserTrackingEnabled(true)
+      await Settings!.setAdvertiserIDCollectionEnabled(true)
     }
 
     if (__DEV__ && DEBUG_SDK_LOGS) {
@@ -76,7 +86,9 @@ export async function initializeFacebookSDK() {
  * Call this AFTER showing the user some context (e.g., after onboarding).
  * Returns true if tracking was enabled, false otherwise.
  */
-export async function requestTrackingPermissionDetailed(): Promise<TrackingPermissionResult> {
+export async function requestTrackingPermissionDetailed(): Promise<
+  TrackingPermissionResult
+> {
   if (Platform.OS !== 'ios') {
     // Android doesn't need ATT - already enabled in initializeFacebookSDK
     return {
@@ -90,7 +102,8 @@ export async function requestTrackingPermissionDetailed(): Promise<TrackingPermi
   }
 
   if (!Settings) {
-    if (__DEV__ && DEBUG_SDK_LOGS) console.log('[FacebookSDK] SDK not available for ATT')
+    if (__DEV__ && DEBUG_SDK_LOGS)
+      console.log('[FacebookSDK] SDK not available for ATT')
     return {
       platform: 'ios',
       granted: false,
@@ -106,7 +119,8 @@ export async function requestTrackingPermissionDetailed(): Promise<TrackingPermi
     const { status: currentStatus } = await getTrackingPermissionsAsync()
 
     if (currentStatus === 'granted') {
-      // Already granted - enable full tracking
+      // Already granted - enable full advertiser tracking
+      Settings!.setAutoLogAppEventsEnabled(true)
       await Settings!.setAdvertiserTrackingEnabled(true)
       await Settings!.setAdvertiserIDCollectionEnabled(true)
       if (__DEV__ && DEBUG_SDK_LOGS)
@@ -122,9 +136,13 @@ export async function requestTrackingPermissionDetailed(): Promise<TrackingPermi
     }
 
     if (currentStatus === 'denied') {
-      // Already denied - respect the decision
+      // Already denied - respect the decision, but keep automatic app events on
+      // so install/open attribution still works without advertiser tracking.
+      Settings!.setAutoLogAppEventsEnabled(true)
       await Settings!.setAdvertiserTrackingEnabled(false)
-      if (__DEV__ && DEBUG_SDK_LOGS) console.log('[FacebookSDK] Tracking previously denied')
+      await Settings!.setAdvertiserIDCollectionEnabled(false)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.log('[FacebookSDK] Tracking previously denied')
       return {
         platform: 'ios',
         granted: false,
@@ -139,10 +157,14 @@ export async function requestTrackingPermissionDetailed(): Promise<TrackingPermi
     const { status } = await requestTrackingPermissionsAsync()
     const granted = status === 'granted'
 
-    // Enable/disable tracking based on user choice
+    // Keep automatic app events enabled for install/open attribution.
+    // Only advertiser tracking + ID collection follow the ATT choice.
+    Settings!.setAutoLogAppEventsEnabled(true)
     await Settings!.setAdvertiserTrackingEnabled(granted)
     if (granted) {
       await Settings!.setAdvertiserIDCollectionEnabled(true)
+    } else {
+      await Settings!.setAdvertiserIDCollectionEnabled(false)
     }
 
     if (__DEV__ && DEBUG_SDK_LOGS) {
@@ -216,7 +238,8 @@ export const FacebookEvents = {
         AppEventsLogger!.logEvent(eventName, parameters)
       }
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logStartTrial error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] logStartTrial error:', error)
     }
   },
 
@@ -234,7 +257,8 @@ export const FacebookEvents = {
         fb_content_type: subscriptionType ?? 'subscription',
       })
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logSubscribe error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] logSubscribe error:', error)
     }
   },
 
@@ -285,7 +309,8 @@ export const FacebookEvents = {
         fb_level: level,
       })
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logAchievedLevel error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] logAchievedLevel error:', error)
     }
   },
 
@@ -304,7 +329,8 @@ export const FacebookEvents = {
       if (contentName) params.fb_content = contentName
       AppEventsLogger!.logEvent('fb_mobile_content_view', params)
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logViewContent error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] logViewContent error:', error)
     }
   },
 
@@ -328,7 +354,8 @@ export const FacebookEvents = {
         AppEventsLogger!.logEvent(eventName)
       }
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] logCustomEvent error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] logCustomEvent error:', error)
     }
   },
 
@@ -352,7 +379,8 @@ export const FacebookEvents = {
     try {
       AppEventsLogger!.setUserData(userData)
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] setUserData error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] setUserData error:', error)
     }
   },
 
@@ -365,7 +393,8 @@ export const FacebookEvents = {
     try {
       AppEventsLogger!.setUserData({})
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] clearUserData error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] clearUserData error:', error)
     }
   },
 
@@ -377,7 +406,8 @@ export const FacebookEvents = {
     try {
       AppEventsLogger!.setUserID(userId)
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] setUserID error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] setUserID error:', error)
     }
   },
 
@@ -389,7 +419,8 @@ export const FacebookEvents = {
     try {
       AppEventsLogger!.clearUserID()
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] clearUserID error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] clearUserID error:', error)
     }
   },
 
@@ -401,7 +432,8 @@ export const FacebookEvents = {
     try {
       AppEventsLogger!.flush()
     } catch (error) {
-      if (__DEV__ && DEBUG_SDK_LOGS) console.error('[FacebookSDK] flush error:', error)
+      if (__DEV__ && DEBUG_SDK_LOGS)
+        console.error('[FacebookSDK] flush error:', error)
     }
   },
 }
