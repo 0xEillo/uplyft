@@ -125,14 +125,17 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           >
         | PendingWorkoutSocialUpdate,
     ) => {
-      if (typeof update.likeCountDelta === 'number' && update.likeCountDelta !== 0) {
-        setLikeCount((prev) => Math.max(0, prev + update.likeCountDelta))
+      const likeCountDelta =
+        typeof update.likeCountDelta === 'number' ? update.likeCountDelta : 0
+      if (likeCountDelta !== 0) {
+        setLikeCount((prev) => Math.max(0, prev + likeCountDelta))
       }
-      if (
-        typeof update.commentCountDelta === 'number' &&
-        update.commentCountDelta !== 0
-      ) {
-        setCommentCount((prev) => Math.max(0, prev + update.commentCountDelta))
+      const commentCountDelta =
+        typeof update.commentCountDelta === 'number'
+          ? update.commentCountDelta
+          : 0
+      if (commentCountDelta !== 0) {
+        setCommentCount((prev) => Math.max(0, prev + commentCountDelta))
       }
       if (typeof update.isLiked === 'boolean') {
         setIsLiked(update.isLiked)

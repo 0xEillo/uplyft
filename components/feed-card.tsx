@@ -31,7 +31,6 @@ import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
 import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
@@ -41,7 +40,7 @@ import type { StrengthLevel } from '@/lib/strength-standards'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { LevelBadge } from './LevelBadge'
 import { PrTooltip } from './pr-tooltip'
-import { WorkoutShareScreen } from './workout-share-screen'
+import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 
 // Helper functions for compact formatting
 function formatDurationCompact(seconds: number): string {
@@ -196,7 +195,6 @@ export const FeedCard = memo(function FeedCard({
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
-  const { shareWorkoutWidget } = useWorkoutShare()
   const { width: windowWidth } = useWindowDimensions()
 
   const displayRoutine = routine || workout?.routine
@@ -444,14 +442,6 @@ export const FeedCard = memo(function FeedCard({
 
   const handleCloseShareScreen = () => {
     setShowShareScreen(false)
-  }
-
-  const handleShareWidget = async (
-    widgetIndex: number,
-    shareType: 'instagram' | 'general',
-    widgetRef: View,
-  ) => {
-    await shareWorkoutWidget(widgetRef, shareType)
   }
 
   // Memoize stats section to keep it fixed
@@ -1114,14 +1104,14 @@ export const FeedCard = memo(function FeedCard({
 
       {/* Workout Share Screen Modal */}
       {workout && showShareScreen && (
-        <WorkoutShareScreen
+        <PostWorkoutCelebration
           visible={showShareScreen}
-          workout={workout}
-          weightUnit={weightUnit}
-          workoutCountThisWeek={workoutCountThisWeek}
-          workoutTitle={workoutTitle}
+          data={{
+            workout,
+            workoutTitle,
+            workoutCountThisWeek,
+          }}
           onClose={handleCloseShareScreen}
-          onShare={handleShareWidget}
         />
       )}
     </View>

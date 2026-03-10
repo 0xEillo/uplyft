@@ -5,6 +5,8 @@ import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Haptics from 'expo-haptics'
+import * as MediaLibrary from 'expo-media-library'
+import * as Clipboard from 'expo-clipboard'
 import { RefObject, useCallback, useState } from 'react'
 import { Alert, Linking, Platform, Share, View } from 'react-native'
 import { useWeightUnits } from './useWeightUnits'
@@ -47,6 +49,9 @@ export interface UseWorkoutShareResult {
   shareWorkoutWidget: (
     viewRef: CaptureableViewRef,
     shareType: 'instagram' | 'general',
+  ) => Promise<void>
+  saveWidgetToPhotosAndClipboard: (
+    viewRef: CaptureableViewRef,
   ) => Promise<void>
   isSharing: boolean
 }
@@ -588,10 +593,88 @@ export function useWorkoutShare(): UseWorkoutShareResult {
     [isSharing, trackEvent],
   )
 
+  const saveWidgetToPhotosAndClipboard = useCallback(
+    async (viewRef: CaptureableViewRef) => {
+      if (isSharing) return
+
+      if (isSimulator) {
+        Alert.alert(
+          'Save Unavailable',
+          'Saving is not available on the simulator. Please test on a physical device.',
+          [{ text: 'OK' }],
+        )
+        return
+      }
+
+      try {
+        setIsSharing(true)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+        await new Promise<void>((resolve) =>
+          runAfterInteractions(() => resolve()),
+        )
+        await new Promise<void>((resolve) => setTimeout(resolve, 300))
+
+        if (!captureRef) {
+          throw new Error('View capture not available')
+        }
+
+        // Capture to temp file for saving to photos
+        const uri = await captureRef(viewRef, {
+          format: 'png',
+          quality: 1,
+          result: 'tmpfile',
+        })
+
+        // Capture to base64 for clipboard
+        const base64 = await captureRef(viewRef, {
+          format: 'png',
+          quality: 1,
+          result: 'base64',
+        })
+
+        // Request permissions
+        const { status } = await MediaLibrary.requestPermissionsAsync()
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission required',
+            'Please allow access to your photos to save the image.',
+            [{ text: 'OK' }],
+          )
+          setIsSharing(false)
+          return
+        }
+
+        // Save to photos
+        await MediaLibrary.saveToLibraryAsync(uri)
+
+        // Save to clipboard
+        await Clipboard.setImageAsync(base64)
+
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        )
+        Alert.alert('Saved!', 'Image saved to your photos and clipboard.', [
+          { text: 'OK' },
+        ])
+      } catch (error) {
+        console.error('Error saving widget:', error)
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+        Alert.alert('Save Failed', 'Unable to save the image. Please try again.', [
+          { text: 'OK' },
+        ])
+      } finally {
+        setIsSharing(false)
+      }
+    },
+    [isSharing],
+  )
+
   return {
     shareWorkout,
     shareToInstagramStories,
     shareWorkoutWidget,
+    saveWidgetToPhotosAndClipboard,
     isSharing,
   }
 }

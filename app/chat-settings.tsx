@@ -6,8 +6,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -28,7 +27,6 @@ const SHEET_SPACING = {
 } as const
 
 export default function ChatSettingsScreen() {
-  const router = useRouter()
   const { profile, updateProfile } = useProfile()
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -59,14 +57,6 @@ export default function ChatSettingsScreen() {
     [saveContext],
   )
 
-  const hasProfileStats = useMemo(
-    () =>
-      Boolean(
-        profile?.weight_kg && profile?.height_cm && profile?.age && profile?.gender,
-      ),
-    [profile?.weight_kg, profile?.height_cm, profile?.age, profile?.gender],
-  )
-
   const handleSelectCoach = async (coachId: CoachId) => {
     if (!profile || profile.coach === coachId) return
     haptic('light')
@@ -79,13 +69,6 @@ export default function ChatSettingsScreen() {
     } finally {
       setIsUpdating(false)
     }
-  }
-
-  const handleNavigateToProfile = () => {
-    router.back()
-    setTimeout(() => {
-      router.push('/(tabs)/profile')
-    }, 250)
   }
 
   const styles = createStyles(colors, isDark)

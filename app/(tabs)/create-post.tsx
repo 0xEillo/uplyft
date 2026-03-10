@@ -484,7 +484,7 @@ export default function CreatePostScreen() {
   // =============================================================================
   const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
 
-  const { showStreakOverlay } = useSuccessOverlay()
+  const { setPendingStreakData } = useSuccessOverlay()
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
   const imageOpacity = useRef(new Animated.Value(0)).current
@@ -1827,8 +1827,7 @@ export default function CreatePostScreen() {
       resetLocalWorkoutDraftState()
       blurInputs()
 
-      // Show streak overlay only if the streak increased (e.g., 2 weeks -> 3 weeks)
-      showStreakOverlay({
+      setPendingStreakData({
         message,
         workoutNumber,
         weeklyTarget,
@@ -1851,7 +1850,7 @@ export default function CreatePostScreen() {
       queueWorkout,
       trackEvent,
       blurInputs,
-      showStreakOverlay,
+      setPendingStreakData,
       refreshFreemiumLimits,
       getWorkoutElapsedSeconds,
       resetLocalWorkoutDraftState,

@@ -52,7 +52,7 @@ interface UserWithFollowStatus extends Profile {
 
 export default function SearchScreen() {
   const colors = useThemedColors()
-  const { user, isAnonymous, session } = useAuth()
+  const { user, isAnonymous } = useAuth()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()

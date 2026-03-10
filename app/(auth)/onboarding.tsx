@@ -2279,9 +2279,6 @@ export default function OnboardingScreen() {
             <View style={styles.sectionProgressTrack}>
               <View style={[styles.sectionProgressFill, { width: '33%' }]} />
             </View>
-            <Text style={styles.sectionSubtitle}>
-              Let&apos;s align your motivation and training direction.
-            </Text>
           </View>
         )
       case 6:
@@ -2583,9 +2580,6 @@ export default function OnboardingScreen() {
                 ]}
               />
             </View>
-            <Text style={styles.sectionSubtitle}>
-              We&apos;ll set your stats and nutrition target.
-            </Text>
           </View>
         )
       case 20:
@@ -3566,9 +3560,6 @@ export default function OnboardingScreen() {
                 ]}
               />
             </View>
-            <Text style={styles.sectionSubtitle}>
-              Finalizing your personalized plan and focus areas.
-            </Text>
           </View>
         )
       case 21: {
@@ -4468,14 +4459,6 @@ const createStyles = (
       height: '100%',
       borderRadius: 999,
       backgroundColor: colors.brandPrimary,
-    },
-    sectionSubtitle: {
-      fontSize: 18,
-      fontWeight: '500',
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 27,
-      maxWidth: 420,
     },
     stepContent: {
       flex: 1,

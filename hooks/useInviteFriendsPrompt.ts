@@ -23,6 +23,22 @@ interface UseInviteFriendsPromptResult {
 const clampTimesShown = (value: number) =>
   Math.max(0, Math.min(value, SHOW_THRESHOLDS.length))
 
+export const getNextInvitePromptStep = (
+  currentTimesShown: number,
+  workoutCount: number,
+) => {
+  let nextTimesShown = clampTimesShown(currentTimesShown + 1)
+
+  while (
+    nextTimesShown < SHOW_THRESHOLDS.length &&
+    workoutCount >= SHOW_THRESHOLDS[nextTimesShown]
+  ) {
+    nextTimesShown += 1
+  }
+
+  return clampTimesShown(nextTimesShown)
+}
+
 const parseTimesShown = (rawValue: string | null): number | null => {
   if (!rawValue) return null
 
@@ -132,11 +148,11 @@ export function useInviteFriendsPrompt({
     if (!userId) return
 
     setTimesShown((current) => {
-      const next = clampTimesShown(current + 1)
+      const next = getNextInvitePromptStep(current, workoutCount)
       void persistTimesShown(next)
       return next
     })
-  }, [persistTimesShown, userId])
+  }, [persistTimesShown, userId, workoutCount])
 
   return {
     isReady,

@@ -1,62 +1,62 @@
-import React, { createContext, useContext, useState } from 'react';
 import {
-  shouldShowRatingPrompt,
-  savePromptWorkoutCount,
   requestReview,
-} from '@/lib/rating';
+  savePromptWorkoutCount,
+  shouldShowRatingPrompt,
+} from '@/lib/rating'
+import React, { createContext, useContext, useState } from 'react'
 
 interface RatingPromptContextType {
-  isVisible: boolean;
-  showPrompt: (workoutCount: number) => Promise<void>;
-  hidePrompt: () => void;
-  handleRate: () => Promise<void>;
-  handleDismiss: () => Promise<void>;
+  isVisible: boolean
+  showPrompt: (workoutCount: number) => Promise<void>
+  hidePrompt: () => void
+  handleRate: () => Promise<void>
+  handleDismiss: () => Promise<void>
 }
 
 const RatingPromptContext = createContext<RatingPromptContextType | undefined>(
-  undefined
-);
+  undefined,
+)
 
 export function RatingPromptProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [currentWorkoutCount, setCurrentWorkoutCount] = useState(0);
+  const [isVisible, setIsVisible] = useState(false)
+  const [currentWorkoutCount, setCurrentWorkoutCount] = useState(0)
 
   const showPrompt = async (workoutCount: number) => {
     // Check if we should show the prompt
-    const shouldShow = await shouldShowRatingPrompt(workoutCount);
+    const shouldShow = await shouldShowRatingPrompt(workoutCount)
 
     if (shouldShow) {
-      setCurrentWorkoutCount(workoutCount);
-      setIsVisible(true);
+      setCurrentWorkoutCount(workoutCount)
+      setIsVisible(true)
       // Save that we showed the prompt at this workout count
-      await savePromptWorkoutCount(workoutCount);
+      await savePromptWorkoutCount(workoutCount)
     }
-  };
+  }
 
   const hidePrompt = () => {
-    setIsVisible(false);
-  };
+    setIsVisible(false)
+  }
 
   const handleRate = async () => {
     // Hide the prompt
-    hidePrompt();
+    hidePrompt()
 
     // Small delay to let the modal animation complete
     setTimeout(async () => {
       // Request the native review
-      await requestReview();
-    }, 400);
-  };
+      await requestReview()
+    }, 400)
+  }
 
   const handleDismiss = async () => {
     // Just hide the prompt - we already saved the workout count
     // when we showed it, so it will re-appear after 10 more workouts
-    hidePrompt();
-  };
+    hidePrompt()
+  }
 
   return (
     <RatingPromptContext.Provider
@@ -70,13 +70,15 @@ export function RatingPromptProvider({
     >
       {children}
     </RatingPromptContext.Provider>
-  );
+  )
 }
 
 export function useRatingPrompt() {
-  const context = useContext(RatingPromptContext);
+  const context = useContext(RatingPromptContext)
   if (context === undefined) {
-    throw new Error('useRatingPrompt must be used within a RatingPromptProvider');
+    throw new Error(
+      'useRatingPrompt must be used within a RatingPromptProvider',
+    )
   }
-  return context;
+  return context
 }

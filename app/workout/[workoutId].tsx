@@ -1,12 +1,10 @@
-import { WorkoutShareScreen } from '@/components/workout-share-screen'
+import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 import { WorkoutDetailView } from '@/components/WorkoutDetail/WorkoutDetailView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { database } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
@@ -16,7 +14,7 @@ import { publishWorkoutSocialUpdate } from '@/lib/utils/workout-social-updates'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, View } from 'react-native'
+import { Alert } from 'react-native'
 
 interface PrDetailForDisplay {
   kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
@@ -51,8 +49,6 @@ export default function WorkoutDetailScreen() {
   const { profile } = useProfile()
   const { trackEvent } = useAnalytics()
   useTheme() // for theme context subscription
-  const { shareWorkoutWidget } = useWorkoutShare()
-  const { weightUnit } = useWeightUnits()
 
   const [workout, setWorkout] = useState<WorkoutSessionWithDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -289,18 +285,6 @@ export default function WorkoutDetailScreen() {
     setShowShareScreen(true)
   }, [workout])
 
-  // Handle share widget
-  const handleShareWidget = useCallback(
-    async (
-      widgetIndex: number,
-      shareType: 'instagram' | 'general',
-      widgetRef: View,
-    ) => {
-      await shareWorkoutWidget(widgetRef, shareType)
-    },
-    [shareWorkoutWidget],
-  )
-
   // Handle close share screen
   const handleCloseShareScreen = useCallback(() => {
     setShowShareScreen(false)
@@ -379,14 +363,14 @@ export default function WorkoutDetailScreen() {
 
       {/* Workout Share Screen Modal */}
       {workout && showShareScreen && (
-        <WorkoutShareScreen
+        <PostWorkoutCelebration
           visible={showShareScreen}
-          workout={workout}
-          weightUnit={weightUnit}
-          workoutCountThisWeek={workoutCount}
-          workoutTitle={workoutTitle}
+          data={{
+            workout,
+            workoutTitle,
+            workoutCountThisWeek: workoutCount,
+          }}
           onClose={handleCloseShareScreen}
-          onShare={handleShareWidget}
         />
       )}
     </>

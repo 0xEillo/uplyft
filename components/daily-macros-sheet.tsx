@@ -64,7 +64,7 @@ export function DailyMacrosSheet({
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const styles = createStyles(colors, insets, isDark)
 
-  const { calories, protein_g, carbs_g, fat_g, meal_count } = totals
+  const { calories, protein_g, carbs_g, fat_g } = totals
 
   const safeCalGoal = goals.calorie_goal || maintenanceCalories || 2000
   const safeProtGoal = goals.protein_goal_g || 150

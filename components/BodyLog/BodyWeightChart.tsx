@@ -335,7 +335,7 @@ export const BodyWeightChart = memo(({ userId }: BodyWeightChartProps) => {
       firstPoint,
       bottomY: CHART_PADDING_TOP + drawableH,
     }
-  }, [filteredData, convertToPreferred, weightUnit, selectedRange])
+  }, [filteredData, convertToPreferred, selectedRange])
 
   // ── Stats ────────────────────────────────────────────────────────────────
 
@@ -413,7 +413,6 @@ export const BodyWeightChart = memo(({ userId }: BodyWeightChartProps) => {
   }
 
   const accentColor = colors.brandPrimary
-  const accentFaded = `${accentColor}18`
   const gridColor = colors.border
   const labelColor = colors.textTertiary
 

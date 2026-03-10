@@ -103,6 +103,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 24,
+    overflow: 'hidden',
   },
   content: {
     alignItems: 'center',

@@ -275,10 +275,7 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                     style={[
                       styles.brandIcon,
                       {
-                        tintColor:
-                          dynamicTextColor === '#FFFFFF'
-                            ? '#FFFFFF'
-                            : '#FF6B35',
+                        tintColor: dynamicTextColor,
                         shadowOpacity,
                       },
                     ]}
@@ -288,10 +285,7 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                     style={[
                       styles.brandText,
                       {
-                        color:
-                          dynamicTextColor === '#FFFFFF'
-                            ? '#FFFFFF'
-                            : '#FF6B35',
+                        color: dynamicTextColor,
                         shadowOpacity,
                       },
                     ]}
@@ -332,7 +326,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 0,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },

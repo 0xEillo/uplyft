@@ -1,9 +1,9 @@
 import { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useState } from 'react'
 
-interface SuccessOverlayData {
+export interface SuccessOverlayData {
   message: string
   workoutNumber: number
   weeklyTarget: number
@@ -24,27 +24,34 @@ export interface StrengthScoreData {
   progress: number // 0-100
 }
 
+export interface PostWorkoutCelebrationData {
+  workout: WorkoutSessionWithDetails
+  workoutTitle?: string
+  workoutNumber?: number
+  workoutCountThisWeek?: number
+  streakData?: {
+    currentStreak: number
+    previousStreak: number
+    isMilestone: boolean
+  }
+  pointsData?: StrengthScoreData
+  exerciseUpgrades?: ExerciseRankUpgrade[]
+}
+
 interface SuccessOverlayContextType {
-  showOverlay: (data: SuccessOverlayData) => void
-  showStreakOverlay: (data: SuccessOverlayData) => void // Only show if streak milestone
-  hideOverlay: () => void
-  updateWorkoutData: (workout: WorkoutSessionWithDetails) => void
-  isVisible: boolean
-  overlayHasShown: boolean
-  workoutPosted: boolean
-  data: SuccessOverlayData
+  // Stash initial data from create-post
+  pendingStreakData: SuccessOverlayData | null
+  setPendingStreakData: (data: SuccessOverlayData | null) => void
+
+  // Celebration overlay state
+  celebrationData: PostWorkoutCelebrationData | null
+  isCelebrationVisible: boolean
+  showCelebration: (data: PostWorkoutCelebrationData) => void
+  hideCelebration: () => void
+
+  // Backward compatibility / existing features
   showShareScreen: boolean
   setShowShareScreen: (show: boolean) => void
-  // Points gain overlay
-  showPointsGainOverlay: (scoreData: StrengthScoreData) => void
-  hidePointsOverlay: () => void
-  isPointsOverlayVisible: boolean
-  pointsData: StrengthScoreData | null
-  // Exercise rank overlays
-  showExerciseRankOverlays: (upgrades: ExerciseRankUpgrade[], scoreData?: StrengthScoreData) => void
-  dismissCurrentExerciseRankOverlay: () => void
-  isExerciseRankOverlayVisible: boolean
-  currentExerciseRankUpgrade: ExerciseRankUpgrade | null
 }
 
 const SuccessOverlayContext = createContext<
@@ -56,134 +63,34 @@ export function SuccessOverlayProvider({
 }: {
   children: React.ReactNode
 }) {
-  const [isVisible, setIsVisible] = useState(false)
+  const [pendingStreakData, setPendingStreakData] = useState<SuccessOverlayData | null>(null)
+  
+  const [isCelebrationVisible, setIsCelebrationVisible] = useState(false)
+  const [celebrationData, setCelebrationData] = useState<PostWorkoutCelebrationData | null>(null)
+
   const [showShareScreen, setShowShareScreen] = useState(false)
-  const [overlayHasShown, setOverlayHasShown] = useState(false)
-  const [workoutPosted, setWorkoutPosted] = useState(false)
-  const [data, setData] = useState<SuccessOverlayData>({
-    message: 'Well done on completing another workout!',
-    workoutNumber: 1,
-    weeklyTarget: 3,
-  })
-  const [isPointsOverlayVisible, setIsPointsOverlayVisible] = useState(false)
-  const [pointsData, setPointsData] = useState<StrengthScoreData | null>(null)
-  const [exerciseRankQueue, setExerciseRankQueue] = useState<ExerciseRankUpgrade[]>([])
-  const pendingPointsDataRef = useRef<StrengthScoreData | null>(null)
 
-  const showOverlay = (overlayData: SuccessOverlayData) => {
-    setData(overlayData)
-    setIsVisible(true)
-    setOverlayHasShown(true)
-    // Reset workout posted flag and share screen state when showing new overlay
-    setWorkoutPosted(false)
-    setShowShareScreen(false)
-  }
-
-  // Only show overlay if it's a streak milestone (streak increased)
-  const showStreakOverlay = (overlayData: SuccessOverlayData) => {
-    // Check if streak increased (e.g., 2 weeks -> 3 weeks)
-    const previousStreak = overlayData.previousStreak ?? 0
-    const currentStreak = overlayData.currentStreak ?? 0
-    const isStreakMilestone = currentStreak > previousStreak && currentStreak > 0
-
-    if (isStreakMilestone) {
-      setData({ ...overlayData, streakMilestone: true })
-      setIsVisible(true)
-      setOverlayHasShown(true)
-      // Reset workout posted flag and share screen state when showing new overlay
-      setWorkoutPosted(false)
-      setShowShareScreen(false)
-    } else {
-      // No streak milestone - just mark as shown so share screen can proceed
-      setData(overlayData)
-      setOverlayHasShown(true)
-      setWorkoutPosted(false)
-      setShowShareScreen(false)
-    }
-  }
-
-  const hideOverlay = () => {
-    setIsVisible(false)
-    // Mark that the overlay animation has completed
-    setOverlayHasShown(false)
-  }
-
-  const updateWorkoutData = (workout: WorkoutSessionWithDetails) => {
-    setData((prevData) => {
-      const newData = {
-        ...prevData,
-        workout,
-      }
-      return newData
-    })
-    // Mark that the workout has been successfully posted to the server
-    setWorkoutPosted(true)
-  }
-
-  const showPointsGainOverlay = useCallback((scoreData: StrengthScoreData) => {
-    if (scoreData.pointsGained <= 0) return
-    setPointsData(scoreData)
-    setIsPointsOverlayVisible(true)
+  const showCelebration = useCallback((data: PostWorkoutCelebrationData) => {
+    setCelebrationData(data)
+    setIsCelebrationVisible(true)
+    setShowShareScreen(false) // Reset share screen
   }, [])
 
-  const hidePointsOverlay = useCallback(() => {
-    setIsPointsOverlayVisible(false)
-  }, [])
-
-  const showExerciseRankOverlays = useCallback(
-    (upgrades: ExerciseRankUpgrade[], scoreData?: StrengthScoreData) => {
-      if (scoreData) pendingPointsDataRef.current = scoreData
-      const hasUpgrades = upgrades.length > 0
-      const hasPoints = scoreData && scoreData.pointsGained > 0
-      if (!hasUpgrades) {
-        if (hasPoints) {
-          setPointsData(scoreData!)
-          setIsPointsOverlayVisible(true)
-          pendingPointsDataRef.current = null
-        }
-        return
-      }
-      setExerciseRankQueue(upgrades)
-    },
-    [],
-  )
-
-  const dismissCurrentExerciseRankOverlay = useCallback(() => {
-    setExerciseRankQueue((prev) => {
-      const next = prev.slice(1)
-      const pending = pendingPointsDataRef.current
-      if (next.length === 0 && pending && pending.pointsGained > 0) {
-        setTimeout(() => {
-          setPointsData(pending)
-          setIsPointsOverlayVisible(true)
-          pendingPointsDataRef.current = null
-        }, 400)
-      }
-      return next
-    })
+  const hideCelebration = useCallback(() => {
+    setIsCelebrationVisible(false)
   }, [])
 
   return (
     <SuccessOverlayContext.Provider
       value={{
-        showOverlay,
-        showStreakOverlay,
-        hideOverlay,
-        updateWorkoutData,
-        isVisible,
-        overlayHasShown,
-        workoutPosted,
-        data,
+        pendingStreakData,
+        setPendingStreakData,
+        celebrationData,
+        isCelebrationVisible,
+        showCelebration,
+        hideCelebration,
         showShareScreen,
         setShowShareScreen,
-        showPointsGainOverlay,
-        hidePointsOverlay,
-        isPointsOverlayVisible,
-        pointsData,
-        showExerciseRankOverlays,
-        dismissCurrentExerciseRankOverlay,
-        isExerciseRankOverlayVisible: exerciseRankQueue.length > 0,
-        currentExerciseRankUpgrade: exerciseRankQueue[0] ?? null,
       }}
     >
       {children}

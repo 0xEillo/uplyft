@@ -5,30 +5,30 @@ import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  EXERCISES_WITH_STANDARDS,
-  type ExerciseStandardsConfig,
+    EXERCISES_WITH_STANDARDS,
+    type ExerciseStandardsConfig,
 } from '@/lib/exercise-standards-config'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { markUserAsRated, requestReview } from '@/lib/rating'
 import {
-  getStandardsLadder,
-  getStrengthStandard,
-  type StrengthLevel,
+    getStandardsLadder,
+    getStrengthStandard,
+    type StrengthLevel,
 } from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
-  Image,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    Image,
+    Keyboard,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import Svg, { Circle, Defs, Ellipse, Line, Path, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg'
@@ -287,7 +287,7 @@ export function StrengthLevelIntroStep({
       } catch (error) {
         console.log('Error requesting review:', error)
       }
-    }, 350)
+    }, 100)
 
     return () => clearTimeout(timer)
   }, [phase])

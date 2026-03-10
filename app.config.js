@@ -8,6 +8,8 @@ const buildProfile =
   process.env.NODE_ENV ||
   'production'
 
+const isProductionBuild = buildProfile === 'production'
+
 const envFilesByProfile = {
   development: ['.env.test', '.env'],
   staging: ['.env.staging', '.env'],
@@ -91,7 +93,9 @@ const deeplinkNowPluginConfig = (() => {
 })()
 
 const deeplinkNowAssociatedDomains = deeplinkNowDomain
-  ? [`applinks:${deeplinkNowDomain}`]
+  ? isProductionBuild
+    ? [`applinks:${deeplinkNowDomain}`]
+    : []
   : []
 
 const deeplinkNowIntentFilters = deeplinkNowDomain

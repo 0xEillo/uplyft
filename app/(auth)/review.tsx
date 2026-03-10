@@ -7,12 +7,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -140,7 +140,13 @@ export default function ReviewScreen() {
         fadeOut
         explosionSpeed={350}
         fallSpeed={3000}
-        colors={[colors.brandPrimary, '#FFD700', '#FFA500', '#FF6B35', '#4ECDC4']}
+        colors={[
+          colors.brandPrimary,
+          '#FFD700',
+          '#FFA500',
+          '#FF6B35',
+          '#4ECDC4',
+        ]}
       />
 
       <View style={styles.wrapper}>

@@ -108,7 +108,7 @@ export default function DailyMacrosDetailScreen() {
     [profile],
   )
 
-  const { calories, protein_g, carbs_g, fat_g, meal_count } = totals
+  const { calories, protein_g, carbs_g, fat_g } = totals
 
   const safeCalGoal = resolveCalorieGoal(currentCalorieGoal, profile)
   const safeProtGoal = parsedGoals.protein_goal_g || 150

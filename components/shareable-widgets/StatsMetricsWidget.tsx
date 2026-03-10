@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 0,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },

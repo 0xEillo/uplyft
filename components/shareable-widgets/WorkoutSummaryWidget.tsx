@@ -44,7 +44,7 @@ export const WorkoutSummaryWidget = React.forwardRef<
   
   const textColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
   const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
-  const brandColor = '#FF6B35'
+  const brandColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
   const dividerColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
   const shadowOpacity = isTransparent ? 0.5 : 0
 
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 0,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },

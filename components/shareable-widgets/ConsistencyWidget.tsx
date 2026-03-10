@@ -25,7 +25,8 @@ export const ConsistencyWidget = React.forwardRef<View, ConsistencyWidgetProps>(
     const textColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
     const subTextColor =
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
-    const brandColor = '#FF6B35'
+    const brandColor = '#FF6B35' // for calendar dots
+    const brandTextColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E' // for REP AI
     const dividerColor =
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
 
@@ -331,10 +332,10 @@ export const ConsistencyWidget = React.forwardRef<View, ConsistencyWidgetProps>(
                 <View style={styles.logoContainer}>
                   <Image
                     source={require('../../assets/images/bicep-icon.png')}
-                    style={[styles.brandIcon, { tintColor: brandColor }]}
+                    style={[styles.brandIcon, { tintColor: brandTextColor }]}
                     resizeMode="contain"
                   />
-                  <Text style={[styles.brandText, { color: brandColor }]}>
+                  <Text style={[styles.brandText, { color: brandTextColor }]}>
                     REP AI
                   </Text>
                 </View>
@@ -361,7 +362,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 0,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   gradient: {

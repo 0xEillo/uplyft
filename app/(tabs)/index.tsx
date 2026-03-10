@@ -5,18 +5,18 @@ import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  LayoutAnimation,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  UIManager,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    LayoutAnimation,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -40,24 +40,24 @@ import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
+import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
 import { database } from '@/lib/database'
 import { scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import {
-  calculateStrengthScoreDelta,
-  loadStrengthScoreDeltaContext,
-  STRENGTH_SCORE_DELTA_SEMANTICS,
+    calculateStrengthScoreDelta,
+    loadStrengthScoreDeltaContext,
+    STRENGTH_SCORE_DELTA_SEMANTICS,
 } from '@/lib/strength-score-delta'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import { getStrengthStandard } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
-  prependProcessedWorkoutToFeed,
-  replaceWorkoutInFeedById,
-  shouldHydratePostedWorkout,
+    prependProcessedWorkoutToFeed,
+    replaceWorkoutInFeedById,
+    shouldHydratePostedWorkout,
 } from '@/lib/utils/posted-workout-optimizations'
 import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -198,13 +198,10 @@ export default function FeedScreen() {
   const { trackEvent } = useAnalytics()
   const { unreadCount } = useNotifications()
   const {
-    updateWorkoutData,
-    showPointsGainOverlay,
-    showExerciseRankOverlays,
-    isVisible: isSuccessOverlayVisible,
-    isPointsOverlayVisible,
-    isExerciseRankOverlayVisible,
-    showShareScreen,
+    pendingStreakData,
+    showCelebration,
+    isCelebrationVisible,
+    setPendingStreakData,
   } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
   const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
@@ -256,11 +253,7 @@ export default function FeedScreen() {
     workoutCount: userWorkoutCount,
   })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
-  const isCelebrationUiVisible =
-    isSuccessOverlayVisible ||
-    isPointsOverlayVisible ||
-    isExerciseRankOverlayVisible ||
-    showShareScreen
+  const isCelebrationUiVisible = isCelebrationVisible
   const appPosts = useMemo(() => {
     const unlockedCount = Math.min(
       APP_POSTS.length,
@@ -626,8 +619,9 @@ export default function FeedScreen() {
           console.error('Error hydrating newly posted workout:', error)
         }
 
-        // Update success overlay context with workout data for share screen
-        updateWorkoutData(workout)
+        // We will collect the data for the combined celebration modal
+        let finalPointsData: StrengthScoreData | undefined = undefined
+        let finalExerciseUpgrades: ExerciseRankUpgrade[] | undefined = undefined
 
         // Compute strength score delta for points gain overlay
         try {
@@ -701,15 +695,11 @@ export default function FeedScreen() {
                     progress: levelProgress.progress,
                   }
                   if (exerciseUpgrades.length > 0) {
-                    // Show exercise rank overlays first, then points gain overlay
-                    showExerciseRankOverlays(exerciseUpgrades, scoreData)
-                  } else {
-                    // Delay to show after streak overlay fades
-                    setTimeout(() => showPointsGainOverlay(scoreData), 800)
+                    finalExerciseUpgrades = exerciseUpgrades
                   }
+                  finalPointsData = scoreData
                 } else if (exerciseUpgrades.length > 0) {
-                  // Exercise rank upgrades but no overall points — just show rank overlays
-                  showExerciseRankOverlays(exerciseUpgrades)
+                  finalExerciseUpgrades = exerciseUpgrades
                 }
               }
             }
@@ -717,6 +707,38 @@ export default function FeedScreen() {
         } catch (err) {
           console.error('[Feed] Error computing strength score delta:', err)
         }
+
+        // Show the combined celebration modal with all gathered data
+        const celebrationPayload = {
+          workout,
+          workoutTitle:
+            pendingStreakData?.workoutTitle ||
+            workout.type ||
+            workout.notes?.split('\n')[0] ||
+            undefined,
+          workoutNumber: pendingStreakData?.workoutNumber || 1, // Fallback if no pending data
+          streakData: pendingStreakData ? {
+            currentStreak: pendingStreakData.currentStreak || 0,
+            previousStreak: pendingStreakData.previousStreak || 0,
+            isMilestone: !!pendingStreakData.streakMilestone,
+          } : undefined,
+          pointsData: finalPointsData,
+          exerciseUpgrades: finalExerciseUpgrades,
+        }
+        console.log('[Feed] showCelebration called with:', {
+          workoutId: workout.id,
+          workoutNumber: celebrationPayload.workoutNumber,
+          hasStreakData: !!celebrationPayload.streakData,
+          streakIsMilestone: celebrationPayload.streakData?.isMilestone,
+          streakCurrent: celebrationPayload.streakData?.currentStreak,
+          hasPointsData: !!celebrationPayload.pointsData,
+          pointsGained: celebrationPayload.pointsData?.pointsGained,
+          exerciseUpgradesCount: celebrationPayload.exerciseUpgrades?.length ?? 0,
+          exerciseUpgradeNames: celebrationPayload.exerciseUpgrades?.map((u) => u.exerciseName),
+          hadPendingStreakData: !!pendingStreakData,
+        })
+        showCelebration(celebrationPayload)
+        setPendingStreakData(null) // Clear pending streak data
 
         // Check if this is the first workout and prompt for push notifications
         try {
@@ -799,9 +821,9 @@ export default function FeedScreen() {
     isProcessingPending,
     processPendingWorkout,
     router,
-    updateWorkoutData,
-    showPointsGainOverlay,
-    showExerciseRankOverlays,
+    showCelebration,
+    pendingStreakData,
+    setPendingStreakData,
     maybeQueueGuestSignInPrompt,
   ])
 
@@ -888,9 +910,11 @@ export default function FeedScreen() {
 
   const styles = createStyles(colors)
   const handleInvitePromptDismiss = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     advanceInvitePrompt()
   }, [advanceInvitePrompt])
   const handleInvitePromptConnect = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     advanceInvitePrompt()
     router.push('/search')
   }, [advanceInvitePrompt, router])
