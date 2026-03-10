@@ -111,7 +111,7 @@ const deeplinkNowIntentFilters = deeplinkNowDomain
     ]
   : []
 
-const appVersion = '1.0.21'
+const { version: appVersion } = require('./package.json')
 
 module.exports = {
   expo: {
