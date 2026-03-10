@@ -61,25 +61,25 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Intermediate',
-        multiplier: 1.0,
+        multiplier: 1.25,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
       {
         level: 'Advanced',
-        multiplier: 1.5,
+        multiplier: 1.75,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 1.75,
+        multiplier: 2,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 2.0,
+        multiplier: 2.5,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -99,25 +99,25 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Intermediate',
-        multiplier: 0.65,
+        multiplier: 0.75,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
       {
         level: 'Advanced',
-        multiplier: 0.9,
+        multiplier: 1,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 1.1,
+        multiplier: 1.5,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 1.25,
+        multiplier: 1.75,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -4524,7 +4524,12 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f59ce0f6-5118-421e-9010-0074247c9d9f',
     name: 'Cable Crunch (Cable)',
-    aliases: ['Cable Crunch', 'Kneeling Cable Crunch', 'Cable Crunches'],
+    aliases: [
+      'Cable Crunch',
+      'Kneeling Cable Crunch',
+      'Cable Crunches',
+      'Standing Cable Crunch',
+    ],
     tier: 2,
     gifUrl: null,
     male: [
@@ -4599,6 +4604,345 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Weighted Decline Sit Up
+  {
+    id: '18cb65c2-0992-491e-9af8-afb0e9d05019',
+    name: 'Weighted Decline Sit Up',
+    aliases: ['Decline Sit Up'],
+    tier: 2,
+    isRepBased: true,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 11,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 37,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 70,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 107,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 150,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 14,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 44,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 81,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 123,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 170,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Seated Crunch (Machine)
+  {
+    id: '6857d2df-0f9a-4b7b-8bb9-d542faa46047',
+    name: 'Seated Crunch (Machine)',
+    aliases: ['Machine Seated Crunch'],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.15,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Hip Abduction
+  {
+    id: '000fe0c2-acf9-41ea-b10f-c62ec2341348',
+    name: 'Hip Abduction (Machine)',
+    tier: 2,
+    gifUrl: 'CHpahtl.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.0,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Hip Adduction
+  {
+    id: 'e3926e7d-c81c-43c5-867d-c2ffc2259d39',
+    name: 'Hip Adduction (Machine)',
+    tier: 2,
+    gifUrl: 'oHsrypV.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.0,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -4698,6 +5042,10 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Glutes
   'Hip Thrust (Barbell)': 'Glutes',
   'Barbell Hip Thrust': 'Glutes',
+  'Hip Abduction (Machine)': 'Glutes',
+
+  // Adductors
+  'Hip Adduction (Machine)': 'Adductors',
 
   // Calves
   'Standing Calf Raise (Machine)': 'Calves',
@@ -4706,6 +5054,8 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   // Core
   'Hanging Leg Raise': 'Core',
   'Cable Crunch (Cable)': 'Core',
+  'Weighted Decline Sit Up': 'Core',
+  'Seated Crunch (Machine)': 'Core',
 
   // Lower Back
   'Back Extension (Machine)': 'Lower Back',

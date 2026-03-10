@@ -95,5 +95,6 @@ export const BODY_PART_TO_DATABASE_MUSCLE: Record<string, string> = {
   calves: 'Calves',
   abs: 'Core',
   obliques: 'Core',
+  adductors: 'Adductors',
 }
 
