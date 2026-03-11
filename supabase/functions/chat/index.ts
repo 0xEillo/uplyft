@@ -41,6 +41,18 @@ const imageSchema = z.object({
   }),
 })
 
+type ChatImagePart =
+  | {
+      type: 'image'
+      image: string
+      mediaType?: string
+    }
+  | {
+      type: 'image'
+      image: URL
+      mediaType?: string
+    }
+
 const workoutContextSchema = z
   .object({
     title: z.string().optional(),
@@ -208,11 +220,9 @@ serve(async (req) => {
         payload.images &&
         payload.images.length > 0
       ) {
-        // Convert to AI SDK format: { type: 'image', image: URL }
-        const imageParts = payload.images.map((img) => ({
-          type: 'image',
-          image: img.image_url.url, // Extract the actual URL from the nested object
-        }))
+        const imageParts = payload.images.map((img) =>
+          toAiSdkImagePart(img.image_url.url),
+        )
 
         return {
           role: msg.role,
@@ -286,6 +296,43 @@ serve(async (req) => {
     return errorResponse(500, 'Failed to process chat request')
   }
 })
+
+function toAiSdkImagePart(url: string): ChatImagePart {
+  if (url.startsWith('data:')) {
+    const parsed = parseDataUrl(url)
+    if (parsed) {
+      return {
+        type: 'image',
+        image: parsed.data,
+        mediaType: parsed.mediaType,
+      }
+    }
+  }
+
+  try {
+    return {
+      type: 'image',
+      image: new URL(url),
+    }
+  } catch {
+    return {
+      type: 'image',
+      image: url,
+    }
+  }
+}
+
+function parseDataUrl(
+  value: string,
+): { mediaType?: string; data: string } | null {
+  const match = value.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.+)$/i)
+  if (!match) return null
+
+  return {
+    mediaType: match[1] || undefined,
+    data: match[2],
+  }
+}
 
 async function buildUserContext(
   userId: string,
