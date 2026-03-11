@@ -49,21 +49,6 @@ export interface MuscleGroupDistribution {
   totalVolume: number
 }
 
-export interface ExercisePercentileResult {
-  exerciseId: string
-  exerciseName: string
-  percentile: number | null
-  totalUsers: number
-  userMax1RM: number | null
-  gender?: string | null
-  genderPercentile?: number | null
-  genderTotalUsers?: number
-  weightBucketStart?: number | null
-  weightBucketEnd?: number | null
-  genderWeightPercentile?: number | null
-  genderWeightTotalUsers?: number
-}
-
 const DEFAULT_MAX_SESSIONS = 250
 const BODYWEIGHT_VOLUME_FALLBACK_KG = 1
 
@@ -85,26 +70,6 @@ function calculateEpley1RM(weight: number, reps: number): number {
 
 function normaliseName(name: string): string {
   return name.trim().toLowerCase()
-}
-
-function coerceNumber(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
-}
-
-function coerceInteger(value: unknown): number {
-  const coerced = coerceNumber(value)
-  if (coerced === null) return 0
-  const rounded = Math.trunc(coerced)
-  return Number.isFinite(rounded) ? rounded : 0
 }
 
 export async function getExerciseStrengthProgressByName(
@@ -447,89 +412,4 @@ export async function getTopExercisesByEstimated1RM(
     exerciseName: meta.name,
     series: seriesByExercise.get(exerciseId) ?? [],
   }))
-}
-
-export async function getExercisePercentile(
-  supabase: SupabaseClient,
-  userId: string,
-  exerciseName: string,
-): Promise<ExercisePercentileResult | null> {
-  const trimmed = exerciseName?.trim()
-  if (!trimmed) return null
-
-  const { data: exercise, error: exerciseError } = await supabase
-    .from('exercises')
-    .select('id, name')
-    .ilike('name', trimmed)
-    .order('name')
-    .limit(1)
-    .maybeSingle()
-
-  if (exerciseError) throw exerciseError
-  if (!exercise) return null
-
-  const { data: percentileData, error: percentileError } = await supabase.rpc(
-    'get_exercise_percentiles',
-    {
-      p_exercise_id: exercise.id,
-      p_user_id: userId,
-    },
-  )
-
-  if (percentileError) throw percentileError
-
-  const resultRow = Array.isArray(percentileData)
-    ? percentileData[0]
-    : percentileData
-
-  if (!resultRow) {
-    return {
-      exerciseId: exercise.id,
-      exerciseName: exercise.name,
-      percentile: null,
-      totalUsers: 0,
-      userMax1RM: null,
-      gender: null,
-      genderPercentile: null,
-      genderTotalUsers: 0,
-      weightBucketStart: null,
-      weightBucketEnd: null,
-      genderWeightPercentile: null,
-      genderWeightTotalUsers: 0,
-    }
-  }
-
-  const userEst1RM = coerceNumber(resultRow.user_est_1rm)
-
-  const parsedOverallPercentile = coerceNumber(resultRow.overall_percentile)
-  const parsedOverallTotalUsers = coerceInteger(resultRow.overall_total_users)
-  const parsedGenderPercentile = coerceNumber(resultRow.gender_percentile)
-  const parsedGenderTotalUsers = coerceInteger(resultRow.gender_total_users)
-  const parsedWeightBucketStart = coerceNumber(resultRow.weight_bucket_start)
-  const parsedWeightBucketEnd = coerceNumber(resultRow.weight_bucket_end)
-  const parsedGenderWeightPercentile = coerceNumber(
-    resultRow.gender_weight_percentile,
-  )
-  const parsedGenderWeightTotalUsers = coerceInteger(
-    resultRow.gender_weight_total_users,
-  )
-
-  return {
-    exerciseId: resultRow.exercise_id ?? exercise.id,
-    exerciseName: resultRow.exercise_name ?? exercise.name,
-    percentile: parsedOverallPercentile,
-    totalUsers: parsedOverallTotalUsers,
-    userMax1RM:
-      typeof userEst1RM === 'number' ? Math.round(userEst1RM * 10) / 10 : null,
-    gender:
-      typeof resultRow.gender === 'string' || resultRow.gender === null
-        ? resultRow.gender
-        : null,
-    genderPercentile: parsedGenderPercentile,
-    genderTotalUsers: parsedGenderTotalUsers,
-    weightBucketStart: parsedWeightBucketStart,
-    weightBucketEnd: parsedWeightBucketEnd,
-    genderWeightPercentile: parsedGenderWeightPercentile,
-    genderWeightTotalUsers: parsedGenderWeightTotalUsers,
-  }
 }

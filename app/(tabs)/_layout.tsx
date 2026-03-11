@@ -271,7 +271,7 @@ function TabLayoutContent() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="chat">
-          <NativeTabs.Trigger.Label>Chat</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Coach</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{
               default: 'bubble.left.and.bubble.right',

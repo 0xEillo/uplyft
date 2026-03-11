@@ -2261,7 +2261,7 @@ export const database = {
 
   // Stats and analytics
   stats: {
-    // Key exercises for percentile tracking and strength standards (main compound lifts only)
+    // Key exercises for strength standards tracking (main compound lifts only)
     // Imported from centralized configuration to ensure consistency with strength standards
     LEADERBOARD_EXERCISES: getLeaderboardExercises(),
     STANDARDS_EXERCISE_NAME_MAP: getExerciseNameMap(),
@@ -3327,61 +3327,6 @@ export const database = {
 
       // Return array of all max 1RMs (without user IDs for privacy)
       return Array.from(userMax1RMs.values())
-    },
-
-    async getExercisePercentile(userId: string, exerciseId: string) {
-      try {
-        const { data, error } = await supabase.rpc('get_exercise_percentiles', {
-          p_exercise_id: exerciseId,
-          p_user_id: userId,
-        })
-
-        if (error) throw error
-
-        const row = Array.isArray(data) ? data[0] : data
-
-        if (!row) return null
-
-        const percentile =
-          typeof row.overall_percentile === 'number'
-            ? Math.round(row.overall_percentile)
-            : null
-
-        const userMax1RM =
-          typeof row.user_est_1rm === 'number'
-            ? Math.round(row.user_est_1rm)
-            : null
-
-        return {
-          percentile,
-          userMax1RM,
-          totalUsers:
-            typeof row.overall_total_users === 'number'
-              ? row.overall_total_users
-              : 0,
-          exerciseName: row.exercise_name,
-          gender: typeof row.gender === 'string' ? row.gender : null,
-          genderPercentile:
-            typeof row.gender_percentile === 'number'
-              ? Math.round(row.gender_percentile)
-              : null,
-          genderWeightPercentile:
-            typeof row.gender_weight_percentile === 'number'
-              ? Math.round(row.gender_weight_percentile)
-              : null,
-          weightBucketStart:
-            typeof row.weight_bucket_start === 'number'
-              ? row.weight_bucket_start
-              : null,
-          weightBucketEnd:
-            typeof row.weight_bucket_end === 'number'
-              ? row.weight_bucket_end
-              : null,
-        }
-      } catch (error) {
-        console.error('Error calculating exercise percentile:', error)
-        return null
-      }
     },
 
     /**

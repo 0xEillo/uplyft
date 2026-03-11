@@ -135,6 +135,15 @@ const recordingIndicatorStyles = StyleSheet.create({
   },
 })
 
+const GOAL_PROMPT_LABELS: Record<string, string> = {
+  build_muscle: 'building muscle',
+  lose_fat: 'losing fat',
+  gain_strength: 'getting stronger',
+  improve_cardio: 'improving conditioning',
+  become_flexible: 'improving mobility',
+  general_fitness: 'improving overall fitness',
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -219,6 +228,11 @@ type SuggestionMode =
   | 'how_to'
   | 'adjust_workout'
   | 'replace_exercise'
+
+type SuggestionPromptOption = {
+  text: string
+  prompt: string
+}
 
 // Exercise suggestion for add exercise callback
 export interface ExerciseSuggestion {
@@ -393,8 +407,8 @@ export interface WorkoutContext {
 // Custom suggestions config
 export interface SuggestionsConfig {
   main: { id: string; text: string; icon: string }[]
-  tell_me_about?: string[]
-  how_to?: string[]
+  tell_me_about?: SuggestionPromptOption[]
+  how_to?: SuggestionPromptOption[]
   replace_exercise?: string[]
   adjust_workout?: { id: string; text: string; icon: string }[]
 }
@@ -430,57 +444,106 @@ export interface WorkoutChatProps {
   onChatStarted?: (hasMessages: boolean) => void
 }
 
-const DEFAULT_SUGGESTIONS: SuggestionsConfig = {
-  main: [
-    {
-      id: 'plan_workout',
-      text: 'Generate Workout',
-      icon: 'flash-outline',
-    },
-    {
-      id: 'log_meal',
-      text: 'Log Meal',
-      icon: 'nutrition',
-    },
-    {
-      id: 'view_stats',
-      text: 'Get Stats',
-      icon: 'stats-chart-outline',
-    },
-    {
-      id: 'tell_me_about',
-      text: 'Tell me about...',
-      icon: 'book-outline',
-    },
-    { id: 'how_to', text: 'How to...', icon: 'help-circle-outline' },
-  ],
-  adjust_workout: [
-    {
-      id: 'add_exercises',
-      text: 'Add Exercises',
-      icon: 'add-circle-outline',
-    },
-    {
-      id: 'replace_exercise_menu',
-      text: 'Replace Exercise',
-      icon: 'swap-horizontal-outline',
-    },
-  ],
-  tell_me_about: [
-    'Progressive overload',
-    'Muscle recovery',
-    'One rep max',
-    'RPE',
-    'Hypertrophy',
-    'Deload weeks',
-  ],
-  how_to: [
-    'Back Squat',
-    'Barbell Row',
-    'Bench Press',
-    'Deadlift',
-    'Overhead Press',
-  ],
+function buildDefaultSuggestions(input: {
+  primaryGoalLabel: string
+  hasWorkout: boolean
+  currentWorkoutExercises: string[]
+}): SuggestionsConfig {
+  const { primaryGoalLabel, hasWorkout, currentWorkoutExercises } = input
+  const currentWorkoutLabel =
+    hasWorkout && currentWorkoutExercises.length > 0
+      ? currentWorkoutExercises.slice(0, 3).join(', ')
+      : null
+
+  return {
+    main: [
+      {
+        id: 'plan_workout',
+        text: 'Generate Workout',
+        icon: 'flash-outline',
+      },
+      {
+        id: 'log_meal',
+        text: 'Log Meal',
+        icon: 'nutrition',
+      },
+      {
+        id: 'view_stats',
+        text: 'Get Stats',
+        icon: 'stats-chart-outline',
+      },
+      {
+        id: 'tell_me_about',
+        text: 'My Progress',
+        icon: 'trending-up-outline',
+      },
+      {
+        id: 'how_to',
+        text: 'My Training',
+        icon: 'barbell-outline',
+      },
+    ],
+    adjust_workout: [
+      {
+        id: 'add_exercises',
+        text: 'Add Exercises',
+        icon: 'add-circle-outline',
+      },
+      {
+        id: 'replace_exercise_menu',
+        text: 'Replace Exercise',
+        icon: 'swap-horizontal-outline',
+      },
+    ],
+    tell_me_about: [
+      {
+        text: 'What to fix?',
+        prompt: 'What should I improve most right now based on my real data?',
+      },
+      {
+        text: 'Am I on track?',
+        prompt: `Am I on track for ${primaryGoalLabel}?`,
+      },
+      {
+        text: 'Next level-up?',
+        prompt: 'Which lift is closest to leveling up next?',
+      },
+      {
+        text: 'Best vs weak',
+        prompt: 'Where am I strongest and weakest right now?',
+      },
+      {
+        text: 'What is holding me back?',
+        prompt: 'What is holding back my progress the most?',
+      },
+    ],
+    how_to: [
+      {
+        text: 'Train better',
+        prompt: currentWorkoutLabel
+          ? `How can I improve the way I'm training right now, especially in workouts like ${currentWorkoutLabel}?`
+          : `How can I train better right now for ${primaryGoalLabel}?`,
+      },
+      {
+        text: 'Too much volume?',
+        prompt:
+          'Am I doing too much volume anywhere, like too many chest exercises or sets?',
+      },
+      {
+        text: 'Rep ranges okay?',
+        prompt:
+          'Are my rep ranges right for my goal, or should I change them?',
+      },
+      {
+        text: 'Program okay?',
+        prompt: 'Does my recent program structure look balanced and effective?',
+      },
+      {
+        text: 'Biggest change?',
+        prompt: 'What is the biggest training change I should make this week?',
+      },
+    ],
+  }
 }
 
 const MAX_IMAGES = 10
@@ -848,6 +911,7 @@ export function WorkoutChat({
   onChatStarted,
 }: WorkoutChatProps = {}) {
   const messagesListRef = useRef<FlashListRef<Message>>(null)
+  const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
@@ -888,6 +952,7 @@ export function WorkoutChat({
   )
   const coach = getCoach(coachId)
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
+  const [hasChatStarted, setHasChatStarted] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
     loadedDraftContext,
@@ -991,10 +1056,6 @@ export function WorkoutChat({
         : nativeTabBarHeight + closedTabBarTopGap
       : 0
   const keyboardVerticalOffset = isCompactIOSFullscreen ? 0 : nativeTabBarHeight
-
-  // Merge custom suggestions with defaults
-  const suggestions: SuggestionsConfig =
-    customSuggestions || DEFAULT_SUGGESTIONS
 
   // NOTE: currentWorkoutExercises, hasWorkout, and activeSuggestions are computed
   // below using useMemo after effectiveWorkoutContext is defined
@@ -1243,6 +1304,11 @@ export function WorkoutChat({
                 `You can only add up to ${MAX_IMAGES} images per message.`,
               )
             }
+          } else if (pending.action === 'photos_selected') {
+            setSelectedImages((prev) => {
+              const combined = [...prev, ...pending.uris]
+              return combined.slice(0, MAX_IMAGES)
+            })
           } else if (pending.action === 'scan_food') {
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
@@ -1283,6 +1349,23 @@ export function WorkoutChat({
 
   const hasWorkout = currentWorkoutExercises.length > 0
 
+  const primaryGoalLabel = useMemo(() => {
+    const primaryGoal = profile?.goals?.[0]
+    if (!primaryGoal) return 'your goal'
+    return GOAL_PROMPT_LABELS[primaryGoal] || primaryGoal.replace(/_/g, ' ')
+  }, [profile?.goals])
+
+  const suggestions: SuggestionsConfig = useMemo(
+    () =>
+      customSuggestions ||
+      buildDefaultSuggestions({
+        primaryGoalLabel,
+        hasWorkout,
+        currentWorkoutExercises,
+      }),
+    [customSuggestions, currentWorkoutExercises, hasWorkout, primaryGoalLabel],
+  )
+
   // Update suggestions based on state
   const activeSuggestions = useMemo(
     () => ({
@@ -1301,6 +1384,32 @@ export function WorkoutChat({
     }),
     [suggestions, hasWorkout],
   )
+
+  useEffect(() => {
+    if (
+      generatedPlanContent ||
+      planningState.isActive ||
+      isLoading ||
+      hasChatStarted ||
+      messages.some((m) => m.role === 'user') ||
+      input.trim()
+    ) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      suggestionsScrollRef.current?.scrollTo({ x: 0, animated: false })
+    })
+  }, [
+    activeSuggestions,
+    generatedPlanContent,
+    hasChatStarted,
+    input,
+    isLoading,
+    messages,
+    planningState.isActive,
+    suggestionMode,
+  ])
 
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
@@ -1965,6 +2074,8 @@ export function WorkoutChat({
       hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
     if ((!messageContent && !hasImages) || isLoading) return
 
+    setHasChatStarted(true)
+
     // Check if user is pro member or has tutorial trial available
     const canAccessAiChat = isProMember || canUseTrial('ai_workout')
 
@@ -2277,6 +2388,7 @@ export function WorkoutChat({
     haptic('light')
     closeWizardAndRestoreTabBar()
     setMessages([])
+    setHasChatStarted(false)
     setInput('')
     setInputHeight(0)
     setSelectedImages([])
@@ -2290,10 +2402,19 @@ export function WorkoutChat({
   }
 
   const handleSuggestionPress = (
-    item: string | { id: string; text: string; icon: string },
+    item:
+      | string
+      | SuggestionPromptOption
+      | { id: string; text: string; icon: string },
   ) => {
     // 1. Handle object-based menu items (Main, Adjust Workout)
     if (typeof item === 'object') {
+      if ('prompt' in item) {
+        handleSendMessage(item.prompt)
+        setSuggestionMode('main')
+        return
+      }
+
       if (item.id === 'plan_workout') {
         haptic('light')
         setPlanningState((prev) => ({
@@ -2361,10 +2482,6 @@ export function WorkoutChat({
       if (suggestionMode === 'replace_exercise') {
         setExerciseToReplace(item) // Track which exercise we're replacing
         const prompt = `I want to replace "${item}" in my current workout with a similar exercise. Suggest 3 alternatives. Format response as a JSON list: [{"name": "Exercise Name", "sets": 3, "reps": "10-12"}]`
-        handleSendMessage(prompt)
-        setSuggestionMode('main')
-      } else if (suggestionMode === 'how_to') {
-        const prompt = `How do I perform "${item}" correctly? Give me a concise guide with key cues.`
         handleSendMessage(prompt)
         setSuggestionMode('main')
       } else {
@@ -4066,10 +4183,13 @@ export function WorkoutChat({
             {/* Suggestions Row */}
             {!generatedPlanContent &&
               !planningState.isActive &&
+              !isLoading &&
+              !hasChatStarted &&
               !messages.some((m) => m.role === 'user') &&
               !input.trim() && (
                 <View style={styles.suggestionsContainer}>
                   <ScrollView
+                    ref={suggestionsScrollRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.suggestionsContent}
@@ -4177,9 +4297,9 @@ export function WorkoutChat({
                           activeSuggestions[suggestionMode] || []
                         ).map((item, index) => (
                           <AnimatedSuggestion
-                            key={index}
+                            key={typeof item === 'string' ? item : item.text}
                             index={index + 1}
-                            text={item as string}
+                            text={typeof item === 'string' ? item : item.text}
                             colors={colors}
                             style={styles.suggestionBubble}
                             textStyle={styles.suggestionText}

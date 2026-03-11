@@ -4,6 +4,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
+import { MiniStrengthBodyCard } from '@/components/MiniStrengthBodyView'
 import { ProfileRoutines } from '@/components/Profile/ProfileRoutines'
 import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { SlideInView } from '@/components/slide-in-view'
@@ -59,6 +60,7 @@ export default function UserProfileScreen() {
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
+  const strengthCardWidth = width - 28
   const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
   const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
     userId,
@@ -611,9 +613,22 @@ export default function UserProfileScreen() {
               )}
             </View>
 
-            {/* Routines Section */}
+            {/* Strength Map + Routines — swipeable row */}
             {(!privacyLocked || isOwnProfile) && (
-              <ProfileRoutines userId={userId} />
+              <ProfileRoutines
+                userId={userId}
+                renderLeading={
+                  !privacyLocked
+                    ? (scrollToRoutines) => (
+                        <MiniStrengthBodyCard
+                          userId={userId}
+                          width={strengthCardWidth}
+                          onChevronPress={scrollToRoutines}
+                        />
+                      )
+                    : undefined
+                }
+              />
             )}
 
             {/* Weekly Stats Card */}

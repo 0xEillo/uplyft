@@ -6,6 +6,7 @@ export type ChatAttachmentAction =
   | { action: 'launch_camera' }
   | { action: 'launch_library' }
   | { action: 'photo_selected'; uri: string }
+  | { action: 'photos_selected'; uris: string[] }
   | { action: 'scan_food' }
   | { action: 'generate_workout' }
 

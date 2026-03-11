@@ -1,6 +1,6 @@
 /**
  * Central Exercise Standards Configuration
- * Single source of truth for exercises that have strength standards and percentile tracking
+ * Single source of truth for exercises that have strength standards
  */
 
 import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
@@ -37,7 +37,7 @@ export const TIER2_WEIGHT = 0.5
 
 /**
  * Canonical list of exercises with strength standards
- * These exercises have standards defined and support percentile rankings (used in workout chat)
+ * These exercises have standards defined and are used across strength ranking features
  */
 export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   // Bench Press
@@ -4951,7 +4951,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
 ]
 
 /**
- * Get list of exercise names (including aliases) that support percentile rankings
+ * Get list of exercise names (including aliases) that support strength standards
  */
 export function getLeaderboardExercises(): string[] {
   const names: string[] = []

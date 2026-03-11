@@ -23,12 +23,15 @@ interface RecentPhoto {
   uri: string
 }
 
+const MAX_SELECTABLE = 3
+
 export default function ChatAttachmentScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([])
+  const [selectedUris, setSelectedUris] = useState<string[]>([])
   const hasFetchedRef = useRef(false)
 
   useEffect(() => {
@@ -53,6 +56,20 @@ export default function ChatAttachmentScreen() {
     haptic('light')
     await setPendingChatAttachment(action)
     router.back()
+  }
+
+  const togglePhoto = (uri: string) => {
+    haptic('light')
+    setSelectedUris((prev) => {
+      if (prev.includes(uri)) return prev.filter((u) => u !== uri)
+      if (prev.length >= MAX_SELECTABLE) return prev
+      return [...prev, uri]
+    })
+  }
+
+  const confirmSelection = () => {
+    if (selectedUris.length === 0) return
+    dispatch({ action: 'photos_selected', uris: selectedUris })
   }
 
   const PHOTO_SIZE = 88
@@ -87,7 +104,7 @@ export default function ChatAttachmentScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Title + All Photos */}
+      {/* Title + All Photos / Send button */}
       <View
         style={{
           flexDirection: 'row',
@@ -110,6 +127,21 @@ export default function ChatAttachmentScreen() {
             All Photos
           </Text>
         </TouchableOpacity>
+
+        {selectedUris.length > 0 && (
+          <TouchableOpacity onPress={confirmSelection} hitSlop={8}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '600',
+                color: colors.brandPrimary,
+              }}
+            >
+              Add {selectedUris.length} Photo
+              {selectedUris.length > 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Photo strip */}
@@ -135,26 +167,72 @@ export default function ChatAttachmentScreen() {
         </TouchableOpacity>
 
         {/* Recent photos */}
-        {recentPhotos.map((photo) => (
-          <TouchableOpacity
-            key={photo.id}
-            onPress={() =>
-              dispatch({ action: 'photo_selected', uri: photo.uri })
-            }
-            style={{
-              width: PHOTO_SIZE,
-              height: PHOTO_SIZE,
-              borderRadius: CORNER_RADIUS,
-              overflow: 'hidden',
-            }}
-          >
-            <ExpoImage
-              source={{ uri: photo.uri }}
-              style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
-              contentFit="cover"
-            />
-          </TouchableOpacity>
-        ))}
+        {recentPhotos.map((photo) => {
+          const isSelected = selectedUris.includes(photo.uri)
+          const selectionIndex = selectedUris.indexOf(photo.uri)
+          const atLimit =
+            selectedUris.length >= MAX_SELECTABLE && !isSelected
+
+          return (
+            <TouchableOpacity
+              key={photo.id}
+              onPress={() => togglePhoto(photo.uri)}
+              disabled={atLimit}
+              style={{
+                width: PHOTO_SIZE,
+                height: PHOTO_SIZE,
+                borderRadius: CORNER_RADIUS,
+                overflow: 'hidden',
+                opacity: atLimit ? 0.4 : 1,
+              }}
+            >
+              <ExpoImage
+                source={{ uri: photo.uri }}
+                style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
+                contentFit="cover"
+              />
+              {isSelected && (
+                <View
+                  style={{
+                    ...StyleSheet.absoluteFillObject,
+                    backgroundColor: 'rgba(0,0,0,0.25)',
+                  }}
+                />
+              )}
+              {/* Selection badge */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 5,
+                  right: 5,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: isSelected
+                    ? colors.brandPrimary
+                    : 'rgba(0,0,0,0.35)',
+                  borderWidth: isSelected ? 0 : 1.5,
+                  borderColor: 'rgba(255,255,255,0.8)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {isSelected && (
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: '700',
+                      lineHeight: 13,
+                    }}
+                  >
+                    {selectionIndex + 1}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )
+        })}
       </ScrollView>
 
       {/* Action rows */}

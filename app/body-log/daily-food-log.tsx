@@ -174,7 +174,7 @@ export default function DailyFoodLogScreen() {
 
   const handleOpenFoodLibrary = useCallback(() => {
     haptic('light')
-    router.push('/food-library')
+    router.push('/chat')
   }, [router])
 
   const prefillTotals = useMemo(

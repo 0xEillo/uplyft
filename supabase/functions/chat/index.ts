@@ -5,16 +5,27 @@ import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { streamText, tool } from 'npm:ai'
 import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 
+import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
-    getExercisePercentile,
-    getExerciseStrengthProgressByName,
-    getMuscleGroupDistribution,
-    getStrengthScoreProgress,
-    getTopExercisesByEstimated1RM,
+  buildAdherenceSummary,
+  buildRecoverySummary,
+} from '../_shared/readiness.ts'
+import {
+  getExerciseStrengthProgressByName,
+  getMuscleGroupDistribution,
+  getTopExercisesByEstimated1RM,
 } from '../_shared/stats.ts'
-import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
-import { buildUserContextSummary, userContextToPrompt } from './user-context.ts'
+import {
+  buildUserStrengthProfile,
+  getExerciseStandardsForProfile,
+} from '../_shared/strength.ts'
+import { createUserClient } from '../_shared/supabase.ts'
+import {
+  buildUserContextSummary,
+  summarizeTrainingPatterns,
+  userContextToPrompt,
+} from './user-context.ts'
 
 const messagesSchema = z.object({
   role: z.enum(['system', 'user', 'assistant']),
@@ -118,6 +129,17 @@ type BodyLogRecord = {
   weight_kg: number | null
   body_fat_percentage: number | null
   bmi: number | null
+  muscle_mass_kg?: number | null
+  lean_mass_kg?: number | null
+  fat_mass_kg?: number | null
+  score_v_taper?: number | null
+  score_chest?: number | null
+  score_shoulders?: number | null
+  score_abs?: number | null
+  score_arms?: number | null
+  score_back?: number | null
+  score_legs?: number | null
+  analysis_summary?: string | null
   file_path?: string | null
 }
 
@@ -214,10 +236,10 @@ serve(async (req) => {
     const isFoodLabelScan = payload.scanMode === 'food_label'
     const hasImages = Boolean(payload.images && payload.images.length > 0)
     const modelToUse = isFoodLabelScan
-      ? openrouter.chat(GEMINI_MODEL)         // Gemini: superior OCR on nutrition label text
+      ? openrouter.chat(GEMINI_MODEL) // Gemini: superior OCR on nutrition label text
       : hasImages
-      ? openai('gpt-4o')                      // GPT-4o: general food photo understanding
-      : openrouter.chat(GEMINI_MODEL)         // Gemini: text-only chat
+      ? openai('gpt-4o') // GPT-4o: general food photo understanding
+      : openrouter.chat(GEMINI_MODEL) // Gemini: text-only chat
     console.log('[chat-edge] Model selected:', {
       model: isFoodLabelScan
         ? `openrouter:${GEMINI_MODEL} (food_label OCR)`
@@ -273,9 +295,45 @@ async function buildUserContext(
   tools: Record<string, ReturnType<typeof tool>>
 }> {
   const supabase = createUserClient(accessToken)
-  const serviceSupabase = createServiceClient()
 
   const summary = await buildUserContextSummary(userId, supabase)
+  let strengthProfilePromise: Promise<
+    Awaited<ReturnType<typeof buildUserStrengthProfile>>
+  > | null = null
+  let recoverySummaryPromise: Promise<
+    Awaited<ReturnType<typeof buildRecoverySummary>>
+  > | null = null
+  let adherenceSummaryPromise: Promise<
+    Awaited<ReturnType<typeof buildAdherenceSummary>>
+  > | null = null
+
+  const getStrengthProfile = () => {
+    if (!strengthProfilePromise) {
+      strengthProfilePromise = buildUserStrengthProfile(supabase, userId)
+    }
+
+    return strengthProfilePromise
+  }
+
+  const getRecoverySummary = () => {
+    if (!recoverySummaryPromise) {
+      recoverySummaryPromise = buildRecoverySummary(supabase, userId)
+    }
+
+    return recoverySummaryPromise
+  }
+
+  const getAdherenceSummary = () => {
+    if (!adherenceSummaryPromise) {
+      adherenceSummaryPromise = buildAdherenceSummary(
+        supabase,
+        userId,
+        summary.profile.commitment,
+      )
+    }
+
+    return adherenceSummaryPromise
+  }
 
   const tools: Record<string, ReturnType<typeof tool>> = {
     getWorkoutSlice: tool({
@@ -361,6 +419,53 @@ async function buildUserContext(
             })),
           })),
         }))
+      },
+    }),
+    getTrainingPatterns: tool({
+      description:
+        'Summarize how the user has been training recently: exercises per session, working sets, rep-range tendencies, and muscle-group volume per session. Use this for questions about too much volume, too many exercises, rep ranges, split quality, or how to train better.',
+      inputSchema: z
+        .object({
+          daysBack: z.number().int().min(7).max(180).optional(),
+          limitSessions: z.number().int().min(3).max(20).optional(),
+        })
+        .partial(),
+      execute: async ({ daysBack, limitSessions } = {}) => {
+        const resolvedLimit = Math.min(Math.max(limitSessions ?? 8, 3), 20)
+
+        let query = supabase
+          .from('workout_sessions')
+          .select(
+            `
+            id,
+            date,
+            created_at,
+            type,
+            workout_exercises (
+              order_index,
+              exercise:exercises (name, muscle_group),
+              sets (set_number, reps, weight, rpe, is_warmup)
+            )
+          `,
+          )
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(resolvedLimit)
+
+        if (typeof daysBack === 'number' && Number.isFinite(daysBack)) {
+          const cutoff = new Date()
+          cutoff.setUTCDate(cutoff.getUTCDate() - daysBack)
+          query = query.gte('created_at', cutoff.toISOString())
+        }
+
+        const { data, error } = await query
+        if (error) throw error
+
+        const summary = summarizeTrainingPatterns((data as any[]) || [], {
+          maxSessions: resolvedLimit,
+        })
+
+        return summary ?? { sessionsAnalyzed: 0, muscleGroups: [] }
       },
     }),
     getWorkoutRoutines: tool({
@@ -776,6 +881,131 @@ async function buildUserContext(
         }))
       },
     }),
+    getBodyCompositionProgress: tool({
+      description:
+        'Fetch body composition and physique scan history, including lean mass, fat mass, muscle mass, physique scores, and coach notes.',
+      inputSchema: z
+        .object({
+          limit: z.number().int().min(1).max(20).optional(),
+          before: z
+            .string()
+            .trim()
+            .min(1)
+            .max(40)
+            .describe(
+              'ISO 8601 timestamp; only entries earlier than this are returned',
+            )
+            .optional(),
+          after: z
+            .string()
+            .trim()
+            .min(1)
+            .max(40)
+            .describe(
+              'ISO 8601 timestamp; only entries later than this are returned',
+            )
+            .optional(),
+          includeAnalysisSummary: z.boolean().optional(),
+          includeTrend: z.boolean().optional(),
+        })
+        .partial(),
+      execute: async ({
+        limit,
+        before,
+        after,
+        includeAnalysisSummary = true,
+        includeTrend = true,
+      } = {}) => {
+        const resolvedLimit = Math.min(Math.max(limit ?? 8, 1), 20)
+
+        const { data, error } = await supabase
+          .from('body_log_entries')
+          .select(
+            `
+            id,
+            created_at,
+            weight_kg,
+            body_fat_percentage,
+            bmi,
+            muscle_mass_kg,
+            lean_mass_kg,
+            fat_mass_kg,
+            score_v_taper,
+            score_chest,
+            score_shoulders,
+            score_abs,
+            score_arms,
+            score_back,
+            score_legs,
+            analysis_summary
+          `,
+          )
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(Math.max(resolvedLimit, 12))
+
+        if (error) throw error
+
+        const records = (data as BodyLogRecord[]) ?? []
+        const filtered = records.filter((record) => {
+          if (before?.trim()) {
+            const beforeDate = new Date(before.trim())
+            if (
+              !Number.isNaN(beforeDate.getTime()) &&
+              new Date(record.created_at) >= beforeDate
+            ) {
+              return false
+            }
+          }
+
+          if (after?.trim()) {
+            const afterDate = new Date(after.trim())
+            if (
+              !Number.isNaN(afterDate.getTime()) &&
+              new Date(record.created_at) <= afterDate
+            ) {
+              return false
+            }
+          }
+
+          return true
+        })
+
+        const entries = filtered.slice(0, resolvedLimit).map((record) => ({
+          id: record.id,
+          capturedAt: record.created_at,
+          metrics: {
+            weightKg: record.weight_kg,
+            bodyFatPercentage: record.body_fat_percentage,
+            bmi: record.bmi,
+            muscleMassKg: record.muscle_mass_kg ?? null,
+            leanMassKg: record.lean_mass_kg ?? null,
+            fatMassKg: record.fat_mass_kg ?? null,
+          },
+          physiqueScores: {
+            vTaper: record.score_v_taper ?? null,
+            chest: record.score_chest ?? null,
+            shoulders: record.score_shoulders ?? null,
+            abs: record.score_abs ?? null,
+            arms: record.score_arms ?? null,
+            back: record.score_back ?? null,
+            legs: record.score_legs ?? null,
+          },
+          ...(includeAnalysisSummary
+            ? { analysisSummary: record.analysis_summary ?? null }
+            : {}),
+        }))
+
+        const summary = includeTrend ? summarizeBodyLogContext(filtered) : null
+
+        return {
+          returned: entries.length,
+          entries,
+          ...(summary?.latest ? { latest: summary.latest } : {}),
+          ...(summary?.trend ? { trend: summary.trend } : {}),
+        }
+      },
+    }),
     getStrengthProgress: tool({
       description:
         "Return estimated 1RM progress for the user's lifts. Call with an exercise name or let the tool choose a few top lifts.",
@@ -816,21 +1046,6 @@ async function buildUserContext(
         }
       },
     }),
-    getStrengthScoreProgress: tool({
-      description:
-        "Return the user's cumulative strength score (sum of best estimated 1RMs) over time.",
-      inputSchema: z
-        .object({
-          daysBack: z.number().int().min(7).max(365).optional(),
-        })
-        .partial(),
-      execute: async ({ daysBack } = {}) => {
-        const series = await getStrengthScoreProgress(supabase, userId, {
-          daysBack,
-        })
-        return { series }
-      },
-    }),
     getMuscleBalance: tool({
       description:
         'Summarize training volume by muscle group and flag gaps. Use when asked about balance or neglected muscles.',
@@ -861,37 +1076,291 @@ async function buildUserContext(
         }
       },
     }),
-    getLeaderboardPercentile: tool({
+    getExerciseStandards: tool({
       description:
-        "Return the user's percentile rank for a given exercise compared to all users.",
+        "Return the full strength standards ladder for an exercise, including exact target values for each level and the user's current placement when available.",
       inputSchema: z.object({
         exerciseName: z.string().trim().min(1).max(120),
-        includeDetails: z.boolean().optional(),
+        includeUserSnapshot: z.boolean().optional(),
       }),
-      execute: async ({ exerciseName, includeDetails = false }) => {
-        const percentile = await getExercisePercentile(
-          serviceSupabase,
-          userId,
-          exerciseName,
-        )
+      execute: async ({ exerciseName, includeUserSnapshot = true }) => {
+        const strengthProfile = await getStrengthProfile()
 
-        if (!percentile) {
+        if (strengthProfile.missingRequirements.length > 0) {
           return {
-            found: false,
+            available: false,
+            missingRequirements: strengthProfile.missingRequirements,
             exerciseName,
           }
         }
 
-        return {
-          found: true,
-          exerciseName: percentile.exerciseName,
-          percentile: percentile.percentile,
-          totalUsers: percentile.totalUsers,
-          userMax1RM: percentile.userMax1RM,
-          genderPercentile: percentile.genderPercentile ?? null,
-          genderWeightPercentile: percentile.genderWeightPercentile ?? null,
-          ...(includeDetails ? { exerciseId: percentile.exerciseId } : {}),
+        const standards = getExerciseStandardsForProfile({
+          exerciseName,
+          gender: strengthProfile.profile.gender!,
+          bodyweightKg: strengthProfile.profile.bodyweightKg!,
+        })
+
+        if (!standards) {
+          return {
+            available: false,
+            exerciseName,
+            reason: 'No strength standards found for this exercise.',
+          }
         }
+
+        const normalizedInput = exerciseName.trim().toLowerCase()
+        const currentRank =
+          strengthProfile.exerciseRanks.find((rank) => {
+            const exercise = rank.exerciseName.trim().toLowerCase()
+            const canonical = rank.canonicalExerciseName.trim().toLowerCase()
+            const matchedCanonical = standards.canonicalExerciseName
+              .trim()
+              .toLowerCase()
+
+            return (
+              exercise === normalizedInput ||
+              canonical === normalizedInput ||
+              canonical === matchedCanonical
+            )
+          }) ?? null
+
+        return {
+          available: true,
+          exerciseName: standards.canonicalExerciseName,
+          gender: standards.gender,
+          bodyweightKg: standards.bodyweightKg,
+          isRepBased: standards.isRepBased,
+          tier: standards.tier,
+          levels: standards.levels,
+          ...(includeUserSnapshot
+            ? {
+                current: currentRank
+                  ? {
+                      level: currentRank.level,
+                      nextLevel: currentRank.nextLevel,
+                      progress: currentRank.progress,
+                      currentValue: currentRank.currentValue,
+                      currentMetric: currentRank.currentMetric,
+                      targetValue: currentRank.targetValue,
+                      targetMetric: currentRank.targetMetric,
+                      gapToNextLevel: currentRank.gapToNextLevel,
+                      bestSetWeightKg: currentRank.bestSetWeightKg,
+                      bestSetReps: currentRank.bestSetReps,
+                    }
+                  : null,
+              }
+            : {}),
+        }
+      },
+    }),
+    getLifterLevel: tool({
+      description:
+        "Return the user's current lifter level, total points, next-level progress, and optional muscle-group breakdown.",
+      inputSchema: z
+        .object({
+          includeGroupBreakdown: z.boolean().optional(),
+        })
+        .partial(),
+      execute: async ({ includeGroupBreakdown = false } = {}) => {
+        const strengthProfile = await getStrengthProfile()
+
+        if (strengthProfile.missingRequirements.length > 0) {
+          return {
+            available: false,
+            missingRequirements: strengthProfile.missingRequirements,
+            trackedExercises: strengthProfile.exerciseRanks.length,
+            profile: strengthProfile.profile,
+          }
+        }
+
+        if (!strengthProfile.overallLevel) {
+          return {
+            available: false,
+            reason: 'No ranked exercises found yet.',
+            trackedExercises: 0,
+            profile: strengthProfile.profile,
+          }
+        }
+
+        const overallLevel = strengthProfile.overallLevel
+
+        return {
+          available: true,
+          profile: strengthProfile.profile,
+          trackedExercises: strengthProfile.exerciseRanks.length,
+          points: overallLevel.points,
+          maxPoints: overallLevel.maxPoints,
+          level: overallLevel.level,
+          nextLevel: overallLevel.nextLevel,
+          progress: overallLevel.progress,
+          liftsTracked: overallLevel.liftsTracked,
+          weakestGroup: overallLevel.weakestGroup,
+          ...(includeGroupBreakdown
+            ? { groupBreakdown: overallLevel.groupBreakdown }
+            : {}),
+        }
+      },
+    }),
+    getExerciseRanks: tool({
+      description:
+        "Return exercise rank details for the user's standards-backed lifts, including current rank, next level, progress, and gap to level up. Use limit and offset when you need the full list.",
+      inputSchema: z
+        .object({
+          exerciseName: z.string().trim().min(1).max(120).optional(),
+          limit: z.number().int().min(1).max(100).optional(),
+          offset: z.number().int().min(0).max(500).optional(),
+          sortBy: z
+            .enum([
+              'highest_rank',
+              'closest_to_next_level',
+              'highest_points',
+              'most_recent',
+            ])
+            .optional(),
+        })
+        .partial(),
+      execute: async ({
+        exerciseName,
+        limit,
+        offset,
+        sortBy = 'highest_rank',
+      } = {}) => {
+        const strengthProfile = await getStrengthProfile()
+
+        if (strengthProfile.missingRequirements.length > 0) {
+          return {
+            available: false,
+            missingRequirements: strengthProfile.missingRequirements,
+            exerciseRanks: [],
+            totalTracked: 0,
+            profile: strengthProfile.profile,
+          }
+        }
+
+        const normalizedExercise = exerciseName?.trim().toLowerCase()
+        let exerciseRanks = [...strengthProfile.exerciseRanks]
+
+        if (normalizedExercise) {
+          exerciseRanks = exerciseRanks.filter((exercise) => {
+            const name = exercise.exerciseName.toLowerCase()
+            const canonical = exercise.canonicalExerciseName.toLowerCase()
+            return (
+              name.includes(normalizedExercise) ||
+              canonical.includes(normalizedExercise)
+            )
+          })
+        }
+
+        if (sortBy === 'closest_to_next_level') {
+          exerciseRanks.sort((left, right) => {
+            const leftGap = left.gapToNextLevel ?? Number.POSITIVE_INFINITY
+            const rightGap = right.gapToNextLevel ?? Number.POSITIVE_INFINITY
+
+            if (leftGap !== rightGap) return leftGap - rightGap
+            if (right.progress !== left.progress) {
+              return right.progress - left.progress
+            }
+            return right.scorePoints - left.scorePoints
+          })
+        } else if (sortBy === 'highest_points') {
+          exerciseRanks.sort((left, right) => {
+            if (right.scorePoints !== left.scorePoints) {
+              return right.scorePoints - left.scorePoints
+            }
+            return right.progress - left.progress
+          })
+        } else if (sortBy === 'most_recent') {
+          exerciseRanks.sort((left, right) => {
+            const leftTime = left.lastTrainedAt
+              ? new Date(left.lastTrainedAt).getTime()
+              : Number.NEGATIVE_INFINITY
+            const rightTime = right.lastTrainedAt
+              ? new Date(right.lastTrainedAt).getTime()
+              : Number.NEGATIVE_INFINITY
+            return rightTime - leftTime
+          })
+        }
+
+        const resolvedOffset = Math.max(0, offset ?? 0)
+        const resolvedLimit = Math.min(Math.max(limit ?? 50, 1), 100)
+        const pagedRanks = exerciseRanks.slice(
+          resolvedOffset,
+          resolvedOffset + resolvedLimit,
+        )
+
+        return {
+          available: true,
+          profile: strengthProfile.profile,
+          totalTracked: exerciseRanks.length,
+          returned: pagedRanks.length,
+          offset: resolvedOffset,
+          hasMore: resolvedOffset + pagedRanks.length < exerciseRanks.length,
+          exerciseRanks: pagedRanks,
+        }
+      },
+    }),
+    getRecoveryStatus: tool({
+      description:
+        "Return muscle-by-muscle recovery/readiness, including how recovered each area is and what's still fatigued.",
+      inputSchema: z
+        .object({
+          muscleGroup: z.string().trim().min(1).max(80).optional(),
+          includeRecovered: z.boolean().optional(),
+          limit: z.number().int().min(1).max(20).optional(),
+        })
+        .partial(),
+      execute: async ({ muscleGroup, includeRecovered = true, limit } = {}) => {
+        const recoverySummary = await getRecoverySummary()
+        const normalizedMuscleGroup = muscleGroup?.trim().toLowerCase()
+
+        let muscleRecovery = [...recoverySummary.muscleRecovery]
+        if (!includeRecovered) {
+          muscleRecovery = muscleRecovery.filter(
+            (entry) =>
+              entry.recoveryStatus === 'not_recovered' ||
+              entry.recoveryStatus === 'recovering',
+          )
+        }
+
+        if (normalizedMuscleGroup) {
+          muscleRecovery = muscleRecovery.filter((entry) =>
+            entry.muscleGroup.toLowerCase().includes(normalizedMuscleGroup),
+          )
+        }
+
+        const resolvedLimit = Math.min(Math.max(limit ?? 12, 1), 20)
+
+        return {
+          lastWorkoutDate: recoverySummary.lastWorkoutDate,
+          daysSinceLastWorkout: recoverySummary.daysSinceLastWorkout,
+          freshMuscleGroups: recoverySummary.freshMuscleGroups,
+          totalMuscleGroups: recoverySummary.totalMuscleGroups,
+          returned: Math.min(muscleRecovery.length, resolvedLimit),
+          muscleRecovery: muscleRecovery.slice(0, resolvedLimit),
+        }
+      },
+    }),
+    getConsistencyAdherence: tool({
+      description:
+        'Return workout consistency and adherence context, including streak, weekly target, recent workout calendar dates, and whether the user is on pace.',
+      inputSchema: z
+        .object({
+          weeksBack: z.number().int().min(2).max(16).optional(),
+          calendarDays: z.number().int().min(7).max(120).optional(),
+        })
+        .partial(),
+      execute: async ({ weeksBack, calendarDays } = {}) => {
+        const adherenceSummary = await buildAdherenceSummary(
+          supabase,
+          userId,
+          summary.profile.commitment,
+          {
+            weeksBack,
+            calendarDays,
+          },
+        )
+
+        return adherenceSummary
       },
     }),
     searchExercises: tool({
@@ -1063,16 +1532,15 @@ async function buildUserContext(
     getDetailedNutritionLog: tool({
       description:
         'Fetch detailed nutrition information for a specific day, including individual meals, their descriptions, macros, and timestamps. Use this when the user asks about specific meals or needs to see the detailed breakdown of their daily nutrition.',
-      inputSchema: z
-        .object({
-          logDate: z
-            .string()
-            .trim()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format')
-            .describe(
-              'The date to fetch meals for in YYYY-MM-DD format (e.g. 2025-03-02). Use the date from the CURRENT DAILY NUTRITION CONTEXT if the user is asking about today.',
-            ),
-        }),
+      inputSchema: z.object({
+        logDate: z
+          .string()
+          .trim()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format')
+          .describe(
+            'The date to fetch meals for in YYYY-MM-DD format (e.g. 2025-03-02). Use the date from the CURRENT DAILY NUTRITION CONTEXT if the user is asking about today.',
+          ),
+      }),
       execute: async ({ logDate }: { logDate: string }) => {
         const { data: entry } = await supabase
           .from('daily_log_entries')
@@ -1087,7 +1555,9 @@ async function buildUserContext(
 
         const { data: meals, error } = await supabase
           .from('daily_log_meals')
-          .select('id, description, calories, protein_g, carbs_g, fat_g, created_at, source')
+          .select(
+            'id, description, calories, protein_g, carbs_g, fat_g, created_at, source',
+          )
           .eq('user_id', userId)
           .eq('daily_log_entry_id', entry.id)
           .order('created_at', { ascending: true })
@@ -1146,7 +1616,13 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
 - Be natural. You're texting between sets, not writing an essay.
 - Only elaborate when they actually ask a question or want details.
 - If they ask something simple, answer simply. One sentence is often enough.
-- Save the detailed explanations for when they specifically ask "why" or "how" or want to learn more.`,
+- Save the detailed explanations for when they specifically ask "why" or "how" or want to learn more.
+- Lead with the answer, not a recap. The first 1-2 sentences should directly answer what they asked.
+- For broad coaching questions like "what should I improve?" or "what should I focus on?", identify the 1-3 highest-leverage changes only. Do not dump every possible issue.
+- Do not repeat all available stats. Mention only the metrics that actually support the recommendation.
+- Never mention internal or ambiguous metrics unless you can clearly explain what they mean in plain language.
+- Be direct and useful, not motivational or preachy. No filler, no generic hype.
+- Ask at most one clarifying question only if you are truly blocked. Otherwise give the best answer with a brief assumption if needed.`,
     ...(coachSystemPrompt
       ? [
           'COACH PERSONALITY (STYLE ONLY):',
@@ -1159,6 +1635,23 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
     "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
+    'The recent-workout context above is important. Use it to understand what the user is actually training right now: exercise selection, set counts, reps, loads, and recent patterns.',
+    "Do not confuse your coaching defaults with the user's actual behavior. Never describe 6-8 / 10-12, low-volume training, or any other coach default as what the user is currently doing unless their logged data supports it.",
+    'When discussing rep ranges, set counts, volume, or training style, first interpret the user’s actual logged training pattern. If you then give a recommendation, clearly frame it as your advice or preferred training method, not as their current approach.',
+    'If the user asks whether their rep ranges are good, whether they should change reps, or how they currently train, use the training-pattern data first. Prefer wording like "your recent training is mostly..." or "my recommendation would be..."',
+    'When giving coaching advice, prioritize in this order: 1) adherence/consistency problems, 2) recovery/readiness constraints, 3) standards/rank bottlenecks and weak muscle groups, 4) body composition or nutrition issues, 5) exercise-selection fine-tuning.',
+    "Base advice on the user's actual goal when possible. For strength goals, prioritize standards, rank gaps, lift selection, recovery, and consistency. For physique or weight goals, prioritize body composition, nutrition, adherence, and muscle balance.",
+    'If the user asks what to improve, why progress is slow, what to focus on next, whether they are on track, or what to change, diagnose before advising. Use the relevant tools instead of answering from generic gym knowledge alone.',
+    'When data is available, make recommendations concrete: name the lift, muscle group, nutrition target, recovery issue, or cadence issue that matters most, and say what to do next.',
+    'Use the recent training-pattern context to judge how the user actually trains: exercise count, working sets, rep ranges, and per-muscle session volume. This is especially important for advice about too much volume, too little volume, poor exercise selection, or inappropriate rep ranges.',
+    'If the user asks about their current training, recent workouts, recent exercise choices, whether their split/program makes sense, why a lift is or is not moving, or wants feedback on what they have been doing lately, use getWorkoutSlice.',
+    'If the user asks how to train better, whether they are doing too many exercises or sets, whether their rep ranges make sense, whether they are overdoing a muscle group like chest, or how their programming structure looks, call getTrainingPatterns.',
+    'If the user asks about lifter level, points, exercise ranks, full standards ladders, target weights or reps for Beginner/Novice/Intermediate/Advanced/Elite/World Class, next level targets, or which lift is closest to leveling up, call getLifterLevel, getExerciseRanks, and/or getExerciseStandards.',
+    'If the user asks about recovery, readiness, what muscle is fresh, whether they should train something today, or what is still fatigued, call getRecoveryStatus.',
+    'If the user asks about consistency, streaks, workout calendar, momentum, cadence, or whether they are on track with training frequency, call getConsistencyAdherence.',
+    'If the user asks about physique, body composition, body scans, lean mass, fat mass, muscle mass, or visual strengths/weak points, call getBodyCompositionProgress.',
+    'If the user asks about meals, calories, protein, macros, what they ate on a given day, or wants a daily nutrition breakdown, call getDetailedNutritionLog.',
+    'For broad self-improvement questions, combine multiple tools when useful. Common pattern: getTrainingPatterns + getWorkoutSlice + getConsistencyAdherence + getRecoveryStatus + getLifterLevel/getExerciseRanks, and include getBodyCompositionProgress or getDetailedNutritionLog when physique or nutrition is relevant.',
     'If the user asks about saved routines or templates by name, call the getWorkoutRoutines tool with the routineName parameter. The user context above shows available routine names.',
     ...(dailyLogSummary
       ? [
@@ -1176,6 +1669,7 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
       : []),
     'WORKOUT GENERATION:',
     'DEFAULT PROGRAMMING STYLE (ALL COACHES):',
+    '- This section defines your recommended default programming style for generated plans. It does NOT describe what the user is currently doing.',
     '- Use a high-intensity, low-volume approach by default.',
     '- Working sets per exercise: mostly 2; sometimes 3 for compound movements; never more than 3 working sets.',
     '- Rep targets: compounds 6-8 reps, isolations 10-12 reps.',
