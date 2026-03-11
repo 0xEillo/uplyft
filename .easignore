@@ -18,6 +18,8 @@ coverage/
 # Build artifacts
 dist/
 build/
+ios/
+android/
 ios/Pods/
 ios/build/
 android/.gradle/
