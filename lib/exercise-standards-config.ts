@@ -293,6 +293,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
+  // Bench Press (Smith Machine)
+  {
+    id: 'dec2873e-0c39-4e88-b05b-247d3cb6b1b3',
+    name: 'Bench Press (Smith Machine)',
+    aliases: ['Smith Bench Press'],
+    tier: 1,
+    gifUrl: 'trqKQv2.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.6,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.8,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Dumbbell Bench Press
   {
     id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
@@ -540,6 +625,176 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Fly (Dumbbell)
+  {
+    id: '80a44d4f-fe01-477a-837d-de22d82e4d4a',
+    name: 'Fly (Dumbbell)',
+    aliases: ['Dumbbell Fly', 'Dumbbell Chest Fly', 'Dumbbell Flyes', 'DB Fly', 'Chest Flyes'],
+    tier: 2,
+    gifUrl: 'yz9nUhF.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.7,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.85,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.45,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Fly (Machine) / Pec Deck
+  {
+    id: '35b6ab14-c135-4368-957e-fc2907b459d1',
+    name: 'Fly (Machine)',
+    aliases: ['Pec Deck', 'Machine Fly', 'Flies (Machine)'],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.0,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.3,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.3,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.55,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -960,6 +1215,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Arnold Press (Dumbbell)
+  {
+    id: '81f27422-7611-43e1-859c-076c6241e434',
+    name: 'Arnold Press (Dumbbell)',
+    aliases: ['Dumbbell Arnold Press', 'Arnold Press'],
+    tier: 2,
+    gifUrl: 'Xy4jlWA.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.45,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.65,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.8,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.35,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.45,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -1549,6 +1889,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Bicep Curl (Cable)
+  {
+    id: '6317e651-21ea-43e1-ace7-8499af8adb6c',
+    name: 'Bicep Curl (Cable)',
+    aliases: ['Cable Curl', 'Cable Bicep Curl'],
+    tier: 2,
+    gifUrl: 'G08RZcQ.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.65,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.05,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.85,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.7,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.25,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -2390,6 +2815,96 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.3,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Skull Crusher (Barbell) / Lying Tricep Extension
+  {
+    id: 'b27be848-7788-476a-ae78-19aea566977b',
+    name: 'Skull Crusher (Barbell)',
+    aliases: [
+      'Skullcrusher',
+      'Skull Crushers',
+      'Lying Tricep Extension',
+      'Barbell Lying Triceps Extension',
+    ],
+    tier: 2,
+    gifUrl: 'h8LFzo9.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.8,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.35,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.35,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.55,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.95,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -4984,6 +5499,9 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Chest Press (Machine)': 'Chest',
   'Chest Press': 'Chest',
   'Barbell Decline Bench Press': 'Chest',
+  'Bench Press (Smith Machine)': 'Chest',
+  'Fly (Dumbbell)': 'Chest',
+  'Fly (Machine)': 'Chest',
 
   // Shoulders
   'Shoulder Press (Barbell)': 'Shoulders',
@@ -4993,6 +5511,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Lateral Raise (Dumbbell)': 'Shoulders',
   'Rope Face Pulls (Cable)': 'Shoulders',
   'Reverse Fly (Dumbbell)': 'Shoulders',
+  'Arnold Press (Dumbbell)': 'Shoulders',
 
   // Back
   'Bent Over Row (Barbell)': 'Back',
@@ -5025,6 +5544,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Rope Pushdown (Cable)': 'Triceps',
   'Triceps Extension (Machine)': 'Triceps',
   'Overhead Cable Extension (Cable)': 'Triceps',
+  'Skull Crusher (Barbell)': 'Triceps',
 
   // Quads
   'Squat (Barbell)': 'Quads',
@@ -5081,9 +5601,13 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Chest Press (Machine)': 'Push',
   'Chest Press': 'Push',
   'Barbell Decline Bench Press': 'Push',
+  'Bench Press (Smith Machine)': 'Push',
+  'Fly (Dumbbell)': 'Push',
+  'Fly (Machine)': 'Push',
   'Shoulder Press (Barbell)': 'Push',
   'Shoulder Press (Machine)': 'Push',
   'Seated Shoulder Press (Dumbbell)': 'Push',
+  'Arnold Press (Dumbbell)': 'Push',
   'Weighted Dip': 'Push',
 
   'Close Grip Bench Press (Barbell)': 'Push',
@@ -5091,6 +5615,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Rope Pushdown (Cable)': 'Push',
   'Seated Lateral Raise (Dumbbell)': 'Push',
   'Triceps Extension (Machine)': 'Push',
+  'Skull Crusher (Barbell)': 'Push',
 
   'Bent Over Row (Barbell)': 'Pull',
   'Lat Pulldown (Cable)': 'Pull',
@@ -5099,6 +5624,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Hammer Curl (Dumbbell)': 'Pull',
   'Incline Hammer Curl (Dumbbell)': 'Pull',
   'Bicep Curl (Barbell)': 'Pull',
+  'Bicep Curl (Cable)': 'Pull',
   'Bent Over Row (Dumbbell)': 'Pull',
   'Seated Row': 'Pull',
   'Seated Row (Machine)': 'Pull',
