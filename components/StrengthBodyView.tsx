@@ -25,6 +25,7 @@ import {
 } from "@/lib/exercise-standards-config";
 import {
   calculateExerciseStrengthPoints,
+  getOverallStrengthGroupLevelProgress,
   LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
 import {
@@ -1119,6 +1120,17 @@ export function StrengthBodyView({
               const isExpanded = expandedMuscleGroups.has(group);
               const bodyMapping = DISPLAY_GROUP_BODY_MAPPING[group];
               const bestExercise = exercises[0];
+              // Keep muscle-group ranks aligned with the same aggregate model as lifter level.
+              const aggregateGroupRank = overallLevel
+                ? getOverallStrengthGroupLevelProgress(
+                    overallLevel.groupBreakdown[group],
+                  )
+                : null;
+              const badgeLevel =
+                aggregateGroupRank?.level ??
+                (exercises.length > 0
+                  ? (bestExercise!.level as StrengthLevel)
+                  : "Untrained");
 
               return (
                 <View key={group}>
@@ -1182,11 +1194,7 @@ export function StrengthBodyView({
 
                     {/* Best level badge */}
                     <LevelBadge
-                      level={
-                        exercises.length > 0
-                          ? (bestExercise!.level as StrengthLevel)
-                          : "Untrained"
-                      }
+                      level={badgeLevel}
                       variant="pill"
                       size="small"
                     />

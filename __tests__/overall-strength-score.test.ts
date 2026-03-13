@@ -3,6 +3,7 @@ import {
     calculateOverallStrengthScoreDeltaForSession,
     calculateExerciseStrengthPoints,
     calculateOverallStrengthScore,
+    getOverallStrengthGroupLevelProgress,
     getLatestStrengthIncreaseSession,
     scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
@@ -37,6 +38,16 @@ describe('overall strength score', () => {
     expect(mapped.level).toBe('Advanced')
     expect(mapped.nextLevel).toBe('Elite')
     expect(mapped.progress).toBeCloseTo(44.44, 2)
+  })
+
+  test('maps group rank from effective group score instead of top exercise score', () => {
+    const mapped = getOverallStrengthGroupLevelProgress({
+      effectiveScore: 395,
+    })
+
+    expect(mapped.level).toBe('Novice')
+    expect(mapped.nextLevel).toBe('Intermediate')
+    expect(mapped.progress).toBeCloseTo(97.5, 2)
   })
 
   test('uses highest exercise score per muscle group and weighted aggregation', () => {

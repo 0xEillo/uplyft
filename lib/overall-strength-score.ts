@@ -292,6 +292,16 @@ export function scoreToOverallLevelProgress(score: number): {
   }
 }
 
+export function getOverallStrengthGroupLevelProgress(
+  breakdown: Pick<OverallStrengthGroupBreakdown, 'effectiveScore'>,
+): {
+  level: StrengthLevel
+  nextLevel: StrengthLevel | null
+  progress: number
+} {
+  return scoreToOverallLevelProgress(breakdown.effectiveScore)
+}
+
 export function calculateOverallStrengthScore(input: {
   gender: StrengthGender
   bodyweightKg: number

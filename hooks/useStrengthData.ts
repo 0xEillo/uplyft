@@ -1,6 +1,10 @@
 import { useAuth } from '@/contexts/auth-context'
 import { EXERCISE_MUSCLE_MAPPING, getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config-secondary'
+import type {
+  OverallStrengthGroup,
+  OverallStrengthGroupBreakdown,
+} from '@/lib/overall-strength-score'
 import {
     calculateStrengthScoreDelta,
     loadStrengthScoreDeltaContext,
@@ -66,6 +70,7 @@ export interface OverallLevelData {
   score: number
   weakestGroup: string | null
   lastIncreaseAt: string | null
+  groupBreakdown: Record<OverallStrengthGroup, OverallStrengthGroupBreakdown>
 }
 
 export interface GroupLevelData {
@@ -228,6 +233,7 @@ export function useStrengthData() {
       score: currentResult.score,
       weakestGroup: currentResult.weakestGroup,
       lastIncreaseAt,
+      groupBreakdown: currentResult.groupBreakdown,
     }
   }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
 
