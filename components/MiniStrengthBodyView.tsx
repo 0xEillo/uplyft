@@ -9,17 +9,13 @@ import {
   BODY_PART_TO_DATABASE_MUSCLE,
   type BodyPartSlug,
 } from '@/lib/body-mapping'
-import { EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config'
-import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config-secondary'
+import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
 import {
-  getStrengthGender,
-  scoreToLevelProgress,
-  toLevelScore,
-} from '@/lib/strength-progress'
+  buildDisplayStrengthGroupData,
+  resolveDatabaseMuscleToDisplayGroup,
+} from '@/lib/strength-display-groups'
 import { loadStrengthScoreDeltaContext } from '@/lib/strength-score-delta'
 import {
-  getStrengthStandard,
-  hasStrengthStandards,
   type StrengthLevel,
 } from '@/lib/strength-standards'
 import type { Profile } from '@/types/database.types'
@@ -42,6 +38,9 @@ const MINI_HEIGHT = BODY_FULL_HEIGHT * SCALE
 function useMiniStrengthData(userId: string) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
+  const [displayMuscleGroups, setDisplayMuscleGroups] = useState<
+    MuscleGroupData[]
+  >([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -56,6 +55,27 @@ function useMiniStrengthData(userId: string) {
           (a, b) => b.max1RM - a.max1RM,
         ) as ExerciseData[]
         setExerciseData(sorted)
+
+        if (
+          ctx.profile?.weight_kg &&
+          ctx.strengthGender &&
+          sorted.length > 0
+        ) {
+          const overallScore = calculateOverallStrengthScore({
+            gender: ctx.strengthGender,
+            bodyweightKg: ctx.profile.weight_kg,
+            exercises: sorted,
+          })
+
+          setDisplayMuscleGroups(
+            buildDisplayStrengthGroupData({
+              exercises: sorted,
+              groupBreakdown: overallScore.groupBreakdown,
+            }),
+          )
+        } else {
+          setDisplayMuscleGroups([])
+        }
       } catch (err) {
         console.error('Error loading mini strength data:', err)
       } finally {
@@ -69,67 +89,12 @@ function useMiniStrengthData(userId: string) {
     }
   }, [userId])
 
-  const getStrengthInfo = useCallback(
-    (exerciseName: string, max1RM: number) => {
-      const strengthGender = getStrengthGender(profile?.gender)
-      if (!strengthGender || !profile?.weight_kg) return null
-      if (!hasStrengthStandards(exerciseName)) return null
-      return getStrengthStandard(
-        exerciseName,
-        strengthGender,
-        profile.weight_kg,
-        max1RM,
-      )
-    },
-    [profile?.gender, profile?.weight_kg],
-  )
-
-  const muscleGroups = useMemo((): MuscleGroupData[] => {
-    if (!profile?.weight_kg || exerciseData.length === 0) return []
-
-    const groups = new Map<string, ExerciseData[]>()
-
-    exerciseData.forEach((exercise) => {
-      const primaryGroup =
-        EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] ||
-        exercise.muscleGroup ||
-        'Other'
-      if (!groups.has(primaryGroup)) groups.set(primaryGroup, [])
-      groups.get(primaryGroup)?.push(exercise)
-
-      const secondaryGroup =
-        SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName]
-      if (secondaryGroup && secondaryGroup !== primaryGroup) {
-        if (!groups.has(secondaryGroup)) groups.set(secondaryGroup, [])
-        groups.get(secondaryGroup)?.push(exercise)
-      }
-    })
-
-    const result: MuscleGroupData[] = []
-
-    groups.forEach((exercises, name) => {
-      let totalScore = 0
-      let count = 0
-
-      exercises.forEach((exercise) => {
-        const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-        if (info) {
-          totalScore += toLevelScore(info.level, info.progress)
-          count++
-        }
-      })
-
-      if (count > 0) {
-        const averageScore = totalScore / count
-        const { level, progress } = scoreToLevelProgress(averageScore)
-        result.push({ name, level, progress, exercises, averageScore })
-      }
-    })
-
-    return result.sort((a, b) => b.averageScore - a.averageScore)
-  }, [exerciseData, profile, getStrengthInfo])
-
-  return { profile, muscleGroups, isLoading, hasData: exerciseData.length > 0 }
+  return {
+    profile,
+    displayMuscleGroups,
+    isLoading,
+    hasData: exerciseData.length > 0,
+  }
 }
 
 interface MiniStrengthBodyCardProps {
@@ -148,7 +113,7 @@ export function MiniStrengthBodyCard({
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const router = useRouter()
-  const { profile, muscleGroups, isLoading, hasData } =
+  const { profile, displayMuscleGroups, isLoading, hasData } =
     useMiniStrengthData(userId)
 
   const bodyGender: 'male' | 'female' =
@@ -170,11 +135,13 @@ export function MiniStrengthBodyCard({
   const bodyData = useMemo(() => {
     const data: { slug: BodyPartSlug; intensity: number }[] = []
     const muscleMap = new Map<string, MuscleGroupData>()
-    muscleGroups.forEach((mg) => muscleMap.set(mg.name, mg))
+    displayMuscleGroups.forEach((mg) => muscleMap.set(mg.name, mg))
 
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
-        const mgData = muscleMap.get(dbMuscleName)
+        const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName)
+        if (!displayGroup) return
+        const mgData = muscleMap.get(displayGroup)
         if (mgData) {
           data.push({
             slug: slug as BodyPartSlug,
@@ -185,7 +152,7 @@ export function MiniStrengthBodyCard({
     )
 
     return data
-  }, [muscleGroups])
+  }, [displayMuscleGroups])
 
   const handleBodyPartPress = useCallback(
     (bodyPart: { slug?: string }) => {
@@ -195,8 +162,11 @@ export function MiniStrengthBodyCard({
       const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
       if (!dbMuscleName) return
 
-      const mgData = muscleGroups.find((mg) => mg.name === dbMuscleName)
-      const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug
+      const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName)
+      const mgData = displayGroup
+        ? displayMuscleGroups.find((mg) => mg.name === displayGroup)
+        : null
+      const displayName = mgData?.name ?? BODY_PART_DISPLAY_NAMES[slug] ?? slug
 
       const groupData: MuscleGroupData = mgData || {
         name: dbMuscleName,
@@ -215,7 +185,7 @@ export function MiniStrengthBodyCard({
         },
       })
     },
-    [muscleGroups, router],
+    [displayMuscleGroups, router],
   )
 
   const styles = useMemo(() => createStyles(colors), [colors])

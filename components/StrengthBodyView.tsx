@@ -25,9 +25,14 @@ import {
 } from "@/lib/exercise-standards-config";
 import {
   calculateExerciseStrengthPoints,
-  getOverallStrengthGroupLevelProgress,
   LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
+import {
+  buildDisplayStrengthGroupData,
+  resolveDatabaseMuscleToDisplayGroup,
+  type DisplayStrengthGroupData,
+  type DisplayStrengthGroup as DisplayGroup,
+} from "@/lib/strength-display-groups";
 import {
   getAverageExerciseLevel,
   getProgressDeltaPoints,
@@ -59,8 +64,6 @@ const STRENGTH_MUSCLE_TAP_DISCOVERED_KEY = "@strength_muscle_tap_discovered";
 const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXERCISE_CONFIG_BY_NAME = getExerciseNameMap();
 
-type DisplayGroup = "Legs" | "Back" | "Chest" | "Shoulders" | "Arms" | "Core";
-
 const DISPLAY_GROUP_BODY_MAPPING: Record<
   DisplayGroup,
   { slug: BodyPartSlug; side: "front" | "back"; offsetY: number; scale: number }
@@ -72,45 +75,6 @@ const DISPLAY_GROUP_BODY_MAPPING: Record<
   Arms: { slug: "biceps", side: "front", offsetY: 29, scale: 0.37 },
   Core: { slug: "abs", side: "front", offsetY: 29, scale: 0.37 },
 };
-
-const DISPLAY_GROUP_ORDER: DisplayGroup[] = [
-  "Chest",
-  "Back",
-  "Shoulders",
-  "Arms",
-  "Legs",
-  "Core",
-];
-
-function mapMuscleToDisplayGroup(muscle: string | null): DisplayGroup | null {
-  if (!muscle) return null;
-  switch (muscle) {
-    case "Quads":
-    case "Hamstrings":
-    case "Glutes":
-    case "Calves":
-    case "Adductors":
-      return "Legs";
-    case "Back":
-    case "Lats":
-    case "Traps":
-    case "Lower Back":
-      return "Back";
-    case "Chest":
-      return "Chest";
-    case "Shoulders":
-      return "Shoulders";
-    case "Biceps":
-    case "Triceps":
-    case "Forearms":
-      return "Arms";
-    case "Abs":
-    case "Core":
-      return "Core";
-    default:
-      return null;
-  }
-}
 
 const MUSCLE_HIGHLIGHT_COLORS = ["#EF4444"];
 const MUSCLE_BORDER_COLOR = "#D1D5DB";
@@ -189,7 +153,7 @@ export function StrengthBodyView({
     refreshing,
     onRefresh,
     overallLevel,
-    muscleGroups,
+    displayMuscleGroups,
     exerciseData,
     getStrengthInfo,
     best1RMSnapshotByExerciseId,
@@ -313,31 +277,27 @@ export function StrengthBodyView({
     strengthGender,
   ]);
 
-  const exercisesByGroup = useMemo<
-    [DisplayGroup, TrackedExerciseWithProgress[]][]
-  >(() => {
-    const grouped = new Map<DisplayGroup, TrackedExerciseWithProgress[]>();
-    DISPLAY_GROUP_ORDER.forEach((g) => grouped.set(g, []));
-
-    trackedExercisesWithProgress.forEach((exercise) => {
-      const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName);
-      const canonicalName = config?.name ?? exercise.exerciseName;
-      const muscle =
-        EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null;
-      const group = mapMuscleToDisplayGroup(muscle);
-      if (group && grouped.has(group)) {
-        grouped.get(group)!.push(exercise);
+  const trackedDisplayGroups = useMemo(
+    (): DisplayStrengthGroupData<TrackedExerciseWithProgress>[] => {
+      if (!overallLevel) {
+        return [];
       }
-    });
 
-    return DISPLAY_GROUP_ORDER.map(
-      (g) =>
-        [g, grouped.get(g) ?? []] as [
-          DisplayGroup,
-          TrackedExerciseWithProgress[],
-        ],
-    );
-  }, [trackedExercisesWithProgress]);
+      return buildDisplayStrengthGroupData({
+        exercises: trackedExercisesWithProgress,
+        groupBreakdown: overallLevel.groupBreakdown,
+      });
+    },
+    [overallLevel, trackedExercisesWithProgress],
+  );
+
+  const displayMuscleGroupMap = useMemo(() => {
+    const result = new Map<string, MuscleGroupData>();
+    displayMuscleGroups.forEach((group) => {
+      result.set(group.name, group);
+    });
+    return result;
+  }, [displayMuscleGroups]);
 
   const priorityRecommendations = useMemo<
     PriorityExerciseRecommendation[]
@@ -757,17 +717,15 @@ export function StrengthBodyView({
       side?: "left" | "right";
     }[] = [];
 
-    // Map database muscle names to their data for easy lookup
-    const muscleMap = new Map<string, MuscleGroupData>();
-    muscleGroups.forEach((mg) => muscleMap.set(mg.name, mg));
-
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
-        let mgData = muscleMap.get(dbMuscleName);
+        const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName);
+        if (!displayGroup) {
+          return;
+        }
 
-        // With secondary muscle mapping in place (e.g. Squat -> Glutes), we no longer
-        // need complex fallbacks here. We trust the data in muscleGroups.
+        const mgData = displayMuscleGroupMap.get(displayGroup);
 
         if (mgData) {
           data.push({
@@ -779,7 +737,7 @@ export function StrengthBodyView({
     );
 
     return data;
-  }, [muscleGroups]);
+  }, [displayMuscleGroupMap]);
 
   // Handle body part press - navigate to native formSheet
   const handleBodyPartPress = useCallback(
@@ -798,8 +756,12 @@ export function StrengthBodyView({
         return;
       }
 
-      const mgData = muscleGroups.find((mg) => mg.name === dbMuscleName);
-      const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug;
+      const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName);
+      const mgData = displayGroup
+        ? displayMuscleGroupMap.get(displayGroup)
+        : null;
+      const displayName =
+        mgData?.name ?? BODY_PART_DISPLAY_NAMES[slug] ?? slug;
 
       // Build group data (with fallback for empty state)
       const groupData: MuscleGroupData = mgData || {
@@ -820,7 +782,7 @@ export function StrengthBodyView({
         },
       });
     },
-    [muscleGroups, router],
+    [displayMuscleGroupMap, router],
   );
 
   const styles = createStyles(colors);
@@ -1116,21 +1078,11 @@ export function StrengthBodyView({
           </View>
 
           <View style={styles.exerciseCardsContainer}>
-            {exercisesByGroup.map(([group, exercises]) => {
+            {trackedDisplayGroups.map((groupData) => {
+              const group = groupData.name;
+              const exercises = groupData.exercises;
               const isExpanded = expandedMuscleGroups.has(group);
               const bodyMapping = DISPLAY_GROUP_BODY_MAPPING[group];
-              const bestExercise = exercises[0];
-              // Keep muscle-group ranks aligned with the same aggregate model as lifter level.
-              const aggregateGroupRank = overallLevel
-                ? getOverallStrengthGroupLevelProgress(
-                    overallLevel.groupBreakdown[group],
-                  )
-                : null;
-              const badgeLevel =
-                aggregateGroupRank?.level ??
-                (exercises.length > 0
-                  ? (bestExercise!.level as StrengthLevel)
-                  : "Untrained");
 
               return (
                 <View key={group}>
@@ -1194,7 +1146,7 @@ export function StrengthBodyView({
 
                     {/* Best level badge */}
                     <LevelBadge
-                      level={badgeLevel}
+                      level={groupData.level}
                       variant="pill"
                       size="small"
                     />

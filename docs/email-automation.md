@@ -41,6 +41,8 @@ Apply:
 
 ## 3) Deploy Function
 
+`supabase/config.toml` must have `verify_jwt = false` for this function (webhooks use custom auth, not JWT). Then:
+
 ```bash
 supabase functions deploy send-lifecycle-email
 ```

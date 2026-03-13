@@ -197,11 +197,6 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
             />
           </TouchableOpacity>
           <View style={styles.cardOverlayRight}>
-            {isSelected ? (
-              <View style={styles.selectionBadge}>
-                <Ionicons name="checkbox" size={20} color={colors.brandPrimary} />
-              </View>
-            ) : null}
             <Link
               asChild
               href={{
@@ -353,15 +348,9 @@ const ExerciseListItem = memo(function ExerciseListItem({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             disabled={isCurrentExercise}
           >
-            <Ionicons
-              name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
-              size={24}
-              color={
-                isCurrentExercise || isSelected
-                  ? colors.brandPrimary
-                  : colors.textTertiary
-              }
-            />
+            {!isSelected && !isCurrentExercise ? (
+              <Ionicons name="add" size={22} color={colors.textTertiary} />
+            ) : null}
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -634,6 +623,11 @@ export default function SelectExerciseScreen() {
     callCallback(selectedExercises)
     router.back()
   }, [selectedIds, exercises, callCallback, router])
+
+  const handleDeselectAll = useCallback(() => {
+    haptic('light')
+    setSelectedIds(new Set())
+  }, [])
 
   const handleCreateExercise = useCallback(() => {
     const name = trimmedQuery
@@ -1150,15 +1144,33 @@ export default function SelectExerciseScreen() {
               { paddingBottom: insets.bottom + 16 },
             ]}
           >
-            <TouchableOpacity
-              style={[styles.floatingButton, { backgroundColor: '#FFFFFF' }]}
-              onPress={handleConfirmSelection}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.floatingButtonText}>
-                Add {selectedIds.size} exercises
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.floatingButtonRow}>
+              <TouchableOpacity
+                style={[styles.deselectAllButton, { backgroundColor: '#FFFFFF' }]}
+                onPress={handleDeselectAll}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel="Deselect all"
+              >
+                <Ionicons
+                  name="close-circle-outline"
+                  size={22}
+                  color="#EF4444"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.floatingButton, { backgroundColor: '#FFFFFF' }]}
+                onPress={handleConfirmSelection}
+                activeOpacity={0.9}
+              >
+                <Text
+                  style={styles.floatingButtonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  Add {selectedIds.size} exercises
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -1318,10 +1330,6 @@ const styles = StyleSheet.create({
   infoButton: {
     // No background - icon stands out on its own
   },
-  selectionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 12,
-  },
   listItemActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1398,11 +1406,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 14,
-    // backgroundColor: 'transparent',
     alignItems: 'center',
   },
-  floatingButton: {
+  floatingButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     width: '100%',
+    gap: 12,
+  },
+  floatingButton: {
+    flex: 1,
+    minWidth: 0,
     paddingVertical: 17,
     borderRadius: 30,
     alignItems: 'center',
@@ -1418,6 +1432,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000000',
     letterSpacing: -0.2,
+  },
+  deselectAllButton: {
+    flexShrink: 0,
+    paddingVertical: 17,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
   // Recent Exercises Section Styles
   recentSection: {

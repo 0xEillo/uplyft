@@ -1,10 +1,10 @@
 import { useAuth } from '@/contexts/auth-context'
-import { EXERCISE_MUSCLE_MAPPING, getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
-import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from '@/lib/exercise-standards-config-secondary'
+import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import type {
   OverallStrengthGroup,
   OverallStrengthGroupBreakdown,
 } from '@/lib/overall-strength-score'
+import { buildDisplayStrengthGroupData } from '@/lib/strength-display-groups'
 import {
     calculateStrengthScoreDelta,
     loadStrengthScoreDeltaContext,
@@ -237,66 +237,16 @@ export function useStrengthData() {
     }
   }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
 
-  // Calculate muscle groups data (for backward compatibility)
-  const muscleGroups = useMemo((): MuscleGroupData[] => {
-    if (!profile?.weight_kg || exerciseData.length === 0) {
+  const displayMuscleGroups = useMemo((): MuscleGroupData[] => {
+    if (!overallLevel || exerciseData.length === 0) {
       return []
     }
 
-    const groups = new Map<string, ExerciseData[]>()
-    
-    // Group exercises
-    exerciseData.forEach((exercise) => {
-      // Prioritize our canonical mapping, then fallback to database value
-      const primaryGroup = EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] || exercise.muscleGroup || 'Other'
-      if (!groups.has(primaryGroup)) {
-        groups.set(primaryGroup, [])
-      }
-      groups.get(primaryGroup)?.push(exercise)
-
-      // Secondary muscle group mapping (e.g. Squat -> Glutes)
-      const secondaryGroup = SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName]
-      if (secondaryGroup && secondaryGroup !== primaryGroup) {
-        if (!groups.has(secondaryGroup)) {
-          groups.set(secondaryGroup, [])
-        }
-        groups.get(secondaryGroup)?.push(exercise)
-      }
+    return buildDisplayStrengthGroupData({
+      exercises: exerciseData,
+      groupBreakdown: overallLevel.groupBreakdown,
     })
-
-    // Calculate stats for each group
-    const result: MuscleGroupData[] = []
-
-    groups.forEach((exercises, name) => {
-      let totalScore = 0
-      let count = 0
-
-      exercises.forEach((exercise) => {
-        const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-        if (info) {
-          totalScore += toLevelScore(info.level, info.progress)
-          count++
-        }
-      })
-
-      if (count > 0) {
-        const averageScore = totalScore / count
-        const { level: currentLevel, progress } =
-          scoreToLevelProgress(averageScore)
-
-        result.push({
-          name,
-          level: currentLevel,
-          progress,
-          exercises,
-          averageScore,
-        })
-      }
-    })
-
-    // Sort by average score descending
-    return result.sort((a, b) => b.averageScore - a.averageScore)
-  }, [exerciseData, profile, getStrengthInfo])
+  }, [exerciseData, overallLevel])
 
   return {
     profile,
@@ -306,7 +256,7 @@ export function useStrengthData() {
     onRefresh,
     getStrengthInfo,
     overallLevel,
-    muscleGroups,
+    displayMuscleGroups,
     groupLevels,
     best1RMSnapshotByExerciseId,
   }

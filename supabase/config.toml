@@ -1,0 +1,3 @@
+# Edge Function config - webhooks use custom auth (REVENUECAT_WEBHOOK_AUTH), not JWT
+[functions.send-lifecycle-email]
+verify_jwt = false

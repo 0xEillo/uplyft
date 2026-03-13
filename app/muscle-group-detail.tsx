@@ -20,6 +20,10 @@ import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
+  getTrackableExercisesForDisplayGroup,
+  isDisplayStrengthGroup,
+} from '@/lib/strength-display-groups'
+import {
     getStrengthStandard,
     hasStrengthStandards,
 } from '@/lib/strength-standards'
@@ -70,9 +74,9 @@ export default function MuscleGroupDetailScreen() {
 
   const filteredExercises = useMemo(() => {
     if (!groupData) return []
-    // The groupData is already filtered by muscle group in useStrengthData using the canonical mapping.
-    // We shouldn't filter again based on exercise.muscleGroup because the raw database value might 
-    // differ from the canonical group (e.g. DB says 'Legs' but we mapped it to 'Quads').
+    // The payload already contains exercises for the selected display group.
+    // Avoid re-filtering on the raw database muscle value because it can differ
+    // from the canonical display group mapping.
     return groupData.exercises
   }, [groupData])
 
@@ -99,7 +103,10 @@ export default function MuscleGroupDetailScreen() {
     const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
     if (!dbMuscle) return []
 
-    const trackableConfigs = getTrackableExercisesForMuscle(dbMuscle)
+    const trackableConfigs =
+      groupData?.name && isDisplayStrengthGroup(groupData.name)
+        ? getTrackableExercisesForDisplayGroup(groupData.name)
+        : getTrackableExercisesForMuscle(dbMuscle)
 
     return trackableConfigs
       .map((config) => {

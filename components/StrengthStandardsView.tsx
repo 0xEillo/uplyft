@@ -121,7 +121,7 @@ export function StrengthStandardsView() {
     refreshing,
     onRefresh,
     overallLevel,
-    muscleGroups,
+    displayMuscleGroups,
     getStrengthInfo,
     exerciseData,
     profile,
@@ -131,6 +131,10 @@ export function StrengthStandardsView() {
   const [showLevelsSheet, setShowLevelsSheet] = useState(false)
   const [showSupportedSheet, setShowSupportedSheet] = useState(false)
   const strengthGender = getStrengthGender(profile?.gender)
+  const rankedDisplayMuscleGroups = useMemo(
+    () => displayMuscleGroups.filter((group) => group.exercises.length > 0),
+    [displayMuscleGroups],
+  )
 
   const toggleGroup = useCallback((groupName: string) => {
     setExpandedGroups((prev) => {
@@ -395,7 +399,7 @@ export function StrengthStandardsView() {
           </View>
 
           {/* Muscle Groups */}
-          {muscleGroups.length === 0 ? (
+          {rankedDisplayMuscleGroups.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
                 <Ionicons
@@ -418,7 +422,7 @@ export function StrengthStandardsView() {
             </View>
           ) : (
             <View style={styles.muscleGroupsContainer}>
-              {muscleGroups.map((group) => {
+              {rankedDisplayMuscleGroups.map((group) => {
                 const isGroupExpanded = expandedGroups.has(group.name)
                 
                 return (
@@ -431,7 +435,7 @@ export function StrengthStandardsView() {
                       <View style={styles.muscleGroupHeaderLeft}>
                         <View style={styles.muscleGroupIconContainer}>
                           <Ionicons 
-                            name={group.name === 'Lower' ? 'body-outline' : 'barbell-outline'} 
+                            name={group.name === 'Legs' ? 'body-outline' : 'barbell-outline'} 
                             size={24} 
                             color={colors.brandPrimary} 
                           />
