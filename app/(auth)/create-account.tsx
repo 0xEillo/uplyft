@@ -1,5 +1,6 @@
 import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
+import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
@@ -56,7 +57,20 @@ export default function CreateAccountScreen() {
       Alert.alert(
         'Account Created!',
         'Your data is now synced with your Apple account.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }],
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.replace('/(tabs)')
+              if (user?.id) {
+                schedulePushNotificationPrompt({
+                  userId: user.id,
+                  delayMs: 600,
+                })
+              }
+            },
+          },
+        ],
       )
     } catch (error) {
       const errorMessage =
@@ -92,7 +106,20 @@ export default function CreateAccountScreen() {
       Alert.alert(
         'Account Created!',
         'Your data is now synced with your Google account.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }],
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.replace('/(tabs)')
+              if (user?.id) {
+                schedulePushNotificationPrompt({
+                  userId: user.id,
+                  delayMs: 600,
+                })
+              }
+            },
+          },
+        ],
       )
     } catch (error) {
       const errorMessage =

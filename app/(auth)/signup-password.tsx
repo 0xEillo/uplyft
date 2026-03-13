@@ -1,6 +1,7 @@
 import { AnimatedInput } from '@/components/animated-input'
 import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
+import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
@@ -156,20 +157,26 @@ export default function SignupPasswordScreen() {
         // For anonymous linking, we don't necessarily need verification, but for fresh signup we might.
         // Assuming linkWithEmail (updateUser) might confirm immediately or ask for verification depending on Supabase config.
         // If it was an anonymous upgrade, we are already logged in as that user, so we can go to tabs/trial.
-        
+
         if (isAnonymous) {
-             router.replace('/(tabs)')
+          router.replace('/(tabs)')
+          if (userId) {
+            schedulePushNotificationPrompt({
+              userId,
+              delayMs: 600,
+            })
+          }
         } else {
-             Alert.alert(
-              'Success',
-              'Account created! Please check your email to verify your account.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => router.replace('/(auth)/welcome'),
-                },
-              ],
-            )
+          Alert.alert(
+            'Success',
+            'Account created! Please check your email to verify your account.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(auth)/welcome'),
+              },
+            ],
+          )
         }
       }
     } catch (error) {

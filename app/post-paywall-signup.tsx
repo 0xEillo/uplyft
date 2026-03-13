@@ -1,7 +1,9 @@
 import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
+import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import { router } from 'expo-router'
@@ -33,10 +35,28 @@ export default function PostPaywallSignupScreen() {
   const isAnyLoading = isGoogleLoading || isAppleLoading
   const styles = createStyles(colors, isDark)
 
+  const schedulePostSignupPushPrompt = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user?.id) {
+      return
+    }
+
+    schedulePushNotificationPrompt({
+      userId: user.id,
+      delayMs: 600,
+      message:
+        'Enable notifications to get workout reminders and tips from your coach.',
+    })
+  }
+
   const handleAppleSignUp = async () => {
     setIsAppleLoading(true)
     try {
       await signInWithApple(true)
+      await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
@@ -52,11 +72,14 @@ export default function PostPaywallSignupScreen() {
     setIsGoogleLoading(true)
     try {
       await signInWithGoogle(true)
+      await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
         'Sign Up Failed',
-        error instanceof Error ? error.message : 'Failed to sign up with Google',
+        error instanceof Error
+          ? error.message
+          : 'Failed to sign up with Google',
       )
     } finally {
       setIsGoogleLoading(false)
@@ -105,7 +128,8 @@ export default function PostPaywallSignupScreen() {
             <View style={styles.heroBlock}>
               <Text style={styles.title}>Save your progress</Text>
               <Text style={styles.subtitle}>
-                You unlocked Pro. Finish account setup so your training data is safe.
+                You unlocked Pro. Finish account setup so your training data is
+                safe.
               </Text>
             </View>
 
@@ -125,7 +149,10 @@ export default function PostPaywallSignupScreen() {
             <View style={styles.buttonsContainer}>
               {Platform.OS === 'ios' && (
                 <HapticButton
-                  style={[styles.appleButton, isAppleLoading && styles.buttonDisabled]}
+                  style={[
+                    styles.appleButton,
+                    isAppleLoading && styles.buttonDisabled,
+                  ]}
                   onPress={handleAppleSignUp}
                   disabled={isAppleLoading}
                   hapticEnabled={!isAppleLoading}
@@ -135,14 +162,19 @@ export default function PostPaywallSignupScreen() {
                   ) : (
                     <>
                       <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
-                      <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                      <Text style={styles.appleButtonText}>
+                        Continue with Apple
+                      </Text>
                     </>
                   )}
                 </HapticButton>
               )}
 
               <HapticButton
-                style={[styles.glassButton, isGoogleLoading && styles.buttonDisabled]}
+                style={[
+                  styles.glassButton,
+                  isGoogleLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleGoogleSignUp}
                 disabled={isGoogleLoading}
                 hapticEnabled={!isGoogleLoading}
@@ -151,20 +183,35 @@ export default function PostPaywallSignupScreen() {
                   <ActivityIndicator color={colors.textPrimary} />
                 ) : (
                   <>
-                    <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
-                    <Text style={styles.glassButtonText}>Continue with Google</Text>
+                    <Ionicons
+                      name="logo-google"
+                      size={18}
+                      color={colors.textPrimary}
+                    />
+                    <Text style={styles.glassButtonText}>
+                      Continue with Google
+                    </Text>
                   </>
                 )}
               </HapticButton>
 
               <HapticButton
-                style={[styles.primaryButton, isAnyLoading && styles.buttonDisabled]}
+                style={[
+                  styles.primaryButton,
+                  isAnyLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleEmailSignUp}
                 disabled={isAnyLoading}
                 hapticEnabled={!isAnyLoading}
               >
-                <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
-                <Text style={styles.primaryButtonText}>Continue with Email</Text>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={colors.onPrimary}
+                />
+                <Text style={styles.primaryButtonText}>
+                  Continue with Email
+                </Text>
               </HapticButton>
 
               <Pressable
@@ -220,7 +267,9 @@ const createStyles = (
       overflow: 'hidden',
     },
     popupSurfaceFallback: {
-      backgroundColor: isDark ? 'rgba(18, 18, 20, 0.84)' : 'rgba(255,255,255,0.84)',
+      backgroundColor: isDark
+        ? 'rgba(18, 18, 20, 0.84)'
+        : 'rgba(255,255,255,0.84)',
     },
     glassDensityOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -311,9 +360,7 @@ const createStyles = (
       alignItems: 'center',
       gap: 10,
       borderWidth: 1,
-      borderColor: isDark
-        ? 'rgba(255,255,255,0.14)'
-        : 'rgba(0,0,0,0.08)',
+      borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)',
       backgroundColor: isDark
         ? 'rgba(255,255,255,0.07)'
         : 'rgba(255,255,255,0.88)',

@@ -41,7 +41,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
-import { registerForPushNotifications } from '@/hooks/usePushNotifications'
+import {
+  schedulePushNotificationPrompt,
+  shouldPromptForPushNotificationsAfterWorkout,
+} from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -754,40 +757,14 @@ export default function FeedScreen() {
           setUserWorkoutCount(workoutCount)
           await maybeQueueGuestSignInPrompt(workoutCount)
 
-          // Only prompt if this is the first workout and we haven't asked before
           if (
-            workoutCount === 1 &&
             profile &&
-            !profile.has_requested_push_notifications
+            shouldPromptForPushNotificationsAfterWorkout(profile, workoutCount)
           ) {
-            // Delay the prompt slightly so the success animation completes first
-            setTimeout(() => {
-              Alert.alert(
-                'Stay Connected',
-                'Enable notifications to get updates when friends like and comment on your workouts!',
-                [
-                  {
-                    text: 'Not Now',
-                    style: 'cancel',
-                    onPress: async () => {
-                      // Mark as requested even if they decline
-                      await database.profiles.update(user.id, {
-                        has_requested_push_notifications: true,
-                      })
-                    },
-                  },
-                  {
-                    text: 'Enable',
-                    onPress: async () => {
-                      await registerForPushNotifications()
-                      await database.profiles.update(user.id, {
-                        has_requested_push_notifications: true,
-                      })
-                    },
-                  },
-                ],
-              )
-            }, 1500)
+            schedulePushNotificationPrompt({
+              userId: user.id,
+              delayMs: 1500,
+            })
           }
         } catch (error) {
           console.error('Error checking for push notification prompt:', error)

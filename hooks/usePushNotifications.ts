@@ -1,12 +1,18 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
+import type { Profile } from '@/types/database.types'
 import { supabase } from '@/lib/supabase'
 import Constants from 'expo-constants'
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import { usePathname, useRouter } from 'expo-router'
 import { useEffect, useRef } from 'react'
-import { Platform } from 'react-native'
+import { Alert, Platform } from 'react-native'
+
+const WORKOUT_PUSH_PROMPT_FIRST_MILESTONE = 3
+const WORKOUT_PUSH_PROMPT_REPEAT_INTERVAL = 5
+
+let isPushPromptVisible = false
 
 /**
  * Hook to handle notification responses
@@ -121,6 +127,106 @@ export function usePushNotifications() {
       }
     }
   }, [user, router])
+}
+
+type PushNotificationPromptOptions = {
+  userId: string
+  title?: string
+  message?: string
+}
+
+const markPushPromptRequested = async (userId: string) => {
+  try {
+    await database.profiles.update(userId, {
+      has_requested_push_notifications: true,
+    })
+  } catch (error) {
+    console.error('[Push] Failed to mark notification prompt as requested:', error)
+  }
+}
+
+export function shouldPromptForPushNotificationsAfterWorkout(
+  profile: Pick<Profile, 'expo_push_token'>,
+  workoutCount: number,
+) {
+  if (profile.expo_push_token) {
+    return false
+  }
+
+  if (workoutCount < WORKOUT_PUSH_PROMPT_FIRST_MILESTONE) {
+    return false
+  }
+
+  return (
+    workoutCount === WORKOUT_PUSH_PROMPT_FIRST_MILESTONE ||
+    (workoutCount - WORKOUT_PUSH_PROMPT_FIRST_MILESTONE) %
+      WORKOUT_PUSH_PROMPT_REPEAT_INTERVAL ===
+      0
+  )
+}
+
+export async function promptForPushNotifications({
+  userId,
+  title = 'Get the best experience',
+  message = 'Enable notifications to get workout reactions, comments, reminders, and important updates.',
+}: PushNotificationPromptOptions) {
+  try {
+    const profile = await database.profiles.getByIdOrNull(userId)
+    if (profile?.expo_push_token) {
+      return
+    }
+  } catch (error) {
+    console.error('[Push] Failed to check notification prompt eligibility:', error)
+  }
+
+  if (isPushPromptVisible) {
+    return
+  }
+
+  isPushPromptVisible = true
+
+  const finishPrompt = () => {
+    isPushPromptVisible = false
+  }
+
+  Alert.alert(title, message, [
+    {
+      text: 'Not Now',
+      style: 'cancel',
+      onPress: () => {
+        finishPrompt()
+        void markPushPromptRequested(userId)
+      },
+    },
+    {
+      text: 'Enable',
+      onPress: () => {
+        finishPrompt()
+        void (async () => {
+          try {
+            await registerForPushNotifications()
+          } finally {
+            await markPushPromptRequested(userId)
+          }
+        })()
+      },
+    },
+  ])
+}
+
+export function schedulePushNotificationPrompt(
+  options: PushNotificationPromptOptions & { delayMs?: number },
+) {
+  const { delayMs = 0, ...promptOptions } = options
+
+  if (delayMs <= 0) {
+    void promptForPushNotifications(promptOptions)
+    return
+  }
+
+  setTimeout(() => {
+    void promptForPushNotifications(promptOptions)
+  }, delayMs)
 }
 
 /**
