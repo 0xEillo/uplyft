@@ -8,6 +8,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { useExercises } from '@/hooks/useExercises'
+import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BodyPartSlug } from '@/lib/body-mapping'
@@ -135,14 +136,18 @@ const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = MUSCLE_GROUP_ORDER.map(
 const ExerciseGridItem = memo(function ExerciseGridItem({
   exercise,
   isCurrentExercise,
+  isFavorited,
   isSelected,
   onSelect,
+  onToggleFavorite,
   colors,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
+  isFavorited: boolean
   isSelected: boolean
   onSelect: () => void
+  onToggleFavorite: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
   const { isDark } = useTheme()
@@ -174,27 +179,43 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         />
         {/* Overlay Icons */}
         <View style={styles.cardOverlay}>
-          {isSelected ? (
-            <View style={styles.selectionBadge}>
-              <Ionicons name="checkbox" size={20} color={colors.brandPrimary} />
-            </View>
-          ) : (
-            <View style={styles.iconButtonSmall} />
-          )}
-          <Link
-            asChild
-            href={{
-              pathname: '/exercise/[exerciseId]',
-              params: { exerciseId: exercise.id },
+          <TouchableOpacity
+            style={[
+              styles.overlayIconButton,
+              isFavorited && styles.overlayIconButtonActive,
+            ]}
+            onPress={(e) => {
+              e.stopPropagation()
+              onToggleFavorite()
             }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <TouchableOpacity
-              style={styles.infoButton}
-              onPress={(e) => {
-                e.stopPropagation()
+            <Ionicons
+              name={isFavorited ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={isFavorited ? colors.brandPrimary : '#FFFFFF'}
+            />
+          </TouchableOpacity>
+          <View style={styles.cardOverlayRight}>
+            {isSelected ? (
+              <View style={styles.selectionBadge}>
+                <Ionicons name="checkbox" size={20} color={colors.brandPrimary} />
+              </View>
+            ) : null}
+            <Link
+              asChild
+              href={{
+                pathname: '/exercise/[exerciseId]',
+                params: { exerciseId: exercise.id },
               }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
+              <TouchableOpacity
+                style={styles.infoButton}
+                onPress={(e) => {
+                  e.stopPropagation()
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons
                   name="information-circle"
                   size={22}
@@ -204,8 +225,9 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
                       : 'rgba(0,0,0,0.6)'
                   }
                 />
-            </TouchableOpacity>
-          </Link>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
       </View>
 
@@ -240,14 +262,18 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
 const ExerciseListItem = memo(function ExerciseListItem({
   exercise,
   isCurrentExercise,
+  isFavorited,
   isSelected,
   onSelect,
+  onToggleFavorite,
   colors,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
+  isFavorited: boolean
   isSelected: boolean
   onSelect: () => void
+  onToggleFavorite: () => void
   colors: ReturnType<typeof useThemedColors>
 }) {
   const { isDark } = useTheme()
@@ -303,25 +329,41 @@ const ExerciseListItem = memo(function ExerciseListItem({
             )}
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.listItemCheckbox}
-          onPress={(e) => {
-            e.stopPropagation()
-            onSelect()
-          }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          disabled={isCurrentExercise}
-        >
-          <Ionicons
-            name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
-            size={24}
-            color={
-              isCurrentExercise || isSelected
-                ? colors.brandPrimary
-                : colors.textTertiary
-            }
-          />
-        </TouchableOpacity>
+        <View style={styles.listItemActions}>
+          <TouchableOpacity
+            style={styles.listItemFavoriteButton}
+            onPress={(e) => {
+              e.stopPropagation()
+              onToggleFavorite()
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons
+              name={isFavorited ? 'bookmark' : 'bookmark-outline'}
+              size={22}
+              color={isFavorited ? colors.brandPrimary : colors.textTertiary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.listItemCheckbox}
+            onPress={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            disabled={isCurrentExercise}
+          >
+            <Ionicons
+              name={isCurrentExercise || isSelected ? 'checkbox' : 'square-outline'}
+              size={24}
+              color={
+                isCurrentExercise || isSelected
+                  ? colors.brandPrimary
+                  : colors.textTertiary
+              }
+            />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     </Link>
   )
@@ -409,6 +451,7 @@ export default function SelectExerciseScreen() {
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [showOnlyMine, setShowOnlyMine] = useState(false)
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
@@ -425,6 +468,9 @@ export default function SelectExerciseScreen() {
     initialLoad: true,
     userId: user?.id,
   })
+  const { favoriteExerciseIds, toggleFavoriteExercise } = useFavoriteExercises(
+    user?.id,
+  )
 
   // Refresh exercises when screen is focused (to pick up new creations)
   useFocusEffect(
@@ -438,12 +484,14 @@ export default function SelectExerciseScreen() {
   const deferredSelectedMuscleGroups = useDeferredValue(selectedMuscleGroups)
   const deferredSelectedEquipment = useDeferredValue(selectedEquipment)
   const deferredShowOnlyMine = useDeferredValue(showOnlyMine)
+  const deferredShowOnlyFavorites = useDeferredValue(showOnlyFavorites)
   const hasDeferredMuscleFilter = deferredSelectedMuscleGroups.length > 0
   const hasDeferredEquipmentFilter = deferredSelectedEquipment.length > 0
   const hasFilters =
     hasDeferredMuscleFilter ||
     hasDeferredEquipmentFilter ||
-    deferredShowOnlyMine
+    deferredShowOnlyMine ||
+    deferredShowOnlyFavorites
 
   const selectedMuscleGroupSet = useMemo(
     () => new Set(selectedMuscleGroups),
@@ -498,6 +546,10 @@ export default function SelectExerciseScreen() {
       result = result.filter((e) => e.created_by === user.id)
     }
 
+    if (deferredShowOnlyFavorites) {
+      result = result.filter((e) => favoriteExerciseIds.has(e.id))
+    }
+
     return result
   }, [
     exercises,
@@ -507,6 +559,8 @@ export default function SelectExerciseScreen() {
     hasDeferredEquipmentFilter,
     deferredSelectedEquipmentSet,
     deferredShowOnlyMine,
+    deferredShowOnlyFavorites,
+    favoriteExerciseIds,
     user?.id,
   ])
 
@@ -518,6 +572,7 @@ export default function SelectExerciseScreen() {
     deferredSelectedMuscleGroups,
     deferredSelectedEquipment,
     deferredShowOnlyMine,
+    deferredShowOnlyFavorites,
     filteredExercises.length,
   ])
 
@@ -635,6 +690,14 @@ export default function SelectExerciseScreen() {
     setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
   }, [])
 
+  const handleToggleFavorite = useCallback(
+    (exerciseId: string) => {
+      haptic('light')
+      void toggleFavoriteExercise(exerciseId)
+    },
+    [toggleFavoriteExercise],
+  )
+
   // FlashList render item
   const renderItem = useCallback(
     ({ item, index }: { item: Exercise; index: number }) => {
@@ -646,8 +709,10 @@ export default function SelectExerciseScreen() {
           <ExerciseListItem
             exercise={item}
             isCurrentExercise={isCurrentExercise}
+            isFavorited={favoriteExerciseIds.has(item.id)}
             isSelected={isSelected}
             onSelect={() => handleSelectExercise(item)}
+            onToggleFavorite={() => handleToggleFavorite(item.id)}
             colors={colors}
           />
         )
@@ -665,14 +730,24 @@ export default function SelectExerciseScreen() {
           <ExerciseGridItem
             exercise={item}
             isCurrentExercise={isCurrentExercise}
+            isFavorited={favoriteExerciseIds.has(item.id)}
             isSelected={isSelected}
             onSelect={() => handleSelectExercise(item)}
+            onToggleFavorite={() => handleToggleFavorite(item.id)}
             colors={colors}
           />
         </View>
       )
     },
-    [currentExerciseName, handleSelectExercise, colors, viewMode, selectedIds],
+    [
+      currentExerciseName,
+      favoriteExerciseIds,
+      handleSelectExercise,
+      handleToggleFavorite,
+      colors,
+      viewMode,
+      selectedIds,
+    ],
   )
 
   const keyExtractor = useCallback((item: Exercise) => item.id, [])
@@ -711,6 +786,10 @@ export default function SelectExerciseScreen() {
       result = result.filter((e) => e.created_by === user.id)
     }
 
+    if (deferredShowOnlyFavorites) {
+      result = result.filter((e) => favoriteExerciseIds.has(e.id))
+    }
+
     return result
   }, [
     recentExercises,
@@ -720,6 +799,8 @@ export default function SelectExerciseScreen() {
     hasDeferredEquipmentFilter,
     deferredSelectedEquipmentSet,
     deferredShowOnlyMine,
+    deferredShowOnlyFavorites,
+    favoriteExerciseIds,
     user?.id,
   ])
 
@@ -757,8 +838,10 @@ export default function SelectExerciseScreen() {
                 <ExerciseGridItem
                   exercise={exercise}
                   isCurrentExercise={isCurrentExercise}
+                  isFavorited={favoriteExerciseIds.has(exercise.id)}
                   isSelected={isSelected}
                   onSelect={() => handleSelectExercise(exercise)}
+                  onToggleFavorite={() => handleToggleFavorite(exercise.id)}
                   colors={colors}
                 />
               </View>
@@ -798,7 +881,9 @@ export default function SelectExerciseScreen() {
     filteredRecentExercises,
     currentExerciseName,
     selectedIds,
+    favoriteExerciseIds,
     handleSelectExercise,
+    handleToggleFavorite,
     viewMode,
     toggleViewMode,
     colors,
@@ -947,6 +1032,30 @@ export default function SelectExerciseScreen() {
                     borderColor: colors.border,
                     backgroundColor: colors.surfaceSubtle,
                   },
+                  showOnlyFavorites && {
+                    borderColor: colors.brandPrimary,
+                    backgroundColor: colors.brandPrimarySoft,
+                  },
+                ]}
+                onPress={() => setShowOnlyFavorites(!showOnlyFavorites)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: colors.textSecondary },
+                    showOnlyFavorites && { color: colors.brandPrimary },
+                  ]}
+                >
+                  Favorites
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surfaceSubtle,
+                  },
                   showOnlyMine && {
                     borderColor: colors.brandPrimary,
                     backgroundColor: colors.brandPrimarySoft,
@@ -1020,7 +1129,7 @@ export default function SelectExerciseScreen() {
             ref={listRef}
             key={viewMode}
             data={filteredExercises}
-            extraData={selectedIds}
+            extraData={{ selectedIds, favoriteExerciseIds }}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
@@ -1191,16 +1300,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 8,
   },
-  iconButtonSmall: {
-    width: 22,
-    height: 22,
+  cardOverlayRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  overlayIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  overlayIconButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   infoButton: {
     // No background - icon stands out on its own
   },
   selectionBadge: {
-    // backgroundColor: '#fff',
-    // borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 12,
+  },
+  listItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  listItemFavoriteButton: {
+    padding: 4,
   },
   listItemCheckbox: {
     padding: 4,
