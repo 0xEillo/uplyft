@@ -1,5 +1,6 @@
 import {
   buildDisplayStrengthGroupData,
+  buildSpecificMuscleGroupData,
   resolveDatabaseMuscleToDisplayGroup,
 } from '../lib/strength-display-groups'
 
@@ -56,5 +57,34 @@ describe('strength display groups', () => {
         expect.objectContaining({ exerciseName: 'Bicep Curl (Dumbbell)' }),
       ],
     })
+  })
+
+  test('builds specific muscle groups for tappable body regions', () => {
+    const groups = buildSpecificMuscleGroupData({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises: [
+        {
+          exerciseId: 'squat-1',
+          exerciseName: 'Squat (Barbell)',
+          muscleGroup: 'Quads',
+          max1RM: 180,
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'press-1',
+          exerciseName: 'Shoulder Press (Machine)',
+          muscleGroup: 'Shoulders',
+          max1RM: 130,
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-03-02T00:00:00.000Z'),
+    })
+
+    expect(groups.find((group) => group.name === 'Quads')).toBeTruthy()
+    expect(groups.find((group) => group.name === 'Glutes')).toBeTruthy()
+    expect(groups.find((group) => group.name === 'Shoulders')).toBeTruthy()
+    expect(groups.find((group) => group.name === 'Legs')).toBeFalsy()
   })
 })

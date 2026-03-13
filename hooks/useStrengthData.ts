@@ -4,7 +4,10 @@ import type {
   OverallStrengthGroup,
   OverallStrengthGroupBreakdown,
 } from '@/lib/overall-strength-score'
-import { buildDisplayStrengthGroupData } from '@/lib/strength-display-groups'
+import {
+  buildDisplayStrengthGroupData,
+  buildSpecificMuscleGroupData,
+} from '@/lib/strength-display-groups'
 import {
     calculateStrengthScoreDelta,
     loadStrengthScoreDeltaContext,
@@ -248,6 +251,24 @@ export function useStrengthData() {
     })
   }, [exerciseData, overallLevel])
 
+  const muscleGroups = useMemo((): MuscleGroupData[] => {
+    const strengthGender = getStrengthGender(profile?.gender)
+    if (
+      !strengthGender ||
+      !profile?.weight_kg ||
+      profile.weight_kg <= 0 ||
+      exerciseData.length === 0
+    ) {
+      return []
+    }
+
+    return buildSpecificMuscleGroupData({
+      gender: strengthGender,
+      bodyweightKg: profile.weight_kg,
+      exercises: exerciseData,
+    })
+  }, [exerciseData, profile?.gender, profile?.weight_kg])
+
   return {
     profile,
     exerciseData,
@@ -256,6 +277,7 @@ export function useStrengthData() {
     onRefresh,
     getStrengthInfo,
     overallLevel,
+    muscleGroups,
     displayMuscleGroups,
     groupLevels,
     best1RMSnapshotByExerciseId,

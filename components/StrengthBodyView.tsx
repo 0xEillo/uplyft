@@ -29,7 +29,6 @@ import {
 } from "@/lib/overall-strength-score";
 import {
   buildDisplayStrengthGroupData,
-  resolveDatabaseMuscleToDisplayGroup,
   type DisplayStrengthGroupData,
   type DisplayStrengthGroup as DisplayGroup,
 } from "@/lib/strength-display-groups";
@@ -153,7 +152,7 @@ export function StrengthBodyView({
     refreshing,
     onRefresh,
     overallLevel,
-    displayMuscleGroups,
+    muscleGroups,
     exerciseData,
     getStrengthInfo,
     best1RMSnapshotByExerciseId,
@@ -291,13 +290,13 @@ export function StrengthBodyView({
     [overallLevel, trackedExercisesWithProgress],
   );
 
-  const displayMuscleGroupMap = useMemo(() => {
+  const muscleGroupMap = useMemo(() => {
     const result = new Map<string, MuscleGroupData>();
-    displayMuscleGroups.forEach((group) => {
+    muscleGroups.forEach((group) => {
       result.set(group.name, group);
     });
     return result;
-  }, [displayMuscleGroups]);
+  }, [muscleGroups]);
 
   const priorityRecommendations = useMemo<
     PriorityExerciseRecommendation[]
@@ -720,12 +719,7 @@ export function StrengthBodyView({
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
-        const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName);
-        if (!displayGroup) {
-          return;
-        }
-
-        const mgData = displayMuscleGroupMap.get(displayGroup);
+        const mgData = muscleGroupMap.get(dbMuscleName);
 
         if (mgData) {
           data.push({
@@ -737,7 +731,7 @@ export function StrengthBodyView({
     );
 
     return data;
-  }, [displayMuscleGroupMap]);
+  }, [muscleGroupMap]);
 
   // Handle body part press - navigate to native formSheet
   const handleBodyPartPress = useCallback(
@@ -756,12 +750,8 @@ export function StrengthBodyView({
         return;
       }
 
-      const displayGroup = resolveDatabaseMuscleToDisplayGroup(dbMuscleName);
-      const mgData = displayGroup
-        ? displayMuscleGroupMap.get(displayGroup)
-        : null;
-      const displayName =
-        mgData?.name ?? BODY_PART_DISPLAY_NAMES[slug] ?? slug;
+      const mgData = muscleGroupMap.get(dbMuscleName);
+      const displayName = BODY_PART_DISPLAY_NAMES[slug] ?? slug;
 
       // Build group data (with fallback for empty state)
       const groupData: MuscleGroupData = mgData || {
@@ -782,7 +772,7 @@ export function StrengthBodyView({
         },
       });
     },
-    [displayMuscleGroupMap, router],
+    [muscleGroupMap, router],
   );
 
   const styles = createStyles(colors);

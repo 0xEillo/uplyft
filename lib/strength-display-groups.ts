@@ -2,18 +2,31 @@ import {
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
   getTrackableExercisesForMuscle,
+  TIER2_WEIGHT,
 } from './exercise-standards-config'
+import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
 import {
+  calculateExerciseStrengthPoints,
+  calculateStrengthAggregateFromScores,
   getOverallStrengthGroupLevelProgress,
   type OverallStrengthGroup,
   type OverallStrengthGroupBreakdown,
 } from './overall-strength-score'
 import type { ExerciseStandardsConfig, StrengthLevel } from './exercise-standards-config'
+import type { StrengthGender } from './strength-progress'
 
 export type DisplayStrengthGroup = OverallStrengthGroup
 
 export interface DisplayStrengthGroupData<TExercise> {
   name: DisplayStrengthGroup
+  level: StrengthLevel
+  progress: number
+  exercises: TExercise[]
+  averageScore: number
+}
+
+export interface SpecificMuscleGroupData<TExercise> {
+  name: string
   level: StrengthLevel
   progress: number
   exercises: TExercise[]
@@ -157,4 +170,99 @@ export function buildDisplayStrengthGroupData<
       averageScore: breakdown.effectiveScore,
     }
   })
+}
+
+export function buildSpecificMuscleGroupData<
+  TExercise extends {
+    exerciseName: string
+    muscleGroup?: string | null
+    max1RM: number
+    lastTrainedAt?: string | null
+  },
+>(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: TExercise[]
+  now?: Date
+}): SpecificMuscleGroupData<TExercise>[] {
+  const now = input.now ?? new Date()
+  const groupState = new Map<
+    string,
+    {
+      exercises: TExercise[]
+      weightedExerciseScores: number[]
+      lastTrainedAt: string | null
+    }
+  >()
+
+  input.exercises.forEach((exercise) => {
+    const points = calculateExerciseStrengthPoints({
+      exerciseName: exercise.exerciseName,
+      gender: input.gender,
+      bodyweightKg: input.bodyweightKg,
+      estimated1RMKg: exercise.max1RM,
+    })
+    if (points === null) return
+
+    const canonicalName = exerciseNameMap.get(exercise.exerciseName)?.name ?? exercise.exerciseName
+    const primaryMuscle = resolveExerciseSpecificMuscle(
+      exercise.exerciseName,
+      exercise.muscleGroup,
+    )
+    const secondaryMuscle =
+      SECONDARY_EXERCISE_MUSCLE_MAPPING[canonicalName] ??
+      SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] ??
+      null
+
+    const tier = exerciseNameMap.get(exercise.exerciseName)?.tier ?? 2
+    const weightedPoints = points * (tier === 1 ? 1 : TIER2_WEIGHT)
+
+    ;[primaryMuscle, secondaryMuscle].forEach((muscle, index) => {
+      if (!muscle) return
+      if (index === 1 && muscle === primaryMuscle) return
+
+      const existing = groupState.get(muscle) ?? {
+        exercises: [],
+        weightedExerciseScores: [],
+        lastTrainedAt: null,
+      }
+
+      existing.exercises.push(exercise)
+      existing.weightedExerciseScores.push(weightedPoints)
+
+      const existingTime = existing.lastTrainedAt
+        ? new Date(existing.lastTrainedAt).getTime()
+        : Number.NEGATIVE_INFINITY
+      const nextTime = exercise.lastTrainedAt
+        ? new Date(exercise.lastTrainedAt).getTime()
+        : Number.NEGATIVE_INFINITY
+
+      if (Number.isFinite(nextTime) && nextTime > existingTime) {
+        existing.lastTrainedAt = exercise.lastTrainedAt ?? null
+      }
+
+      groupState.set(muscle, existing)
+    })
+  })
+
+  return Array.from(groupState.entries())
+    .map(([name, state]) => {
+      const aggregate = calculateStrengthAggregateFromScores({
+        weightedExerciseScores: state.weightedExerciseScores,
+        lastTrainedAt: state.lastTrainedAt,
+        now,
+      })
+      const rank = getOverallStrengthGroupLevelProgress({
+        effectiveScore: aggregate.effectiveScore,
+      })
+
+      return {
+        name,
+        level: rank.level,
+        progress: rank.progress,
+        exercises: state.exercises,
+        averageScore: aggregate.effectiveScore,
+      }
+    })
+    .sort((a, b) => b.averageScore - a.averageScore)
 }

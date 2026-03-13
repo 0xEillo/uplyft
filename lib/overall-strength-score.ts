@@ -205,6 +205,41 @@ function computeDecayFactor(
   return Math.max(0, 1 - overdueWeeks * DECAY_RATE_PER_WEEK)
 }
 
+export function calculateStrengthAggregateFromScores(input: {
+  weightedExerciseScores: number[]
+  lastTrainedAt: string | null
+  now?: Date
+}): {
+  topExerciseScore: number
+  decayFactor: number
+  effectiveScore: number
+} {
+  const { weightedExerciseScores, lastTrainedAt } = input
+  const now = input.now ?? new Date()
+
+  const sortedScores = [...weightedExerciseScores].sort((a, b) => b - a)
+  const topExerciseScore = sortedScores[0] ?? 0
+  const weights = sortedScores.map((_, i) =>
+    Math.pow(SECONDARY_EXERCISE_DECAY, i),
+  )
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  const groupRawScore =
+    totalWeight > 0
+      ? sortedScores.reduce((sum, s, i) => sum + s * weights[i], 0) /
+        totalWeight
+      : 0
+
+  const decayFactor =
+    groupRawScore > 0 ? computeDecayFactor(lastTrainedAt, now) : 1
+  const effectiveScore = groupRawScore * decayFactor
+
+  return {
+    topExerciseScore: clampScore(topExerciseScore),
+    decayFactor,
+    effectiveScore: clampScore(effectiveScore),
+  }
+}
+
 function interpolatePointsFromStandards(
   ratio: number,
   standards: StrengthStandard[],
@@ -366,30 +401,21 @@ export function calculateOverallStrengthScore(input: {
     const weight = OVERALL_GROUP_WEIGHTS[group]
     const state = groupState[group]
 
-    // Sort descending, then compute a normalized weighted average so every exercise
-    // contributes proportionally — a single outlier can't inflate the group.
-    const sortedScores = [...state.exerciseScores].sort((a, b) => b - a)
-    const topExerciseScore = sortedScores[0] ?? 0
-    const weights = sortedScores.map((_, i) => Math.pow(SECONDARY_EXERCISE_DECAY, i))
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-    const groupRawScore = totalWeight > 0
-      ? sortedScores.reduce((sum, s, i) => sum + s * weights[i], 0) / totalWeight
-      : 0
-
-    const decayFactor =
-      groupRawScore > 0
-        ? computeDecayFactor(state.lastTrainedAt, now)
-        : 1
-    const effectiveScore = groupRawScore * decayFactor
+    const { topExerciseScore, decayFactor, effectiveScore } =
+      calculateStrengthAggregateFromScores({
+        weightedExerciseScores: state.exerciseScores,
+        lastTrainedAt: state.lastTrainedAt,
+        now,
+      })
     const weightedContribution = effectiveScore * weight
     totalScore += weightedContribution
 
     groupBreakdown[group] = {
       group,
       weight,
-      topExerciseScore: clampScore(topExerciseScore),
+      topExerciseScore,
       decayFactor,
-      effectiveScore: clampScore(effectiveScore),
+      effectiveScore,
       weightedContribution,
       lastTrainedAt: state.lastTrainedAt,
       trackedExerciseCount: state.trackedExerciseCount,
