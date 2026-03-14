@@ -1,4 +1,8 @@
 import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
+import {
+  CreatePostTutorial,
+  type TutorialStepConfig,
+} from '@/components/CreatePostTutorial'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
@@ -69,6 +73,7 @@ import {
   useFocusEffect,
   useNavigation,
 } from '@react-navigation/native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -78,6 +83,7 @@ import {
   Animated,
   AppState,
   Easing,
+  Image,
   Keyboard,
   type LayoutChangeEvent,
   Platform,
@@ -91,10 +97,14 @@ import {
   View,
 } from 'react-native'
 import Reanimated, {
+  cancelAnimation,
   Easing as ReanimatedEasing,
+  runOnUI,
   useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
@@ -105,6 +115,57 @@ const IS_DEV_RUNTIME =
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
 const DEBUG_LOGS = false
+
+type WindowRect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+type ViewLayout = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+function normalizeWindowRect(
+  rect:
+    | {
+        x?: number
+        y?: number
+        width?: number
+        height?: number
+        left?: number
+        top?: number
+      }
+    | null
+    | undefined,
+): WindowRect | null {
+  if (!rect) return null
+
+  const x = typeof rect.x === 'number' ? rect.x : rect.left
+  const y = typeof rect.y === 'number' ? rect.y : rect.top
+  const { width, height } = rect
+
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof width !== 'number' ||
+    typeof height !== 'number' ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null
+  }
+
+  return { x, y, width, height }
+}
 
 function formatTimerDisplay(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -201,6 +262,13 @@ export default function CreatePostScreen() {
   const [keypadTapShield, setKeypadTapShield] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
+  const [isFirstCoachOpen, setIsFirstCoachOpen] = useState(false)
+  const [isCoachSheetFirstOpen, setIsCoachSheetFirstOpen] = useState(false)
+  const [showPageTutorial, setShowPageTutorial] = useState(false)
+  const chatButtonPulse = useSharedValue(1)
+  const chatButtonRingOpacity = useSharedValue(0)
+  const chatButtonRingScale = useSharedValue(1)
+  const chatHandWave = useSharedValue(0)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
   const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
     getWarmupCalculatorEnabled(),
@@ -300,6 +368,7 @@ export default function CreatePostScreen() {
     () => !notes.trim() && !workoutTitle.trim() && !hasStructuredEntries,
     [notes, workoutTitle, hasStructuredEntries],
   )
+
 
   const shouldShowWorkoutTimer =
     hasWorkoutDraftContent || workoutElapsedSeconds > 0
@@ -492,6 +561,19 @@ export default function CreatePostScreen() {
   const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
+  const chatButtonRef = useRef<View>(null)
+  const chatButtonTutorialRectRef = useRef<{
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null>(null)
+  const keyboardViewLayoutRef = useRef<ViewLayout | null>(null)
+  const titleInputContainerLayoutRef = useRef<ViewLayout | null>(null)
+  const chatButtonLocalLayoutRef = useRef<ViewLayout | null>(null)
+  const toolbarTimerRef = useRef<View>(null)
+  const toolbarRoutineRef = useRef<View>(null)
+  const toolbarSearchRef = useRef<View>(null)
   const scrollYRef = useRef(0)
   const nativeKeyboardHeightRef = useRef(0)
   const keypadVisibleRef = useRef(false)
@@ -530,6 +612,293 @@ export default function CreatePostScreen() {
   const { completeStep } = useTutorial()
   const { submitWorkout: queueWorkout } = useSubmitWorkout()
   const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+
+  // Complete tutorial step when user actually starts a workout (has content)
+  useEffect(() => {
+    if (hasWorkoutDraftContent) {
+      completeStep('create_workout')
+    }
+  }, [hasWorkoutDraftContent, completeStep])
+
+  // Check if this is the user's first time opening the coach sheet
+  const COACH_SHEET_SEEN_KEY = user?.id
+    ? `coach_sheet_seen_${user.id}`
+    : null
+
+  useEffect(() => {
+    if (!COACH_SHEET_SEEN_KEY) return
+    AsyncStorage.getItem(COACH_SHEET_SEEN_KEY).then((val) => {
+      if (!val) setIsFirstCoachOpen(true)
+    })
+  }, [COACH_SHEET_SEEN_KEY])
+
+  // Check if user should see the create-post page tutorial
+  const PAGE_TUTORIAL_SEEN_KEY = user?.id
+    ? `create_post_tutorial_seen_${user.id}`
+    : null
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!PAGE_TUTORIAL_SEEN_KEY) return
+
+      let cancelled = false
+      const t = setTimeout(() => {
+        AsyncStorage.getItem(PAGE_TUTORIAL_SEEN_KEY).then((val) => {
+          if (!cancelled) {
+            setShowPageTutorial(!val)
+          }
+        })
+      }, 600)
+
+      return () => clearTimeout(t)
+    }, [PAGE_TUTORIAL_SEEN_KEY]),
+  )
+
+  const readWindowRect = useCallback(
+    (
+      ref: React.RefObject<View | null>,
+    ): WindowRect | null => {
+      const rawRect = (
+        ref.current as
+          | (View & {
+              getBoundingClientRect?: () => {
+                x: number
+                y: number
+                width: number
+                height: number
+                left?: number
+                top?: number
+              }
+            })
+          | null
+      )?.getBoundingClientRect?.()
+
+      const rect = normalizeWindowRect(rawRect)
+      return rect ?? null
+    },
+    [],
+  )
+
+  const measureInWindowRef = useCallback(
+    (
+      ref: React.RefObject<View | null>,
+    ): Promise<WindowRect | null> =>
+      new Promise((resolve) => {
+        if (!ref.current) {
+          resolve(null)
+          return
+        }
+
+        ref.current.measureInWindow((x, y, width, height) => {
+          const rect = normalizeWindowRect({ x, y, width, height })
+          resolve(rect)
+        })
+      }),
+    [],
+  )
+
+  const measureRef = useCallback(
+    (
+      ref: React.RefObject<View | null>,
+    ): Promise<WindowRect | null> =>
+      measureInWindowRef(ref).then((windowRect) => {
+        if (windowRect) {
+          return windowRect
+        }
+
+        return readWindowRect(ref)
+      }),
+    [measureInWindowRef, readWindowRect],
+  )
+
+  const getChatButtonTutorialRectFromLayout = useCallback((): WindowRect | null => {
+    const keyboardViewLayout = keyboardViewLayoutRef.current
+    const titleInputContainerLayout = titleInputContainerLayoutRef.current
+    const chatButtonLocalLayout = chatButtonLocalLayoutRef.current
+
+    if (!keyboardViewLayout || !titleInputContainerLayout || !chatButtonLocalLayout) {
+      return null
+    }
+
+    const rect = normalizeWindowRect({
+      x:
+        insets.left +
+        keyboardViewLayout.x +
+        titleInputContainerLayout.x +
+        chatButtonLocalLayout.x,
+      y:
+        insets.top +
+        keyboardViewLayout.y +
+        titleInputContainerLayout.y +
+        chatButtonLocalLayout.y -
+        scrollYRef.current,
+      width: chatButtonLocalLayout.width,
+      height: chatButtonLocalLayout.height,
+    })
+
+    return rect
+  }, [insets.left, insets.top])
+
+  const updateChatButtonTutorialRect = useCallback(() => {
+    const layoutRect = getChatButtonTutorialRectFromLayout()
+    if (layoutRect) {
+      chatButtonTutorialRectRef.current = layoutRect
+      return
+    }
+
+    void measureInWindowRef(chatButtonRef).then((windowRect) => {
+      if (windowRect) {
+        chatButtonTutorialRectRef.current = windowRect
+        return
+      }
+
+      const syncRect = readWindowRect(chatButtonRef)
+      chatButtonTutorialRectRef.current = syncRect
+    })
+  }, [getChatButtonTutorialRectFromLayout, measureInWindowRef, readWindowRect])
+
+  const handleKeyboardViewLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      keyboardViewLayoutRef.current = event.nativeEvent.layout
+      requestAnimationFrame(() => {
+        updateChatButtonTutorialRect()
+      })
+    },
+    [updateChatButtonTutorialRect],
+  )
+
+  const handleTitleInputContainerLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      titleInputContainerLayoutRef.current = event.nativeEvent.layout
+      requestAnimationFrame(() => {
+        updateChatButtonTutorialRect()
+      })
+    },
+    [updateChatButtonTutorialRect],
+  )
+
+  const handleChatButtonLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      chatButtonLocalLayoutRef.current = event.nativeEvent.layout
+      requestAnimationFrame(() => {
+        updateChatButtonTutorialRect()
+      })
+    },
+    [updateChatButtonTutorialRect],
+  )
+
+  useEffect(() => {
+    if (!showPageTutorial) {
+      return
+    }
+
+    const handle = runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        updateChatButtonTutorialRect()
+      })
+    })
+
+    return () => {
+      handle.cancel?.()
+    }
+  }, [showPageTutorial, updateChatButtonTutorialRect])
+
+  const pageTutorialSteps: TutorialStepConfig[] = useMemo(
+    () => [
+      {
+        id: 'coach_chat',
+        title: 'AI Coach',
+        description:
+          'Chat with your coach to generate workouts, swap exercises, or get advice.',
+        icon: 'chatbubble-ellipses-outline',
+        measureTarget: async () => {
+          const layoutRect = getChatButtonTutorialRectFromLayout()
+          if (layoutRect) {
+            chatButtonTutorialRectRef.current = layoutRect
+            return layoutRect
+          }
+
+          const freshRect = await measureRef(chatButtonRef)
+          if (freshRect) {
+            chatButtonTutorialRectRef.current = freshRect
+            return freshRect
+          }
+
+          return chatButtonTutorialRectRef.current
+        },
+      },
+      {
+        id: 'search_exercise',
+        title: 'Search Exercises',
+        description:
+          'Find and add exercises from a library of 600+.',
+        icon: 'search-outline',
+        measureTarget: () => measureRef(toolbarSearchRef),
+      },
+      {
+        id: 'routines',
+        title: 'Routines',
+        description:
+          'Load a saved routine to auto-fill your workout.',
+        icon: 'albums-outline',
+        measureTarget: () => measureRef(toolbarRoutineRef),
+      },
+      {
+        id: 'rest_timer',
+        title: 'Rest Timer',
+        description:
+          'Time your rest between sets with notifications.',
+        icon: 'stopwatch-outline',
+        measureTarget: () => measureRef(toolbarTimerRef),
+      },
+      {
+        id: 'logging',
+        title: 'Log workouts how you like!',
+        description: '',
+        icon: 'create-outline',
+        bullets: [
+          { icon: 'create-outline', label: 'Notes', detail: 'Log it like Apple Notes, free-form' },
+          { icon: 'add-outline', label: 'Structured', detail: 'Type an exercise name and tap +' },
+          { icon: 'search-outline', label: 'Search exercises', detail: 'Tap search to see exercises and videos' },
+        ],
+        footer: 'No matter how you log, AI detects your exercises and formats your workout automatically.',
+      },
+    ],
+    [getChatButtonTutorialRectFromLayout, measureRef],
+  )
+
+  const handlePageTutorialComplete = useCallback(() => {
+    setShowPageTutorial(false)
+    if (PAGE_TUTORIAL_SEEN_KEY) {
+      AsyncStorage.setItem(PAGE_TUTORIAL_SEEN_KEY, 'true')
+    }
+  }, [PAGE_TUTORIAL_SEEN_KEY])
+
+  // Wave animation for coach avatar button on first open
+  useEffect(() => {
+    if (!isFirstCoachOpen) {
+      runOnUI(() => {
+        'worklet'
+        cancelAnimation(chatHandWave)
+        chatHandWave.value = 0
+      })()
+      return
+    }
+    runOnUI(() => {
+      'worklet'
+      chatHandWave.value = withRepeat(
+        withSequence(
+          withTiming(-25, { duration: 180, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
+          withTiming(15, { duration: 180, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
+          withTiming(-20, { duration: 160, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
+          withTiming(10, { duration: 160, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
+          withTiming(0, { duration: 200, easing: ReanimatedEasing.out(ReanimatedEasing.ease) }),
+          withTiming(0, { duration: 900 }), // pause between waves
+        ),
+        -1,
+      )
+    })()
+  }, [isFirstCoachOpen, chatHandWave])
 
   const startToolbarInsetHandoff = useCallback(() => {
     setIsToolbarInsetLocked(true)
@@ -2619,6 +2988,9 @@ export default function CreatePostScreen() {
       restTimerRemaining: restTimer.remainingSeconds,
       bottomInsetOverride: bottomSafeInset,
       visibleButtons: toolbarVisibleButtons,
+      timerButtonRef: toolbarTimerRef,
+      routineButtonRef: toolbarRoutineRef,
+      searchButtonRef: toolbarSearchRef,
     }),
     [
       handleScanWorkoutPress,
@@ -2685,6 +3057,21 @@ export default function CreatePostScreen() {
   const combinedSpacerStyle = useAnimatedStyle(() => ({
     height: Math.max(customKeypadSpacerH.value, keyboard.height.value),
   }))
+
+  const chatIconAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: chatButtonPulse.value }],
+  }))
+
+  const chatGlowRingStyle = useAnimatedStyle(() => ({
+    opacity: chatButtonRingOpacity.value,
+    transform: [{ scale: chatButtonRingScale.value }],
+  }))
+
+  const chatHandWaveStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: `${chatHandWave.value}deg` },
+    ],
+  }))
   const isToolbarVisible =
     toolbarVisibleButtons.length > 0 &&
     (!isStructuredInputFocused || Boolean(keypadProps))
@@ -2692,6 +3079,7 @@ export default function CreatePostScreen() {
     keypadProps || isToolbarInsetLocked ? 0 : bottomSafeInset
 
   return (
+    <>
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <SlideUpView
         key={slideKey}
@@ -2774,7 +3162,7 @@ export default function CreatePostScreen() {
           </View>
         </Pressable>
 
-        <View style={styles.keyboardView}>
+        <View style={styles.keyboardView} onLayout={handleKeyboardViewLayout}>
           <ScrollView
             ref={scrollViewRef}
             style={styles.inputContainer}
@@ -2797,7 +3185,10 @@ export default function CreatePostScreen() {
             automaticallyAdjustContentInsets={false}
           >
             {/* Title Input */}
-            <View style={styles.titleInputContainer}>
+            <View
+              style={styles.titleInputContainer}
+              onLayout={handleTitleInputContainerLayout}
+            >
               <TextInput
                 ref={titleInputRef}
                 style={styles.titleInput}
@@ -2830,22 +3221,46 @@ export default function CreatePostScreen() {
                   }
                 }}
               />
-              <View>
+              <View ref={chatButtonRef} collapsable={false} onLayout={handleChatButtonLayout}>
                 <TouchableOpacity
                   style={styles.chatButton}
                   onPress={() => {
                     haptic('light')
                     blurInputs()
+                    if (isFirstCoachOpen && COACH_SHEET_SEEN_KEY) {
+                      AsyncStorage.setItem(COACH_SHEET_SEEN_KEY, 'true')
+                      setIsFirstCoachOpen(false)
+                      setIsCoachSheetFirstOpen(true)
+                    }
                     setShowCoachSheet(true)
                   }}
                   disabled={isLoading || isRecording || isTranscribing}
                   activeOpacity={0.6}
                 >
-                  <Ionicons
-                    name="chatbubble-ellipses-outline"
-                    size={28}
-                    color={colors.brandPrimary}
-                  />
+                  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Image
+                      source={coach.image}
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: 23,
+                      }}
+                    />
+                    {isFirstCoachOpen && (
+                      <Reanimated.View
+                        style={[
+                          {
+                            position: 'absolute',
+                            bottom: -4,
+                            right: -4,
+                          },
+                          chatHandWaveStyle,
+                        ]}
+                      >
+                        <Text style={{ fontSize: 16, lineHeight: 18 }}>👋</Text>
+                      </Reanimated.View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3037,98 +3452,6 @@ export default function CreatePostScreen() {
           </View>
         )}
 
-        {/* New-user guide - shown when user has no workouts and inputs are empty */}
-        {!hasWorkoutDraftContent && userWorkoutCount === 0 && (
-          <View style={styles.newUserGuideContainer} pointerEvents="none">
-            <View style={styles.newUserGuideCard}>
-              <Text style={styles.newUserGuideTitle}>
-                Log workouts how you like!
-              </Text>
-
-              <View style={styles.newUserGuideOptionRow}>
-                <View style={styles.newUserGuideOptionBadge}>
-                  <Text style={styles.newUserGuideOptionBadgeText}>1</Text>
-                </View>
-                <View style={styles.newUserGuideOptionContent}>
-                  <Text style={styles.newUserGuideOptionTitle}>Notes</Text>
-                  <View style={styles.newUserGuideOptionHintRow}>
-                    <View style={styles.newUserGuideOptionHintIconWrap}>
-                      <Ionicons
-                        name="create-outline"
-                        size={13}
-                        color={colors.textSecondary}
-                      />
-                    </View>
-                    <Text style={styles.newUserGuideOptionHintText}>
-                      Log it like Apple Notes, free-form
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.newUserGuideOptionRow}>
-                <View style={styles.newUserGuideOptionBadge}>
-                  <Text style={styles.newUserGuideOptionBadgeText}>2</Text>
-                </View>
-                <View style={styles.newUserGuideOptionContent}>
-                  <Text style={styles.newUserGuideOptionTitle}>Structured</Text>
-                  <View style={styles.newUserGuideOptionHintRow}>
-                    <View style={styles.newUserGuideOptionHintIconWrap}>
-                      <Ionicons
-                        name="add-outline"
-                        size={13}
-                        color={colors.textSecondary}
-                      />
-                    </View>
-                    <Text style={styles.newUserGuideOptionHintText}>
-                      Type an exercise name and tap +
-                    </Text>
-                  </View>
-                  <View style={styles.newUserGuideStructuredPreview}>
-                    <View style={styles.newUserGuideStructuredPreviewContent}>
-                      <StructuredWorkoutInput
-                        initialExercises={NEW_USER_STRUCTURED_PREVIEW}
-                        compactPreview
-                        onDataChange={handleStructuredPreviewChange}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.newUserGuideOptionRow}>
-                <View style={styles.newUserGuideOptionBadge}>
-                  <Text style={styles.newUserGuideOptionBadgeText}>3</Text>
-                </View>
-                <View style={styles.newUserGuideOptionContent}>
-                  <Text style={styles.newUserGuideOptionTitle}>
-                    Search exercises
-                  </Text>
-                  <View style={styles.newUserGuideOptionHintRow}>
-                    <View style={styles.newUserGuideOptionHintIconWrap}>
-                      <Ionicons
-                        name="search-outline"
-                        size={13}
-                        color={colors.textSecondary}
-                      />
-                    </View>
-                    <Text style={styles.newUserGuideOptionHintText}>
-                      Tap search to see exercises and videos
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-            
-
-              <Text style={styles.newUserGuideFooter}>
-                No matter how you log, AI detects your exercises and turns it
-                into a formatted workout post.
-              </Text>
-            </View>
-          </View>
-        )}
-
         {/* Paywall Modal */}
         <Paywall
           visible={showPaywall}
@@ -3179,13 +3502,24 @@ export default function CreatePostScreen() {
 
       <WorkoutCoachSheet
         visible={showCoachSheet}
-        onClose={() => setShowCoachSheet(false)}
+        onClose={() => {
+          setShowCoachSheet(false)
+          setIsCoachSheetFirstOpen(false)
+        }}
         workoutContext={workoutContext}
         onAddExercise={handleAddExerciseFromCoach}
         onReplaceExercise={handleReplaceExerciseFromCoach}
         isWorkoutEmpty={isWorkoutEmpty}
+        isFirstOpen={isCoachSheetFirstOpen}
       />
     </SafeAreaView>
+
+    <CreatePostTutorial
+      steps={pageTutorialSteps}
+      visible={showPageTutorial}
+      onComplete={handlePageTutorialComplete}
+    />
+    </>
   )
 }
 

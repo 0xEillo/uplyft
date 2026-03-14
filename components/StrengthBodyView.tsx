@@ -29,6 +29,7 @@ import {
 } from "@/lib/overall-strength-score";
 import {
   buildDisplayStrengthGroupData,
+  DISPLAY_STRENGTH_GROUP_ORDER,
   type DisplayStrengthGroupData,
   type DisplayStrengthGroup as DisplayGroup,
 } from "@/lib/strength-display-groups";
@@ -278,14 +279,21 @@ export function StrengthBodyView({
 
   const trackedDisplayGroups = useMemo(
     (): DisplayStrengthGroupData<TrackedExerciseWithProgress>[] => {
-      if (!overallLevel) {
-        return [];
+      if (overallLevel) {
+        return buildDisplayStrengthGroupData({
+          exercises: trackedExercisesWithProgress,
+          groupBreakdown: overallLevel.groupBreakdown,
+        });
       }
 
-      return buildDisplayStrengthGroupData({
-        exercises: trackedExercisesWithProgress,
-        groupBreakdown: overallLevel.groupBreakdown,
-      });
+      // No data yet — return all groups empty so headers still render
+      return DISPLAY_STRENGTH_GROUP_ORDER.map((name) => ({
+        name,
+        level: "Untrained" as StrengthLevel,
+        progress: 0,
+        exercises: [],
+        averageScore: 0,
+      }));
     },
     [overallLevel, trackedExercisesWithProgress],
   );
@@ -1129,8 +1137,9 @@ export function StrengthBodyView({
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.muscleGroupName}>{group}</Text>
                       <Text style={styles.muscleGroupSubtext}>
-                        {exercises.length}{" "}
-                        {exercises.length === 1 ? "exercise" : "exercises"}
+                        {exercises.length === 0
+                          ? "No lifts logged yet"
+                          : `${exercises.length} ${exercises.length === 1 ? "exercise" : "exercises"}`}
                       </Text>
                     </View>
 
@@ -1168,7 +1177,7 @@ export function StrengthBodyView({
                               { color: colors.textSecondary },
                             ]}
                           >
-                            Log sets to rank this muscle
+                            Log a {group.toLowerCase()} exercise to see your rank
                           </Text>
                         </TouchableOpacity>
                       ) : (

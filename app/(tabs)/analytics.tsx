@@ -3,13 +3,16 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
+import { StrengthProgressTutorial } from '@/components/StrengthProgressTutorial'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -39,6 +42,7 @@ export default function AnalyticsScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('strength')
   const [bodyTab, setBodyTab] = useState<BodyTab>('strength')
   const [glassInstanceKey, setGlassInstanceKey] = useState(0)
+  const [showStrengthTutorial, setShowStrengthTutorial] = useState(false)
   
   // Constants for perfect centering
   const CONTROL_WIDTH = 210
@@ -47,6 +51,9 @@ export default function AnalyticsScreen() {
   
   // Animation for the sliding pill indicator
   const indicatorLeft = useRef(new Animated.Value(PILL_PADDING)).current
+  const strengthTutorialSeenKey = user?.id
+    ? `strength_progress_tutorial_seen_${user.id}`
+    : null
 
   useFocusEffect(
     useCallback(() => {
@@ -57,7 +64,29 @@ export default function AnalyticsScreen() {
       // Force remount on focus to recover native glass if iOS drops it after transitions.
       setGlassInstanceKey((prev) => prev + 1)
 
-    }, [trackEvent]),
+      if (bodyTab !== 'strength' || !strengthTutorialSeenKey) {
+        return
+      }
+
+      let cancelled = false
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+      const interactionHandle = runAfterInteractions(() => {
+        timeoutId = setTimeout(() => {
+          AsyncStorage.getItem(strengthTutorialSeenKey).then((value) => {
+            if (!cancelled && !value) {
+              setShowStrengthTutorial(true)
+            }
+          })
+        }, 450)
+      })
+
+      return () => {
+        cancelled = true
+        interactionHandle.cancel?.()
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+    }, [bodyTab, strengthTutorialSeenKey, trackEvent]),
   )
 
   // Animate the pill indicator when tab changes
@@ -81,6 +110,13 @@ export default function AnalyticsScreen() {
     setBodyTab(tab)
     setViewMode(tab)
   }, [bodyTab])
+
+  const handleStrengthTutorialComplete = useCallback(() => {
+    setShowStrengthTutorial(false)
+    if (strengthTutorialSeenKey) {
+      AsyncStorage.setItem(strengthTutorialSeenKey, 'true')
+    }
+  }, [strengthTutorialSeenKey])
 
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
@@ -162,6 +198,10 @@ export default function AnalyticsScreen() {
           )}
         </ScrollView>
       )}
+      <StrengthProgressTutorial
+        visible={showStrengthTutorial}
+        onComplete={handleStrengthTutorialComplete}
+      />
     </View>
   )
 }

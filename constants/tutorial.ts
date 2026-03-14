@@ -6,10 +6,10 @@ export const TUTORIAL_TRIAL_USED_KEY = '@tutorial_trial_used'
 
 export type TutorialStepId =
   | 'setup_profile'
-  | 'generate_workout'
-  | 'create_routine'
+  | 'create_workout'
   | 'log_workout'
-  | 'body_log'
+  | 'first_exercise_rank'
+  | 'save_routine'
 
 // Features that can be trialed once for free during tutorial
 export type TrialFeatureId = 'ai_workout' | 'create_routine'
@@ -35,41 +35,41 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     autoComplete: true,
   },
   {
-    id: 'generate_workout',
-    title: 'Create AI Workout',
-    description: 'Ask your coach to generate a personalized workout',
-    icon: 'flash-outline',
-    route: '/(tabs)/chat',
-    trialFeature: 'ai_workout',
-  },
-  {
-    id: 'create_routine',
-    title: 'Save a Routine',
-    description: 'Save your AI workout as a reusable routine',
-    icon: 'albums-outline',
-    route: '/create-routine',
-    trialFeature: 'create_routine',
+    id: 'create_workout',
+    title: 'Start Workout',
+    description: 'Start building your first custom workout',
+    icon: 'add-circle-outline',
+    route: '/(tabs)/create-post',
+    trialFeature: null,
   },
   {
     id: 'log_workout',
     title: 'Log First Workout',
-    description: 'Record your workout to track progress',
+    description: 'Complete a workout to track your progress',
     icon: 'barbell-outline',
     route: '/(tabs)/create-post',
     trialFeature: null,
   },
   {
-    id: 'body_log',
-    title: 'Track Gym Log',
-    description: 'Log meals, weight, and progress photos',
-    icon: 'body-outline',
-    route: '/body-log',
+    id: 'first_exercise_rank',
+    title: 'Get First Exercise Rank',
+    description: 'Earn a rank by logging your top sets',
+    icon: 'trophy-outline',
+    route: null,
     trialFeature: null,
+  },
+  {
+    id: 'save_routine',
+    title: 'Save First Routine',
+    description: 'Save a workout as a reusable routine',
+    icon: 'albums-outline',
+    route: '/create-routine',
+    trialFeature: 'create_routine',
   },
 ]
 
 // Map from trial feature to the step it's associated with
-export const TRIAL_FEATURE_TO_STEP: Record<TrialFeatureId, TutorialStepId> = {
-  ai_workout: 'generate_workout',
-  create_routine: 'create_routine',
+export const TRIAL_FEATURE_TO_STEP: Partial<Record<TrialFeatureId, TutorialStepId>> = {
+  // ai_workout: 'generate_workout', // Removed from tutorial
+  create_routine: 'save_routine',
 }

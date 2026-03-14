@@ -728,7 +728,7 @@ export default function CreateRoutineScreen() {
         if (!isProMember) {
           consumeTrial('create_routine')
         } else {
-          completeStep('create_routine')
+          completeStep('save_routine')
         }
       }
 

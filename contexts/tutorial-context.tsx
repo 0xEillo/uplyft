@@ -200,14 +200,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
         // Check for routines
         const routines = await database.workoutRoutines.getAll(user.id)
-        if (routines.length > 0 && !completedSteps.has('create_routine')) {
-          stepsToComplete.push('create_routine')
-        }
-
-        // Check for body logs
-        const bodyLogEntries = await database.bodyLog.getEntriesPage(user.id, 0, 1)
-        if (bodyLogEntries.entries.length > 0 && !completedSteps.has('body_log')) {
-          stepsToComplete.push('body_log')
+        if (routines.length > 0 && !completedSteps.has('save_routine')) {
+          stepsToComplete.push('save_routine')
         }
 
         if (stepsToComplete.length > 0) {

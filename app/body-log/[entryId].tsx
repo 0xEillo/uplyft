@@ -635,9 +635,7 @@ export default function BodyLogDetailScreen() {
         // Update URL with real entry ID
         router.setParams({ entryId: actualEntryId })
 
-        // Complete tutorial step for body log
-
-        completeStep('body_log')
+        // Complete tutorial step for body log handled elsewhere or removed
 
         hapticSuccess()
         return

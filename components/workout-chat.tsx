@@ -1609,7 +1609,6 @@ export function WorkoutChat({
       setParsedWorkout(parsed)
 
       // Complete tutorial step for all users, but only consume trial for non-Pro
-      completeStep('generate_workout')
       if (!isProMember) {
         consumeTrial('ai_workout')
       }
@@ -2611,7 +2610,6 @@ export function WorkoutChat({
 
           // Complete tutorial step for all users, but only consume trial for non-Pro
           if (parsed) {
-            completeStep('generate_workout')
             if (!isProMember) {
               consumeTrial('ai_workout')
             }
@@ -2985,9 +2983,9 @@ export function WorkoutChat({
         consumeTrial('create_routine')
       } else {
         console.log(
-          '[WorkoutChat] Saving AI routine. Completing create_routine tutorial step.',
+          '[WorkoutChat] Saving AI routine. Completing save_routine tutorial step.',
         )
-        completeStep('create_routine')
+        completeStep('save_routine')
       }
 
       // Navigate directly to the routine detail page

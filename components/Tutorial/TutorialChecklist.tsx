@@ -3,6 +3,7 @@ import { TutorialStep, useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
+import { TabActions, useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { memo, useCallback, useMemo } from 'react'
@@ -43,7 +44,7 @@ const TutorialStepCard = memo(
     isDark: boolean
   }) => {
     const isCompleted = step.completed
-    const isClickable = !isCompleted && step.route
+    const isClickable = Boolean(step.route) // always tappable if it has a route
 
     // Animated progress for the checkmark
     const progress = useDerivedValue(() => {
@@ -214,6 +215,7 @@ export const TutorialChecklist = memo(
     const colors = useThemedColors()
     const { isDark } = useTheme()
     const router = useRouter()
+    const navigation = useNavigation()
     const {
       tutorialSteps,
       isTutorialComplete,
@@ -230,11 +232,18 @@ export const TutorialChecklist = memo(
 
     const handleStepPress = useCallback(
       (step: TutorialStep) => {
-        if (step.route && !step.completed) {
-          router.push(step.route as any)
+        if (step.route) {
+          // Tab routes need TabActions.jumpTo instead of router.push
+          // to avoid glitching the native tab bar
+          if (step.route.startsWith('/(tabs)/')) {
+            const tabName = step.route.replace('/(tabs)/', '')
+            navigation.dispatch(TabActions.jumpTo(tabName))
+          } else {
+            router.push(step.route as any)
+          }
         }
       },
-      [router],
+      [router, navigation],
     )
 
     const handleDismiss = useCallback(async () => {
