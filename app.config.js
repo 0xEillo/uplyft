@@ -75,45 +75,24 @@ const facebookPluginConfig =
       ]
     : null
 
-const deeplinkNowDomainRaw =
-  process.env.DEEPLINKNOW_DOMAIN || process.env.EXPO_PUBLIC_DEEPLINKNOW_DOMAIN
-const deeplinkNowDomain = deeplinkNowDomainRaw
-  ? deeplinkNowDomainRaw
-      .replace(/^https?:\/\//i, '')
-      .replace(/\/+$/g, '')
-  : ''
-
-const deeplinkNowPluginConfig = (() => {
-  try {
-    require.resolve('@deeplinknow/react-native/plugin')
-    return '@deeplinknow/react-native/plugin'
-  } catch {
-    return null
-  }
-})()
-
-const deeplinkNowAssociatedDomains = deeplinkNowDomain
-  ? isProductionBuild
-    ? [`applinks:${deeplinkNowDomain}`]
-    : []
+const appLinkHosts = isProductionBuild
+  ? ['repaifit.app', 'www.repaifit.app']
   : []
 
-const deeplinkNowIntentFilters = deeplinkNowDomain
-  ? [
-      {
-        action: 'VIEW',
-        autoVerify: true,
-        data: [
-          {
-            scheme: 'https',
-            host: deeplinkNowDomain,
-            pathPrefix: '/',
-          },
-        ],
-        category: ['BROWSABLE', 'DEFAULT'],
-      },
-    ]
-  : []
+const appLinkAssociatedDomains = appLinkHosts.map((host) => `applinks:${host}`)
+
+const appLinkIntentFilters = appLinkHosts.map((host) => ({
+  action: 'VIEW',
+  autoVerify: true,
+  data: [
+    {
+      scheme: 'https',
+      host,
+      pathPrefix: '/',
+    },
+  ],
+  category: ['BROWSABLE', 'DEFAULT'],
+}))
 
 const { version: appVersion } = require('./package.json')
 
@@ -129,7 +108,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       usesAppleSignIn: true,
-      associatedDomains: deeplinkNowAssociatedDomains,
+      associatedDomains: appLinkAssociatedDomains,
       infoPlist: {
         LSApplicationQueriesSchemes: ['whatsapp', 'twitter', 'fb-messenger', 'fb', 'fbapi', 'fbauth2', 'fbshareextension'],
         ITSAppUsesNonExemptEncryption: false,
@@ -169,7 +148,7 @@ module.exports = {
         'READ_MEDIA_IMAGES',
         'POST_NOTIFICATIONS',
       ],
-      intentFilters: deeplinkNowIntentFilters,
+      intentFilters: appLinkIntentFilters,
       package: 'com.viralstudio.repai',
     },
     updates: {
@@ -226,8 +205,6 @@ module.exports = {
       ],
       // Facebook SDK - only included when env vars are configured
       ...(facebookPluginConfig ? [facebookPluginConfig] : []),
-      // DeeplinkNow plugin - included when package is installed in local env
-      ...(deeplinkNowPluginConfig ? [deeplinkNowPluginConfig] : []),
       // Override Live Activity Swift UI (lock screen + Dynamic Island)
       './plugins/with-custom-live-activity',
       // Live Activity for Dynamic Island workout timer (iOS only)
@@ -245,7 +222,6 @@ module.exports = {
       eas: {
         projectId: 'd92cf9e6-0901-4a68-9f50-741decd5c10f',
       },
-      deeplinkNowDomain: deeplinkNowDomain || undefined,
       revenueCatAppleApiKey: process.env.REVENUECAT_APPLE_API_KEY,
       revenueCatGoogleApiKey: process.env.REVENUECAT_GOOGLE_API_KEY,
       revenueCatTestStoreKey: allowRevenueCatTestStore

@@ -1,5 +1,6 @@
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { APP_BASE_URL } from '@/lib/app-links'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import * as Device from 'expo-device'
@@ -155,7 +156,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
         }
 
         // Share the image with message and link
-        const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
+        const shareMessage = `Check out my workout on Rep AI! ${APP_BASE_URL}`
 
         const shareOptions = {
           url: Platform.OS === 'ios' ? uri : `file://${uri}`,
@@ -313,7 +314,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
         if (!canOpen) {
           // Fallback to regular share if Instagram not installed
-          const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
+          const shareMessage = `Check out my workout on Rep AI! ${APP_BASE_URL}`
           const shareOptions = {
             url: Platform.OS === 'ios' ? uri : `file://${uri}`,
             message: shareMessage,
@@ -469,7 +470,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           if (!canOpen) {
             // Fallback to regular share
-            const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
+            const shareMessage = `Check out my workout on Rep AI! ${APP_BASE_URL}`
             const shareOptions = {
               url: Platform.OS === 'ios' ? uri : `file://${uri}`,
               message: shareMessage,
@@ -549,7 +550,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
             )
           } else {
             // Fallback to React Native Share if expo-sharing is not available
-            const shareMessage = `Check out my workout on Rep AI! https://repaifit.app`
+            const shareMessage = `Check out my workout on Rep AI! ${APP_BASE_URL}`
             const shareOptions = {
               url: Platform.OS === 'ios' ? uri : `file://${uri}`,
               message: shareMessage,

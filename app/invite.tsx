@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
-import { parseInvitePayload } from '@/lib/deeplinknow'
+import { parseInvitePayload } from '@/lib/app-links'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'

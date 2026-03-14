@@ -5,7 +5,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import { createInviteShareLink } from '@/lib/deeplinknow'
+import { createInviteShareLink } from '@/lib/app-links'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 export default function InviteFriendsScreen() {
   const colors = useThemedColors()
   const router = useRouter()
-  const { user, session } = useAuth()
+  const { user } = useAuth()
   const { trackEvent } = useAnalytics()
   const [isLoading, setIsLoading] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -54,17 +54,11 @@ export default function InviteFriendsScreen() {
     try {
       setIsLoading(true)
       const inviterProfile = await database.profiles.getByIdOrNull(user.id)
-      const inviteLink = await createInviteShareLink(
-        {
-          inviterId: user.id,
-          inviterTag: inviterProfile?.user_tag ?? null,
-          inviterName: inviterProfile?.display_name ?? null,
-        },
-        {
-          accessToken: session?.access_token,
-          platform: Platform.OS,
-        },
-      )
+      const inviteLink = await createInviteShareLink({
+        inviterId: user.id,
+        inviterTag: inviterProfile?.user_tag ?? null,
+        inviterName: inviterProfile?.display_name ?? null,
+      })
 
       const username = inviterProfile?.user_tag || 'user'
 

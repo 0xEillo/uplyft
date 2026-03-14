@@ -3,10 +3,10 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import {
   APP_STORE_URL,
   PLAY_STORE_URL,
-  buildInviteDeepLinkUrl,
+  buildInviteUrl,
   consumePendingInvite,
   savePendingInvite,
-} from '@/lib/deeplinknow'
+} from '@/lib/app-links'
 import { database } from '@/lib/database'
 import { FollowRelationshipStatus, Profile } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -103,7 +103,7 @@ export default function InviteProfileScreen() {
     if (!inviteId) return
 
     try {
-      await Linking.openURL(buildInviteDeepLinkUrl({ inviterId: inviteId }))
+      await Linking.openURL(buildInviteUrl(inviteId))
     } catch (error) {
       console.error('Error opening app invite URL:', error)
     }
