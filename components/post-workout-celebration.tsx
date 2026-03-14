@@ -1,9 +1,11 @@
+import { AnimatedFire } from '@/components/animated-fire'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { PostWorkoutCelebrationData } from '@/contexts/success-overlay-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
+import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useEffect, useRef, useState } from 'react'
 import {
@@ -68,14 +70,16 @@ export function PostWorkoutCelebration({
   const { isDark } = useTheme()
   const { user } = useAuth()
   const { weightUnit } = useWeightUnits()
-  const { saveWidgetToPhotosAndClipboard } = useWorkoutShare()
+  const { shareWorkoutWidget } = useWorkoutShare()
 
   const [allWidgets, setAllWidgets] = useState<WidgetData[]>([])
   const [currentPage, setCurrentPage] = useState(0)
   const [showGrid, setShowGrid] = useState(false)
   const [backgroundMode, setBackgroundMode] = useState<'light' | 'dark' | 'transparent'>(isDark ? 'dark' : 'light')
   const [workoutCountThisWeek, setWorkoutCountThisWeek] = useState<number>(data?.workoutCountThisWeek || 1)
-  
+  const [displayStreak, setDisplayStreak] = useState<number>(data?.streakData?.currentStreak ?? 0)
+  const [isStreakMilestone, setIsStreakMilestone] = useState(false)
+
   const scrollViewRef = useRef<ScrollView>(null)
   const widgetRefs = useRef<Map<number, View>>(new Map())
 
@@ -114,6 +118,27 @@ export function PostWorkoutCelebration({
       setWorkoutCountThisWeek(data.workoutCountThisWeek)
     }
   }, [visible, data?.workout, data?.workoutCountThisWeek, user?.id])
+
+  // Sync display streak from data or fetch when missing
+  useEffect(() => {
+    if (!visible || !data) return
+    if (data.streakData !== undefined) {
+      setDisplayStreak(data.streakData.currentStreak)
+      setIsStreakMilestone(data.streakData.isMilestone)
+      return
+    }
+    if (!user?.id) return
+    setIsStreakMilestone(false)
+    const fetchStreak = async () => {
+      try {
+        const { currentStreak } = await database.stats.calculateStreak(user.id)
+        setDisplayStreak(currentStreak)
+      } catch (error) {
+        console.error('Error fetching streak:', error)
+      }
+    }
+    fetchStreak()
+  }, [visible, data, user?.id])
 
   useEffect(() => {
     if (!visible || !data) {
@@ -201,8 +226,13 @@ export function PostWorkoutCelebration({
   const handleShare = async (index: number) => {
     const ref = widgetRefs.current.get(index)
     if (!ref) return
+    const date = data?.workout?.date
+      ? new Date(data.workout.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/,?\s/g, '-')
+      : null
+    const title = data?.workoutTitle?.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || null
+    const filename = [title, date].filter(Boolean).join('_') || 'workout'
     try {
-      await saveWidgetToPhotosAndClipboard(ref)
+      await shareWorkoutWidget(ref, 'general', filename)
     } catch (error) {
       console.error('Error saving widget:', error)
     }
@@ -327,13 +357,23 @@ export function PostWorkoutCelebration({
 
           {/* Title Section */}
           <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle}>
-              {showGrid ? 'Tap to save' : 'Great work!'}
-            </Text>
-            {!showGrid && (
-              <Text style={styles.headerSubtitle}>
-                Your workout number {data?.workoutNumber || 1}
-              </Text>
+            {showGrid ? (
+              <Text style={styles.headerTitle}>Tap to share</Text>
+            ) : (
+              <View style={[styles.streakRow, isStreakMilestone && styles.streakRowMilestone]}>
+                <Text style={[styles.streakNumber, isStreakMilestone && styles.streakNumberMilestone]}>
+                  {displayStreak}
+                </Text>
+                <Text style={[styles.streakLabel, isStreakMilestone && styles.streakLabelMilestone]}>
+                  {isStreakMilestone ? 'Week streak!' : 'week streak'}
+                </Text>
+                <AnimatedFire
+                  size={52}
+                  isActive={displayStreak > 0}
+                  inactiveColor={colors.textSecondary + '40'}
+                  style={styles.streakIcon}
+                />
+              </View>
             )}
           </View>
 
@@ -426,19 +466,57 @@ const createStyles = (
     },
     titleContainer: {
       alignItems: 'center',
-      paddingTop: 24,
+      paddingTop: 20,
       paddingBottom: 24,
     },
     headerTitle: {
       fontSize: 24,
       fontWeight: '800',
       color: colors.textPrimary,
+      letterSpacing: -0.5,
       marginBottom: 4,
     },
     headerSubtitle: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.textSecondary,
+    },
+    streakRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    streakRowMilestone: {
+      gap: 14,
+    },
+    streakNumber: {
+      fontSize: 44,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -1.5,
+      includeFontPadding: false,
+    },
+    streakNumberMilestone: {
+      fontSize: 54,
+      fontWeight: '900',
+      color: colors.textPrimary,
+      letterSpacing: -2,
+    },
+    streakLabel: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.5,
+      includeFontPadding: false,
+    },
+    streakLabelMilestone: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: -0.5,
+    },
+    streakIcon: {
+      marginLeft: 2,
     },
     headerRight: {
       flexDirection: 'row',

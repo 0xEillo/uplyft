@@ -37,6 +37,8 @@ function lightenColor(hex: string, percent: number): string {
   )
 }
 
+export type LevelBadgeSize = 'xs' | 'small' | 'medium' | 'medium-large' | 'large' | 'xl' | 'hero'
+
 type StrengthLevel =
   | 'Untrained'
   | 'Beginner'
@@ -58,7 +60,7 @@ const LEVEL_COLORS: Record<StrengthLevel, string> = {
 
 interface LevelBadgeProps {
   level: StrengthLevel
-  size?: 'xs' | 'small' | 'medium' | 'large' | 'xl' | 'hero'
+  size?: LevelBadgeSize
   variant?: 'icon' | 'pill'
   style?: StyleProp<ViewStyle>
   showTooltipOnPress?: boolean
@@ -104,6 +106,14 @@ export function LevelBadge({
       fontSize: 11,
       paddingH: 10,
       paddingV: 4,
+    },
+    'medium-large': {
+      container: 40,
+      icon: 24,
+      border: 1.5,
+      fontSize: 12,
+      paddingH: 12,
+      paddingV: 5,
     },
     large: {
       container: 48,

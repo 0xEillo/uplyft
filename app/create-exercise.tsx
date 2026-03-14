@@ -11,19 +11,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -104,7 +104,9 @@ export default function CreateExerciseScreen() {
         {
           options: [
             'Cancel',
-            ...EXERCISE_TYPES.map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
+            ...EXERCISE_TYPES.map(
+              (t) => t.charAt(0).toUpperCase() + t.slice(1),
+            ),
           ],
           cancelButtonIndex: 0,
         },
@@ -125,7 +127,9 @@ export default function CreateExerciseScreen() {
         {
           options: [
             'Cancel',
-            ...EQUIPMENT_OPTIONS.map((e) => e.charAt(0).toUpperCase() + e.slice(1)),
+            ...EQUIPMENT_OPTIONS.map(
+              (e) => e.charAt(0).toUpperCase() + e.slice(1),
+            ),
           ],
           cancelButtonIndex: 0,
         },
@@ -208,261 +212,274 @@ export default function CreateExerciseScreen() {
     >
       <View style={styles.container}>
         <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        {/* Header */}
-        <BlurredHeader>
-          <ScreenHeader
-            title="Create Exercise"
-            onLeftPress={handleBack}
-            leftIcon="chevron-back"
-          />
-        </BlurredHeader>
-
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={{ paddingTop: insets.top + HEADER_ROW_HEIGHT }}
-          scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
         >
-          <Text style={styles.description}>
-            Create a custom exercise by providing its details below.
-          </Text>
-
-          {/* Exercise Name */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              value={exerciseName}
-              onChangeText={setExerciseName}
-              placeholder="e.g. Bench Press"
-              placeholderTextColor={colors.textPlaceholder}
-              autoCapitalize="words"
+          {/* Header */}
+          <BlurredHeader>
+            <ScreenHeader
+              title="Create Exercise"
+              onLeftPress={handleBack}
+              leftIcon="chevron-back"
             />
-          </View>
+          </BlurredHeader>
 
-          {/* Muscle Group */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Muscle Group</Text>
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={showMuscleGroupPicker}
-            >
-              <Text
-                style={[
-                  styles.selectButtonText,
-                  !muscleGroup && styles.selectButtonPlaceholder,
-                ]}
-              >
-                {muscleGroup || 'Select muscle group'}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Exercise Type */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Type</Text>
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={showTypePicker}
-            >
-              <Text
-                style={[
-                  styles.selectButtonText,
-                  !exerciseType && styles.selectButtonPlaceholder,
-                ]}
-              >
-                {exerciseType
-                  ? exerciseType.charAt(0).toUpperCase() + exerciseType.slice(1)
-                  : 'Select type'}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <Text style={styles.helpText}>
-              Compound works multiple muscles, isolation targets one
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{
+              paddingTop: insets.top + HEADER_ROW_HEIGHT,
+            }}
+            scrollIndicatorInsets={{ top: insets.top + HEADER_ROW_HEIGHT }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.description}>
+              Create a custom exercise by providing its details below.
             </Text>
-          </View>
-
-          {/* Equipment */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Equipment</Text>
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={showEquipmentPicker}
-            >
-              <Text
-                style={[
-                  styles.selectButtonText,
-                  !equipment && styles.selectButtonPlaceholder,
-                ]}
-              >
-                {equipment
-                  ? equipment.charAt(0).toUpperCase() + equipment.slice(1)
-                  : 'Select equipment'}
-              </Text>
+            <View style={styles.privacyNote}>
               <Ionicons
-                name="chevron-down"
-                size={20}
-                color={colors.textSecondary}
+                name="information-circle-outline"
+                size={16}
+                color={colors.textTertiary}
               />
+              <Text style={styles.privacyNoteText}>
+                This exercise is only visible to you.
+              </Text>
+            </View>
+
+            {/* Exercise Name */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                value={exerciseName}
+                onChangeText={setExerciseName}
+                placeholder="e.g. Bench Press"
+                placeholderTextColor={colors.textPlaceholder}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Muscle Group */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Muscle Group</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={showMuscleGroupPicker}
+              >
+                <Text
+                  style={[
+                    styles.selectButtonText,
+                    !muscleGroup && styles.selectButtonPlaceholder,
+                  ]}
+                >
+                  {muscleGroup || 'Select muscle group'}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Exercise Type */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Type</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={showTypePicker}
+              >
+                <Text
+                  style={[
+                    styles.selectButtonText,
+                    !exerciseType && styles.selectButtonPlaceholder,
+                  ]}
+                >
+                  {exerciseType
+                    ? exerciseType.charAt(0).toUpperCase() +
+                      exerciseType.slice(1)
+                    : 'Select type'}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              <Text style={styles.helpText}>
+                Compound works multiple muscles, isolation targets one
+              </Text>
+            </View>
+
+            {/* Equipment */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Equipment</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={showEquipmentPicker}
+              >
+                <Text
+                  style={[
+                    styles.selectButtonText,
+                    !equipment && styles.selectButtonPlaceholder,
+                  ]}
+                >
+                  {equipment
+                    ? equipment.charAt(0).toUpperCase() + equipment.slice(1)
+                    : 'Select equipment'}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Create Button */}
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+                !isFormValid && styles.createButtonDisabled,
+              ]}
+              onPress={handleCreate}
+              disabled={!isFormValid || isCreating}
+            >
+              {isCreating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.createButtonText}>Create Exercise</Text>
+                </>
+              )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-          {/* Create Button */}
-          <TouchableOpacity
-            style={[
-              styles.createButton,
-              !isFormValid && styles.createButtonDisabled,
-            ]}
-            onPress={handleCreate}
-            disabled={!isFormValid || isCreating}
-          >
-            {isCreating ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.createButtonText}>Create Exercise</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Android Modals */}
-      {Platform.OS === 'android' && (
-        <>
-          {/* Muscle Group Modal */}
-          <Modal
-            visible={showMuscleGroupModal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowMuscleGroupModal(false)}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setShowMuscleGroupModal(false)}
+        {/* Android Modals */}
+        {Platform.OS === 'android' && (
+          <>
+            {/* Muscle Group Modal */}
+            <Modal
+              visible={showMuscleGroupModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowMuscleGroupModal(false)}
             >
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Select Muscle Group</Text>
-                <ScrollView style={styles.modalScroll}>
-                  {MUSCLE_GROUPS.map((group) => (
-                    <TouchableOpacity
-                      key={group}
-                      style={styles.modalOption}
-                      onPress={() => {
-                        setMuscleGroup(group)
-                        setShowMuscleGroupModal(false)
-                      }}
-                    >
-                      <Text style={styles.modalOptionText}>{group}</Text>
-                      {muscleGroup === group && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={colors.brandPrimary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </Pressable>
-          </Modal>
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowMuscleGroupModal(false)}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Select Muscle Group</Text>
+                  <ScrollView style={styles.modalScroll}>
+                    {MUSCLE_GROUPS.map((group) => (
+                      <TouchableOpacity
+                        key={group}
+                        style={styles.modalOption}
+                        onPress={() => {
+                          setMuscleGroup(group)
+                          setShowMuscleGroupModal(false)
+                        }}
+                      >
+                        <Text style={styles.modalOptionText}>{group}</Text>
+                        {muscleGroup === group && (
+                          <Ionicons
+                            name="checkmark"
+                            size={20}
+                            color={colors.brandPrimary}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </Pressable>
+            </Modal>
 
-          {/* Type Modal */}
-          <Modal
-            visible={showTypeModal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowTypeModal(false)}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setShowTypeModal(false)}
+            {/* Type Modal */}
+            <Modal
+              visible={showTypeModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowTypeModal(false)}
             >
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Select Exercise Type</Text>
-                <ScrollView style={styles.modalScroll}>
-                  {EXERCISE_TYPES.map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={styles.modalOption}
-                      onPress={() => {
-                        setExerciseType(type)
-                        setShowTypeModal(false)
-                      }}
-                    >
-                      <Text style={styles.modalOptionText}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </Text>
-                      {exerciseType === type && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={colors.brandPrimary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </Pressable>
-          </Modal>
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowTypeModal(false)}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Select Exercise Type</Text>
+                  <ScrollView style={styles.modalScroll}>
+                    {EXERCISE_TYPES.map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={styles.modalOption}
+                        onPress={() => {
+                          setExerciseType(type)
+                          setShowTypeModal(false)
+                        }}
+                      >
+                        <Text style={styles.modalOptionText}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </Text>
+                        {exerciseType === type && (
+                          <Ionicons
+                            name="checkmark"
+                            size={20}
+                            color={colors.brandPrimary}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </Pressable>
+            </Modal>
 
-          {/* Equipment Modal */}
-          <Modal
-            visible={showEquipmentModal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowEquipmentModal(false)}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setShowEquipmentModal(false)}
+            {/* Equipment Modal */}
+            <Modal
+              visible={showEquipmentModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowEquipmentModal(false)}
             >
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Select Equipment</Text>
-                <ScrollView style={styles.modalScroll}>
-                  {EQUIPMENT_OPTIONS.map((equip) => (
-                    <TouchableOpacity
-                      key={equip}
-                      style={styles.modalOption}
-                      onPress={() => {
-                        setEquipment(equip)
-                        setShowEquipmentModal(false)
-                      }}
-                    >
-                      <Text style={styles.modalOptionText}>
-                        {equip.charAt(0).toUpperCase() + equip.slice(1)}
-                      </Text>
-                      {equipment === equip && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color={colors.brandPrimary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </Pressable>
-          </Modal>
-        </>
-      )}
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowEquipmentModal(false)}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Select Equipment</Text>
+                  <ScrollView style={styles.modalScroll}>
+                    {EQUIPMENT_OPTIONS.map((equip) => (
+                      <TouchableOpacity
+                        key={equip}
+                        style={styles.modalOption}
+                        onPress={() => {
+                          setEquipment(equip)
+                          setShowEquipmentModal(false)
+                        }}
+                      >
+                        <Text style={styles.modalOptionText}>
+                          {equip.charAt(0).toUpperCase() + equip.slice(1)}
+                        </Text>
+                        {equipment === equip && (
+                          <Ionicons
+                            name="checkmark"
+                            size={20}
+                            color={colors.brandPrimary}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </Pressable>
+            </Modal>
+          </>
+        )}
       </View>
     </SlideInView>
   )
@@ -475,7 +492,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.bg,
     },
 
-
     content: {
       flex: 1,
       paddingHorizontal: 20,
@@ -486,7 +502,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       lineHeight: 20,
       marginTop: 16,
-      marginBottom: 8,
+      marginBottom: 10,
+    },
+    privacyNote: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    privacyNoteText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.textTertiary,
+      lineHeight: 16,
     },
     section: {
       marginTop: 20,

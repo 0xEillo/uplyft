@@ -1276,7 +1276,7 @@ export const database = {
       return equipment
     },
 
-    async getRecent(userId: string, limit = 15) {
+    async getRecent(userId: string, limit?: number) {
       // Get recent workout sessions for the user
       const { data: sessions, error: sessionsError } = await supabase
         .from('workout_sessions')
@@ -1291,7 +1291,6 @@ export const database = {
         )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(40) // Fetch last 40 workouts to get a good spread (ensure we find unique exercises)
 
       if (sessionsError) throw sessionsError
 
@@ -1314,7 +1313,7 @@ export const database = {
       })
 
       // Sort by recency (already sorted by session date)
-      return recentExercises.slice(0, limit)
+      return limit !== undefined ? recentExercises.slice(0, limit) : recentExercises
     },
 
     async getMostFrequentMuscleGroups(userId: string, limit = 4) {

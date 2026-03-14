@@ -3246,20 +3246,18 @@ export default function CreatePostScreen() {
                         borderRadius: 23,
                       }}
                     />
-                    {isFirstCoachOpen && (
-                      <Reanimated.View
-                        style={[
-                          {
-                            position: 'absolute',
-                            bottom: -4,
-                            right: -4,
-                          },
-                          chatHandWaveStyle,
-                        ]}
-                      >
-                        <Text style={{ fontSize: 16, lineHeight: 18 }}>👋</Text>
-                      </Reanimated.View>
-                    )}
+                    <Reanimated.View
+                      style={[
+                        {
+                          position: 'absolute',
+                          bottom: -4,
+                          right: -4,
+                        },
+                        chatHandWaveStyle,
+                      ]}
+                    >
+                      <Text style={{ fontSize: 16, lineHeight: 18 }}>👋</Text>
+                    </Reanimated.View>
                   </View>
                 </TouchableOpacity>
               </View>

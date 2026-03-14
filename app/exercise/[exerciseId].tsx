@@ -77,6 +77,39 @@ const createEmptyExercisePerformanceSummary = (): ExercisePerformanceSummary => 
 const getSingleRouteParam = (value?: string | string[]) =>
   Array.isArray(value) ? value[0] : value
 
+const hasLoggedNumber = (
+  value: number | null | undefined,
+): value is number => typeof value === 'number' && !Number.isNaN(value)
+
+const formatLoggedSetSummary = (
+  weightKg: number | null | undefined,
+  reps: number | null | undefined,
+  formatWeight: (
+    valueKg: number | null | undefined,
+    options?: Intl.NumberFormatOptions,
+  ) => string,
+) => {
+  const hasWeight = hasLoggedNumber(weightKg) && weightKg > 0
+  const hasReps = hasLoggedNumber(reps)
+
+  if (hasWeight && hasReps) {
+    return `${formatWeight(weightKg, {
+      maximumFractionDigits: 1,
+    })} x ${reps} reps`
+  }
+
+  if (hasReps) {
+    return `${reps} reps`
+  }
+
+  if (hasWeight) {
+    return formatWeight(weightKg, {
+      maximumFractionDigits: 1,
+    })
+  }
+
+  return '-'
+}
 
 type TabType = 'records' | 'history' | 'how_to'
 
@@ -604,18 +637,26 @@ export default function ExerciseDetailScreen() {
               </Text>
             </View>
             <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
-            {isOwner ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {strengthInfo && (
+                <LevelBadge
+                  level={strengthInfo.level}
+                  size="medium-large"
+                  variant="icon"
+                  onPress={() => setShowLevelSheet(true)}
+                />
+              )}
+              {isOwner ? (
                 <GlassIconButton
                   icon="ellipsis-horizontal"
                   onPress={handleOptionsPress}
                   color={colors.textPrimary}
                   disabled={isDeleting}
                 />
-              </View>
-            ) : (
-              <View style={styles.headerRightSpacer} />
-            )}
+              ) : (
+                !strengthInfo && <View style={styles.headerRightSpacer} />
+              )}
+            </View>
           </View>
 
           <View style={styles.tabsBorder}>
@@ -717,17 +758,21 @@ export default function ExerciseDetailScreen() {
               <View style={styles.statsGrid}>
                 {strengthInfo && (
                   <>
-                    <View style={[styles.statRow, { alignItems: 'center' }]}>
-                      <Text style={styles.statLabel}>Level</Text>
+                    <TouchableOpacity
+                      style={[styles.statRow, { alignItems: 'center' }]}
+                      onPress={() => setShowLevelSheet(true)}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={styles.statLabel}>Levels</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <LevelBadge 
-                          level={strengthInfo.level} 
-                          size="medium" 
+                        <Text style={styles.tapHint}>tap for levels</Text>
+                        <LevelBadge
+                          level={strengthInfo.level}
+                          size="medium"
                           variant="pill"
-                          onPress={() => setShowLevelSheet(true)} 
                         />
                       </View>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.separator} />
 
                     {strengthInfo.nextLevel && (
@@ -921,12 +966,11 @@ export default function ExerciseDetailScreen() {
                                               </View>
                                             </View>
                                             <Text style={styles.setDetails}>
-                                              {set.weight
-                                                ? formatWeight(set.weight, {
-                                                    maximumFractionDigits: 1,
-                                                  })
-                                                : '-'}{' '}
-                                              x {set.reps || 0} reps
+                                              {formatLoggedSetSummary(
+                                                set.weight,
+                                                set.reps,
+                                                formatWeight,
+                                              )}
                                             </Text>
                                         </View>
                                         )
@@ -1361,7 +1405,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       bottom: 0,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 60,
+      paddingHorizontal: 80,
     },
     headerTitle: {
       fontSize: 20,
@@ -1717,6 +1761,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     recordEstimate: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    tapHint: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontStyle: 'italic',
     },
     levelBadge: {
         paddingHorizontal: 8,

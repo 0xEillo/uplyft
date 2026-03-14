@@ -55,17 +55,21 @@ function formatWeightRepsText(
   reps: number | null,
   weightUnit: 'kg' | 'lb',
 ): string {
-  if (weightKg !== null && reps !== null) {
+  const hasWeight =
+    typeof weightKg === 'number' && !Number.isNaN(weightKg) && weightKg > 0
+  const hasReps = typeof reps === 'number' && !Number.isNaN(reps)
+
+  if (hasWeight && hasReps) {
     const convertedWeight = kgToPreferred(weightKg, weightUnit)
     const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
     return `${formattedWeight}${weightUnit} x ${reps} reps`
   }
 
-  if (reps !== null) {
+  if (hasReps) {
     return `${reps} reps`
   }
 
-  if (weightKg !== null) {
+  if (hasWeight) {
     const convertedWeight = kgToPreferred(weightKg, weightUnit)
     const formattedWeight = convertedWeight.toFixed(weightUnit === 'kg' ? 1 : 0)
     return `${formattedWeight}${weightUnit}`

@@ -49,6 +49,7 @@ export interface UseWorkoutShareResult {
   shareWorkoutWidget: (
     viewRef: CaptureableViewRef,
     shareType: 'instagram' | 'general',
+    filename?: string,
   ) => Promise<void>
   saveWidgetToPhotosAndClipboard: (
     viewRef: CaptureableViewRef,
@@ -379,7 +380,7 @@ export function useWorkoutShare(): UseWorkoutShareResult {
   )
 
   const shareWorkoutWidget = useCallback(
-    async (viewRef: CaptureableViewRef, shareType: 'instagram' | 'general') => {
+    async (viewRef: CaptureableViewRef, shareType: 'instagram' | 'general', filename?: string) => {
       if (isSharing) return
 
       if (isSimulator) {
@@ -531,7 +532,13 @@ export function useWorkoutShare(): UseWorkoutShareResult {
 
           // Share the image using expo-sharing
           if (Sharing && await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(uri, {
+            let shareUri = uri
+            if (filename) {
+              const namedUri = `${FileSystem.cacheDirectory}${filename}.png`
+              await FileSystem.copyAsync({ from: uri, to: namedUri })
+              shareUri = namedUri
+            }
+            await Sharing.shareAsync(shareUri, {
               mimeType: 'image/png',
               dialogTitle: 'Share your workout',
               UTI: 'image/png',
