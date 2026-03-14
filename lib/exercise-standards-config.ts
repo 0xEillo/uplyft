@@ -3331,6 +3331,90 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+  // Rack Pull (Barbell) - Traps
+  {
+    id: '0f7a856c-3518-4da3-bd01-0ae687ab3615',
+    name: 'Rack Pull (Barbell)',
+    aliases: ['rack pulls', 'rack deadlift', 'Rack Pull', 'Barbell Rack Pull'],
+    tier: 2,
+    gifUrl: null,
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 1.0,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.75,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 2.25,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 3.0,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 4.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 5.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.75,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.25,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.75,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.0,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.75,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
   // Hanging Leg Raise
   {
     id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
@@ -5528,6 +5612,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Shrug (Machine)': 'Traps',
   'Shrug (Dumbbell)': 'Traps',
   'Shrug (Smith Machine)': 'Traps',
+  'Rack Pull (Barbell)': 'Traps',
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
@@ -5633,6 +5718,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Shrug (Machine)': 'Pull',
   'Shrug (Dumbbell)': 'Pull',
   'Shrug (Smith Machine)': 'Pull',
+  'Rack Pull (Barbell)': 'Pull',
   'Rope Hammer Curl (Cable)': 'Pull',
   'Wrist Curl (Barbell)': 'Pull',
   'Reverse Wrist Curl (Barbell)': 'Pull',
