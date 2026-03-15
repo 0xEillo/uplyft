@@ -894,7 +894,7 @@ export function StrengthBodyView({
                     </View>
                     {showOverallProgressDelta && (
                       <Text style={styles.scoreDeltaText}>
-                        ▲ {overallLevel.progressDelta}
+                        +{overallLevel.progressDelta} pts
                       </Text>
                     )}
                   </View>
