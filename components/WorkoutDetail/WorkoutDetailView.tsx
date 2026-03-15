@@ -680,7 +680,8 @@ const styles = StyleSheet.create({
     marginHorizontal: -10,
   },
   statsContainer: {
-    marginHorizontal: -16,
+    marginTop: 2,
+    marginBottom: 10,
   },
   socialBar: {
     flexDirection: 'row',

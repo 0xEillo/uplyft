@@ -5,7 +5,7 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
-import { database } from '@/lib/database'
+import { database, OwnershipError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import { markWorkoutAsDeleted } from '@/lib/utils/deleted-workouts'
@@ -290,24 +290,32 @@ export default function WorkoutDetailScreen() {
     setShowShareScreen(false)
   }, [])
 
+  // Only show edit/delete for own workouts
+  const isOwnWorkout = workout ? user?.id === workout.user_id : false
+
   // Handle edit
   const handleEdit = useCallback(() => {
+    if (!isOwnWorkout) return
     router.push(`/edit-workout/${workoutId}`)
-  }, [workoutId, router])
+  }, [isOwnWorkout, workoutId, router])
 
   // Handle delete
   const handleDelete = useCallback(async () => {
-    if (!workoutId) return
+    if (!isOwnWorkout || !workoutId || !user?.id) return
 
     try {
-      await database.workoutSessions.delete(workoutId)
+      await database.workoutSessions.delete(workoutId, user.id)
       markWorkoutAsDeleted(workoutId)
       router.back()
     } catch (error) {
       console.error('Error deleting workout:', error)
+      if (error instanceof OwnershipError) {
+        Alert.alert('Access denied', error.message)
+        return
+      }
       Alert.alert('Error', 'Failed to delete workout')
     }
-  }, [workoutId, router])
+  }, [isOwnWorkout, workoutId, router, user?.id])
 
   // Handle create routine
   const handleCreateRoutine = useCallback(() => {
@@ -335,9 +343,6 @@ export default function WorkoutDetailScreen() {
     },
     [router, workout?.user_id],
   )
-
-  // Only show edit/delete/create routine for own workouts
-  const isOwnWorkout = workout ? user?.id === workout.user_id : false
 
   // Get workout title for sharing
   const workoutTitle = workout ? getWorkoutMuscleGroups(workout) : ''

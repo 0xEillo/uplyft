@@ -166,6 +166,35 @@ export class PrivacyError extends Error {
   }
 }
 
+export class OwnershipError extends Error {
+  constructor(message = 'You can only edit or delete your own workouts.') {
+    super(message)
+    this.name = 'OwnershipError'
+  }
+}
+
+const assertWorkoutOwnership = async (sessionId: string, userId: string) => {
+  const { data, error } = await supabase
+    .from('workout_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .single()
+
+  if (error) {
+    throwIfPrivacyViolation(error)
+  }
+
+  if (!data) {
+    throw new Error('Workout not found')
+  }
+
+  if (data.user_id !== userId) {
+    throw new OwnershipError()
+  }
+
+  return data
+}
+
 const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
   if (!updates) return updates
   const sanitized = { ...updates }
@@ -2045,19 +2074,29 @@ export const database = {
       return data as WorkoutSessionWithDetails
     },
 
+    async getOwnedById(id: string, userId: string) {
+      await assertWorkoutOwnership(id, userId)
+      return database.workoutSessions.getById(id)
+    },
+
     async update(
       sessionId: string,
+      userId: string,
       updates: {
         type?: string | null
         notes?: string | null
         image_url?: string | null
         date?: string
+        duration?: number | null
       },
     ) {
+      await assertWorkoutOwnership(sessionId, userId)
+
       const { data, error } = await supabase
         .from('workout_sessions')
         .update(updates)
         .eq('id', sessionId)
+        .eq('user_id', userId)
         .select()
         .single()
 
@@ -2065,7 +2104,9 @@ export const database = {
       return data as WorkoutSession
     },
 
-    async delete(sessionId: string) {
+    async delete(sessionId: string, userId: string) {
+      await assertWorkoutOwnership(sessionId, userId)
+
       // Delete sets first (cascaded by workout_exercises deletion)
       // Then delete workout_exercises (cascaded by session deletion)
       // Finally delete the session
@@ -2073,6 +2114,7 @@ export const database = {
         .from('workout_sessions')
         .delete()
         .eq('id', sessionId)
+        .eq('user_id', userId)
 
       if (error) throw error
     },
@@ -2240,6 +2282,18 @@ export const database = {
       const { data, error } = await supabase
         .from('workout_exercises')
         .update({ exercise_id: exerciseId })
+        .eq('id', workoutExerciseId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+
+    async updateOrder(workoutExerciseId: string, orderIndex: number) {
+      const { data, error } = await supabase
+        .from('workout_exercises')
+        .update({ order_index: orderIndex })
         .eq('id', workoutExerciseId)
         .select()
         .single()

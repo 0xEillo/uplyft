@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons'
 import type { ReactElement } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
@@ -13,7 +12,7 @@ interface WorkoutStatsGridProps {
   prCount?: number
 }
 
-function formatDurationStopwatch(seconds: number): string {
+function formatDurationCompact(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
@@ -24,10 +23,7 @@ function formatDurationStopwatch(seconds: number): string {
       .toString()
       .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-
-  return `${mins.toString().padStart(2, '0')}:${secs
-    .toString()
-    .padStart(2, '0')}`
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 export function WorkoutStatsGrid({
@@ -40,42 +36,32 @@ export function WorkoutStatsGrid({
 
   const stats = calculateWorkoutStats(workout, weightUnit)
   const volumeFormatted = formatVolume(stats.totalVolume, weightUnit)
-  const durationDisplay = formatDurationStopwatch(stats.durationSeconds)
+  const durationDisplay = formatDurationCompact(stats.durationSeconds)
+  const volumeDisplay = `${volumeFormatted.value.toLocaleString()} ${volumeFormatted.unit}`
 
   return (
-    <View style={styles.container}>
+    <View style={styles.statsContainer}>
       <View style={styles.statItem}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="time-outline" size={14} color={colors.statusSuccess} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            Duration
-          </Text>
-        </View>
-        <Text style={[styles.value, { color: colors.textPrimary }]}>
+        <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+          Time
+        </Text>
+        <Text style={[styles.statValue, { color: colors.textPrimary }]}>
           {durationDisplay}
         </Text>
       </View>
-
-      <View style={[styles.statItem, styles.statItemCenter]}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="barbell-outline" size={14} color={colors.statusInfo} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            Volume
-          </Text>
-        </View>
-        <Text style={[styles.value, { color: colors.textPrimary }]}>
-          {volumeFormatted.value.toLocaleString()} {volumeFormatted.unit}
+      <View style={styles.statItem}>
+        <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+          Volume
+        </Text>
+        <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+          {volumeDisplay}
         </Text>
       </View>
-
-      <View style={[styles.statItem, styles.statItemRight]}>
-        <View style={styles.labelContainer}>
-          <Ionicons name="trophy" size={14} color="#FFD54A" />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            Records
-          </Text>
-        </View>
-        <Text style={[styles.value, { color: colors.textPrimary }]}>
+      <View style={styles.statItem}>
+        <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+          Records
+        </Text>
+        <Text style={[styles.statValue, { color: colors.textPrimary }]}>
           {prCount ?? stats.prCount}
         </Text>
       </View>
@@ -84,34 +70,24 @@ export function WorkoutStatsGrid({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
   },
   statItem: {
-    flex: 1,
     alignItems: 'flex-start',
-  },
-  statItemCenter: {
-    alignItems: 'center',
-  },
-  statItemRight: {
-    alignItems: 'flex-end',
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 4,
-    marginBottom: 4,
   },
-  label: {
-    fontSize: 13,
+  statLabel: {
+    fontSize: 11,
     fontWeight: '500',
   },
-  value: {
-    fontSize: 20,
+  statValue: {
+    fontSize: 15,
     fontWeight: '600',
   },
 })

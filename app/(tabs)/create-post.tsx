@@ -3206,6 +3206,7 @@ export default function CreatePostScreen() {
                 editable={!isRecording && !isTranscribing}
                 maxLength={50}
                 autoFocus={false}
+                allowFontScaling={false}
                 cursorColor={colors.brandPrimary}
                 selectionColor={colors.brandPrimary}
                 onFocus={() => {
@@ -3315,6 +3316,7 @@ export default function CreatePostScreen() {
                 }
                 placeholderTextColor="#999"
                 multiline
+                allowFontScaling={false}
                 value={notes}
                 onChangeText={handleNotesChange}
                 onContentSizeChange={handleContentSizeChange}
@@ -3362,11 +3364,14 @@ export default function CreatePostScreen() {
                   pointerEvents="box-none"
                 >
                   <Text
+                    allowFontScaling={false}
                     style={{
                       color: 'transparent',
+                      textAlign: 'left',
                       textAlignVertical: 'top',
                       fontSize: 17,
                       lineHeight: 24,
+                      writingDirection: 'ltr',
                       paddingTop: Platform.OS === 'android' ? 0 : 2,
                     }}
                   >
@@ -3653,6 +3658,8 @@ const createStyles = (
       color: colors.textPrimary,
       lineHeight: Platform.OS === 'ios' ? 36 : 34,
       paddingVertical: Platform.OS === 'ios' ? 6 : 4,
+      textAlign: 'left',
+      writingDirection: 'ltr',
     },
     routineSelectorButton: {
       padding: 6,
@@ -3694,6 +3701,8 @@ const createStyles = (
       fontSize: 17,
       lineHeight: 24,
       color: colors.textPrimary,
+      textAlign: 'left',
+      writingDirection: 'ltr',
     },
     notesInputWithStructured: {
       paddingTop: 8,

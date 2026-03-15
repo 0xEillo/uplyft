@@ -1,5 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { BlurredHeader } from '@/components/blurred-header'
+import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -7,11 +9,13 @@ import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
+import { database, OwnershipError } from '@/lib/database'
 import {
     deleteWorkoutImage,
     uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
+import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
@@ -37,6 +41,8 @@ import {
     View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSharedValue, withSpring, withTiming, useAnimatedStyle } from 'react-native-reanimated'
+import AnimatedReanimated from 'react-native-reanimated'
 
 // Enable LayoutAnimation on Android
 if (
@@ -53,6 +59,17 @@ const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: 'images' as any,
   allowsEditing: false,
   quality: IMAGE_QUALITY,
+}
+
+function formatDurationCompact(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(safeSeconds / 3600)
+  const mins = Math.floor((safeSeconds % 3600) / 60)
+  
+  if (hours > 0) {
+    return `${hours}h ${mins}m`
+  }
+  return `${mins}min`
 }
 
 export default function EditWorkoutScreen() {
@@ -103,8 +120,106 @@ export default function EditWorkoutScreen() {
   const [editedDurationMinutes, setEditedDurationMinutes] = useState('')
   const [editedDurationSeconds, setEditedDurationSeconds] = useState('')
 
+  // Drag and drop state
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const draggingScale = useSharedValue(1)
+  const draggingOpacity = useSharedValue(1)
+
   // Slide in view state
   const [shouldExit, setShouldExit] = useState(false)
+
+  const handleDragStart = useCallback(
+    (index: number) => {
+      setDraggingIndex(index)
+      draggingScale.value = withSpring(1.02, {
+        mass: 1,
+        damping: 15,
+        stiffness: 250,
+      })
+      draggingOpacity.value = withTiming(0.9, {
+        duration: 150,
+      })
+      haptic('medium')
+    },
+    [draggingScale, draggingOpacity],
+  )
+
+  const handleMoveUp = useCallback(
+    (index: number) => {
+      if (index > 0 && workout?.workout_exercises) {
+        setWorkout((prev) => {
+          if (!prev || !prev.workout_exercises) return prev
+          
+          const newExercises = [...prev.workout_exercises]
+          const temp = newExercises[index]
+          newExercises[index] = newExercises[index - 1]
+          newExercises[index - 1] = temp
+          
+          // Update order_index
+          newExercises.forEach((ex, i) => {
+            ex.order_index = i
+          })
+          
+          return {
+            ...prev,
+            workout_exercises: newExercises,
+          }
+        })
+        setDraggingIndex(index - 1)
+        haptic('light')
+      }
+    },
+    [workout],
+  )
+
+  const handleMoveDown = useCallback(
+    (index: number) => {
+      if (
+        workout?.workout_exercises &&
+        index < workout.workout_exercises.length - 1
+      ) {
+        setWorkout((prev) => {
+          if (!prev || !prev.workout_exercises) return prev
+          
+          const newExercises = [...prev.workout_exercises]
+          const temp = newExercises[index]
+          newExercises[index] = newExercises[index + 1]
+          newExercises[index + 1] = temp
+          
+          // Update order_index
+          newExercises.forEach((ex, i) => {
+            ex.order_index = i
+          })
+          
+          return {
+            ...prev,
+            workout_exercises: newExercises,
+          }
+        })
+        setDraggingIndex(index + 1)
+        haptic('light')
+      }
+    },
+    [workout],
+  )
+
+  const handleDragEnd = useCallback(() => {
+    draggingScale.value = withSpring(1, {
+      mass: 1,
+      damping: 15,
+      stiffness: 250,
+    })
+    draggingOpacity.value = withTiming(1, {
+      duration: 150,
+    })
+    setDraggingIndex(null)
+    haptic('medium')
+  }, [draggingScale, draggingOpacity])
+
+  const dragAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: draggingScale.value }],
+    opacity: draggingOpacity.value,
+  }))
 
   const handleExit = useCallback(() => {
     setShouldExit(true)
@@ -113,6 +228,18 @@ export default function EditWorkoutScreen() {
   const handleExitComplete = useCallback(() => {
     router.back()
   }, [router])
+
+  const handleOwnershipViolation = useCallback(
+    (message = 'You can only edit your own workouts.') => {
+      Alert.alert('Access denied', message, [
+        {
+          text: 'OK',
+          onPress: handleExit,
+        },
+      ])
+    },
+    [handleExit],
+  )
 
   const handleImageSelected = useCallback(
     async (uri: string) => {
@@ -180,10 +307,24 @@ export default function EditWorkoutScreen() {
 
     try {
       setIsLoading(true)
-      const data = await database.workoutSessions.getById(workoutId)
+      if (!user?.id) {
+        handleOwnershipViolation()
+        return
+      }
+
+      const data = await database.workoutSessions.getOwnedById(
+        workoutId,
+        user.id,
+      )
       setWorkout(data)
       setEditedTitle(data.type || '')
       setEditedNotes(data.notes || '')
+      
+      // Expand all exercises by default
+      if (data.workout_exercises) {
+        setExpandedExercises(new Set(data.workout_exercises.map(we => we.id)))
+      }
+
       // Initialize edited date from workout date
       if (data.date) {
         setEditedDate(new Date(data.date))
@@ -200,12 +341,16 @@ export default function EditWorkoutScreen() {
       }
     } catch (error) {
       console.error('Error loading workout:', error)
+      if (error instanceof OwnershipError) {
+        handleOwnershipViolation(error.message)
+        return
+      }
       Alert.alert('Error', 'Failed to load workout')
       handleExit()
     } finally {
       setIsLoading(false)
     }
-  }, [handleExit, workoutId])
+  }, [handleExit, handleOwnershipViolation, user?.id, workoutId])
 
   // Date picker handlers
   const handleDateChange = useCallback(
@@ -315,6 +460,10 @@ export default function EditWorkoutScreen() {
   const handleAddNewExercise = useCallback(
     async (selectedExercise: Exercise) => {
       if (!workout || !workoutId) return
+      if (!user?.id || workout.user_id !== user.id) {
+        handleOwnershipViolation()
+        return
+      }
 
       try {
         // Calculate the next order index
@@ -359,10 +508,15 @@ export default function EditWorkoutScreen() {
         setIsAddingExercise(false)
       }
     },
-    [workout, workoutId, deletedExerciseIds],
+    [deletedExerciseIds, handleOwnershipViolation, user?.id, workout, workoutId],
   )
 
   const handleAddExercise = useCallback(() => {
+    if (!workout || !user?.id || workout.user_id !== user.id) {
+      handleOwnershipViolation()
+      return
+    }
+
     setIsAddingExercise(true)
 
     // Register callback for when exercise is selected
@@ -379,10 +533,21 @@ export default function EditWorkoutScreen() {
       pathname: '/select-exercise',
       params: {},
     })
-  }, [registerCallback, handleAddNewExercise, router])
+  }, [
+    handleAddNewExercise,
+    handleOwnershipViolation,
+    registerCallback,
+    router,
+    user?.id,
+    workout,
+  ])
 
   const handleSave = useCallback(async () => {
-    if (!workoutId) return
+    if (!workoutId || !workout) return
+    if (!user?.id || workout.user_id !== user.id) {
+      handleOwnershipViolation()
+      return
+    }
 
     try {
       setIsSaving(true)
@@ -416,7 +581,7 @@ export default function EditWorkoutScreen() {
       const totalDuration = hours * 3600 + minutes * 60 + seconds
       updates.duration = totalDuration > 0 ? totalDuration : null
 
-      await database.workoutSessions.update(workoutId, updates)
+      await database.workoutSessions.update(workoutId, user.id, updates)
 
       // Delete old image from storage if it was replaced or deleted
       if (
@@ -453,6 +618,17 @@ export default function EditWorkoutScreen() {
         },
       )
       await Promise.all(updateExercisePromises)
+
+      // 4.5 Update exercise order
+      if (workout?.workout_exercises) {
+        const orderPromises = workout.workout_exercises
+          .filter(we => !deletedExerciseIds.has(we.id))
+          .map((we, index) => {
+            // Update the order_index in the database
+            return database.workoutExercises.updateOrder(we.id, index)
+          })
+        await Promise.all(orderPromises)
+      }
 
       // 5. Update edited sets
       const updateSetPromises = Object.entries(editedSets).map(
@@ -498,6 +674,10 @@ export default function EditWorkoutScreen() {
       handleExit()
     } catch (error) {
       console.error('Error saving workout:', error)
+      if (error instanceof OwnershipError) {
+        handleOwnershipViolation(error.message)
+        return
+      }
       Alert.alert('Error', 'Failed to save changes. Please try again.')
     } finally {
       setIsSaving(false)
@@ -515,8 +695,10 @@ export default function EditWorkoutScreen() {
     editedDurationHours,
     editedDurationMinutes,
     editedDurationSeconds,
+    handleOwnershipViolation,
     imageDeleted,
     handleExit,
+    user?.id,
     workout,
     workoutId,
   ])
@@ -597,6 +779,11 @@ export default function EditWorkoutScreen() {
 
   const addSet = async (workoutExerciseId: string) => {
     try {
+      if (!workout || !user?.id || workout.user_id !== user.id) {
+        handleOwnershipViolation()
+        return
+      }
+
       // Find the workout exercise
       const workoutExercise = workout?.workout_exercises?.find(
         (we) => we.id === workoutExerciseId,
@@ -655,6 +842,9 @@ export default function EditWorkoutScreen() {
   const NAVBAR_HEIGHT = 76
   const styles = createStyles(colors)
 
+  const stats = workout ? calculateWorkoutStats(workout, weightUnit) : null
+  const volumeFormatted = stats ? formatVolume(stats.totalVolume, weightUnit) : { value: 0, unit: weightUnit }
+
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -690,17 +880,19 @@ export default function EditWorkoutScreen() {
             }
             centerContent={<Text style={styles.headerTitle}>Edit Workout</Text>}
             rightContent={
-              <TouchableOpacity
-                onPress={handleSave}
-                style={styles.headerButton}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color={colors.brandPrimary} />
-                ) : (
-                  <Text style={styles.saveText}>Save</Text>
-                )}
-              </TouchableOpacity>
+              <LiquidGlassSurface style={styles.saveButtonGlass}>
+                <TouchableOpacity
+                  onPress={handleSave}
+                  style={styles.saveButtonTouchable}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color={colors.brandPrimary} />
+                  ) : (
+                    <Ionicons name="checkmark" size={24} color={colors.brandPrimary} />
+                  )}
+                </TouchableOpacity>
+              </LiquidGlassSurface>
             }
           />
         </BlurredHeader>
@@ -715,44 +907,58 @@ export default function EditWorkoutScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Title Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Title</Text>
-              <TextInput
-                style={styles.input}
-                value={editedTitle}
-                onChangeText={setEditedTitle}
-                placeholder="Workout Title"
-                placeholderTextColor={colors.textPlaceholder}
-                maxLength={50}
-              />
+            <View style={styles.titleSection}>
+              <View style={styles.titleInputContainer}>
+                <TextInput
+                  style={styles.titleInput}
+                  value={editedTitle}
+                  onChangeText={setEditedTitle}
+                  placeholder="Workout Title"
+                  placeholderTextColor={colors.textPlaceholder}
+                  maxLength={50}
+                />
+                {editedTitle.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setEditedTitle('')}
+                    style={styles.clearTitleButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
+
+            {/* Stats Section */}
+            {stats && (
+              <View style={styles.statsSection}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Duration</Text>
+                  <Text style={styles.statValue}>{formatDurationCompact(stats.durationSeconds)}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Volume</Text>
+                  <Text style={styles.statValue}>{volumeFormatted.value.toLocaleString()} {volumeFormatted.unit}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Sets</Text>
+                  <Text style={styles.statValue}>{stats.totalSets}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Date Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Date & Time</Text>
+              <Text style={styles.sectionLabelSmall}>When</Text>
               <TouchableOpacity
-                style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
               >
-                <View style={styles.dateButtonContent}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={20}
-                    color={colors.brandPrimary}
-                  />
-                  <Text style={styles.dateButtonText}>
-                    {editedDate
-                      ? `${formatDisplayDate(
-                          editedDate,
-                        )} at ${formatDisplayTime(editedDate)}`
-                      : 'Select date'}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <Text style={styles.dateTextBlue}>
+                  {editedDate
+                    ? `${formatDisplayDate(
+                        editedDate,
+                      )}, ${formatDisplayTime(editedDate)}`
+                    : 'Select date'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -802,75 +1008,8 @@ export default function EditWorkoutScreen() {
               )
             )}
 
-            {/* Duration Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Duration</Text>
-              <View style={styles.durationContainer}>
-                <View style={styles.durationInputGroup}>
-                  <TextInput
-                    style={styles.durationInput}
-                    value={editedDurationHours}
-                    onChangeText={(text) =>
-                      setEditedDurationHours(text.replace(/[^0-9]/g, ''))
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textPlaceholder}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                  <Text style={styles.durationLabel}>h</Text>
-                </View>
-                <Text style={styles.durationSeparator}>:</Text>
-                <View style={styles.durationInputGroup}>
-                  <TextInput
-                    style={styles.durationInput}
-                    value={editedDurationMinutes}
-                    onChangeText={(text) =>
-                      setEditedDurationMinutes(text.replace(/[^0-9]/g, ''))
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textPlaceholder}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                  <Text style={styles.durationLabel}>m</Text>
-                </View>
-                <Text style={styles.durationSeparator}>:</Text>
-                <View style={styles.durationInputGroup}>
-                  <TextInput
-                    style={styles.durationInput}
-                    value={editedDurationSeconds}
-                    onChangeText={(text) =>
-                      setEditedDurationSeconds(text.replace(/[^0-9]/g, ''))
-                    }
-                    placeholder="0"
-                    placeholderTextColor={colors.textPlaceholder}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                  <Text style={styles.durationLabel}>s</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Notes Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Notes</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={editedNotes}
-                onChangeText={setEditedNotes}
-                placeholder="Workout notes..."
-                placeholderTextColor={colors.textPlaceholder}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
             {/* Photo Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Photo</Text>
               {!imageDeleted && (editedImageUrl || workout.image_url) ? (
                 <View style={styles.imageContainer}>
                   <View style={styles.imageWrapper}>
@@ -955,88 +1094,167 @@ export default function EditWorkoutScreen() {
                   ) : (
                     <>
                       <Ionicons
-                        name="camera-outline"
+                        name="image-outline"
                         size={24}
-                        color={colors.brandPrimary}
+                        color={colors.textPrimary}
                       />
-                      <Text style={styles.addPhotoText}>Add Photo</Text>
+                      <Text style={styles.addPhotoText}>Add a photo / video</Text>
                     </>
                   )}
                 </TouchableOpacity>
               )}
             </View>
 
+            {/* Description Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabelSmall}>Description</Text>
+              <TextInput
+                style={[styles.inputNoBorder, styles.textArea]}
+                value={editedNotes}
+                onChangeText={setEditedNotes}
+                placeholder="How did your workout go? Leave some notes here..."
+                placeholderTextColor={colors.textPlaceholder}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
             {/* Exercises Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Exercises</Text>
               {workout.workout_exercises
                 ?.filter((we) => !deletedExerciseIds.has(we.id))
                 .map((workoutExercise, index) => {
                   const isExpanded = expandedExercises.has(workoutExercise.id)
+                  const isDragging = draggingIndex === index
                   const activeSets = workoutExercise.sets?.filter(
                     (s) => !deletedSetIds.has(s.id),
                   )
                   return (
-                    <View key={workoutExercise.id} style={styles.exerciseCard}>
+                    <AnimatedReanimated.View 
+                      key={workoutExercise.id} 
+                      style={[
+                        styles.exerciseCard,
+                        isDragging && dragAnimatedStyle,
+                        isDragging && styles.exerciseCardDragging,
+                      ]}
+                    >
                       {/* Exercise Header */}
                       <TouchableOpacity
-                        style={styles.exerciseHeader}
-                        onPress={() => toggleExercise(workoutExercise.id)}
+                        style={[
+                          styles.exerciseHeader,
+                          isDragging && styles.exerciseHeaderDragging,
+                        ]}
+                        onPress={() => !isDragging && toggleExercise(workoutExercise.id)}
+                        onLongPress={() => handleDragStart(index)}
+                        delayLongPress={200}
+                        activeOpacity={0.8}
                       >
                         <View style={styles.exerciseHeaderLeft}>
-                          <Text style={styles.exerciseName}>
+                          <ExerciseMediaThumbnail
+                            gifUrl={workoutExercise.exercise?.gif_url}
+                            style={styles.exerciseThumbnail}
+                            isCustom={!!workoutExercise.exercise?.created_by}
+                          />
+                          <Text 
+                            style={styles.exerciseName}
+                            numberOfLines={isDragging ? 1 : undefined}
+                            ellipsizeMode={isDragging ? 'tail' : undefined}
+                          >
                             {workoutExercise.exercise?.name || 'Exercise'}
                           </Text>
-                          <Text style={styles.setCount}>
-                            {activeSets?.length || 0} sets
-                          </Text>
                         </View>
-                        <View style={styles.exerciseHeaderRight}>
-                          <TouchableOpacity
-                            onPress={(e) => {
-                              e.stopPropagation()
-                              handleEditExercise(workoutExercise.id)
-                            }}
-                            style={styles.editExerciseButton}
-                          >
-                            <Ionicons
-                              name="create-outline"
-                              size={18}
-                              color={colors.brandPrimary}
-                            />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={(e) => {
-                              e.stopPropagation()
-                              deleteExercise(workoutExercise.id)
-                            }}
-                            style={styles.deleteExerciseButton}
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={18}
-                              color={colors.statusError}
-                            />
-                          </TouchableOpacity>
-                          <Ionicons
-                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={20}
-                            color={colors.textSecondary}
-                          />
-                        </View>
+                        {!isDragging && (
+                          <View style={styles.exerciseHeaderRight}>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation()
+                                // Show options menu for edit/delete
+                                Alert.alert('Options', 'Select an action', [
+                                  { text: 'Edit Exercise', onPress: () => handleEditExercise(workoutExercise.id) },
+                                  { text: 'Delete Exercise', onPress: () => deleteExercise(workoutExercise.id), style: 'destructive' },
+                                  { text: 'Cancel', style: 'cancel' },
+                                ])
+                              }}
+                              style={styles.optionsButton}
+                            >
+                              <Ionicons
+                                name="ellipsis-vertical"
+                                size={20}
+                                color={colors.textPrimary}
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        
+                        {isDragging && (
+                          <View style={styles.dragControls}>
+                            <TouchableOpacity
+                              onPress={() => handleMoveUp(index)}
+                              style={[
+                                styles.dragArrow,
+                                index === 0 && styles.dragArrowDisabled,
+                              ]}
+                              disabled={index === 0}
+                            >
+                              <Ionicons
+                                name="chevron-up"
+                                size={24}
+                                color={
+                                  index === 0
+                                    ? colors.textPlaceholder
+                                    : colors.textPrimary
+                                }
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleMoveDown(index)}
+                              style={[
+                                styles.dragArrow,
+                                index === (workout.workout_exercises?.length || 0) - 1 &&
+                                  styles.dragArrowDisabled,
+                              ]}
+                              disabled={index === (workout.workout_exercises?.length || 0) - 1}
+                            >
+                              <Ionicons
+                                name="chevron-down"
+                                size={24}
+                                color={
+                                  index === (workout.workout_exercises?.length || 0) - 1
+                                    ? colors.textPlaceholder
+                                    : colors.textPrimary
+                                }
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={handleDragEnd}
+                              style={styles.dragDone}
+                            >
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={28}
+                                color={colors.brandPrimary}
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </TouchableOpacity>
 
                       {/* Sets (Expanded) */}
-                      {isExpanded && (
+                      {isExpanded && !isDragging && (
                         <View style={styles.setsContainer}>
                           {/* Sets Table Header */}
                           <View style={styles.setsTableHeader}>
-                            <Text style={styles.setHeaderText}>Set</Text>
-                            <Text style={styles.setHeaderText}>Reps</Text>
-                            <Text style={styles.setHeaderText}>
-                              Weight ({weightUnit})
-                            </Text>
-                            <Text style={styles.setHeaderText}></Text>
+                            <View style={styles.setHeaderSetCol}>
+                              <Text style={styles.setHeaderText}>Set</Text>
+                            </View>
+                            <View style={styles.setHeaderInputCol}>
+                              <Text style={styles.setHeaderText}>Reps</Text>
+                            </View>
+                            <View style={styles.setHeaderInputCol}>
+                              <Text style={styles.setHeaderText}>Weight ({weightUnit})</Text>
+                            </View>
+                            <View style={styles.setHeaderDeleteCol} />
                           </View>
 
                           {/* Sets Rows */}
@@ -1090,9 +1308,7 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="--"
-                                      placeholderTextColor={
-                                        colors.textPlaceholder
-                                      }
+                                      placeholderTextColor={colors.textPlaceholder}
                                     />
                                     <TextInput
                                       style={styles.setInput}
@@ -1102,9 +1318,7 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="BW"
-                                      placeholderTextColor={
-                                        colors.textPlaceholder
-                                      }
+                                      placeholderTextColor={colors.textPlaceholder}
                                     />
                                     <TouchableOpacity
                                       onPress={() => deleteSet(set.id)}
@@ -1127,16 +1341,11 @@ export default function EditWorkoutScreen() {
                             style={styles.addSetButton}
                             onPress={() => addSet(workoutExercise.id)}
                           >
-                            <Ionicons
-                              name="add-circle-outline"
-                              size={20}
-                              color={colors.brandPrimary}
-                            />
-                            <Text style={styles.addSetText}>Add Set</Text>
+                            <Text style={styles.addSetText}>+ Add Set</Text>
                           </TouchableOpacity>
                         </View>
                       )}
-                    </View>
+                    </AnimatedReanimated.View>
                   )
                 })}
 
@@ -1145,12 +1354,7 @@ export default function EditWorkoutScreen() {
                 style={styles.addExerciseButton}
                 onPress={handleAddExercise}
               >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={22}
-                  color={colors.brandPrimary}
-                />
-                <Text style={styles.addExerciseText}>Add Exercise</Text>
+                <Text style={styles.addExerciseText}>+ Add Exercise</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -1178,21 +1382,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     headerButton: {
       zIndex: 1,
     },
+    saveButtonGlass: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    saveButtonTouchable: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,
       textAlign: 'center',
-    },
-    cancelText: {
-      fontSize: 16,
-      color: colors.textSecondary,
-    },
-    saveText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.brandPrimary,
-      textAlign: 'right',
     },
     content: {
       flex: 1,
@@ -1200,46 +1407,64 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     section: {
       padding: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 8,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
+    titleSection: {
       padding: 16,
+      paddingBottom: 8,
+    },
+    titleInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    titleInput: {
+      flex: 1,
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      paddingVertical: 0,
+    },
+    clearTitleButton: {
+      padding: 4,
+    },
+    statsSection: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      alignItems: 'center',
+    },
+    statItem: {
+      marginRight: 24,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    statValue: {
+      fontSize: 16,
+      color: colors.brandPrimary,
+    },
+    sectionLabelSmall: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    dateTextBlue: {
+      fontSize: 16,
+      color: colors.brandPrimary,
+    },
+    inputNoBorder: {
       fontSize: 16,
       color: colors.textPrimary,
-      borderWidth: 1,
-      borderColor: colors.border,
+      padding: 0,
     },
     textArea: {
-      minHeight: 100,
+      minHeight: 40,
       textAlignVertical: 'top',
-    },
-    dateButton: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    dateButtonContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    dateButtonText: {
-      fontSize: 16,
-      color: colors.textPrimary,
     },
     datePickerModalOverlay: {
       flex: 1,
@@ -1280,6 +1505,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
       overflow: 'hidden',
+      marginTop: 8,
     },
     imageWrapper: {
       width: '100%',
@@ -1332,89 +1558,121 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.statusError,
     },
     addPhotoButton: {
-      backgroundColor: colors.surfaceSubtle,
+      backgroundColor: colors.bg,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
       borderStyle: 'dashed',
-      paddingVertical: 32,
+      paddingVertical: 24,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
+      marginTop: 8,
+      width: 120,
+      height: 120,
     },
     addPhotoText: {
       fontSize: 14,
-      fontWeight: '600',
-      color: colors.brandPrimary,
+      color: colors.textPrimary,
+      textAlign: 'center',
     },
     exerciseCard: {
+      backgroundColor: colors.bg,
+      marginBottom: 24,
+    },
+    exerciseCardDragging: {
       backgroundColor: colors.surface,
       borderRadius: 12,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 10,
+      zIndex: 100,
     },
     exerciseHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
+      paddingVertical: 12,
+    },
+    exerciseHeaderDragging: {
+      paddingHorizontal: 12,
     },
     exerciseHeaderLeft: {
       flex: 1,
-    },
-    exerciseHeaderRight: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
     },
+    dragControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 20,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    dragArrow: {
+      padding: 4,
+    },
+    dragArrowDisabled: {
+      opacity: 0.5,
+    },
+    dragDone: {
+      padding: 4,
+      marginLeft: 4,
+    },
+    exerciseThumbnail: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: '#f0f0f0',
+    },
+    exerciseHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     exerciseName: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 4,
+      color: colors.brandPrimary,
     },
-    setCount: {
-      fontSize: 13,
-      color: colors.textSecondary,
-    },
-    editExerciseButton: {
-      padding: 4,
-    },
-    deleteExerciseButton: {
+    optionsButton: {
       padding: 4,
     },
     setsContainer: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      padding: 16,
-      paddingTop: 12,
+      paddingTop: 4,
     },
     setsTableHeader: {
       flexDirection: 'row',
+      alignItems: 'center',
       marginBottom: 8,
+      gap: 8,
+    },
+    setHeaderSetCol: {
+      width: 40,
+      alignItems: 'center',
+    },
+    setHeaderInputCol: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    setHeaderDeleteCol: {
+      width: 30,
     },
     setHeaderText: {
-      flex: 1,
       fontSize: 11,
       fontWeight: '600',
       color: colors.textSecondary,
       textTransform: 'uppercase',
-      textAlign: 'center',
     },
     setRow: {
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: 8,
       gap: 8,
-    },
-    setNumber: {
-      width: 40,
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      textAlign: 'center',
     },
     setNumberCell: {
       width: 40,
@@ -1456,74 +1714,28 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     addSetButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 8,
       paddingVertical: 12,
+      alignItems: 'center',
       marginTop: 8,
     },
     addSetText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.brandPrimary,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textPrimary,
     },
     addExerciseButton: {
-      flexDirection: 'row',
+      backgroundColor: colors.brandPrimary,
+      borderRadius: 8,
+      paddingVertical: 14,
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-      paddingVertical: 16,
-      marginTop: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderStyle: 'dashed',
-      backgroundColor: colors.surface,
+      marginTop: 16,
+      marginBottom: 32,
     },
     addExerciseText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '600',
-      color: colors.brandPrimary,
-    },
-    durationContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      gap: 4,
-    },
-    durationInputGroup: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    durationInput: {
-      backgroundColor: colors.surfaceSubtle,
-      borderRadius: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      textAlign: 'center',
-      minWidth: 52,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    durationLabel: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    durationSeparator: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      marginHorizontal: 4,
+      color: '#fff',
     },
   })

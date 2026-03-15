@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database } from '@/lib/database'
+import { database, OwnershipError } from '@/lib/database'
 import { PrService } from '@/lib/pr'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -319,19 +319,26 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   }, [workout.user_id, router])
 
   const handleEdit = useCallback(() => {
+    if (!isOwnWorkout) return
     router.push(`/edit-workout/${workout.id}`)
-  }, [workout.id, router])
+  }, [isOwnWorkout, workout.id, router])
 
   const handleDelete = useCallback(async () => {
+    if (!isOwnWorkout || !user?.id) return
+
     // FeedCard already shows confirmation - this is the "confirmed" callback
     try {
-      await database.workoutSessions.delete(workout.id)
+      await database.workoutSessions.delete(workout.id, user.id)
       onDelete()
     } catch (error) {
       console.error('Error deleting workout:', error)
+      if (error instanceof OwnershipError) {
+        Alert.alert('Access denied', error.message)
+        return
+      }
       Alert.alert('Error', 'Failed to delete workout. Please try again.')
     }
-  }, [workout.id, onDelete])
+  }, [isOwnWorkout, onDelete, user?.id, workout.id])
 
   const handleCreateRoutine = useCallback(() => {
     router.push({
@@ -395,8 +402,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       workout={isPending ? undefined : workout}
       onUserPress={workout.user_id ? handleUserPress : undefined}
       onCardPress={isPending ? undefined : handleCardPress}
-      onEdit={isPending ? undefined : handleEdit}
-      onDelete={isPending ? undefined : handleDelete}
+      onEdit={isPending || !isOwnWorkout ? undefined : handleEdit}
+      onDelete={isPending || !isOwnWorkout ? undefined : handleDelete}
       onCreateRoutine={isPending ? undefined : handleCreateRoutine}
       onRoutinePress={handleRoutinePress}
       prInfo={prInfo}
