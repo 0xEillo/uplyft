@@ -6,7 +6,6 @@ import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
-import { getLevelColor } from '@/hooks/useStrengthData'
 import {
   estimateOneRepMaxKg,
   getProgressDeltaPoints,
@@ -90,7 +89,6 @@ export function ExerciseDetailCard({
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
   const [tooltipVisible, setTooltipVisible] = useState(false)
-  const gainColor = getLevelColor('Intermediate')
 
   const exercise = workoutExercise.exercise
   const setEntries = useMemo(
@@ -309,60 +307,46 @@ export function ExerciseDetailCard({
         disabled={!onExercisePress || !exercisePressId}
         activeOpacity={0.7}
       >
-        <ExerciseMedia
-          gifUrl={exercise?.gif_url}
-          mode="thumbnail"
-          style={{ width: 56, height: 56, borderRadius: 14 }}
-          autoPlay={false}
-          isCustom={exercise ? !!exercise.created_by : true}
-        />
-        <View
-          style={[
-            styles.exerciseHeaderContent,
-            !strengthProgress && styles.exerciseHeaderContentCentered,
-          ]}
-        >
-          <View style={styles.titleSection}>
+        <View style={styles.exerciseHeaderTop}>
+          <ExerciseMedia
+            gifUrl={exercise?.gif_url}
+            mode="thumbnail"
+            style={{ width: 56, height: 56, borderRadius: 14 }}
+            autoPlay={false}
+            isCustom={exercise ? !!exercise.created_by : true}
+          />
+          <View style={styles.exerciseHeaderContentCentered}>
             <Text style={[styles.exerciseName, { color: colors.textPrimary }]}>
               {exerciseName}
             </Text>
           </View>
-          {strengthProgress && (
-            <View style={styles.progressSection}>
-              <View style={styles.progressTopRow}>
-                <View style={styles.progressMetaRow}>
-                  <Text
-                    style={[
-                      styles.progressLabel,
-                      { color: strengthProgress.accentColor },
-                    ]}
-                  >
-                    {strengthProgress.level}
-                  </Text>
-                  {strengthProgress.progressDelta !== null &&
-                    strengthProgress.progressDelta > 0 && (
-                    <View style={styles.progressGainChip}>
-                      <Text
-                        style={[
-                          styles.progressGainChipText,
-                          { color: gainColor },
-                        ]}
-                      >
-                        ▲ {strengthProgress.progressDelta}%
-                      </Text>
-                    </View>
-                  )}
-                </View>
+        </View>
+
+        {strengthProgress && (
+          <View style={styles.strengthStatsContainer}>
+            <View style={[styles.separator, { backgroundColor: colors.border }]} />
+            <View style={styles.strengthStatsRow}>
+              <View style={styles.strengthStatsMetrics}>
                 <Text
                   style={[
-                    styles.progressPercent,
+                    styles.progressLabel,
                     { color: strengthProgress.accentColor },
                   ]}
                 >
-                  {Math.round(strengthProgress.progress)}%
+                  {strengthProgress.level}
                 </Text>
               </View>
+              <Text
+                style={[
+                  styles.progressPercent,
+                  { color: strengthProgress.accentColor },
+                ]}
+              >
+                {Math.round(strengthProgress.progress)}%
+              </Text>
+            </View>
 
+            <View style={styles.progressSection}>
               <View
                 style={[
                   styles.progressBarTrack,
@@ -380,8 +364,8 @@ export function ExerciseDetailCard({
                 />
               </View>
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </TouchableOpacity>
 
       {/* Sets header + rows: full-width, edge-to-edge */}
@@ -439,42 +423,45 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   exerciseHeader: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    marginBottom: 12,
-    gap: 10,
+    flexDirection: 'column',
+    marginBottom: 16,
+    gap: 12,
   },
-  exerciseHeaderContent: {
-    flex: 1,
-    minHeight: 56,
-    justifyContent: 'space-between',
-    paddingVertical: 2,
+  exerciseHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   exerciseHeaderContentCentered: {
+    flex: 1,
     justifyContent: 'center',
   },
-  titleSection: {
-    justifyContent: 'flex-start',
+  strengthStatsContainer: {
+    gap: 8,
+  },
+  separator: {
+    height: 1,
+    width: '100%',
+    opacity: 0.6,
+    marginBottom: 4,
+  },
+  strengthStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  strengthStatsMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   progressSection: {
-    justifyContent: 'flex-end',
-    gap: 4,
+    justifyContent: 'center',
   },
   progressLabel: {
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'left',
-  },
-  progressTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  progressMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 1,
   },
   progressPercent: {
     fontSize: 14,
@@ -488,16 +475,6 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 999,
-  },
-  progressGainChip: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    minHeight: 18,
-    justifyContent: 'center',
-  },
-  progressGainChipText: {
-    fontSize: 10,
-    fontWeight: '700',
   },
   exerciseName: {
     fontSize: 16,
