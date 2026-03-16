@@ -92,6 +92,7 @@ const FEED_APP_POST_FIRST_AFTER = 2
 const FEED_APP_POST_INTERVAL = 2
 const FEED_APP_POST_BASE_COUNT = 5
 const FEED_APP_POST_PER_WORKOUTS = 2
+const FEED_APP_POST_MIN_WORKOUTS = 3
 
 // BaseNavbar min-height (60) + vertical padding (8 * 2) = ~76
 const NAVBAR_HEIGHT = 76
@@ -258,6 +259,10 @@ export default function FeedScreen() {
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible = isCelebrationVisible
   const appPosts = useMemo(() => {
+    if (userWorkoutCount < FEED_APP_POST_MIN_WORKOUTS) {
+      return []
+    }
+
     const unlockedCount = Math.min(
       APP_POSTS.length,
       FEED_APP_POST_BASE_COUNT +

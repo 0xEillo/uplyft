@@ -119,7 +119,7 @@ module.exports = {
         NSPhotoLibraryUsageDescription:
           'This app needs access to your photo library to select workout images.',
         NSUserNotificationsUsageDescription:
-          'This app needs permission to send you reminders about your trial expiration.',
+          'This app needs permission to alert you when your rest timer ends and to send workout reminders.',
         // SKAdNetwork identifiers for Meta/Facebook attribution (required for iOS 14+)
         SKAdNetworkItems: [
           { SKAdNetworkIdentifier: 'v9wttpbfk9.skadnetwork' }, // Facebook
@@ -191,7 +191,7 @@ module.exports = {
         {
           icon: './assets/images/icon.png',
           color: '#ffffff',
-          sounds: [],
+          sounds: ['./assets/sounds/stopwatch.mp3'],
         },
       ],
       'expo-sharing',

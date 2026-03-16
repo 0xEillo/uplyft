@@ -1,11 +1,13 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
+import { useProfile } from '@/contexts/profile-context'
 import {
   estimateOneRepMaxKg,
   getProgressDeltaPoints,
@@ -47,6 +49,8 @@ interface ExerciseDetailCardProps {
   previousBest1RMKg?: number
   onExercisePress?: (exerciseId: string) => void
   hideWarmupSets?: boolean
+  isCommonExercise?: boolean
+  workoutUserId?: string | null
 }
 
 function formatWeightRepsText(
@@ -84,10 +88,14 @@ export function ExerciseDetailCard({
   previousBest1RMKg,
   onExercisePress,
   hideWarmupSets = false,
+  isCommonExercise = false,
+  workoutUserId,
 }: ExerciseDetailCardProps): ReactElement | null {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
   const { weightUnit } = useUnit()
+  const { profile: currentUserProfile } = useProfile()
+  const router = useRouter()
   const [tooltipVisible, setTooltipVisible] = useState(false)
 
   const exercise = workoutExercise.exercise
@@ -403,6 +411,72 @@ export function ExerciseDetailCard({
         {/* Sets list */}
         {setRows}
       </View>
+
+      {/* Compare Button */}
+      {isCommonExercise && workoutUserId && (
+        <TouchableOpacity
+          style={[styles.compareButton, { borderTopColor: colors.border }]}
+          onPress={() => {
+            if (!exercisePressId) return
+            router.push({
+              pathname: '/exercise/[exerciseId]',
+              params: {
+                exerciseId: exercisePressId,
+                statsUserId: workoutUserId,
+              },
+            })
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.compareLeft}>
+            <View style={styles.compareAvatars}>
+              {currentUserProfile?.avatar_url ? (
+                <Image
+                  source={{ uri: currentUserProfile.avatar_url }}
+                  style={[styles.compareAvatar, { borderColor: colors.bg, zIndex: 2 }]}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.compareAvatar,
+                    styles.compareAvatarFallback,
+                    { borderColor: colors.bg, zIndex: 2, backgroundColor: colors.brandPrimary },
+                  ]}
+                >
+                  <Text style={[styles.compareAvatarText, { color: colors.surface }]}>
+                    {currentUserProfile?.display_name?.[0]?.toUpperCase() || 'U'}
+                  </Text>
+                </View>
+              )}
+              
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={[styles.compareAvatar, styles.compareAvatarRight, { borderColor: colors.bg, zIndex: 1 }]}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.compareAvatar,
+                    styles.compareAvatarFallback,
+                    styles.compareAvatarRight,
+                    { borderColor: colors.bg, zIndex: 1, backgroundColor: colors.brandPrimary },
+                  ]}
+                >
+                  <Text style={[styles.compareAvatarText, { color: colors.surface }]}>
+                    {profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.compareText, { color: colors.brandPrimary }]}>
+              Compare
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      )}
+
       {/* PR Tooltip */}
       {prInfo && (
         <PrTooltip
@@ -543,6 +617,48 @@ const styles = StyleSheet.create({
   },
   prTagText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  compareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    marginTop: 8,
+    borderTopWidth: 1,
+  },
+  compareLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  compareAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 38, // 24 + 24 - 10 overlap
+    height: 24,
+  },
+  compareAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    position: 'absolute',
+    left: 0,
+  },
+  compareAvatarRight: {
+    left: 14,
+  },
+  compareAvatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compareAvatarText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  compareText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 })

@@ -1,6 +1,5 @@
 import { BlurredHeader } from '@/components/blurred-header'
 
-import { EmptyState } from '@/components/EmptyState'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -119,6 +118,13 @@ type PhotoGridPhotoItem = ProgressPhotoItem & {
 }
 
 type PhotoGridItem = PhotoGridAddItem | PhotoGridPhotoItem
+
+type TabEmptyStateCopy = {
+  icon: keyof typeof Ionicons.glyphMap
+  title: string
+  description: string
+  buttonText: string
+}
 
 // ── Stats Row ─────────────────────────────────────────────────────────────────
 
@@ -397,6 +403,213 @@ const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'photos', label: 'Progress Pics' },
 ]
 const TAB_AUTO_SCROLL_GUTTER = 20
+const TAB_EMPTY_STATE_COPY: Record<ActiveTab, TabEmptyStateCopy> = {
+  weight: {
+    icon: 'fitness-outline',
+    title: 'Start tracking your weight',
+    description: 'Log weigh-ins here and switch tabs above to add meals, body scans, or progress photos too.',
+    buttonText: 'Log Weight',
+  },
+  meals: {
+    icon: 'nutrition-outline',
+    title: 'Start tracking your nutrition',
+    description: 'Keep meals, calories, and macros together with the rest of your body log.',
+    buttonText: 'Log Nutrition',
+  },
+  bodyfat: {
+    icon: 'analytics-outline',
+    title: 'Start your body scan history',
+    description: 'Save a body-fat reading manually or run a scan when you are ready to compare progress.',
+    buttonText: 'Add Body Scan',
+  },
+  photos: {
+    icon: 'images-outline',
+    title: 'Start your progress photo timeline',
+    description: 'Capture front, side, and back photos over time so your visual progress lives in one place.',
+    buttonText: 'Add Progress Photo',
+  },
+}
+
+const TabEmptyState = memo(
+  ({
+    activeTab,
+    onPress,
+    showOverview = false,
+  }: {
+    activeTab: ActiveTab
+    onPress: () => void
+    showOverview?: boolean
+  }) => {
+    const colors = useThemedColors()
+    const copy = TAB_EMPTY_STATE_COPY[activeTab]
+
+    return (
+      <View style={emptyTabStyles.container}>
+        <View
+          style={[
+            emptyTabStyles.iconWrapper,
+            {
+              backgroundColor: colors.brandPrimarySoft,
+              shadowColor: colors.brandPrimary,
+            },
+          ]}
+        >
+          <Ionicons name={copy.icon} size={34} color={colors.brandPrimary} />
+        </View>
+
+        <Text style={[emptyTabStyles.title, { color: colors.textPrimary }]}>
+          {copy.title}
+        </Text>
+        <Text style={[emptyTabStyles.description, { color: colors.textSecondary }]}>
+          {copy.description}
+        </Text>
+
+        {showOverview && (
+          <View
+            style={[
+              emptyTabStyles.overviewCard,
+              {
+                backgroundColor: colors.surfaceSubtle,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[emptyTabStyles.overviewEyebrow, { color: colors.textSecondary }]}>
+              Available in Gym Log
+            </Text>
+            <View style={emptyTabStyles.overviewChips}>
+              {TABS.map((tab) => {
+                const isActive = tab.id === activeTab
+                return (
+                  <View
+                    key={tab.id}
+                    style={[
+                      emptyTabStyles.overviewChip,
+                      isActive
+                        ? { backgroundColor: colors.textPrimary }
+                        : { backgroundColor: colors.bg, borderColor: colors.border },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        emptyTabStyles.overviewChipText,
+                        isActive
+                          ? { color: colors.bg }
+                          : { color: colors.textSecondary },
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onPress}
+          style={[
+            emptyTabStyles.button,
+            {
+              backgroundColor: colors.brandPrimary,
+              shadowColor: colors.brandPrimary,
+            },
+          ]}
+        >
+          <Text style={emptyTabStyles.buttonText}>{copy.buttonText}</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  },
+)
+TabEmptyState.displayName = 'TabEmptyState'
+
+const emptyTabStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 80,
+  },
+  iconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  title: {
+    fontSize: 31,
+    lineHeight: 36,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -1.1,
+    marginBottom: 12,
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    maxWidth: 320,
+    marginBottom: 26,
+  },
+  overviewCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
+  overviewEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  overviewChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  overviewChip: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  overviewChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  button: {
+    minWidth: 220,
+    borderRadius: 18,
+    paddingHorizontal: 26,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+})
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
@@ -1016,12 +1229,6 @@ export default function BodyLogScreen() {
     </View>
   ) : null
 
-  const emptySection = (label: string) => (
-    <View style={{ padding: 32, alignItems: 'center' }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 15 }}>No {label} logged yet.</Text>
-    </View>
-  )
-
   return (
     <SlideInView
       style={{ flex: 1, backgroundColor: colors.bg }}
@@ -1046,13 +1253,18 @@ export default function BodyLogScreen() {
             <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
         ) : entries.length === 0 ? (
-          <EmptyState
-            icon="images-outline"
-            title="Your Gym Log is empty"
-            description="Track meals, body metrics, and progress photos in one place."
-            buttonText="Add First Entry"
-            onPress={handleContextAdd}
-          />
+          <ScrollView
+            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100, flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={refreshControl}
+          >
+            {TabsHeader}
+            <TabEmptyState
+              activeTab={activeTab}
+              onPress={handleContextAdd}
+              showOverview
+            />
+          </ScrollView>
         ) : activeTab === 'weight' ? (
           // ── Weight: date → weight value
           <FlatList
@@ -1091,7 +1303,9 @@ export default function BodyLogScreen() {
                 {user && <BodyWeightChart userId={user.id} />}
               </View>
             }
-            ListEmptyComponent={emptySection('weight')}
+            ListEmptyComponent={
+              <TabEmptyState activeTab="weight" onPress={handleContextAdd} />
+            }
             ListFooterComponent={footer}
             refreshControl={refreshControl}
           />
@@ -1128,7 +1342,9 @@ export default function BodyLogScreen() {
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
             ListHeaderComponent={<View>{TabsHeader}</View>}
-            ListEmptyComponent={emptySection('body fat')}
+            ListEmptyComponent={
+              <TabEmptyState activeTab="bodyfat" onPress={handleContextAdd} />
+            }
             ListFooterComponent={footer}
             refreshControl={refreshControl}
           />
@@ -1154,7 +1370,9 @@ export default function BodyLogScreen() {
               
               </View>
             }
-            ListEmptyComponent={emptySection('meals')}
+            ListEmptyComponent={
+              <TabEmptyState activeTab="meals" onPress={handleContextAdd} />
+            }
             ListFooterComponent={footer}
             refreshControl={refreshControl}
           />
@@ -1257,6 +1475,9 @@ export default function BodyLogScreen() {
               </View>
             }
             ListFooterComponent={footer}
+            ListEmptyComponent={
+              <TabEmptyState activeTab="photos" onPress={handleContextAdd} />
+            }
             refreshControl={refreshControl}
           />
         )}

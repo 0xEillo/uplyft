@@ -2,16 +2,19 @@ import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useRef,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from 'react'
-import { AppState } from 'react-native'
+import { AppState, Platform } from 'react-native'
 
 const timerSound = require('../assets/sounds/stopwatch.mp3')
+const REST_TIMER_CHANNEL_ID = 'rest_timer_alarm'
+const REST_TIMER_SOUND_FILE = 'stopwatch.mp3'
+const REST_TIMER_VIBRATION_PATTERN = [0, 600, 250, 600]
 
 interface RestTimerContextType {
   remainingSeconds: number
@@ -39,14 +42,14 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
 
   const player = useAudioPlayer(timerSound)
 
-  const playSound = () => {
+  const playSound = useCallback(() => {
     try {
       player.seekTo(0)
       player.play()
     } catch (error) {
       console.log('Error playing sound:', error)
     }
-  }
+  }, [player])
 
   // Cancel any scheduled rest timer notification
   const cancelNotification = useCallback(async () => {
@@ -62,22 +65,89 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const ensureNotificationPermission = useCallback(async () => {
+    try {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync()
+
+      if (existingStatus === 'granted') {
+        return true
+      }
+
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      })
+
+      return status === 'granted'
+    } catch (error) {
+      console.log('Error requesting notification permission:', error)
+      return false
+    }
+  }, [])
+
+  const ensureRestTimerChannel = useCallback(async () => {
+    if (Platform.OS !== 'android') {
+      return
+    }
+
+    try {
+      await Notifications.setNotificationChannelAsync(REST_TIMER_CHANNEL_ID, {
+        name: 'Rest Timer',
+        description: 'Alerts when your workout rest timer finishes.',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: REST_TIMER_VIBRATION_PATTERN,
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: false,
+        lightColor: '#FF6B35',
+        sound: REST_TIMER_SOUND_FILE,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        audioAttributes: {
+          usage: Notifications.AndroidAudioUsage.ALARM,
+          contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+        },
+      })
+    } catch (error) {
+      console.log('Error configuring rest timer notification channel:', error)
+    }
+  }, [])
+
   // Schedule a notification for when the rest timer completes
   const scheduleNotification = useCallback(async (seconds: number) => {
     try {
       // Cancel any existing notification first
       await cancelNotification()
 
+      const hasPermission = await ensureNotificationPermission()
+      if (!hasPermission) {
+        return
+      }
+
+      await ensureRestTimerChannel()
+
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Rest Complete ⏱️',
           body: 'Time to start your next set!',
-          sound: true,
+          sound: Platform.OS === 'ios' ? REST_TIMER_SOUND_FILE : true,
+          interruptionLevel: Platform.OS === 'ios' ? 'timeSensitive' : undefined,
+          priority:
+            Platform.OS === 'android'
+              ? Notifications.AndroidNotificationPriority.MAX
+              : undefined,
+          vibrate:
+            Platform.OS === 'android' ? REST_TIMER_VIBRATION_PATTERN : undefined,
           data: { type: 'rest_timer' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: seconds,
+          seconds,
+          channelId:
+            Platform.OS === 'android' ? REST_TIMER_CHANNEL_ID : undefined,
         },
       })
 
@@ -85,7 +155,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.log('Error scheduling notification:', error)
     }
-  }, [cancelNotification])
+  }, [cancelNotification, ensureNotificationPermission, ensureRestTimerChannel])
 
   const stop = useCallback(() => {
     if (intervalRef.current) {
@@ -130,7 +200,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
         }
       }, 1000)
     },
-    [stop, scheduleNotification],
+    [playSound, scheduleNotification, stop],
   )
 
   const addTime = useCallback(
@@ -217,4 +287,3 @@ export function useRestTimerContext() {
   }
   return context
 }
-

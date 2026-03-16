@@ -62,6 +62,7 @@ export default function WorkoutDetailScreen() {
   ] = useState<Record<string, number> | null>(null)
   const [showShareScreen, setShowShareScreen] = useState(false)
   const [workoutCount, setWorkoutCount] = useState(1)
+  const [commonExerciseIds, setCommonExerciseIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (workoutId) {
@@ -221,6 +222,34 @@ export default function WorkoutDetailScreen() {
     fetchCount()
   }, [workout?.date, workout?.id, user?.id])
 
+  // Load common exercises if viewing someone else's workout
+  useEffect(() => {
+    if (!workout || !user?.id || workout.user_id === user.id) {
+      setCommonExerciseIds(new Set())
+      return
+    }
+
+    const fetchCommonExercises = async () => {
+      try {
+        const exerciseIds = workout.workout_exercises
+          ?.map((we) => we.exercise_id)
+          .filter(Boolean) as string[]
+
+        if (exerciseIds && exerciseIds.length > 0) {
+          const doneExercises = await database.workoutSessions.getExercisesDoneByUser(
+            user.id,
+            exerciseIds
+          )
+          setCommonExerciseIds(doneExercises)
+        }
+      } catch (error) {
+        console.error('Error fetching common exercises:', error)
+      }
+    }
+
+    fetchCommonExercises()
+  }, [workout, user?.id])
+
 
 
   // Handle like toggle
@@ -364,6 +393,7 @@ export default function WorkoutDetailScreen() {
         onExercisePress={handleExercisePress}
         previousMax1RMByExerciseId={previousMax1RMByExerciseId}
         isLoading={isLoading}
+        commonExerciseIds={commonExerciseIds}
       />
 
       {/* Workout Share Screen Modal */}

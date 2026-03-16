@@ -19,7 +19,7 @@ try {
       shouldShowList: true,
     }),
   })
-} catch (error) {
+} catch {
   console.warn('[Notifications] Native module not available. Please rebuild the app.')
   isNotificationsAvailable = false
 }
@@ -180,7 +180,10 @@ export function NotificationProvider({
           name: 'default',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
+          enableVibrate: true,
+          enableLights: true,
           lightColor: '#FF6B35', // App primary color
+          sound: 'default',
         })
       }
 

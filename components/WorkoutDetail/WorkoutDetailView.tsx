@@ -70,6 +70,7 @@ interface WorkoutDetailViewProps {
   onExercisePress?: (exerciseId: string) => void
   // Loading state
   isLoading?: boolean
+  commonExerciseIds?: Set<string>
 }
 
 function normalizeReturnToParam(
@@ -109,6 +110,7 @@ export function WorkoutDetailView({
   onCreateRoutine,
   onExercisePress,
   isLoading = false,
+  commonExerciseIds = new Set(),
 }: WorkoutDetailViewProps): ReactElement {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
@@ -571,6 +573,8 @@ export function WorkoutDetailView({
                     }
                     onExercisePress={onExercisePress}
                     hideWarmupSets={hideWarmupSets}
+                    isCommonExercise={commonExerciseIds.has(workoutExercise.exercise_id)}
+                    workoutUserId={workout.user_id}
                   />
                 )
               })}

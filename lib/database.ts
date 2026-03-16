@@ -2412,6 +2412,32 @@ export const database = {
       return data
     },
 
+    async getExercisesDoneByUser(userId: string, exerciseIds: string[]): Promise<Set<string>> {
+      if (!exerciseIds.length) return new Set()
+
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          workout_exercises!inner (
+            exercise_id
+          )
+        `,
+        )
+        .eq('user_id', userId)
+        .in('workout_exercises.exercise_id', exerciseIds)
+
+      if (error) throw error
+
+      const doneExercises = new Set<string>()
+      for (const session of data || []) {
+        for (const we of session.workout_exercises || []) {
+          doneExercises.add(we.exercise_id)
+        }
+      }
+      return doneExercises
+    },
+
     async getExerciseWeightProgress(
       userId: string,
       exerciseId: string,
