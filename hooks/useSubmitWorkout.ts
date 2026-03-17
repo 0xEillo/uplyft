@@ -35,6 +35,7 @@ interface SubmitWorkoutArgs {
   song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
+  date?: Date
 }
 
 export type SubmitWorkoutErrorCode = 'IMAGE_UPLOAD'
@@ -165,6 +166,7 @@ export function useSubmitWorkout() {
       song,
       structuredData,
       isStructuredMode,
+      date,
     }: SubmitWorkoutArgs) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
@@ -202,7 +204,7 @@ export function useSubmitWorkout() {
       const idempotencyKey = Crypto.randomUUID()
 
       // Capture local timestamp and timezone for offline support
-      const now = new Date()
+      const now = date ?? new Date()
       const performedAt = now.toISOString()
       const timezoneOffsetMinutes = now.getTimezoneOffset()
 

@@ -151,13 +151,27 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       </View>
 
       <View style={styles.setColPrev}>
-        <Text style={styles.previousText} numberOfLines={1}>
-          {set.lastWorkoutWeight && set.lastWorkoutReps
-            ? `${set.lastWorkoutWeight}${unitDisplay} x ${set.lastWorkoutReps}`
-            : targetText
-            ? `Target: ${targetText.trim().replace(/^\(|\)$/g, '')}`
-            : '-'}
-        </Text>
+        {set.lastWorkoutWeight && set.lastWorkoutReps ? (
+          <TouchableOpacity
+            style={styles.previousTouchable}
+            onPress={() => {
+              hapticAsync()
+              onWeightChange(exerciseIndex, setIndex, set.lastWorkoutWeight!)
+              onRepsChange(exerciseIndex, setIndex, set.lastWorkoutReps!)
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.previousText} numberOfLines={1}>
+              {`${set.lastWorkoutWeight}${unitDisplay} x ${set.lastWorkoutReps}`}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.previousText} numberOfLines={1}>
+            {targetText
+              ? `Target: ${targetText.trim().replace(/^\(|\)$/g, '')}`
+              : '-'}
+          </Text>
+        )}
       </View>
 
       <View style={styles.setColInput}>
@@ -1856,6 +1870,12 @@ const createStyles = (
     },
     warmupText: {
       color: colors.statusWarning,
+    },
+    previousTouchable: {
+      flex: 1,
+      alignSelf: 'stretch',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     previousText: {
       fontSize: compactPreview ? 13 : 15,

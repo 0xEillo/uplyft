@@ -116,6 +116,28 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const createRestTimerNotificationContent = useCallback(
+    (useCustomSound: boolean): Notifications.NotificationContentInput => ({
+      title: 'Rest Complete ⏱️',
+      body: 'Time to start your next set!',
+      sound:
+        Platform.OS === 'ios'
+          ? useCustomSound
+            ? REST_TIMER_SOUND_FILE
+            : 'default'
+          : true,
+      interruptionLevel: Platform.OS === 'ios' ? 'timeSensitive' : undefined,
+      priority:
+        Platform.OS === 'android'
+          ? Notifications.AndroidNotificationPriority.MAX
+          : undefined,
+      vibrate:
+        Platform.OS === 'android' ? REST_TIMER_VIBRATION_PATTERN : undefined,
+      data: { type: 'rest_timer' },
+    }),
+    [],
+  )
+
   // Schedule a notification for when the rest timer completes
   const scheduleNotification = useCallback(async (seconds: number) => {
     try {
@@ -129,33 +151,51 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
 
       await ensureRestTimerChannel()
 
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Rest Complete ⏱️',
-          body: 'Time to start your next set!',
-          sound: Platform.OS === 'ios' ? REST_TIMER_SOUND_FILE : true,
-          interruptionLevel: Platform.OS === 'ios' ? 'timeSensitive' : undefined,
-          priority:
-            Platform.OS === 'android'
-              ? Notifications.AndroidNotificationPriority.MAX
-              : undefined,
-          vibrate:
-            Platform.OS === 'android' ? REST_TIMER_VIBRATION_PATTERN : undefined,
-          data: { type: 'rest_timer' },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds,
-          channelId:
-            Platform.OS === 'android' ? REST_TIMER_CHANNEL_ID : undefined,
-        },
-      })
+      const trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds,
+        channelId: Platform.OS === 'android' ? REST_TIMER_CHANNEL_ID : undefined,
+      } satisfies Notifications.TimeIntervalTriggerInput
+
+      let notificationId: string
+
+      try {
+        notificationId = await Notifications.scheduleNotificationAsync({
+          content: createRestTimerNotificationContent(true),
+          trigger,
+        })
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
+
+        if (
+          Platform.OS === 'ios' &&
+          errorMessage.includes(
+            `Custom sound '${REST_TIMER_SOUND_FILE}' not found in native app`,
+          )
+        ) {
+          console.warn(
+            `Custom notification sound ${REST_TIMER_SOUND_FILE} is unavailable in this iOS build. Falling back to the default sound.`,
+          )
+          notificationId = await Notifications.scheduleNotificationAsync({
+            content: createRestTimerNotificationContent(false),
+            trigger,
+          })
+        } else {
+          throw error
+        }
+      }
 
       notificationIdRef.current = notificationId
     } catch (error) {
       console.log('Error scheduling notification:', error)
     }
-  }, [cancelNotification, ensureNotificationPermission, ensureRestTimerChannel])
+  }, [
+    cancelNotification,
+    createRestTimerNotificationContent,
+    ensureNotificationPermission,
+    ensureRestTimerChannel,
+  ])
 
   const stop = useCallback(() => {
     if (intervalRef.current) {

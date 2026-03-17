@@ -37,6 +37,7 @@ interface EditorToolbarProps {
   timerButtonRef?: RefObject<View>
   routineButtonRef?: RefObject<View>
   searchButtonRef?: RefObject<View>
+  addButtonRef?: RefObject<View>
   bottomInsetOverride?: number
   accessoryMode?: boolean
   visibleButtons?: ToolbarButtonId[]
@@ -61,6 +62,7 @@ export function EditorToolbar({
   timerButtonRef,
   routineButtonRef,
   searchButtonRef,
+  addButtonRef,
   bottomInsetOverride,
   accessoryMode = false,
   visibleButtons = DEFAULT_TOOLBAR_BUTTONS,
@@ -306,19 +308,21 @@ export function EditorToolbar({
           </LiquidGlassSurface>
 
           {shouldShowAdd && (
-            <LiquidGlassSurface style={styles.iosAddGlass}>
-              <TouchableOpacity
-                style={styles.iosAddButton}
-                onPress={onAddExercise}
-                disabled={isDisabled}
-              >
-                <Ionicons
-                  name="add-outline"
-                  size={23}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-            </LiquidGlassSurface>
+            <View ref={addButtonRef} collapsable={false}>
+              <LiquidGlassSurface style={styles.iosAddGlass}>
+                <TouchableOpacity
+                  style={styles.iosAddButton}
+                  onPress={onAddExercise}
+                  disabled={isDisabled}
+                >
+                  <Ionicons
+                    name="add-outline"
+                    size={23}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+              </LiquidGlassSurface>
+            </View>
           )}
         </View>
       ) : (

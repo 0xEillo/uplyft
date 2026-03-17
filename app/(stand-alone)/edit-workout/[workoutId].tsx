@@ -1,7 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { BlurredHeader } from '@/components/blurred-header'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -9,40 +9,44 @@ import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { haptic } from '@/lib/haptics'
 import { database, OwnershipError } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import {
-    deleteWorkoutImage,
-    uploadWorkoutImage,
+  deleteWorkoutImage,
+  uploadWorkoutImage,
 } from '@/lib/utils/image-upload'
 import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from '@react-native-community/datetimepicker'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native'
+import AnimatedReanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useSharedValue, withSpring, withTiming, useAnimatedStyle } from 'react-native-reanimated'
-import AnimatedReanimated from 'react-native-reanimated'
 
 // Enable LayoutAnimation on Android
 if (
@@ -65,7 +69,7 @@ function formatDurationCompact(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
-  
+
   if (hours > 0) {
     return `${hours}h ${mins}m`
   }
@@ -149,17 +153,17 @@ export default function EditWorkoutScreen() {
       if (index > 0 && workout?.workout_exercises) {
         setWorkout((prev) => {
           if (!prev || !prev.workout_exercises) return prev
-          
+
           const newExercises = [...prev.workout_exercises]
           const temp = newExercises[index]
           newExercises[index] = newExercises[index - 1]
           newExercises[index - 1] = temp
-          
+
           // Update order_index
           newExercises.forEach((ex, i) => {
             ex.order_index = i
           })
-          
+
           return {
             ...prev,
             workout_exercises: newExercises,
@@ -180,17 +184,17 @@ export default function EditWorkoutScreen() {
       ) {
         setWorkout((prev) => {
           if (!prev || !prev.workout_exercises) return prev
-          
+
           const newExercises = [...prev.workout_exercises]
           const temp = newExercises[index]
           newExercises[index] = newExercises[index + 1]
           newExercises[index + 1] = temp
-          
+
           // Update order_index
           newExercises.forEach((ex, i) => {
             ex.order_index = i
           })
-          
+
           return {
             ...prev,
             workout_exercises: newExercises,
@@ -319,10 +323,10 @@ export default function EditWorkoutScreen() {
       setWorkout(data)
       setEditedTitle(data.type || '')
       setEditedNotes(data.notes || '')
-      
+
       // Expand all exercises by default
       if (data.workout_exercises) {
-        setExpandedExercises(new Set(data.workout_exercises.map(we => we.id)))
+        setExpandedExercises(new Set(data.workout_exercises.map((we) => we.id)))
       }
 
       // Initialize edited date from workout date
@@ -508,7 +512,13 @@ export default function EditWorkoutScreen() {
         setIsAddingExercise(false)
       }
     },
-    [deletedExerciseIds, handleOwnershipViolation, user?.id, workout, workoutId],
+    [
+      deletedExerciseIds,
+      handleOwnershipViolation,
+      user?.id,
+      workout,
+      workoutId,
+    ],
   )
 
   const handleAddExercise = useCallback(() => {
@@ -622,7 +632,7 @@ export default function EditWorkoutScreen() {
       // 4.5 Update exercise order
       if (workout?.workout_exercises) {
         const orderPromises = workout.workout_exercises
-          .filter(we => !deletedExerciseIds.has(we.id))
+          .filter((we) => !deletedExerciseIds.has(we.id))
           .map((we, index) => {
             // Update the order_index in the database
             return database.workoutExercises.updateOrder(we.id, index)
@@ -843,7 +853,9 @@ export default function EditWorkoutScreen() {
   const styles = createStyles(colors)
 
   const stats = workout ? calculateWorkoutStats(workout, weightUnit) : null
-  const volumeFormatted = stats ? formatVolume(stats.totalVolume, weightUnit) : { value: 0, unit: weightUnit }
+  const volumeFormatted = stats
+    ? formatVolume(stats.totalVolume, weightUnit)
+    : { value: 0, unit: weightUnit }
 
   if (isLoading) {
     return (
@@ -887,9 +899,16 @@ export default function EditWorkoutScreen() {
                   disabled={isSaving}
                 >
                   {isSaving ? (
-                    <ActivityIndicator size="small" color={colors.brandPrimary} />
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.brandPrimary}
+                    />
                   ) : (
-                    <Ionicons name="checkmark" size={24} color={colors.brandPrimary} />
+                    <Ionicons
+                      name="checkmark"
+                      size={24}
+                      color={colors.brandPrimary}
+                    />
                   )}
                 </TouchableOpacity>
               </LiquidGlassSurface>
@@ -922,7 +941,11 @@ export default function EditWorkoutScreen() {
                     onPress={() => setEditedTitle('')}
                     style={styles.clearTitleButton}
                   >
-                    <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+                    <Ionicons
+                      name="close-circle"
+                      size={20}
+                      color={colors.textTertiary}
+                    />
                   </TouchableOpacity>
                 )}
               </View>
@@ -933,11 +956,16 @@ export default function EditWorkoutScreen() {
               <View style={styles.statsSection}>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Duration</Text>
-                  <Text style={styles.statValue}>{formatDurationCompact(stats.durationSeconds)}</Text>
+                  <Text style={styles.statValue}>
+                    {formatDurationCompact(stats.durationSeconds)}
+                  </Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Volume</Text>
-                  <Text style={styles.statValue}>{volumeFormatted.value.toLocaleString()} {volumeFormatted.unit}</Text>
+                  <Text style={styles.statValue}>
+                    {volumeFormatted.value.toLocaleString()}{' '}
+                    {volumeFormatted.unit}
+                  </Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Sets</Text>
@@ -949,14 +977,12 @@ export default function EditWorkoutScreen() {
             {/* Date Section */}
             <View style={styles.section}>
               <Text style={styles.sectionLabelSmall}>When</Text>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(true)}
-              >
+              <TouchableOpacity onPress={() => setShowDatePicker(true)}>
                 <Text style={styles.dateTextBlue}>
                   {editedDate
-                    ? `${formatDisplayDate(
+                    ? `${formatDisplayDate(editedDate)}, ${formatDisplayTime(
                         editedDate,
-                      )}, ${formatDisplayTime(editedDate)}`
+                      )}`
                     : 'Select date'}
                 </Text>
               </TouchableOpacity>
@@ -1090,7 +1116,10 @@ export default function EditWorkoutScreen() {
                   disabled={isUploadingImage}
                 >
                   {isUploadingImage ? (
-                    <ActivityIndicator size="small" color={colors.brandPrimary} />
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.brandPrimary}
+                    />
                   ) : (
                     <>
                       <Ionicons
@@ -1098,7 +1127,7 @@ export default function EditWorkoutScreen() {
                         size={24}
                         color={colors.textPrimary}
                       />
-                      <Text style={styles.addPhotoText}>Add a photo / video</Text>
+                      <Text style={styles.addPhotoText}>Add a photo</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1131,8 +1160,8 @@ export default function EditWorkoutScreen() {
                     (s) => !deletedSetIds.has(s.id),
                   )
                   return (
-                    <AnimatedReanimated.View 
-                      key={workoutExercise.id} 
+                    <AnimatedReanimated.View
+                      key={workoutExercise.id}
                       style={[
                         styles.exerciseCard,
                         isDragging && dragAnimatedStyle,
@@ -1145,7 +1174,9 @@ export default function EditWorkoutScreen() {
                           styles.exerciseHeader,
                           isDragging && styles.exerciseHeaderDragging,
                         ]}
-                        onPress={() => !isDragging && toggleExercise(workoutExercise.id)}
+                        onPress={() =>
+                          !isDragging && toggleExercise(workoutExercise.id)
+                        }
                         onLongPress={() => handleDragStart(index)}
                         delayLongPress={200}
                         activeOpacity={0.8}
@@ -1156,7 +1187,7 @@ export default function EditWorkoutScreen() {
                             style={styles.exerciseThumbnail}
                             isCustom={!!workoutExercise.exercise?.created_by}
                           />
-                          <Text 
+                          <Text
                             style={styles.exerciseName}
                             numberOfLines={isDragging ? 1 : undefined}
                             ellipsizeMode={isDragging ? 'tail' : undefined}
@@ -1171,8 +1202,17 @@ export default function EditWorkoutScreen() {
                                 e.stopPropagation()
                                 // Show options menu for edit/delete
                                 Alert.alert('Options', 'Select an action', [
-                                  { text: 'Edit Exercise', onPress: () => handleEditExercise(workoutExercise.id) },
-                                  { text: 'Delete Exercise', onPress: () => deleteExercise(workoutExercise.id), style: 'destructive' },
+                                  {
+                                    text: 'Edit Exercise',
+                                    onPress: () =>
+                                      handleEditExercise(workoutExercise.id),
+                                  },
+                                  {
+                                    text: 'Delete Exercise',
+                                    onPress: () =>
+                                      deleteExercise(workoutExercise.id),
+                                    style: 'destructive',
+                                  },
                                   { text: 'Cancel', style: 'cancel' },
                                 ])
                               }}
@@ -1186,7 +1226,7 @@ export default function EditWorkoutScreen() {
                             </TouchableOpacity>
                           </View>
                         )}
-                        
+
                         {isDragging && (
                           <View style={styles.dragControls}>
                             <TouchableOpacity
@@ -1211,16 +1251,21 @@ export default function EditWorkoutScreen() {
                               onPress={() => handleMoveDown(index)}
                               style={[
                                 styles.dragArrow,
-                                index === (workout.workout_exercises?.length || 0) - 1 &&
-                                  styles.dragArrowDisabled,
+                                index ===
+                                  (workout.workout_exercises?.length || 0) -
+                                    1 && styles.dragArrowDisabled,
                               ]}
-                              disabled={index === (workout.workout_exercises?.length || 0) - 1}
+                              disabled={
+                                index ===
+                                (workout.workout_exercises?.length || 0) - 1
+                              }
                             >
                               <Ionicons
                                 name="chevron-down"
                                 size={24}
                                 color={
-                                  index === (workout.workout_exercises?.length || 0) - 1
+                                  index ===
+                                  (workout.workout_exercises?.length || 0) - 1
                                     ? colors.textPlaceholder
                                     : colors.textPrimary
                                 }
@@ -1252,7 +1297,9 @@ export default function EditWorkoutScreen() {
                               <Text style={styles.setHeaderText}>Reps</Text>
                             </View>
                             <View style={styles.setHeaderInputCol}>
-                              <Text style={styles.setHeaderText}>Weight ({weightUnit})</Text>
+                              <Text style={styles.setHeaderText}>
+                                Weight ({weightUnit})
+                              </Text>
                             </View>
                             <View style={styles.setHeaderDeleteCol} />
                           </View>
@@ -1308,7 +1355,9 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="--"
-                                      placeholderTextColor={colors.textPlaceholder}
+                                      placeholderTextColor={
+                                        colors.textPlaceholder
+                                      }
                                     />
                                     <TextInput
                                       style={styles.setInput}
@@ -1318,7 +1367,9 @@ export default function EditWorkoutScreen() {
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="BW"
-                                      placeholderTextColor={colors.textPlaceholder}
+                                      placeholderTextColor={
+                                        colors.textPlaceholder
+                                      }
                                     />
                                     <TouchableOpacity
                                       onPress={() => deleteSet(set.id)}

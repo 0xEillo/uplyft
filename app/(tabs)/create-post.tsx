@@ -1,10 +1,9 @@
-import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import {
-  CreatePostTutorial,
-  type TutorialStepConfig,
+    CreatePostTutorial,
+    type TutorialStepConfig,
 } from '@/components/CreatePostTutorial'
+import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { EditorToolbar } from '@/components/editor-toolbar'
-import { FinalizeWorkoutOverlay } from '@/components/FinalizeWorkoutOverlay'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
@@ -23,10 +22,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-  getExerciseSuggestion,
-  parseRepRange,
-  useExerciseAutocompleteGroup,
-  useShowConvertButton,
+    getExerciseSuggestion,
+    parseRepRange,
+    useExerciseAutocompleteGroup,
+    useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -42,71 +41,72 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import {
-  getToolbarButtons,
-  getWarmupCalculatorEnabled,
-  type ToolbarButtonId,
+    getToolbarButtons,
+    getWarmupCalculatorEnabled,
+    type ToolbarButtonId,
 } from '@/lib/utils/create-post-settings'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-  clearDraft as clearWorkoutDraft,
-  compactDraft as compactWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
-  saveDraftPatch as saveWorkoutDraftPatch,
+    clearDraft as clearWorkoutDraft,
+    compactDraft as compactWorkoutDraft,
+    loadPendingWorkout,
+    loadDraft as loadWorkoutDraft,
+    saveDraft as saveWorkoutDraft,
+    saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-  generateWorkoutMessage,
-  parseCommitment,
+    generateWorkoutMessage,
+    parseCommitment,
 } from '@/lib/utils/workout-messages'
+import { formatVolume } from '@/lib/utils/workout-stats'
 import {
-  Exercise,
-  WorkoutRoutineWithDetails,
-  WorkoutSessionWithDetails,
+    Exercise,
+    WorkoutRoutineWithDetails,
+    WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
-import {
-  TabActions,
-  useFocusEffect,
-  useNavigation,
-} from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+    TabActions,
+    useFocusEffect,
+    useNavigation,
+} from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionSheetIOS,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  AppState,
-  Easing,
-  Image,
-  Keyboard,
-  type LayoutChangeEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    AppState,
+    Easing,
+    Image,
+    Keyboard,
+    type LayoutChangeEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native'
 import Reanimated, {
-  cancelAnimation,
-  Easing as ReanimatedEasing,
-  runOnUI,
-  useAnimatedKeyboard,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
-  withTiming,
+    cancelAnimation,
+    Easing as ReanimatedEasing,
+    runOnUI,
+    useAnimatedKeyboard,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -167,29 +167,17 @@ function normalizeWindowRect(
   return { x, y, width, height }
 }
 
-function formatTimerDisplay(seconds: number): string {
+function formatDurationMinSec(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
-
-  // If under 1 minute, show just seconds
-  if (safeSeconds < 60) {
-    return `${safeSeconds}`
-  }
-
-  // If 1 hour or more, show H:MM:SS
-  if (safeSeconds >= 3600) {
-    const hours = Math.floor(safeSeconds / 3600)
-    const mins = Math.floor((safeSeconds % 3600) / 60)
-    const secs = safeSeconds % 60
-    return `${hours}:${mins
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // If 1 minute or more (but under 1 hour), show M:SS
+  if (safeSeconds < 60) return `${safeSeconds}s`
   const mins = Math.floor(safeSeconds / 60)
   const secs = safeSeconds % 60
-
-  return `${mins}:${secs.toString().padStart(2, '0')}`
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60)
+    const m = mins % 60
+    return `${hours}h ${m}min`
+  }
+  return secs > 0 ? `${mins}min ${secs}s` : `${mins}min`
 }
 
 const NEW_USER_STRUCTURED_PREVIEW: StructuredExerciseDraft[] = [
@@ -202,7 +190,7 @@ const NEW_USER_STRUCTURED_PREVIEW: StructuredExerciseDraft[] = [
 
 export default function CreatePostScreen() {
   const colors = useThemedColors()
-  const { weightUnit } = useWeightUnits()
+  const { weightUnit, convertInputToKg } = useWeightUnits()
   const { scrollToTop } = useScrollToTop()
   const navigation = useNavigation()
   const { coachId } = useProfile()
@@ -247,8 +235,8 @@ export default function CreatePostScreen() {
   // =============================================================================
   // FINALIZE OVERLAY STATE
   // =============================================================================
-  const [showFinalizeOverlay, setShowFinalizeOverlay] = useState(false)
   const [finalizeDescription, setFinalizeDescription] = useState('')
+  const [finalizeDate, setFinalizeDate] = useState(new Date())
 
   // =============================================================================
   // UI STATE
@@ -258,6 +246,9 @@ export default function CreatePostScreen() {
   const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
     false,
   )
+  const [pageTutorialToolbarMode, setPageTutorialToolbarMode] = useState<
+    'default' | 'force-add'
+  >('default')
   const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
   const [keypadTapShield, setKeypadTapShield] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -372,9 +363,32 @@ export default function CreatePostScreen() {
 
   const shouldShowWorkoutTimer =
     hasWorkoutDraftContent || workoutElapsedSeconds > 0
-  const headerTimerDisplay = formatTimerDisplay(
-    Math.max(1, workoutElapsedSeconds ?? 0),
-  )
+
+  const draftStats = useMemo(() => {
+    const BODYWEIGHT_FALLBACK_KG = 1
+    let volumeKg = 0
+    let setsCount = 0
+    structuredData.forEach((exercise) => {
+      exercise.sets.forEach((set) => {
+        const w = parseFloat(set.weight)
+        const r = parseFloat(set.reps)
+        if (!Number.isNaN(r) && r > 0) {
+          const weightKg =
+            !Number.isNaN(w) && w > 0
+              ? (convertInputToKg(w) ?? w)
+              : BODYWEIGHT_FALLBACK_KG
+          volumeKg += weightKg * r
+        }
+        if (set.weight?.trim() || set.reps?.trim()) setsCount += 1
+      })
+    })
+    return {
+      volumeKg: Math.round(volumeKg),
+      setsCount,
+      durationDisplay: formatDurationMinSec(workoutElapsedSeconds ?? 0),
+      volumeDisplay: formatVolume(volumeKg, weightUnit),
+    }
+  }, [structuredData, workoutElapsedSeconds, weightUnit, convertInputToKg])
 
   const handleStructuredDataChange = useCallback(
     (newData: StructuredExerciseDraft[]) => {
@@ -558,7 +572,6 @@ export default function CreatePostScreen() {
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
   const imageOpacity = useRef(new Animated.Value(0)).current
 
-  const titleInputRef = useRef<TextInput>(null)
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
   const chatButtonRef = useRef<View>(null)
@@ -574,6 +587,7 @@ export default function CreatePostScreen() {
   const toolbarTimerRef = useRef<View>(null)
   const toolbarRoutineRef = useRef<View>(null)
   const toolbarSearchRef = useRef<View>(null)
+  const toolbarAddRef = useRef<View>(null)
   const scrollYRef = useRef(0)
   const nativeKeyboardHeightRef = useRef(0)
   const keypadVisibleRef = useRef(false)
@@ -789,6 +803,7 @@ export default function CreatePostScreen() {
 
   useEffect(() => {
     if (!showPageTutorial) {
+      setPageTutorialToolbarMode('default')
       return
     }
 
@@ -826,6 +841,15 @@ export default function CreatePostScreen() {
 
           return chatButtonTutorialRectRef.current
         },
+      },
+      {
+        id: 'add_exercise',
+        title: 'Add Exercise',
+        description:
+          'When you type an exercise name, tap + to turn it into a structured exercise you can log.',
+        icon: 'add-outline',
+        measureTarget: () =>
+          measureRef(Platform.OS === 'ios' ? toolbarAddRef : toolbarSearchRef),
       },
       {
         id: 'search_exercise',
@@ -867,7 +891,19 @@ export default function CreatePostScreen() {
     [getChatButtonTutorialRectFromLayout, measureRef],
   )
 
+  const handlePageTutorialStepPress = useCallback((stepId: string) => {
+    if (stepId === 'coach_chat') {
+      setPageTutorialToolbarMode('force-add')
+      return
+    }
+
+    if (stepId === 'add_exercise') {
+      setPageTutorialToolbarMode('default')
+    }
+  }, [])
+
   const handlePageTutorialComplete = useCallback(() => {
+    setPageTutorialToolbarMode('default')
     setShowPageTutorial(false)
     if (PAGE_TUTORIAL_SEEN_KEY) {
       AsyncStorage.setItem(PAGE_TUTORIAL_SEEN_KEY, 'true')
@@ -1324,7 +1360,6 @@ export default function CreatePostScreen() {
       textInputState?.blurTextInput?.(activeInput)
     }
 
-    titleInputRef.current?.blur?.()
     notesInputRef.current?.blur?.()
     setIsStructuredInputFocused(false)
     Keyboard.dismiss()
@@ -1359,6 +1394,7 @@ export default function CreatePostScreen() {
     setStructuredData([])
     setLastRoutineWorkout(null)
     setFinalizeDescription('')
+    setFinalizeDate(new Date())
     setSelectedSong(null)
 
     lastDraftSavedAtRef.current = 0
@@ -2105,6 +2141,7 @@ export default function CreatePostScreen() {
       routineIdValue: string | null,
       descriptionValue?: string,
       parserNotesValue?: string,
+      dateValue?: Date,
     ) => {
       if (!user) {
         throw new Error('User must be authenticated to submit workouts')
@@ -2130,6 +2167,7 @@ export default function CreatePostScreen() {
         song: selectedSong,
         structuredData: isStructuredMode ? structuredData : undefined,
         isStructuredMode,
+        date: dateValue,
       })
 
       // Refresh freemium limits after successful submission
@@ -2269,6 +2307,7 @@ export default function CreatePostScreen() {
         selectedRoutine?.id ?? null,
         caption, // Pass caption as description
         parserNotes,
+        finalizeDate,
       )
       // Success - reset loading state
       isSubmittingRef.current = false
@@ -2487,14 +2526,26 @@ export default function CreatePostScreen() {
       return
     }
 
-    // Reset loading state since we're showing overlay, not submitting yet
+    // Reset loading state since we're navigating away
     isSubmittingRef.current = false
     setIsLoading(false)
 
     // Stop the workout timer before showing the finalize overlay
     pauseWorkoutTimer()
 
-    setShowFinalizeOverlay(true)
+    // Force draft persistence so the finalize screen can read it
+    persistDraft('blur')
+
+    router.push({
+      pathname: '/(stand-alone)/finalize-workout',
+      params: {
+        durationDisplay: draftStats.durationDisplay,
+        volumeValue: draftStats.volumeDisplay.value.toString(),
+        volumeUnit: draftStats.volumeDisplay.unit,
+        setsCount: draftStats.setsCount.toString(),
+        durationSeconds: workoutElapsedSeconds.toString(),
+      },
+    })
 
     trackEvent(AnalyticsEvents.WORKOUT_CREATE_SUBMITTED, {
       hasTitle: Boolean(workoutTitle.trim()),
@@ -2504,10 +2555,8 @@ export default function CreatePostScreen() {
 
   // Convert structured workout data to text format
   const convertStructuredDataToText = useCallback(
-    (data: StructuredExerciseDraft[]): string => {
+    (data: StructuredExerciseDraft[], unitDisplay: string = 'kg'): string => {
       if (!data || data.length === 0) return ''
-
-      const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
 
       return data
         .map((exercise) => {
@@ -2530,7 +2579,7 @@ export default function CreatePostScreen() {
         })
         .join('\n\n')
     },
-    [weightUnit],
+    [],
   )
 
   // Parse text around cursor to extract exercise name and sets
@@ -2983,7 +3032,8 @@ export default function CreatePostScreen() {
       isTranscribing,
       isProcessingImage,
       isLoading,
-      showAddExercise: showConvertButton,
+      showAddExercise:
+        showConvertButton || pageTutorialToolbarMode === 'force-add',
       isRestTimerActive: restTimer.isActive,
       restTimerRemaining: restTimer.remainingSeconds,
       bottomInsetOverride: bottomSafeInset,
@@ -2991,6 +3041,7 @@ export default function CreatePostScreen() {
       timerButtonRef: toolbarTimerRef,
       routineButtonRef: toolbarRoutineRef,
       searchButtonRef: toolbarSearchRef,
+      addButtonRef: toolbarAddRef,
     }),
     [
       handleScanWorkoutPress,
@@ -3005,6 +3056,7 @@ export default function CreatePostScreen() {
       isLoading,
       toolbarVisibleButtons,
       showConvertButton,
+      pageTutorialToolbarMode,
       restTimer.isActive,
       restTimer.remainingSeconds,
       bottomSafeInset,
@@ -3111,6 +3163,9 @@ export default function CreatePostScreen() {
                 />
               </TouchableOpacity>
             </LiquidGlassSurface>
+          </View>
+
+          <View style={styles.headerRightButtons}>
             <TouchableOpacity
               style={styles.headerButton}
               activeOpacity={0.7}
@@ -3123,18 +3178,6 @@ export default function CreatePostScreen() {
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
-          </View>
-
-          <View pointerEvents="none" style={styles.headerCenter}>
-            {shouldShowWorkoutTimer && (
-              <View style={styles.headerCenterContainer}>
-                <Text style={styles.headerTimerText}>
-                  {headerTimerDisplay}
-                </Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.headerRightButtons}>
             {shouldShowWorkoutTimer && (
               <TouchableOpacity
                 onPress={handleDiscardWorkout}
@@ -3184,44 +3227,43 @@ export default function CreatePostScreen() {
             bounces={true}
             automaticallyAdjustContentInsets={false}
           >
-            {/* Title Input */}
+            {/* Workout Stats Bar + Chat Button */}
             <View
-              style={styles.titleInputContainer}
+              style={styles.statsBarContainer}
               onLayout={handleTitleInputContainerLayout}
             >
-              <TextInput
-                ref={titleInputRef}
-                style={styles.titleInput}
-                placeholder={(() => {
-                  const h = new Date().getHours()
-                  return h < 12
-                    ? 'Morning Session'
-                    : h < 17
-                    ? 'Afternoon Session'
-                    : 'Evening Session'
-                })()}
-                placeholderTextColor="#999"
-                value={workoutTitle}
-                onChangeText={setWorkoutTitle}
-                editable={!isRecording && !isTranscribing}
-                maxLength={50}
-                autoFocus={false}
-                allowFontScaling={false}
-                cursorColor={colors.brandPrimary}
-                selectionColor={colors.brandPrimary}
-                onFocus={() => {
-                  if (keypadProps) {
-                    startToolbarInsetHandoff()
-                  }
-                  if (nativeKeyboardHeightRef.current > 0) {
-                    requestAnimationFrame(() => {
-                      ensureFocusedInputVisibleForNativeKeyboard(
-                        nativeKeyboardHeightRef.current,
-                      )
-                    })
-                  }
-                }}
-              />
+              <View style={styles.statsBar}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Duration
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      styles.statValueDuration,
+                      { color: colors.brandPrimary },
+                    ]}
+                  >
+                    {draftStats.durationDisplay}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Volume
+                  </Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                    {draftStats.volumeDisplay.value} {draftStats.volumeDisplay.unit}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    Sets
+                  </Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                    {draftStats.setsCount}
+                  </Text>
+                </View>
+              </View>
               <View ref={chatButtonRef} collapsable={false} onLayout={handleChatButtonLayout}>
                 <TouchableOpacity
                   style={styles.chatButton}
@@ -3463,33 +3505,6 @@ export default function CreatePostScreen() {
           message={`Unlock ${coachFirstName}'s full coaching suite, unlimited workouts, and advanced progress tracking.`}
         />
 
-        <FinalizeWorkoutOverlay
-          visible={showFinalizeOverlay}
-          onClose={() => {
-            // Modal dismissed (swipe down) - do NOT submit
-            setShowFinalizeOverlay(false)
-            isSubmittingRef.current = false
-            setIsLoading(false)
-          }}
-          onFinish={() => {
-            // "Finish" pressed - submit with caption
-            // Set submitting state FIRST to prevent race conditions
-            isSubmittingRef.current = true
-            setIsLoading(true)
-            setShowFinalizeOverlay(false)
-            submitWorkout(finalizeDescription)
-          }}
-          onAttachWithCamera={handleAttachWithCamera}
-          onAttachWithLibrary={handleAttachWithLibrary}
-          imageUri={attachedImageUri}
-          onRemoveImage={handleRemoveAttachedImage}
-          selectedSong={selectedSong}
-          onSelectSong={setSelectedSong}
-          onRemoveSong={() => setSelectedSong(null)}
-          description={finalizeDescription}
-          setDescription={setFinalizeDescription}
-          isLoading={isLoading}
-        />
       </SlideUpView>
 
       <RestTimerOverlay
@@ -3521,6 +3536,7 @@ export default function CreatePostScreen() {
       steps={pageTutorialSteps}
       visible={showPageTutorial}
       onComplete={handlePageTutorialComplete}
+      onStepPress={handlePageTutorialStepPress}
     />
     </>
   )
@@ -3567,30 +3583,6 @@ const createStyles = (
     submitButtonFilled: {
       backgroundColor: colors.brandPrimary,
       borderRadius: 22,
-    },
-    headerCenter: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      alignItems: 'center',
-      justifyContent: 'center',
-      pointerEvents: 'none',
-    },
-    headerCenterContainer: {
-      minHeight: 40,
-      minWidth: 72,
-      borderRadius: 20,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'transparent',
-    },
-    headerTimerText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      fontVariant: ['tabular-nums'],
     },
     headerLeftButtons: {
       flexDirection: 'row',
@@ -3643,23 +3635,33 @@ const createStyles = (
       position: 'relative',
       paddingBottom: 96 + insets.bottom,
     },
-    titleInputContainer: {
+    statsBarContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 12,
-      gap: 8,
+      gap: 12,
     },
-    titleInput: {
+    statsBar: {
       flex: 1,
-      fontSize: 30,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 24,
+    },
+    statItem: {
+      gap: 2,
+    },
+    statLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    statValue: {
+      fontSize: 17,
       fontWeight: '600',
-      color: colors.textPrimary,
-      lineHeight: Platform.OS === 'ios' ? 36 : 34,
-      paddingVertical: Platform.OS === 'ios' ? 6 : 4,
-      textAlign: 'left',
-      writingDirection: 'ltr',
+    },
+    statValueDuration: {
+      fontWeight: '700',
     },
     routineSelectorButton: {
       padding: 6,
