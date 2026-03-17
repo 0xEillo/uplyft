@@ -132,100 +132,116 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
 }: WorkoutSetRowProps) {
   return (
     <View style={styles.setRow}>
-      <LiquidGlassSurface
-        style={styles.setNumberBadge}
-        fallbackStyle={styles.setNumberBadgeFallback}
-        isInteractive
-      >
-        <TouchableOpacity
-          style={styles.setNumberBadgeTouch}
-          onPress={() => onToggleWarmup(exerciseIndex, setIndex)}
-          activeOpacity={0.7}
+      <View style={styles.setColSet}>
+        <LiquidGlassSurface
+          style={styles.setNumberBadge}
+          fallbackStyle={styles.setNumberBadgeFallback}
+          isInteractive
         >
-          <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
-            {displayLabel}
-          </Text>
-        </TouchableOpacity>
-      </LiquidGlassSurface>
-      <TextInput
-        ref={registerWeightRef}
-        style={[
-          styles.inlineInput,
-          isWeightSuspicious && styles.inlineInputWarning,
-        ]}
-        hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
-        placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : ''}
-        placeholderTextColor={
-          set.lastWorkoutWeight ? colors.textTertiary : colors.textPlaceholder
-        }
-        showSoftInputOnFocus={false}
-        keyboardType="number-pad"
-        contextMenuHidden
-        caretHidden={false}
-        value={set.weight}
-        selection={
-          isWeightFocused
-            ? { start: set.weight.length, end: set.weight.length }
-            : undefined
-        }
-        onChangeText={(value) => onWeightChange(exerciseIndex, setIndex, value)}
-        cursorColor={colors.brandPrimary}
-        selectionColor={colors.brandPrimary}
-        onSelectionChange={(event) => {
-          if (onSelectionWeightChange) {
-            const { start, end } = event.nativeEvent.selection
-            onSelectionWeightChange(start, end, set.weight.length)
+          <TouchableOpacity
+            style={styles.setNumberBadgeTouch}
+            onPress={() => onToggleWarmup(exerciseIndex, setIndex)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
+              {displayLabel}
+            </Text>
+          </TouchableOpacity>
+        </LiquidGlassSurface>
+      </View>
+
+      <View style={styles.setColPrev}>
+        <Text style={styles.previousText} numberOfLines={1}>
+          {set.lastWorkoutWeight && set.lastWorkoutReps
+            ? `${set.lastWorkoutWeight}${unitDisplay} x ${set.lastWorkoutReps}`
+            : targetText
+            ? `Target: ${targetText.trim().replace(/^\(|\)$/g, '')}`
+            : '-'}
+        </Text>
+      </View>
+
+      <View style={styles.setColInput}>
+        <TextInput
+          ref={registerWeightRef}
+          style={[
+            styles.boxInput,
+            isWeightFocused && styles.boxInputFocused,
+            isWeightSuspicious && styles.boxInputWarning,
+          ]}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
+          placeholderTextColor={colors.textPlaceholder}
+          showSoftInputOnFocus={false}
+          keyboardType="number-pad"
+          contextMenuHidden
+          caretHidden={false}
+          value={set.weight}
+          selection={
+            isWeightFocused
+              ? { start: set.weight.length, end: set.weight.length }
+              : undefined
           }
-        }}
-        onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
-        onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
-        onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
-      />
-      <Text style={styles.setText}> {unitDisplay} x </Text>
-      <TextInput
-        ref={registerRepsRef}
-        style={styles.inlineInput}
-        hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
-        placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : ''}
-        placeholderTextColor={
-          set.lastWorkoutReps ? colors.textTertiary : colors.textPlaceholder
-        }
-        showSoftInputOnFocus={false}
-        keyboardType="number-pad"
-        contextMenuHidden
-        caretHidden={false}
-        value={set.reps}
-        selection={
-          isRepsFocused
-            ? { start: set.reps.length, end: set.reps.length }
-            : undefined
-        }
-        onChangeText={(value) => onRepsChange(exerciseIndex, setIndex, value)}
-        cursorColor={colors.brandPrimary}
-        selectionColor={colors.brandPrimary}
-        onSelectionChange={(event) => {
-          if (onSelectionRepsChange) {
-            const { start, end } = event.nativeEvent.selection
-            onSelectionRepsChange(start, end, set.reps.length)
+          onChangeText={(value) => onWeightChange(exerciseIndex, setIndex, value)}
+          cursorColor={colors.brandPrimary}
+          selectionColor={colors.brandPrimary}
+          onSelectionChange={(event) => {
+            if (onSelectionWeightChange) {
+              const { start, end } = event.nativeEvent.selection
+              onSelectionWeightChange(start, end, set.weight.length)
+            }
+          }}
+          onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
+          onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
+          onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
+        />
+      </View>
+
+      <View style={styles.setColInput}>
+        <TextInput
+          ref={registerRepsRef}
+          style={[
+            styles.boxInput,
+            isRepsFocused && styles.boxInputFocused,
+          ]}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '-'}
+          placeholderTextColor={colors.textPlaceholder}
+          showSoftInputOnFocus={false}
+          keyboardType="number-pad"
+          contextMenuHidden
+          caretHidden={false}
+          value={set.reps}
+          selection={
+            isRepsFocused
+              ? { start: set.reps.length, end: set.reps.length }
+              : undefined
           }
-        }}
-        onPressIn={() => onPressIn(exerciseIndex, setIndex, 'reps')}
-        onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
-        onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
-      />
-      <Text style={styles.setText}> reps</Text>
-      {targetText ? <Text style={styles.targetText}>{targetText}</Text> : null}
-      {!compactPreview && canDelete && (
-        <View style={styles.deleteSetButtonContainer}>
+          onChangeText={(value) => onRepsChange(exerciseIndex, setIndex, value)}
+          cursorColor={colors.brandPrimary}
+          selectionColor={colors.brandPrimary}
+          onSelectionChange={(event) => {
+            if (onSelectionRepsChange) {
+              const { start, end } = event.nativeEvent.selection
+              onSelectionRepsChange(start, end, set.reps.length)
+            }
+          }}
+          onPressIn={() => onPressIn(exerciseIndex, setIndex, 'reps')}
+          onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
+          onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
+        />
+      </View>
+
+      <View style={styles.setColAction}>
+        {!compactPreview && canDelete && (
           <TouchableOpacity
             style={styles.deleteSetButton}
             onPress={() => onDeleteSet(exerciseIndex, setIndex)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+            <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   )
 })
@@ -1599,6 +1615,17 @@ export function StructuredWorkoutInput({
             {/* Sets as inline text with inputs - hide when dragging for cleaner look */}
             {!isDragging && (
               <>
+                {exercise.sets.length > 0 && (
+                  <View style={styles.setHeaderRow}>
+                    <Text style={[styles.setHeaderText, styles.setColSet]}>SET</Text>
+                    <Text style={[styles.setHeaderText, styles.setColPrev]}>PREVIOUS</Text>
+                    <Text style={[styles.setHeaderText, styles.setColInput]}>
+                      {unitDisplay.toUpperCase()}
+                    </Text>
+                    <Text style={[styles.setHeaderText, styles.setColInput]}>REPS</Text>
+                    <View style={styles.setColAction} />
+                  </View>
+                )}
                 {(() => {
                   let workingSetNumber = 0
                   return exercise.sets.map((set, setIndex) => {
@@ -1669,12 +1696,12 @@ export function StructuredWorkoutInput({
                     <TouchableOpacity
                       style={styles.addSetButton}
                       onPress={() => handleAddSet(exerciseIndex)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
                     >
                       <Ionicons
-                        name="add-circle-outline"
-                        size={18}
-                        color={colors.brandPrimary}
+                        name="add"
+                        size={20}
+                        color={colors.textPrimary}
                       />
                       <Text style={styles.addSetText}>Add set</Text>
                     </TouchableOpacity>
@@ -1687,11 +1714,11 @@ export function StructuredWorkoutInput({
                         onPress={() => {
                           void handleInsertWarmupSets(exerciseIndex)
                         }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        activeOpacity={0.7}
                       >
                         <Ionicons
-                          name="flame-outline"
-                          size={16}
+                          name="flame"
+                          size={18}
                           color={colors.statusWarning}
                         />
                         <Text style={styles.addWarmupText}>Add warm-ups</Text>
@@ -1732,7 +1759,7 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: compactPreview ? 2 : 4,
+      marginBottom: compactPreview ? 4 : 8,
     },
     exerciseNameRow: {
       flex: 1,
@@ -1766,20 +1793,52 @@ const createStyles = (
       fontWeight: '400',
       marginTop: compactPreview ? 2 : 4,
     },
+    setHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingBottom: 8,
+      paddingHorizontal: 4,
+    },
+    setHeaderText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      textAlign: 'center',
+    },
+    setColSet: {
+      width: 44,
+      alignItems: 'center',
+    },
+    setColPrev: {
+      flex: 1,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+    },
+    setColInput: {
+      width: 68,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    setColAction: {
+      width: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     setRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: compactPreview ? 1 : 2,
-      lineHeight: compactPreview ? 20 : 24,
+      marginBottom: compactPreview ? 4 : 8,
       width: '100%',
+      paddingHorizontal: 4,
     },
     setNumberBadge: {
-      width: compactPreview ? 20 : 24,
-      height: compactPreview ? 20 : 24,
-      borderRadius: compactPreview ? 10 : 12,
+      width: compactPreview ? 24 : 28,
+      height: compactPreview ? 24 : 28,
+      borderRadius: compactPreview ? 12 : 14,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: compactPreview ? 6 : 8,
     },
     setNumberBadgeFallback: {
       backgroundColor: colors.border,
@@ -1791,72 +1850,81 @@ const createStyles = (
       alignItems: 'center',
     },
     setNumberText: {
-      fontSize: compactPreview ? 11 : 12,
+      fontSize: compactPreview ? 12 : 13,
       fontWeight: '700',
       color: colors.textSecondary,
     },
     warmupText: {
       color: colors.statusWarning,
     },
-    setText: {
-      fontSize: compactPreview ? 15 : 17,
-      color: colors.textPrimary,
-      lineHeight: compactPreview ? 20 : 24,
-    },
-    inlineInput: {
-      minWidth: compactPreview ? 44 : 52,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      fontSize: compactPreview ? 15 : 17,
-      color: colors.textPrimary,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+    previousText: {
+      fontSize: compactPreview ? 13 : 15,
+      color: colors.textTertiary,
       textAlign: 'center',
     },
-    inlineInputWithValue: {
-      color: colors.textSecondary,
-      fontWeight: '500',
+    boxInput: {
+      width: compactPreview ? 52 : 60,
+      height: compactPreview ? 32 : 36,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle || 'transparent',
+      fontSize: compactPreview ? 15 : 17,
+      color: colors.textPrimary,
+      textAlign: 'center',
+      paddingVertical: 0,
+      paddingHorizontal: 4,
     },
-    inlineInputWarning: {
+    boxInputFocused: {
+      borderColor: colors.brandPrimary,
+      borderWidth: 1.5,
+    },
+    boxInputWarning: {
+      borderColor: colors.statusError,
       color: colors.statusError,
-      borderBottomColor: colors.statusError,
-    },
-    deleteSetButtonContainer: {
-      width: 28,
-      marginLeft: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderWidth: 1.5,
     },
     deleteSetButton: {
       padding: 4,
-    },
-    addSetButton: {
-      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: compactPreview ? 2 : 4,
+      justifyContent: 'center',
     },
     setActionsRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      marginTop: compactPreview ? 4 : 8,
+      marginTop: compactPreview ? 8 : 12,
+      paddingHorizontal: 4,
     },
-    addSetText: {
-      fontSize: compactPreview ? 13 : 15,
-      color: colors.brandPrimary,
-      marginLeft: 4,
-      fontWeight: '500',
-    },
-    addWarmupButton: {
+    addSetButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: compactPreview ? 2 : 4,
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 24,
+      paddingVertical: 10,
+    },
+    addSetText: {
+      fontSize: 15,
+      color: colors.textPrimary,
+      fontWeight: '600',
+      marginLeft: 6,
+    },
+    addWarmupButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 24,
+      paddingVertical: 10,
     },
     addWarmupText: {
-      fontSize: compactPreview ? 13 : 15,
+      fontSize: 15,
       color: colors.statusWarning,
-      marginLeft: 4,
-      fontWeight: '500',
+      fontWeight: '600',
+      marginLeft: 6,
     },
     // Drag and drop styles
     exerciseBlockDragging: {
