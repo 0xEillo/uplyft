@@ -42,7 +42,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Body from 'react-native-body-highlighter'
+import Body from '@/components/PatchedBodyHighlighter'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 

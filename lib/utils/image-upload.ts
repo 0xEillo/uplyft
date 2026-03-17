@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import * as ImageManipulator from 'expo-image-manipulator'
 
 // Constants
 const WORKOUT_IMAGES_BUCKET = 'workout-images' as const
@@ -13,13 +14,20 @@ const WORKOUT_IMAGES_BUCKET = 'workout-images' as const
  */
 export async function uploadWorkoutImage(uri: string, userId: string): Promise<string> {
   try {
+    // Process image to ensure it's a JPEG (fixes HEIC upload issues on iOS)
+    const processedImage = await ImageManipulator.manipulateAsync(
+      uri,
+      [],
+      { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
+    )
+
     // Fetch the image as array buffer
-    const response = await fetch(uri)
+    const response = await fetch(processedImage.uri)
     const arrayBuffer = await response.arrayBuffer()
     const fileData = new Uint8Array(arrayBuffer)
 
     // Create unique file name
-    const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
+    const fileExt = 'jpeg'
     const fileName = `${userId}-${Date.now()}.${fileExt}`
     const filePath = `${WORKOUT_IMAGES_BUCKET}/${fileName}`
 
@@ -27,7 +35,7 @@ export async function uploadWorkoutImage(uri: string, userId: string): Promise<s
     const { error: uploadError } = await supabase.storage
       .from(WORKOUT_IMAGES_BUCKET)
       .upload(filePath, fileData, {
-        contentType: `image/${fileExt}`,
+        contentType: `image/jpeg`,
         upsert: false,
       })
 

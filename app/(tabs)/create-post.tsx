@@ -603,6 +603,7 @@ export default function CreatePostScreen() {
   const keypadTapShieldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
+  const selectedSongRef = useRef<WorkoutSong | null>(selectedSong)
   const structuredDataRef = useRef(structuredData)
   const isStructuredModeRef = useRef(isStructuredMode)
   const selectedRoutineIdRef = useRef<string | null>(null)
@@ -1211,6 +1212,7 @@ export default function CreatePostScreen() {
       void compactWorkoutDraft({
         notes: notesRef.current,
         title: titleRef.current,
+        song: selectedSongRef.current,
         structuredData: structuredDataRef.current,
         isStructuredMode: isStructuredModeRef.current,
         selectedRoutineId: routineIdToSave,
@@ -1263,6 +1265,10 @@ export default function CreatePostScreen() {
   }, [workoutTitle])
 
   useEffect(() => {
+    selectedSongRef.current = selectedSong
+  }, [selectedSong])
+
+  useEffect(() => {
     structuredDataRef.current = structuredData
   }, [structuredData])
 
@@ -1294,6 +1300,7 @@ export default function CreatePostScreen() {
   }, [
     notes,
     workoutTitle,
+    selectedSong,
     structuredData,
     isStructuredMode,
     selectedRoutine?.id,
@@ -1625,6 +1632,7 @@ export default function CreatePostScreen() {
     void saveWorkoutDraft({
       notes,
       title: routineTitleToSave,
+      song: selectedSongRef.current,
       structuredData: structuredToSave,
       isStructuredMode: true,
       selectedRoutineId: routine.id,
@@ -1787,6 +1795,10 @@ export default function CreatePostScreen() {
 
       if (plan.title !== undefined) {
         setWorkoutTitle(plan.title)
+      }
+
+      if (plan.song !== undefined) {
+        setSelectedSong(plan.song)
       }
 
       if (plan.structuredData) {
@@ -1966,6 +1978,7 @@ export default function CreatePostScreen() {
       void saveWorkoutDraftPatch({
         notes,
         title: workoutTitle,
+        song: selectedSong,
         structuredData,
         isStructuredMode,
         selectedRoutineId: routineIdToSave,
@@ -2010,6 +2023,7 @@ export default function CreatePostScreen() {
     logDraftDebug,
     notes,
     workoutTitle,
+    selectedSong,
     structuredData,
     isStructuredMode,
     selectedRoutine?.id,

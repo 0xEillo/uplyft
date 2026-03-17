@@ -61,8 +61,29 @@ module.exports = function withCustomLiveActivity(config) {
       }
     }
 
+    ensureLiveActivityEntitlementsMutationAllowed(cfg.modResults)
+
     return cfg
   })
+}
+
+function ensureLiveActivityEntitlementsMutationAllowed(xcodeProject) {
+  const configurations = xcodeProject.pbxXCBuildConfigurationSection()
+
+  for (const key of Object.keys(configurations)) {
+    if (key.endsWith('_comment')) {
+      continue
+    }
+
+    const config = configurations[key]
+    const buildSettings = config.buildSettings
+
+    if (!buildSettings || buildSettings.INFOPLIST_FILE !== 'LiveActivity/Info.plist') {
+      continue
+    }
+
+    buildSettings.CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = 'YES'
+  }
 }
 
 function copyDirSync(src, dest) {

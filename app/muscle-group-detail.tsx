@@ -7,49 +7,41 @@
 
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
-import { LevelBadge } from '@/components/LevelBadge'
-import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideUpView } from '@/components/slide-up-view'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
-import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
 import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
-import { getStrengthGender } from '@/lib/strength-progress'
 import {
   getTrackableExercisesForDisplayGroup,
   isDisplayStrengthGroup,
 } from '@/lib/strength-display-groups'
-import {
-    getStrengthStandard,
-    hasStrengthStandards,
-} from '@/lib/strength-standards'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const TIER_ONE_ICON_COLOR = '#8E8E93'
 
 export default function MuscleGroupDetailScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
-  const { profile } = useProfile()
   const [shouldExit, setShouldExit] = useState(false)
   const isIOSFormSheet = Platform.OS === 'ios'
-  const [showLevelSheet, setShowLevelSheet] = useState(false)
 
   const params = useLocalSearchParams<{
     groupDisplayName: string
@@ -81,24 +73,6 @@ export default function MuscleGroupDetailScreen() {
   }, [groupData])
 
   const allMuscleExercises = useMemo(() => {
-    const getStrengthInfo = (exerciseName: string, max1RM: number) => {
-      const strengthGender = getStrengthGender(profile?.gender)
-      if (!strengthGender || !profile?.weight_kg) {
-        return null
-      }
-
-      if (!hasStrengthStandards(exerciseName)) {
-        return null
-      }
-
-      return getStrengthStandard(
-        exerciseName,
-        strengthGender,
-        profile.weight_kg,
-        max1RM,
-      )
-    }
-
     if (!bodyPartSlug) return []
     const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
     if (!dbMuscle) return []
@@ -118,19 +92,18 @@ export default function MuscleGroupDetailScreen() {
           exerciseId: userExercise?.exerciseId || config.id,
           exerciseName: config.name,
           gifUrl: userExercise?.gifUrl || config.gifUrl || null,
-          max1RM: userExercise?.max1RM || 0,
           isDone: !!userExercise,
-          strengthInfo: userExercise
-            ? getStrengthInfo(config.name, userExercise.max1RM)
-            : null,
+          isTierOne: config.tier === 1,
         }
       })
       .sort((a, b) => {
+        if (a.isTierOne && !b.isTierOne) return -1
+        if (!a.isTierOne && b.isTierOne) return 1
         if (a.isDone && !b.isDone) return -1
         if (!a.isDone && b.isDone) return 1
         return a.exerciseName.localeCompare(b.exerciseName)
       })
-  }, [bodyPartSlug, filteredExercises, profile?.gender, profile?.weight_kg])
+  }, [bodyPartSlug, filteredExercises, groupData?.name])
 
   const navigateToExercise = (exerciseId: string) => {
     if (!exerciseId) return
@@ -206,34 +179,13 @@ export default function MuscleGroupDetailScreen() {
             </View>
 
             <View style={styles.exerciseRight}>
-              {exercise.isDone && exercise.strengthInfo ? (
-                <LevelBadge
-                  level={exercise.strengthInfo.level}
-                  variant="icon"
-                  size="small"
-                  showTooltipOnPress={false}
-                />
-              ) : exercise.isDone ? (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={24}
-                  color={colors.textPrimary}
-                />
+              {exercise.isTierOne ? (
+                <Ionicons name="trophy" size={16} color={TIER_ONE_ICON_COLOR} />
               ) : null}
             </View>
           </TouchableOpacity>
         ))}
 
-        <View style={styles.infoFooter}>
-          <Ionicons
-            name="shield-checkmark"
-            size={14}
-            color={colors.textTertiary}
-          />
-          <Text style={styles.infoFooterText}>
-            Levels based on global strength standards
-          </Text>
-        </View>
       </>
     )
 
@@ -242,23 +194,24 @@ export default function MuscleGroupDetailScreen() {
       <View collapsable={false} style={styles.formSheetContainer}>
         <LiquidGlassSurface style={StyleSheet.absoluteFill} />
         <View collapsable={false} style={styles.formSheetHeader}>
-          <View style={styles.headerTitleGroup}>
+          <View style={styles.headerCopy}>
             <Text style={styles.title}>{groupDisplayName}</Text>
-            {groupData && (
-              <LevelBadge 
-                level={groupData.level} 
-                size="medium" 
-                variant="icon"
-                onPress={() => setShowLevelSheet(true)}
-              />
-            )}
+            <View style={styles.tierExplainer}>
+              <Ionicons name="trophy" size={14} color={TIER_ONE_ICON_COLOR} />
+              <Text style={styles.tierExplainerText}>
+                Tier 1 lifts award the most strength points
+              </Text>
+            </View>
           </View>
         </View>
         <ScrollView
           style={styles.formSheetScroll}
           contentContainerStyle={[
             styles.formSheetScrollContent,
-            { paddingBottom: insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding },
+            {
+              paddingBottom:
+                insets.bottom + NATIVE_SHEET_LAYOUT.bottomSafeAreaPadding,
+            },
           ]}
           contentInsetAdjustmentBehavior="never"
           showsVerticalScrollIndicator={false}
@@ -273,12 +226,6 @@ export default function MuscleGroupDetailScreen() {
             listContent
           )}
         </ScrollView>
-        <LifterLevelsSheet
-          isVisible={showLevelSheet}
-          onClose={() => setShowLevelSheet(false)}
-          currentLevel={groupData?.level || 'Beginner'}
-          title={groupDisplayName}
-        />
       </View>
     )
   }
@@ -292,14 +239,14 @@ export default function MuscleGroupDetailScreen() {
   ) : (
     <View style={styles.contentContainer}>
       <View style={styles.header}>
-        <View style={styles.headerTitleGroup}>
+        <View style={styles.headerCopy}>
           <Text style={styles.title}>{groupDisplayName}</Text>
-          <LevelBadge 
-            level={groupData.level} 
-            size="medium" 
-            variant="icon"
-            onPress={() => setShowLevelSheet(true)}
-          />
+          <View style={styles.tierExplainer}>
+            <Ionicons name="trophy" size={14} color={TIER_ONE_ICON_COLOR} />
+            <Text style={styles.tierExplainerText}>
+              Tier 1 lifts award the most strength points
+            </Text>
+          </View>
         </View>
       </View>
       <ScrollView
@@ -333,12 +280,6 @@ export default function MuscleGroupDetailScreen() {
           {content}
         </View>
       </SlideUpView>
-      <LifterLevelsSheet
-        isVisible={showLevelSheet}
-        onClose={() => setShowLevelSheet(false)}
-        currentLevel={groupData?.level || 'Beginner'}
-        title={groupDisplayName}
-      />
     </View>
   )
 }
@@ -396,19 +337,27 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: NATIVE_SHEET_LAYOUT.horizontalPadding,
       paddingTop: NATIVE_SHEET_LAYOUT.topPadding,
     },
-    headerTitleGroup: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      flexWrap: 'wrap',
-      flexShrink: 1,
+    headerCopy: {
       flex: 1,
+      gap: 8,
     },
     title: {
       fontSize: NATIVE_SHEET_LAYOUT.titleFontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       flexShrink: 1,
+    },
+    tierExplainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    tierExplainerText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      lineHeight: 16,
     },
     scrollView: {
       flex: 1,
@@ -458,8 +407,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       letterSpacing: -0.2,
     },
     exerciseRight: {
+      minWidth: 48,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'flex-end',
       gap: 8,
     },
     untrackedCard: {
@@ -475,18 +426,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     untrackedText: {
       color: colors.textSecondary,
-    },
-    infoFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      marginTop: 24,
-      opacity: 0.6,
-    },
-    infoFooterText: {
-      fontSize: 11,
-      color: colors.textTertiary,
-      fontWeight: '500',
     },
   })

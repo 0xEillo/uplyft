@@ -4,9 +4,9 @@
  */
 
 export const GENERATED_EXERCISE_TIER_WEIGHTS = {
-  1: 1.2,
-  2: 0.8,
-  3: 0.5,
+  1: 1.1,
+  2: 0.7,
+  3: 0.4,
 } as const
 
 export const GENERATED_EXERCISES_WITH_STANDARDS = [

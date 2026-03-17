@@ -1,11 +1,17 @@
+import { WorkoutSongPicker } from '@/components/workout-song-picker'
+import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
+import type {
+  StructuredExerciseDraft,
+  WorkoutDraft,
+} from '@/lib/utils/workout-draft'
 import {
   clearDraft as clearWorkoutDraft,
   loadDraft as loadWorkoutDraft,
 } from '@/lib/utils/workout-draft'
+import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -18,6 +24,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -25,7 +32,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -62,8 +68,8 @@ function getDefaultWorkoutTitle(): string {
   return hour < 12
     ? 'Morning Session'
     : hour < 15
-      ? 'Afternoon Session'
-      : 'Evening Session'
+    ? 'Afternoon Session'
+    : 'Evening Session'
 }
 
 export default function FinalizeWorkoutScreen() {
@@ -80,25 +86,41 @@ export default function FinalizeWorkoutScreen() {
   const { weightUnit } = useWeightUnits()
 
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
+  const [showSongPicker, setShowSongPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [workoutDate, setWorkoutDate] = useState(new Date())
   const [imageUri, setImageUri] = useState<string | null>(null)
-  
+  const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
+
   const [isLoading, setIsLoading] = useState(false)
   const [draftLoaded, setDraftLoaded] = useState(false)
-  const [draft, setDraft] = useState<any>(null)
+  const [draft, setDraft] = useState<WorkoutDraft | null>(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   const { submitWorkout } = useSubmitWorkout()
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvent, (e) =>
+      setKeyboardHeight(e.endCoordinates.height),
+    )
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   useEffect(() => {
     async function load() {
       const savedDraft = await loadWorkoutDraft()
       if (savedDraft) {
         setDraft(savedDraft)
+        setSelectedSong(savedDraft.song ?? null)
         setTitle(
           savedDraft.title?.trim()
             ? savedDraft.title
@@ -110,20 +132,6 @@ export default function FinalizeWorkoutScreen() {
       setDraftLoaded(true)
     }
     load()
-  }, [])
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
-      setIsKeyboardVisible(true)
-    })
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setIsKeyboardVisible(false)
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
   }, [])
 
   const handleDateChange = useCallback(
@@ -150,6 +158,11 @@ export default function FinalizeWorkoutScreen() {
     })
     return `${dPart}, ${tPart}`
   }
+
+  const toggleSongPicker = useCallback(() => {
+    setShowPhotoMenu(false)
+    setShowSongPicker((current) => !current)
+  }, [])
 
   const handleAttachWithCamera = async () => {
     try {
@@ -231,7 +244,7 @@ export default function FinalizeWorkoutScreen() {
           : undefined,
         description: description,
         parserNotes: parserNotes,
-        song: null,
+        song: selectedSong,
         structuredData: draft.isStructuredMode
           ? draft.structuredData
           : undefined,
@@ -274,13 +287,15 @@ export default function FinalizeWorkoutScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => router.back()}
-          disabled={isLoading}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <LiquidGlassSurface style={styles.headerButtonGlass}>
+          <TouchableOpacity
+            style={styles.headerButtonTouchable}
+            onPress={() => router.back()}
+            disabled={isLoading}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </LiquidGlassSurface>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           Save Workout
         </Text>
@@ -291,10 +306,7 @@ export default function FinalizeWorkoutScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator
-                size="small"
-                color={colors.brandPrimary}
-              />
+              <ActivityIndicator size="small" color={colors.brandPrimary} />
             ) : (
               <Ionicons
                 name="checkmark"
@@ -312,7 +324,10 @@ export default function FinalizeWorkoutScreen() {
       >
         <ScrollView
           style={styles.scrollContainer}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 40 + keyboardHeight },
+          ]}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
@@ -405,112 +420,238 @@ export default function FinalizeWorkoutScreen() {
             </View>
           </View>
 
-        {/* Media Row */}
-        <View style={styles.mediaButtonsRow}>
-            {/* Add Photo Button */}
+          <View style={styles.mediaButtonsRow}>
+            {/* Add Photo Button or Image Preview (replaces when photo added) */}
             <View style={{ position: 'relative', zIndex: 10 }}>
-              <TouchableOpacity
-                style={[
-                  styles.mediaButtonLarge,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setShowPhotoMenu(!showPhotoMenu)}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name="images-outline"
-                  size={24}
-                  color={colors.textPrimary}
-                  style={{ marginBottom: 4 }}
-                />
-                <Text
-                  style={[
-                    styles.mediaButtonText,
-                    { color: colors.textPrimary },
-                  ]}
-                >
-                  Add a photo
-                </Text>
-              </TouchableOpacity>
-
-              {/* Custom Context Menu */}
-              {showPhotoMenu && (
-                <View
-                  style={[
-                    styles.menuContainer,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
+              {imageUri ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: imageUri }} style={styles.imagePreview} />
                   <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => {
-                      setShowPhotoMenu(false)
-                      handleAttachWithCamera()
-                    }}
+                    style={styles.removeImageButton}
+                    onPress={() => setImageUri(null)}
+                    disabled={isLoading}
                   >
-                    <Text
-                      style={[styles.menuText, { color: colors.textPrimary }]}
-                    >
-                      Take a photo
-                    </Text>
                     <Ionicons
-                      name="camera-outline"
-                      size={20}
-                      color={colors.brandPrimary}
-                    />
-                  </TouchableOpacity>
-                  <View
-                    style={[
-                      styles.menuDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => {
-                      setShowPhotoMenu(false)
-                      handleAttachWithLibrary()
-                    }}
-                  >
-                    <Text
-                      style={[styles.menuText, { color: colors.textPrimary }]}
-                    >
-                      Choose from Library...
-                    </Text>
-                    <Ionicons
-                      name="grid-outline"
-                      size={20}
-                      color={colors.brandPrimary}
+                      name="close-circle"
+                      size={24}
+                      color={colors.surface}
                     />
                   </TouchableOpacity>
                 </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.mediaButtonLarge,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      setShowSongPicker(false)
+                      setShowPhotoMenu((current) => !current)
+                    }}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name="images-outline"
+                      size={24}
+                      color={colors.textPrimary}
+                      style={{ marginBottom: 4 }}
+                    />
+                    <Text
+                      style={[
+                        styles.mediaButtonText,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
+                      Add a photo
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showPhotoMenu && (
+                    <View
+                      style={[
+                        styles.menuContainer,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowPhotoMenu(false)
+                          handleAttachWithCamera()
+                        }}
+                      >
+                        <Text
+                          style={[styles.menuText, { color: colors.textPrimary }]}
+                        >
+                          Take a photo
+                        </Text>
+                        <Ionicons
+                          name="camera-outline"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      </TouchableOpacity>
+                      <View
+                        style={[
+                          styles.menuDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowPhotoMenu(false)
+                          handleAttachWithLibrary()
+                        }}
+                      >
+                        <Text
+                          style={[styles.menuText, { color: colors.textPrimary }]}
+                        >
+                          Choose from Library...
+                        </Text>
+                        <Ionicons
+                          name="grid-outline"
+                          size={20}
+                          color={colors.brandPrimary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
               )}
             </View>
 
-            {/* Attached Image Preview */}
-            {imageUri && (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => setImageUri(null)}
-                  disabled={isLoading}
+            <TouchableOpacity
+              style={[
+                styles.mediaButtonLarge,
+                {
+                  backgroundColor: selectedSong
+                    ? colors.brandPrimarySoft
+                    : colors.surface,
+                  borderColor: selectedSong
+                    ? colors.brandPrimary
+                    : colors.border,
+                },
+              ]}
+              onPress={toggleSongPicker}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name={selectedSong ? 'musical-notes' : 'musical-notes-outline'}
+                size={24}
+                color={selectedSong ? colors.brandPrimary : colors.textPrimary}
+                style={{ marginBottom: 6 }}
+              />
+              <Text
+                style={[
+                  styles.mediaButtonText,
+                  {
+                    color: selectedSong
+                      ? colors.brandPrimary
+                      : colors.textPrimary,
+                  },
+                ]}
+              >
+                {selectedSong ? 'Change song' : 'Add music'}
+              </Text>
+              {selectedSong && (
+                <Text
+                  style={[
+                    styles.mediaButtonMeta,
+                    { color: colors.textSecondary },
+                  ]}
+                  numberOfLines={2}
                 >
-                  <Ionicons
-                    name="close-circle"
-                    size={24}
-                    color={colors.surface}
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
+                  {`${selectedSong.trackName} • ${selectedSong.artistName}`}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
+
+          {(selectedSong || showSongPicker) && (
+            <View
+              style={[
+                styles.musicSection,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View style={styles.musicSectionHeader}>
+                <View style={styles.musicSectionCopy}>
+                  <Text
+                    style={[
+                      styles.musicSectionTitle,
+                      { color: colors.textPrimary },
+                    ]}
+                  >
+                    Music
+                  </Text>
+                  <Text
+                    style={[
+                      styles.musicSectionSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Add a song that captures the session.
+                  </Text>
+                </View>
+                {showSongPicker && (
+                  <TouchableOpacity
+                    onPress={() => setShowSongPicker(false)}
+                    disabled={isLoading}
+                    style={styles.musicSectionAction}
+                  >
+                    <Text
+                      style={[
+                        styles.musicSectionActionText,
+                        { color: colors.brandPrimary },
+                      ]}
+                    >
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {selectedSong && (
+                <WorkoutSongPreview
+                  song={selectedSong}
+                  onRemove={() => {
+                    setSelectedSong(null)
+                    setShowSongPicker(false)
+                  }}
+                  showAttribution={!showSongPicker}
+                  containerStyle={[
+                    styles.musicPreviewCard,
+                    {
+                      backgroundColor: colors.surfaceSubtle,
+                    },
+                  ]}
+                  artworkSize={52}
+                />
+              )}
+
+              {showSongPicker && (
+                <WorkoutSongPicker
+                  selectedSong={selectedSong}
+                  onSelectSong={(song) => {
+                    setSelectedSong(song)
+                    setShowSongPicker(false)
+                  }}
+                  isDisabled={isLoading}
+                />
+              )}
+            </View>
+          )}
 
           {/* Description Input */}
           <View style={styles.descriptionSection}>
@@ -568,7 +709,10 @@ export default function FinalizeWorkoutScreen() {
                   </Text>
                 </TouchableOpacity>
                 <Text
-                  style={[styles.datePickerTitle, { color: colors.textPrimary }]}
+                  style={[
+                    styles.datePickerTitle,
+                    { color: colors.textPrimary },
+                  ]}
                 >
                   Select Date
                 </Text>
@@ -620,9 +764,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerButton: {
-    padding: 8,
-    marginLeft: -8,
+  headerButtonGlass: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonTouchable: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 17,
@@ -650,7 +803,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 40,
   },
   titleInputRow: {
     flexDirection: 'row',
@@ -704,13 +856,15 @@ const styles = StyleSheet.create({
   },
   mediaButtonsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 32,
+    marginBottom: 20,
   },
   mediaButtonLarge: {
-    width: 140,
-    height: 140,
-    borderRadius: 16,
+    width: 120,
+    height: 120,
+    borderRadius: 14,
     borderWidth: 1,
     borderStyle: 'dashed',
     justifyContent: 'center',
@@ -719,10 +873,18 @@ const styles = StyleSheet.create({
   mediaButtonText: {
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  mediaButtonMeta: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
   imagePreviewContainer: {
-    width: 140,
-    height: 140,
+    width: 120,
+    height: 120,
     position: 'relative',
   },
   imagePreview: {
@@ -739,6 +901,42 @@ const styles = StyleSheet.create({
   },
   descriptionSection: {
     marginBottom: 24,
+  },
+  musicSection: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    gap: 16,
+    marginBottom: 32,
+  },
+  musicSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  musicSectionCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  musicSectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  musicSectionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  musicSectionAction: {
+    paddingVertical: 4,
+  },
+  musicSectionActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  musicPreviewCard: {
+    borderRadius: 18,
+    padding: 12,
   },
   visibilityRow: {
     flexDirection: 'row',

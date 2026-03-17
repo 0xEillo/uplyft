@@ -388,7 +388,14 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="lifter-level-info"
-            options={getNativeFormSheetOptions([0.5, 0.75])}
+            options={
+              Platform.OS === 'ios'
+                ? {
+                    ...getNativeFormSheetOptions([0.5, 0.75]),
+                    sheetInitialDetentIndex: 1,
+                  }
+                : transparentModalFallback
+            }
           />
           <Stack.Screen
             name="muscle-group-detail"

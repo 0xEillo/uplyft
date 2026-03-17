@@ -38,7 +38,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import Body from 'react-native-body-highlighter'
+import Body from '@/components/PatchedBodyHighlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Mapping from database muscle group names to body part slugs for highlighting

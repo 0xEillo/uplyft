@@ -19,10 +19,10 @@ import {
   type BodyPartSlug,
 } from "@/lib/body-mapping";
 import {
+  EXERCISE_TIER_WEIGHTS,
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
   isRepBasedExercise,
-  TIER2_WEIGHT,
 } from "@/lib/exercise-standards-config";
 import {
   calculateExerciseStrengthPoints,
@@ -58,7 +58,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Body from "react-native-body-highlighter";
+import Body from "@/components/PatchedBodyHighlighter";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STRENGTH_MUSCLE_TAP_DISCOVERED_KEY = "@strength_muscle_tap_discovered";
@@ -337,8 +337,8 @@ export function StrengthBodyView({
     const baseRows = trackedExercisesWithProgress.map((exercise) => {
       const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName);
       const canonicalName = config?.name ?? exercise.exerciseName;
-      const tier = config?.tier === 1 ? 1 : 2;
-      const tierWeight = tier === 1 ? 1 : TIER2_WEIGHT;
+      const tier = config?.tier ?? 3;
+      const tierWeight = EXERCISE_TIER_WEIGHTS[tier];
 
       const specificMuscle =
         EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null;
@@ -444,7 +444,7 @@ export function StrengthBodyView({
         const targetWeight = config.isRepBased
           ? reliableTarget.multiplier
           : Math.ceil(bodyweightKg * reliableTarget.multiplier);
-        const tier = config.tier === 1 ? 1 : 2;
+        const tier = config.tier ?? 3;
 
         const forgedExercise: TrackedExerciseWithProgress = {
           exerciseId: config.id,
@@ -483,7 +483,7 @@ export function StrengthBodyView({
       )
       .map((row) => {
         const targetWeight = row.exercise.targetWeight ?? row.exercise.max1RM;
-        const tierWeight = row.tier === 1 ? 1 : TIER2_WEIGHT;
+        const tierWeight = EXERCISE_TIER_WEIGHTS[row.tier];
         const groupWeight = row.focusGroup
           ? FOCUS_GROUP_WEIGHTS[row.focusGroup]
           : 0.08;
@@ -546,7 +546,8 @@ export function StrengthBodyView({
             Math.pow(progressToLevelUp, 1.4) * 0.72 + distanceFactor * 0.28,
           ),
         );
-        const tierFactor = row.tier === 1 ? 1 : 0.72;
+        const tierFactor =
+          row.tier === 1 ? 1 : row.tier === 2 ? 0.78 : 0.64;
 
         const lastTrainedTime = row.exercise.lastTrainedAt
           ? new Date(row.exercise.lastTrainedAt).getTime()
@@ -839,15 +840,11 @@ export function StrengthBodyView({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
+        <View
           style={[
             styles.heroCard,
             { borderColor: `${priorityPointsColor}${isDark ? "55" : "66"}` },
           ]}
-          activeOpacity={0.92}
-          onPress={() => setShowLevelsSheet(true)}
-          onLongPress={() => setShowShareSheet(true)}
-          delayLongPress={400}
         >
           {!isDark && (
             <View
@@ -906,11 +903,19 @@ export function StrengthBodyView({
                   />
                 </View>
               </View>
-              <LevelBadge
-                level={overallLevel?.balancedLevel ?? "Untrained"}
-                size="hero"
-                showTooltipOnPress={false}
-              />
+              <TouchableOpacity
+                onPress={() => setShowLevelsSheet(true)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel="Open lifter levels"
+              >
+                <LevelBadge
+                  level={overallLevel?.balancedLevel ?? "Untrained"}
+                  size="hero"
+                  showTooltipOnPress={false}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -944,7 +949,7 @@ export function StrengthBodyView({
               ))}
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
 
         {shouldShowPrioritySection && (
           <>

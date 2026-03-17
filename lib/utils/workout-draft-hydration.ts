@@ -3,6 +3,7 @@ import type {
   StructuredExerciseDraft,
   WorkoutDraft,
 } from '@/lib/utils/workout-draft'
+import type { WorkoutSong } from '@/types/music'
 
 export type RoutineSource = 'route' | 'draft' | null
 
@@ -27,6 +28,7 @@ export interface HydrationPlan {
   shouldApplyHydration: boolean
   notes?: string
   title?: string
+  song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
   shouldHydrateTimer: boolean
@@ -71,6 +73,8 @@ export function buildHydrationPlan({
     Boolean(pending?.notes) ||
     Boolean(draft?.title?.trim()) ||
     Boolean(pending?.title) ||
+    Boolean(draft?.song) ||
+    Boolean(pending?.song) ||
     hasStructuredData ||
     typeof draft?.isStructuredMode === 'boolean' ||
     Boolean(effectiveRoutineId) ||
@@ -92,6 +96,15 @@ export function buildHydrationPlan({
     title = draft.title
   } else if (pending?.title) {
     title = pending.title
+  }
+
+  let song: WorkoutSong | null | undefined
+  if (draft?.song) {
+    song = draft.song
+  } else if (pending?.song) {
+    song = pending.song
+  } else if (draft?.song === null) {
+    song = null
   }
 
   let structuredData: StructuredExerciseDraft[] | undefined
@@ -127,6 +140,7 @@ export function buildHydrationPlan({
     shouldApplyHydration,
     notes,
     title,
+    song,
     structuredData,
     isStructuredMode,
     shouldHydrateTimer,

@@ -40,6 +40,7 @@ export interface StructuredExerciseDraft {
 export interface WorkoutDraft {
   notes: string
   title: string
+  song?: WorkoutSong | null
   structuredData?: StructuredExerciseDraft[]
   isStructuredMode?: boolean
   selectedRoutineId?: string | null
@@ -81,6 +82,10 @@ function applyPatch(base: WorkoutDraft, patch: DraftPatch): WorkoutDraft {
     ...patch,
     notes: patch.notes ?? base.notes ?? '',
     title: patch.title ?? base.title ?? '',
+    song:
+      patch.song === null || patch.song
+        ? patch.song
+        : base.song ?? null,
     structuredData: Array.isArray(patch.structuredData)
       ? patch.structuredData
       : base.structuredData ?? [],
@@ -148,6 +153,7 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
 
   const notesLength = draft.notes?.trim().length ?? 0
   const titleLength = draft.title?.trim().length ?? 0
+  const hasSong = Boolean(draft.song)
 
   // Consider a routine/template selection as content so we don't drop it on navigation
   const hasRoutineSelection =
@@ -178,6 +184,7 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
   return (
     notesLength > 0 ||
     titleLength > 0 ||
+    hasSong ||
     hasStructuredSkeleton ||
     hasRoutineSelection ||
     hasTimerState
@@ -196,6 +203,7 @@ export async function loadDraft(): Promise<WorkoutDraft | null> {
   let merged: WorkoutDraft = {
     notes: snapshot?.notes ?? '',
     title: snapshot?.title ?? '',
+    song: snapshot?.song ?? null,
     structuredData: Array.isArray(snapshot?.structuredData)
       ? snapshot?.structuredData
       : [],
@@ -236,6 +244,7 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
   const {
     notes,
     title,
+    song = null,
     structuredData = [],
     isStructuredMode = false,
     selectedRoutineId = null,
@@ -247,6 +256,7 @@ export async function saveDraft(draft: WorkoutDraft): Promise<void> {
   const normalized: WorkoutDraft = {
     notes: notes ?? '',
     title: title ?? '',
+    song,
     structuredData: Array.isArray(structuredData) ? structuredData : [],
     isStructuredMode,
     selectedRoutineId,
@@ -294,6 +304,7 @@ export async function saveDraftPatch(patch: DraftPatch): Promise<void> {
     opsCount: ops.length,
     hasNotes: typeof patch.notes === 'string',
     hasTitle: typeof patch.title === 'string',
+    hasSong: 'song' in patch,
     hasStructuredData: Array.isArray(patch.structuredData),
     hasRoutine: 'selectedRoutineId' in patch,
     hasTimerStartedAt: 'timerStartedAt' in patch,

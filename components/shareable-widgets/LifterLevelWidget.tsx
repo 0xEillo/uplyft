@@ -5,7 +5,7 @@ import type { StrengthLevel } from '@/lib/strength-standards'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useMemo } from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
-import Body from 'react-native-body-highlighter'
+import Body from '@/components/PatchedBodyHighlighter'
 
 const HIDDEN_SLUGS: BodyPartSlug[] = ['hands', 'feet', 'ankles']
 

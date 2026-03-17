@@ -637,26 +637,16 @@ export default function ExerciseDetailScreen() {
               </Text>
             </View>
             <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {strengthInfo && (
-                <LevelBadge
-                  level={strengthInfo.level}
-                  size="medium-large"
-                  variant="icon"
-                  onPress={() => setShowLevelSheet(true)}
-                />
-              )}
-              {isOwner ? (
-                <GlassIconButton
-                  icon="ellipsis-horizontal"
-                  onPress={handleOptionsPress}
-                  color={colors.textPrimary}
-                  disabled={isDeleting}
-                />
-              ) : (
-                !strengthInfo && <View style={styles.headerRightSpacer} />
-              )}
-            </View>
+            {isOwner ? (
+              <GlassIconButton
+                icon="ellipsis-horizontal"
+                onPress={handleOptionsPress}
+                color={colors.textPrimary}
+                disabled={isDeleting}
+              />
+            ) : (
+              <View style={styles.headerRightSpacer} />
+            )}
           </View>
 
           <View style={styles.tabsBorder}>

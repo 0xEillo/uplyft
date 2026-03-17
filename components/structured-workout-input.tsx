@@ -988,16 +988,6 @@ export function StructuredWorkoutInput({
       const exercise = newExercises[exerciseIndex]
       if (!exercise) return
 
-      const workingWeight = await inferWorkingWeightFromExercise(exercise)
-      if (!workingWeight) {
-        Alert.alert(
-          'No Working Weight Found',
-          'Add a working-set weight first, or complete this exercise once so we can use your last tracked weight.',
-        )
-        return
-      }
-
-      await hapticAsync('medium')
       const workingSets = exercise.sets.filter((set) => !set.isWarmup)
       if (workingSets.length === 0) {
         Alert.alert(
@@ -1007,6 +997,50 @@ export function StructuredWorkoutInput({
         return
       }
 
+      const firstEditableWorkingSetIndex = exercise.sets.findIndex(
+        (set) => !set.isWarmup && !set.isBodyWeight,
+      )
+
+      const focusWorkingWeightInput = () => {
+        if (firstEditableWorkingSetIndex === -1) {
+          Alert.alert(
+            'Working Weight Needed',
+            'Add a weighted working set for this exercise before creating warm-up sets.',
+          )
+          return
+        }
+
+        keypadClosingRef.current = false
+        keypadCloseUntilRef.current = 0
+        nextPressInFlightRef.current = false
+        endFocusTransition()
+
+        setTimeout(() => {
+          const inputKey = `${exerciseIndex}-${firstEditableWorkingSetIndex}-weight`
+          const input = inputRefs.current[inputKey]
+          if (!input) return
+
+          input.blur()
+          requestAnimationFrame(() => {
+            inputRefs.current[inputKey]?.focus()
+          })
+        }, 250)
+      }
+
+      const workingWeight = await inferWorkingWeightFromExercise(exercise)
+      if (!workingWeight) {
+        Alert.alert(
+          'Working Weight Needed',
+          'Enter your working weight first so we can calculate warm-up sets for you.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Add Working Weight', onPress: focusWorkingWeightInput },
+          ],
+        )
+        return
+      }
+
+      await hapticAsync('medium')
       const exerciseMeta = exerciseLookup.findByName(exercise.name)
       const equipment = exerciseMeta?.equipment ?? null
       let previousWarmupWeight = 0
@@ -1040,6 +1074,7 @@ export function StructuredWorkoutInput({
     [
       closeStructuredInput,
       commitExercises,
+      endFocusTransition,
       formatWarmupWeight,
       getMentalRoundingStep,
       inferWorkingWeightFromExercise,
@@ -1764,7 +1799,7 @@ export function StructuredWorkoutInput({
 
                     {warmupCalculatorEnabled &&
                       !exercise.sets.some((s) => s.isWarmup) &&
-                      !exercise.sets.some((s) => s.weight.trim() !== '' || s.reps.trim() !== '') && (
+                      !(exercise.sets[0]?.reps.trim()) && (
                       <TouchableOpacity
                         style={styles.addWarmupButton}
                         onPress={() => {

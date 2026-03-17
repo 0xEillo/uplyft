@@ -121,7 +121,7 @@ describe('overall strength score', () => {
     })
 
     expect(overall.liftsTracked).toBe(6)
-    expect(overall.score).toBe(484) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
+    expect(overall.score).toBe(442) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
     expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(
       chestBest * EXERCISE_TIER_WEIGHTS[1],
       5,

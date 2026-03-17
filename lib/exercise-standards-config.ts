@@ -34,9 +34,9 @@ export interface ExerciseStandardsConfig {
 
 /** Weights applied to each exercise tier in overall strength score calculations */
 export const EXERCISE_TIER_WEIGHTS: Record<1 | 2 | 3, number> = {
-  1: 1.2,
-  2: 0.8,
-  3: 0.5,
+  1: 1.1,
+  2: 0.7,
+  3: 0.4,
 }
 
 /**

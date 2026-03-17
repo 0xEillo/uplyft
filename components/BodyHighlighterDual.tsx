@@ -3,7 +3,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import type { BodyPartSlug } from '@/lib/body-mapping'
 import { useMemo } from 'react'
 import { Dimensions, StyleSheet, View } from 'react-native'
-import Body from 'react-native-body-highlighter'
+import Body from '@/components/PatchedBodyHighlighter'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
