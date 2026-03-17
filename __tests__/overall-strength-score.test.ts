@@ -7,6 +7,7 @@ import {
     getLatestStrengthIncreaseSession,
     scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
+import { EXERCISE_TIER_WEIGHTS } from '../lib/exercise-standards-config'
 
 describe('overall strength score', () => {
   test('interpolates below beginner threshold', () => {
@@ -120,8 +121,11 @@ describe('overall strength score', () => {
     })
 
     expect(overall.liftsTracked).toBe(6)
-    expect(overall.score).toBe(418) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
-    expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(chestBest, 5)
+    expect(overall.score).toBe(484) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
+    expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(
+      chestBest * EXERCISE_TIER_WEIGHTS[1],
+      5,
+    )
   })
 
   test('applies decay after 14-day grace period', () => {
@@ -151,7 +155,9 @@ describe('overall strength score', () => {
       now,
     })
 
-    const expected = Math.round(chestPoints * 0.95 * 0.19)
+    const expected = Math.round(
+      chestPoints * EXERCISE_TIER_WEIGHTS[1] * 0.95 * 0.19,
+    )
 
     expect(overall.groupBreakdown.Chest.decayFactor).toBeCloseTo(0.95, 5)
     expect(overall.score).toBe(expected)

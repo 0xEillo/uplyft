@@ -1,8 +1,8 @@
 import {
   EXERCISE_MUSCLE_MAPPING,
+  EXERCISE_TIER_WEIGHTS,
   getExerciseNameMap,
   getTrackableExercisesForMuscle,
-  TIER2_WEIGHT,
 } from './exercise-standards-config'
 import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
 import {
@@ -214,8 +214,8 @@ export function buildSpecificMuscleGroupData<
       SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] ??
       null
 
-    const tier = exerciseNameMap.get(exercise.exerciseName)?.tier ?? 2
-    const weightedPoints = points * (tier === 1 ? 1 : TIER2_WEIGHT)
+    const tier = exerciseNameMap.get(exercise.exerciseName)?.tier ?? 3
+    const weightedPoints = points * EXERCISE_TIER_WEIGHTS[tier]
 
     ;[primaryMuscle, secondaryMuscle].forEach((muscle, index) => {
       if (!muscle) return

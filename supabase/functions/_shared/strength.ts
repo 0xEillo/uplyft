@@ -1,7 +1,7 @@
 import {
   GENERATED_EXERCISES_WITH_STANDARDS,
   GENERATED_EXERCISE_MUSCLE_MAPPING,
-  GENERATED_TIER2_WEIGHT,
+  GENERATED_EXERCISE_TIER_WEIGHTS,
 } from './generated-strength-standards.ts'
 import type { SupabaseClient } from './supabase.ts'
 
@@ -83,7 +83,7 @@ export interface ExerciseRankDetails {
   muscleGroup: string | null
   lastTrainedAt: string | null
   isRepBased: boolean
-  tier: 1 | 2
+  tier: 1 | 2 | 3
   level: StrengthLevel
   nextLevel: StrengthLevel | null
   progress: number
@@ -115,7 +115,7 @@ export interface ExerciseStandardsLookup {
   gender: StrengthGender
   bodyweightKg: number
   isRepBased: boolean
-  tier: 1 | 2
+  tier: 1 | 2 | 3
   levels: ExerciseStandardsLadderEntry[]
 }
 
@@ -139,7 +139,7 @@ interface SupportedExerciseSnapshot {
   bestSetWeightKg: number | null
   bestSetReps: number | null
   isRepBased: boolean
-  tier: 1 | 2
+  tier: 1 | 2 | 3
 }
 
 const OVERALL_STRENGTH_SCORE_CAP = 1000
@@ -520,7 +520,7 @@ function calculateOverallStrengthScore(input: {
     liftsTracked += 1
 
     const weightedPoints =
-      points * (exercise.tier === 1 ? 1 : GENERATED_TIER2_WEIGHT)
+      points * GENERATED_EXERCISE_TIER_WEIGHTS[exercise.tier]
 
     const state = groupState[overallGroup]
     state.trackedExerciseCount += 1
@@ -721,7 +721,7 @@ export function getExerciseStandardsForProfile(input: {
     gender,
     bodyweightKg,
     isRepBased,
-    tier: config.tier ?? 2,
+    tier: config.tier ?? 3,
     levels,
   }
 }
@@ -807,7 +807,7 @@ async function loadSupportedExercises(
 
       const isRepBased = isRepBasedExercise(exerciseName)
       const config = getExerciseConfig(exerciseName)
-      const tier = config?.tier ?? 2
+      const tier = config?.tier ?? 3
       const canonicalExerciseName = config?.name ?? exerciseName
 
       if (!byExerciseId.has(exerciseId)) {

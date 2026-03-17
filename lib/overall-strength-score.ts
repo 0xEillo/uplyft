@@ -1,7 +1,7 @@
 import {
     EXERCISE_MUSCLE_MAPPING,
+    EXERCISE_TIER_WEIGHTS,
     getExerciseNameMap,
-    TIER2_WEIGHT,
     type StrengthLevel,
 } from './exercise-standards-config'
 import { type StrengthGender } from './strength-progress'
@@ -288,7 +288,10 @@ export function calculateExerciseStrengthPoints(input: {
   const standards = getStandardsLadder(exerciseName, gender)
   if (!standards || standards.length === 0) return null
 
-  const ratio = estimated1RMKg / bodyweightKg
+  const config = exerciseNameMap.get(exerciseName)
+  const ratio = config?.isRepBased
+    ? estimated1RMKg
+    : estimated1RMKg / bodyweightKg
   const rawPoints = interpolatePointsFromStandards(ratio, standards)
   return clampScore(rawPoints)
 }
@@ -379,8 +382,8 @@ export function calculateOverallStrengthScore(input: {
     liftsTracked += 1
 
     const config = exerciseNameMap.get(exercise.exerciseName)
-    const tier = config?.tier || 2
-    const tierWeight = tier === 1 ? 1.0 : TIER2_WEIGHT
+    const tier = config?.tier ?? 3
+    const tierWeight = EXERCISE_TIER_WEIGHTS[tier]
     const weightedPoints = points * tierWeight
 
     const state = groupState[overallGroup]
