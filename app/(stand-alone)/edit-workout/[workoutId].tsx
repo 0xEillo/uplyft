@@ -1294,12 +1294,12 @@ export default function EditWorkoutScreen() {
                               <Text style={styles.setHeaderText}>Set</Text>
                             </View>
                             <View style={styles.setHeaderInputCol}>
-                              <Text style={styles.setHeaderText}>Reps</Text>
-                            </View>
-                            <View style={styles.setHeaderInputCol}>
                               <Text style={styles.setHeaderText}>
                                 Weight ({weightUnit})
                               </Text>
+                            </View>
+                            <View style={styles.setHeaderInputCol}>
+                              <Text style={styles.setHeaderText}>Reps</Text>
                             </View>
                             <View style={styles.setHeaderDeleteCol} />
                           </View>
@@ -1349,24 +1349,24 @@ export default function EditWorkoutScreen() {
                                     </View>
                                     <TextInput
                                       style={styles.setInput}
-                                      value={repsValue}
-                                      onChangeText={(val) =>
-                                        updateSet(set.id, 'reps', val)
-                                      }
-                                      keyboardType="decimal-pad"
-                                      placeholder="--"
-                                      placeholderTextColor={
-                                        colors.textPlaceholder
-                                      }
-                                    />
-                                    <TextInput
-                                      style={styles.setInput}
                                       value={weightValue}
                                       onChangeText={(val) =>
                                         updateSet(set.id, 'weight', val)
                                       }
                                       keyboardType="decimal-pad"
                                       placeholder="BW"
+                                      placeholderTextColor={
+                                        colors.textPlaceholder
+                                      }
+                                    />
+                                    <TextInput
+                                      style={styles.setInput}
+                                      value={repsValue}
+                                      onChangeText={(val) =>
+                                        updateSet(set.id, 'reps', val)
+                                      }
+                                      keyboardType="decimal-pad"
+                                      placeholder="--"
                                       placeholderTextColor={
                                         colors.textPlaceholder
                                       }

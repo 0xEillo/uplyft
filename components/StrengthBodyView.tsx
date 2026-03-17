@@ -669,6 +669,23 @@ export function StrengthBodyView({
     );
   }, [overallLevel]);
 
+  const levelProgressPct = useMemo(() => {
+    if (!overallLevel) return 0;
+    const currentAnchor =
+      LEVEL_POINT_ANCHORS[overallLevel.balancedLevel] ?? 0;
+    if (!overallLevel.balancedNextLevel) return 100;
+    const nextAnchor = LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel];
+    if (!nextAnchor || nextAnchor <= currentAnchor) return 100;
+    return Math.max(
+      0,
+      Math.min(
+        100,
+        ((overallLevel.score - currentAnchor) / (nextAnchor - currentAnchor)) *
+          100,
+      ),
+    );
+  }, [overallLevel]);
+
   const priorityPointsColor = getLevelColor(
     overallLevel?.balancedLevel ?? "Untrained",
   );
@@ -783,7 +800,7 @@ export function StrengthBodyView({
     [muscleGroupMap, router],
   );
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, isDark);
 
   // Determine gender for body display
   const bodyGender = useBodyDiagramGender();
@@ -793,171 +810,118 @@ export function StrengthBodyView({
     <>
       {/* Body Section */}
       <View style={styles.bodySection}>
-        {/* Side-by-Side Body Highlighter */}
-        <BodyHighlighterDual
-          bodyData={bodyData}
-          gender={bodyGender}
-          colors={bodyColors}
-          onBodyPartPress={handleBodyPartPress}
-        />
-
-        {!hasDiscoveredMuscleTap && (
-          <Text style={styles.bodyHint}>
-            Tap the muscles to reveal exercises with standards.
-          </Text>
-        )}
-
-        {/* Integrated Legend Key - Directly under the chart */}
-        <View style={styles.integratedLegend}>
-          <View style={styles.legendGrid}>
-            {(
-              [
-                "Beginner",
-                "Novice",
-                "Intermediate",
-                "Advanced",
-                "Elite",
-                "World Class",
-              ] as StrengthLevel[]
-            ).map((level) => (
-              <LevelBadge
-                key={level}
-                level={level}
-                variant="pill"
-                size="small"
+        {/* ── SECTION 1: Gamified Hero Card ── */}
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={styles.sectionHeaderText}>Lifter Level</Text>
+            <TouchableOpacity
+              onPress={() => openSectionInfo("lifter-level")}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={18}
+                color={colors.textSecondary}
               />
-            ))}
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Overall Level Card - Gamified Rank */}
-        {/* Overall Level Card - Gamified Rank */}
-        {overallLevel ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Text style={styles.sectionHeaderText}>Lifter Level</Text>
-                <TouchableOpacity
-                  onPress={() => openSectionInfo("lifter-level")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        <TouchableOpacity
+          style={[
+            styles.heroCard,
+            { borderColor: `${priorityPointsColor}${isDark ? "55" : "44"}` },
+          ]}
+          activeOpacity={0.92}
+          onPress={() => setShowLevelsSheet(true)}
+        >
+          {/* Level header */}
+          <View style={styles.heroPadded}>
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroLevelLeft}>
+                <Text
+                  style={[
+                    styles.heroLevelName,
+                    { color: priorityPointsColor },
+                  ]}
                 >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.levelCard,
-                {
-                  borderColor: `${getLevelColor(overallLevel.balancedLevel)}66`,
-                },
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setShowLevelsSheet(true)}
-            >
-              <View style={styles.levelCardContent}>
-                <View style={styles.levelCardLeft}>
-                  <Text style={styles.levelCardValue}>
-                    {overallLevel.balancedLevel}
-                  </Text>
-                  <View style={styles.levelCardMetaRow}>
-                    <View style={styles.pointsDisplay}>
-                      <Text
-                        style={[
-                          styles.pointsCurrent,
-                          { color: getLevelColor(overallLevel.balancedLevel) },
-                        ]}
-                      >
-                        {Math.round(overallLevel.score)}
-                      </Text>
-                      {overallLevel.balancedNextLevel ? (
-                        <>
-                          <Text style={styles.pointsSlash}>/</Text>
-                          <Text style={styles.pointsTotal}>
-                            {
-                              LEVEL_POINT_ANCHORS[
-                                overallLevel.balancedNextLevel
-                              ]
-                            }
-                          </Text>
-                        </>
-                      ) : (
-                        <Text style={styles.pointsTotal}> pts</Text>
-                      )}
-                    </View>
-                    {showOverallProgressDelta && (
-                      <Text style={styles.scoreDeltaText}>
-                        +{overallLevel.progressDelta} pts
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                <LevelBadge
-                  level={overallLevel.balancedLevel}
-                  size="hero"
-                  showTooltipOnPress={false}
-                />
-              </View>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={styles.sectionHeader}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Text style={styles.sectionHeaderText}>Lifter Level</Text>
-                <TouchableOpacity
-                  onPress={() => openSectionInfo("lifter-level")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.levelCard,
-                {
-                  borderColor: `${getLevelColor("Untrained")}66`,
-                },
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setShowLevelsSheet(true)}
-            >
-              <View style={styles.levelCardContent}>
-                <View style={styles.levelCardLeft}>
+                  {overallLevel?.balancedLevel ?? "Unranked"}
+                </Text>
+                <View style={styles.heroXpRow}>
                   <Text
                     style={[
-                      styles.levelCardValue,
-                      { color: colors.textSecondary },
+                      styles.heroXpCurrent,
+                      { color: priorityPointsColor },
                     ]}
                   >
-                    Unranked
+                    {overallLevel ? Math.round(overallLevel.score) : "—"}
                   </Text>
-                  <View style={styles.levelCardMetaRow}>
-                    <Text style={styles.pointsTotal}>
-                      Tap to see lifter levels
+                  {overallLevel?.balancedNextLevel ? (
+                    <Text style={styles.heroXpTotal}>
+                      {"  /  "}
+                      {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]} pts
                     </Text>
-                  </View>
+                  ) : (
+                    <Text style={styles.heroXpTotal}> pts</Text>
+                  )}
+                  {showOverallProgressDelta && (
+                    <Text style={styles.heroXpDelta}>
+                      {"  +"}
+                      {overallLevel!.progressDelta}
+                    </Text>
+                  )}
                 </View>
-                <LevelBadge level="Untrained" size="hero" />
+                <View style={styles.heroProgressTrack}>
+                  <View
+                    style={[
+                      styles.heroProgressFill,
+                      {
+                        width: `${levelProgressPct}%` as any,
+                        backgroundColor: priorityPointsColor,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
-            </TouchableOpacity>
-          </>
-        )}
+              <LevelBadge
+                level={overallLevel?.balancedLevel ?? "Untrained"}
+                size="hero"
+                showTooltipOnPress={false}
+              />
+            </View>
+          </View>
+
+          {/* Body diagram — full card width */}
+          <BodyHighlighterDual
+            bodyData={bodyData}
+            gender={bodyGender}
+            colors={bodyColors}
+            onBodyPartPress={handleBodyPartPress}
+          />
+
+          {/* Bottom padded content */}
+          <View style={styles.heroPadded}>
+            {!hasDiscoveredMuscleTap && (
+              <Text style={styles.heroBodyHint}>
+                Tap muscles to reveal exercise standards
+              </Text>
+            )}
+            <View style={styles.heroLegend}>
+              {(
+                [
+                  "Beginner",
+                  "Novice",
+                  "Intermediate",
+                  "Advanced",
+                  "Elite",
+                  "World Class",
+                ] as StrengthLevel[]
+              ).map((level) => (
+                <LevelBadge key={level} level={level} variant="pill" size="small" />
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
 
         {shouldShowPrioritySection && (
           <>
@@ -1342,7 +1306,10 @@ export function StrengthBodyView({
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useThemedColors>,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -1365,80 +1332,84 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
 
-    // Level Card
-    levelCard: {
-      backgroundColor: colors.surfaceCard,
-      borderRadius: 16,
-      borderWidth: 1,
-      paddingHorizontal: 20,
-      paddingVertical: 20,
+    // ── Hero Card (Gamified top section) ──
+    heroCard: {
+      borderRadius: 22,
+      borderWidth: 1.5,
+      overflow: "hidden",
+      backgroundColor: isDark ? "#0D0D1A" : colors.surfaceCard,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowOffset: { width: 0, height: isDark ? 10 : 4 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: isDark ? 22 : 12,
+      elevation: isDark ? 12 : 4,
+      marginBottom: 0,
     },
-    levelCardContent: {
+    heroPadded: {
+      paddingHorizontal: 18,
+    },
+    heroTopRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: "flex-start",
+      paddingTop: 18,
+      paddingBottom: 14,
     },
-    levelCardLeft: {
+    heroLevelLeft: {
       flex: 1,
-      justifyContent: "center",
+      paddingRight: 12,
     },
-    levelCardValue: {
-      fontSize: 28,
-      fontWeight: "800",
-      color: colors.textPrimary,
-      letterSpacing: -0.5,
-      marginBottom: 4,
+    heroLevelName: {
+      fontSize: 34,
+      fontWeight: "900",
+      letterSpacing: -1,
+      lineHeight: 38,
+      marginBottom: 8,
     },
-    levelCardMetaRow: {
+    heroXpRow: {
       flexDirection: "row",
       alignItems: "baseline",
-      gap: 8,
+      marginBottom: 10,
     },
-    pointsDisplay: {
-      flexDirection: "row",
-      alignItems: "baseline",
-    },
-    pointsCurrent: {
-      fontSize: 24,
+    heroXpCurrent: {
+      fontSize: 21,
       fontWeight: "800",
       fontVariant: ["tabular-nums"] as any,
     },
-    pointsSlash: {
-      fontSize: 18,
+    heroXpTotal: {
+      fontSize: 15,
       fontWeight: "600",
-      color: colors.textSecondary,
-      marginLeft: 2,
-    },
-    pointsTotal: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: colors.textSecondary,
+      color: isDark ? "rgba(255,255,255,0.38)" : colors.textSecondary,
       fontVariant: ["tabular-nums"] as any,
     },
-    scoreDeltaText: {
-      fontSize: 13,
+    heroXpDelta: {
+      fontSize: 12,
       fontWeight: "700",
       color: "#10B981",
-      fontVariant: ["tabular-nums"] as any,
     },
-    weakPointContainer: {
+    heroProgressTrack: {
+      height: 7,
+      backgroundColor: isDark ? "rgba(255,255,255,0.1)" : colors.border,
+      borderRadius: 999,
+      overflow: "hidden",
+    },
+    heroProgressFill: {
+      height: "100%",
+      borderRadius: 999,
+    },
+    heroBodyHint: {
+      fontSize: 11,
+      color: isDark ? "rgba(255,255,255,0.35)" : colors.textTertiary,
+      textAlign: "center",
+      marginTop: 6,
+      marginBottom: 4,
+    },
+    heroLegend: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 12,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    weakPointText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: colors.statusWarning,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 10,
+      paddingVertical: 12,
     },
 
     // Body Section - consistent 14px horizontal padding
@@ -1446,44 +1417,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       paddingHorizontal: 14,
       marginTop: -35,
-    },
-
-    bodyHint: {
-      fontSize: 11,
-      color: colors.textTertiary,
-      textAlign: "center",
-      marginTop: 4,
-      marginBottom: 10,
-    },
-    // Legend
-    integratedLegend: {
-      marginTop: 8,
-      marginBottom: 0,
-      paddingHorizontal: 0,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    legendGrid: {
-      flex: 1,
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      gap: 12,
-    },
-    legendItemCompact: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    legendDotSmall: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-    },
-    legendTextCompact: {
-      fontSize: 11,
-      color: colors.textSecondary,
-      fontWeight: "600",
     },
 
     // Section Header

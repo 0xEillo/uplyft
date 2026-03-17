@@ -38,6 +38,7 @@ export function BlurredHeader({
   if (disableBlur || Platform.OS === 'android') {
     return (
       <View
+        pointerEvents="box-none"
         style={[
           styles.outerContainer,
           { paddingTop: insets.top },
@@ -54,6 +55,7 @@ export function BlurredHeader({
     <View style={[styles.outerContainer, style]} pointerEvents="box-none">
       {/* MaskedView makes the BlurView + gradient fade out smoothly */}
       <MaskedView
+        pointerEvents="none"
         style={StyleSheet.absoluteFill}
         maskElement={
           <LinearGradient
@@ -64,6 +66,7 @@ export function BlurredHeader({
         }
       >
         <BlurView
+          pointerEvents="none"
           intensity={intensity}
           tint="default"
           style={StyleSheet.absoluteFill}

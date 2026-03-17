@@ -57,6 +57,15 @@ export function convertStructuredDataToText(
     .join('\n\n')
 }
 
+function getDefaultWorkoutTitle(): string {
+  const hour = new Date().getHours()
+  return hour < 12
+    ? 'Morning Session'
+    : hour < 15
+      ? 'Afternoon Session'
+      : 'Evening Session'
+}
+
 export default function FinalizeWorkoutScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{
@@ -90,9 +99,13 @@ export default function FinalizeWorkoutScreen() {
       const savedDraft = await loadWorkoutDraft()
       if (savedDraft) {
         setDraft(savedDraft)
-        if (savedDraft.title) {
-          setTitle(savedDraft.title)
-        }
+        setTitle(
+          savedDraft.title?.trim()
+            ? savedDraft.title
+            : getDefaultWorkoutTitle(),
+        )
+      } else {
+        setTitle(getDefaultWorkoutTitle())
       }
       setDraftLoaded(true)
     }
