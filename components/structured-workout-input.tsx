@@ -53,6 +53,7 @@ interface SetData {
   weight: string
   reps: string
   isWarmup?: boolean
+  isBodyWeight?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null
@@ -80,6 +81,7 @@ interface WorkoutSetRowProps {
   set: SetData
   workingSetNumber: number
   isWarmup: boolean
+  isBodyWeight: boolean
   displayLabel: string | number
   targetText: string
   isWeightFocused: boolean
@@ -89,7 +91,7 @@ interface WorkoutSetRowProps {
   unitDisplay: string
   colors: ReturnType<typeof useThemedColors>
   styles: ReturnType<typeof createStyles>
-  onToggleWarmup: (exerciseIndex: number, setIndex: number) => void
+  onToggleSetType: (exerciseIndex: number, setIndex: number) => void
   onWeightChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
@@ -108,6 +110,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   setIndex,
   set,
   isWarmup,
+  isBodyWeight,
   displayLabel,
   targetText,
   isWeightFocused,
@@ -117,7 +120,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   unitDisplay,
   colors,
   styles,
-  onToggleWarmup,
+  onToggleSetType,
   onWeightChange,
   onRepsChange,
   onFocus,
@@ -140,10 +143,16 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
         >
           <TouchableOpacity
             style={styles.setNumberBadgeTouch}
-            onPress={() => onToggleWarmup(exerciseIndex, setIndex)}
+            onPress={() => onToggleSetType(exerciseIndex, setIndex)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.setNumberText, isWarmup && styles.warmupText]}>
+            <Text
+              style={[
+                styles.setNumberText,
+                isWarmup && styles.warmupText,
+                isBodyWeight && styles.bodyWeightText,
+              ]}
+            >
               {displayLabel}
             </Text>
           </TouchableOpacity>
@@ -175,39 +184,45 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       </View>
 
       <View style={styles.setColInput}>
-        <TextInput
-          ref={registerWeightRef}
-          style={[
-            styles.boxInput,
-            isWeightFocused && styles.boxInputFocused,
-            isWeightSuspicious && styles.boxInputWarning,
-          ]}
-          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-          placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
-          placeholderTextColor={colors.textPlaceholder}
-          showSoftInputOnFocus={false}
-          keyboardType="number-pad"
-          contextMenuHidden
-          caretHidden={false}
-          value={set.weight}
-          selection={
-            isWeightFocused
-              ? { start: set.weight.length, end: set.weight.length }
-              : undefined
-          }
-          onChangeText={(value) => onWeightChange(exerciseIndex, setIndex, value)}
-          cursorColor={colors.brandPrimary}
-          selectionColor={colors.brandPrimary}
-          onSelectionChange={(event) => {
-            if (onSelectionWeightChange) {
-              const { start, end } = event.nativeEvent.selection
-              onSelectionWeightChange(start, end, set.weight.length)
+        {isBodyWeight ? (
+          <View style={styles.boxInputPlaceholder} />
+        ) : (
+          <TextInput
+            ref={registerWeightRef}
+            style={[
+              styles.boxInput,
+              isWeightFocused && styles.boxInputFocused,
+              isWeightSuspicious && styles.boxInputWarning,
+            ]}
+            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
+            placeholderTextColor={colors.textPlaceholder}
+            showSoftInputOnFocus={false}
+            keyboardType="number-pad"
+            contextMenuHidden
+            caretHidden={false}
+            value={set.weight}
+            selection={
+              isWeightFocused
+                ? { start: set.weight.length, end: set.weight.length }
+                : undefined
             }
-          }}
-          onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
-          onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
-          onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
-        />
+            onChangeText={(value) =>
+              onWeightChange(exerciseIndex, setIndex, value)
+            }
+            cursorColor={colors.brandPrimary}
+            selectionColor={colors.brandPrimary}
+            onSelectionChange={(event) => {
+              if (onSelectionWeightChange) {
+                const { start, end } = event.nativeEvent.selection
+                onSelectionWeightChange(start, end, set.weight.length)
+              }
+            }}
+            onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
+            onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
+            onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
+          />
+        )}
       </View>
 
       <View style={styles.setColInput}>
@@ -831,12 +846,33 @@ export function StructuredWorkoutInput({
     commitExercises(newExercises)
   }
 
-  const handleToggleWarmup = async (exerciseIndex: number, setIndex: number) => {
+  const handleToggleSetType = async (
+    exerciseIndex: number,
+    setIndex: number,
+  ) => {
     await hapticAsync('light')
     const newExercises = [...exercisesRef.current]
     const set = newExercises[exerciseIndex]?.sets[setIndex]
     if (!set) return
-    set.isWarmup = !set.isWarmup
+    // Cycle: normal → warmup (W) → body weight (B) → normal
+    if (set.isWarmup) {
+      set.isWarmup = false
+      set.isBodyWeight = true
+      set.weight = ''
+      // Blur weight input before it unmounts so keypad closes
+      inputRefs.current[`${exerciseIndex}-${setIndex}-weight`]?.blur()
+      setFocusedInput((prev) =>
+        prev?.exerciseIndex === exerciseIndex &&
+        prev?.setIndex === setIndex &&
+        prev?.field === 'weight'
+          ? null
+          : prev,
+      )
+    } else if (set.isBodyWeight) {
+      set.isBodyWeight = false
+    } else {
+      set.isWarmup = true
+    }
     commitExercises(newExercises)
   }
 
@@ -1644,8 +1680,13 @@ export function StructuredWorkoutInput({
                   let workingSetNumber = 0
                   return exercise.sets.map((set, setIndex) => {
                     const isWarmup = set.isWarmup === true
+                    const isBodyWeight = set.isBodyWeight === true
                     if (!isWarmup) workingSetNumber++
-                    const displayLabel = isWarmup ? 'W' : workingSetNumber
+                    const displayLabel = isWarmup
+                      ? 'W'
+                      : isBodyWeight
+                        ? 'B'
+                        : workingSetNumber
 
                     let targetText = ''
                     if (
@@ -1667,6 +1708,7 @@ export function StructuredWorkoutInput({
                         set={set}
                         workingSetNumber={workingSetNumber}
                         isWarmup={isWarmup}
+                        isBodyWeight={isBodyWeight}
                         displayLabel={displayLabel}
                         targetText={targetText}
                         isWeightFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'weight'}
@@ -1676,7 +1718,7 @@ export function StructuredWorkoutInput({
                         unitDisplay={unitDisplay}
                         colors={colors}
                         styles={styles}
-                        onToggleWarmup={handleToggleWarmup}
+                        onToggleSetType={handleToggleSetType}
                         onWeightChange={handleWeightChange}
                         onRepsChange={handleRepsChange}
                         onFocus={handleFocus}
@@ -1870,6 +1912,13 @@ const createStyles = (
     },
     warmupText: {
       color: colors.statusWarning,
+    },
+    bodyWeightText: {
+      color: colors.textSecondary,
+    },
+    boxInputPlaceholder: {
+      width: compactPreview ? 52 : 60,
+      height: compactPreview ? 32 : 36,
     },
     previousTouchable: {
       flex: 1,

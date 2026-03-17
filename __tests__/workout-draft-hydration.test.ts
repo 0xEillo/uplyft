@@ -85,6 +85,22 @@ describe('buildHydrationPlan', () => {
     expect(plan.routeRoutineToken).toBe('routine-1:def')
   })
 
+  test('resets to empty when hydrated screen has no stored draft or pending workout', () => {
+    const plan = buildHydrationPlan({
+      draft: null,
+      pending: null,
+      selectedRoutineId: null,
+      refresh: null,
+      lastRouteRoutineToken: null,
+      hasHydrated: true,
+      lastLocalEditAt: 200,
+    })
+
+    expect(plan.shouldResetToEmpty).toBe(true)
+    expect(plan.shouldSkip).toBe(false)
+    expect(plan.shouldApplyHydration).toBe(false)
+  })
+
   test('draft notes take precedence over pending notes', () => {
     const plan = buildHydrationPlan({
       draft: { ...baseDraft, notes: 'draft note' },

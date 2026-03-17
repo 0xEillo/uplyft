@@ -292,7 +292,7 @@ export default function CreatePostScreen() {
 
   const [showRestTimer, setShowRestTimer] = useState(false)
   const restTimer = useRestTimerContext()
-  const [autoRestEnabled, setAutoRestEnabled] = useState(false)
+  const [autoRestEnabled, setAutoRestEnabled] = useState(true)
   const [autoRestDuration, setAutoRestDuration] = useState(120)
   const {
     startWorkoutActivity,

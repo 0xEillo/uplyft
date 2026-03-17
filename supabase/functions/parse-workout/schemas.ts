@@ -37,6 +37,7 @@ const structuredSetSchema = z.object({
   weight: z.union([z.string(), z.number(), z.null()]).optional(),
   reps: z.union([z.string(), z.number(), z.null()]).optional(),
   isWarmup: z.boolean().optional(),
+  isBodyWeight: z.boolean().optional(),
 })
 
 const structuredExerciseSchema = z.object({

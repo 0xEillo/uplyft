@@ -270,6 +270,7 @@ interface StructuredExerciseInput {
     weight?: string | number | null
     reps?: string | number | null
     isWarmup?: boolean
+    isBodyWeight?: boolean
   }>
 }
 
@@ -326,7 +327,7 @@ function buildStructuredParsedWorkout(
           const result = {
             set_number: setIndex + 1,
             reps: set.reps ?? null,
-            weight: set.weight ?? null,
+            weight: set.isBodyWeight === true ? null : (set.weight ?? null),
             rpe: null,
             notes: null,
             is_warmup: set.isWarmup === true,

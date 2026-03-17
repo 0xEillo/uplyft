@@ -23,6 +23,7 @@ export interface StructuredSetDraft {
   weight: string
   reps: string
   isWarmup?: boolean
+  isBodyWeight?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
   targetRepsMin?: number | null

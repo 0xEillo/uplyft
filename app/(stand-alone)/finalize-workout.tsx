@@ -229,7 +229,6 @@ export default function FinalizeWorkoutScreen() {
       // Clear draft after successful queue
       await clearWorkoutDraft('finalize-workout-submit')
 
-      router.dismissAll()
       router.replace('/(tabs)')
     } catch (error) {
       console.error('Failed to submit workout', error)

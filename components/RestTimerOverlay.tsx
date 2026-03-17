@@ -107,7 +107,7 @@ export function RestTimerOverlay({
 
   // Selection state
   const [selectedDuration, setSelectedDuration] = useState(120) // Default 2 minutes
-  const [autoRestEnabled, setAutoRestEnabled] = useState(false)
+  const [autoRestEnabled, setAutoRestEnabled] = useState(true)
 
   // Load persisted values on mount
   useEffect(() => {
@@ -118,7 +118,7 @@ export function RestTimerOverlay({
           AsyncStorage.getItem(AUTO_REST_KEY),
         ])
         if (savedDuration) setSelectedDuration(parseInt(savedDuration, 10))
-        if (savedAuto) setAutoRestEnabled(savedAuto === 'true')
+        if (savedAuto != null) setAutoRestEnabled(savedAuto === 'true')
       } catch {
         // Ignore error
       }

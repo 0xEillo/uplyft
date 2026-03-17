@@ -6,7 +6,7 @@ const WARMUP_CALCULATOR_ENABLED_KEY = '@create_post_warmup_calculator_enabled'
 const TOOLBAR_BUTTONS_KEY = '@create_post_toolbar_buttons'
 
 export function getWarmupCalculatorEnabled(): boolean {
-  return storage.getBoolean(WARMUP_CALCULATOR_ENABLED_KEY) ?? false
+  return storage.getBoolean(WARMUP_CALCULATOR_ENABLED_KEY) ?? true
 }
 
 export function setWarmupCalculatorEnabled(enabled: boolean): void {
