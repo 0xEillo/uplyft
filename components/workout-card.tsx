@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Image,
   ImageSourcePropType,
@@ -37,9 +37,17 @@ export function WorkoutCard({
   const styles = createStyles(colors, isDark)
   const [isWorkoutExpanded, setIsWorkoutExpanded] = useState(false)
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [canExpandDescription, setCanExpandDescription] = useState(false)
+  const [hasMeasuredDescription, setHasMeasuredDescription] = useState(false)
   const [expandedExerciseIndices, setExpandedExerciseIndices] = useState<
     number[]
   >([])
+
+  useEffect(() => {
+    setIsDescriptionExpanded(false)
+    setCanExpandDescription(false)
+    setHasMeasuredDescription(false)
+  }, [workout.description])
 
   const visibleExercises = isWorkoutExpanded
     ? workout.exercises
@@ -84,31 +92,32 @@ export function WorkoutCard({
 
       {/* Description */}
       {workout.description ? (
-        (() => {
-          const needsExpand = workout.description.length > 120
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                needsExpand && setIsDescriptionExpanded(!isDescriptionExpanded)
-              }
-              activeOpacity={needsExpand ? 0.7 : 1}
-              disabled={!needsExpand}
-              style={styles.descriptionWrapper}
-            >
-              <Text
-                style={styles.description}
-                numberOfLines={isDescriptionExpanded ? undefined : 2}
-              >
-                {workout.description}
-              </Text>
-              {needsExpand && (
-                <Text style={styles.descriptionMoreText}>
-                  {isDescriptionExpanded ? 'less' : 'more'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          )
-        })()
+        <TouchableOpacity
+          onPress={() =>
+            canExpandDescription &&
+            setIsDescriptionExpanded(!isDescriptionExpanded)
+          }
+          activeOpacity={canExpandDescription ? 0.7 : 1}
+          disabled={!canExpandDescription}
+          style={styles.descriptionWrapper}
+        >
+          <Text
+            style={styles.description}
+            numberOfLines={isDescriptionExpanded ? undefined : 2}
+            onTextLayout={({ nativeEvent }) => {
+              if (isDescriptionExpanded || hasMeasuredDescription) return
+              setCanExpandDescription(nativeEvent.lines.length > 2)
+              setHasMeasuredDescription(true)
+            }}
+          >
+            {workout.description}
+          </Text>
+          {canExpandDescription && (
+            <Text style={styles.descriptionMoreText}>
+              {isDescriptionExpanded ? 'Show less' : 'Read more'}
+            </Text>
+          )}
+        </TouchableOpacity>
       ) : null}
 
       {/* Divider */}

@@ -61,8 +61,9 @@ export function getCoach(id?: string | null): Coach {
  */
 export function getCoachTrainingGuidelines(_id?: string | null): string {
   return `TRAINING STYLE (DEFAULT FOR ALL COACHES):
-- Follow a high-intensity, low-volume approach.
+- Follow a high-intensity, low(ish)-volume approach.
 - Working sets per exercise: mostly 2; sometimes 3 for compound movements; never more than 3 working sets.
+- Try hit all muscle groups of the target split of the workout.
 - Rep targets:
   - Compound movements: 6-8 reps per working set.
   - Isolation movements: 10-12 reps per working set.
@@ -70,5 +71,8 @@ export function getCoachTrainingGuidelines(_id?: string | null): string {
 - Keep working sets high effort while maintaining clean technique.
 
 DESCRIPTION GUIDANCE:
-Write the workout "description" field like a personal trainer giving a brief 2-3 sentence overview. Include target muscles and the high-intensity, low-volume execution style.`
+- Write the workout "description" field like a personal trainer giving a brief 2-3 sentence overview.
+- Include the target muscles and the high-intensity, execution style.
+- Add a short reason for the exercise selection based on the user's stated goal, requested split, available equipment, time constraint, or current workout context.
+- Keep it specific and personal to the request without making up facts about the user.`
 }

@@ -3,8 +3,8 @@ import { WorkoutPlanningData } from '@/components/workout-planning-wizard'
 // Shared JSON schema without weight suggestions
 export const WORKOUT_JSON_SCHEMA = `{
   "title": "Workout Title",
-  "description": "Brief description",
-  "estimatedDuration": 45,
+  "description": "2-3 sentence coaching summary that explains the workout focus, how to execute, and briefly why these exercises fit the user's goal/request",
+  "estimatedDuration": 60,
   "exercises": [
     {
       "name": "Exercise Name",
@@ -41,6 +41,11 @@ Equipment Available: ${equipmentLabel}
 Custom Specifications: ${specifics || 'None'}
 
 ${trainingGuidelines || ''}
+
+DESCRIPTION REQUIREMENTS:
+- Keep the "description" field to 2-3 sentences max.
+- Briefly explain why the workout matches the user's goal, requested muscles, available equipment, or time constraint.
+- Make the rationale feel personalized to this request, but do not invent personal history or metrics.
 
 IMPORTANT: You must output ONLY a JSON object with the following structure:
 ${WORKOUT_JSON_SCHEMA}
