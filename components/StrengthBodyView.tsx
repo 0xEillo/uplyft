@@ -1,6 +1,7 @@
 import { BodyHighlighterDual } from "@/components/BodyHighlighterDual";
 import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
+import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -160,6 +161,7 @@ export function StrengthBodyView({
   } = useStrengthData();
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const [hasDiscoveredMuscleTap, setHasDiscoveredMuscleTap] = useState(false);
   const [expandedMuscleGroups, setExpandedMuscleGroups] = useState<Set<string>>(
     new Set(),
@@ -825,6 +827,16 @@ export function StrengthBodyView({
               />
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            onPress={() => setShowShareSheet(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name="share-outline"
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
@@ -834,6 +846,8 @@ export function StrengthBodyView({
           ]}
           activeOpacity={0.92}
           onPress={() => setShowLevelsSheet(true)}
+          onLongPress={() => setShowShareSheet(true)}
+          delayLongPress={400}
         >
           {/* Level header */}
           <View style={styles.heroPadded}>
@@ -1252,6 +1266,23 @@ export function StrengthBodyView({
         onClose={() => setShowLevelsSheet(false)}
         currentLevel={overallLevel?.balancedLevel || "Untrained"}
         score={overallLevel?.score || 0}
+      />
+      {/* Lifter Level Share Sheet */}
+      <LifterLevelShareSheet
+        visible={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        level={overallLevel?.balancedLevel ?? "Unranked"}
+        score={overallLevel?.score ?? 0}
+        nextLevel={overallLevel?.balancedNextLevel}
+        levelProgressPct={levelProgressPct}
+        levelColor={priorityPointsColor}
+        progressDelta={overallLevel?.progressDelta}
+        showProgressDelta={showOverallProgressDelta}
+        bodyData={bodyData}
+        bodyColors={bodyColors}
+        bodyGender={bodyGender}
+        userTag={profile?.user_tag}
+        displayName={profile?.display_name}
       />
     </>
   );
