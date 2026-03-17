@@ -842,13 +842,22 @@ export function StrengthBodyView({
         <TouchableOpacity
           style={[
             styles.heroCard,
-            { borderColor: `${priorityPointsColor}${isDark ? "55" : "44"}` },
+            { borderColor: `${priorityPointsColor}${isDark ? "55" : "66"}` },
           ]}
           activeOpacity={0.92}
           onPress={() => setShowLevelsSheet(true)}
           onLongPress={() => setShowShareSheet(true)}
           delayLongPress={400}
         >
+          {!isDark && (
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: `${priorityPointsColor}12` },
+              ]}
+              pointerEvents="none"
+            />
+          )}
           {/* Level header */}
           <View style={styles.heroPadded}>
             <View style={styles.heroTopRow}>
