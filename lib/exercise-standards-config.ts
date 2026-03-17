@@ -3847,7 +3847,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       'reverse flyes',
     ],
     tier: 2,
-    gifUrl: null,
+    gifUrl: 'EAs3xL9.gif',
     male: [
       {
         level: 'Beginner',
@@ -5216,7 +5216,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     aliases: ['Decline Sit Up'],
     tier: 2,
     isRepBased: true,
-    gifUrl: null,
+    gifUrl: 'EZeDVzO.gif',
     male: [
       {
         level: 'Beginner',
@@ -5301,7 +5301,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     name: 'Seated Crunch (Machine)',
     aliases: ['Machine Seated Crunch'],
     tier: 2,
-    gifUrl: null,
+    gifUrl: 'Wgaz7pm.gif',
     male: [
       {
         level: 'Beginner',

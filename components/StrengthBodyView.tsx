@@ -303,7 +303,7 @@ export function StrengthBodyView({
   const muscleGroupMap = useMemo(() => {
     const result = new Map<string, MuscleGroupData>();
     muscleGroups.forEach((group) => {
-      result.set(group.name, group);
+      result.set(group.name.toLowerCase(), group);
     });
     return result;
   }, [muscleGroups]);
@@ -746,7 +746,7 @@ export function StrengthBodyView({
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
-        const mgData = muscleGroupMap.get(dbMuscleName);
+        const mgData = muscleGroupMap.get(dbMuscleName.toLowerCase());
 
         if (mgData) {
           data.push({
@@ -777,7 +777,7 @@ export function StrengthBodyView({
         return;
       }
 
-      const mgData = muscleGroupMap.get(dbMuscleName);
+      const mgData = muscleGroupMap.get(dbMuscleName.toLowerCase());
       const displayName = BODY_PART_DISPLAY_NAMES[slug] ?? slug;
 
       // Build group data (with fallback for empty state)
