@@ -66,6 +66,16 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.1)' : '#F2F2F7'
     const cardBorder =
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.1)' : '#E5E5EA'
+    const badgeBg = isLight
+      ? '#F2F2F7'
+      : isTransparent
+      ? 'rgba(255, 255, 255, 0.1)'
+      : '#1C1C1E'
+    const badgeBorder = isLight
+      ? '#E5E5EA'
+      : isTransparent
+      ? 'rgba(255, 255, 255, 0.2)'
+      : '#2C2C2E'
     const dividerColor =
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.2)' : '#E5E5EA'
     const shadowOpacity = isTransparent ? 0.5 : 0
@@ -73,20 +83,13 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
     const getGradientColors = () => {
       if (isTransparent) return ['transparent', 'transparent'] as const
       if (isDark) return ['#1C1C1E', '#000000'] as const
-      // Light mode - keep existing logic for PRs vs no PRs
-      return hasPRs
-        ? (['#FF6B35', '#FF8C5A'] as const)
-        : (['#FFFFFF', '#F2F2F7'] as const)
+      return ['#FFFFFF', '#F2F2F7'] as const
     }
 
-    // Special handling for PR mode in Light theme (it uses orange background)
-    // If light mode AND has PRs, we want white text.
-    // If dark/transparent, we always want white text.
-    // If light mode AND no PRs, we want black text.
-    const useWhiteText = (isLight && hasPRs) || isDark || isTransparent
-    const dynamicTextColor = useWhiteText ? '#FFFFFF' : '#000000'
+    const useWhiteText = isDark || isTransparent
+    const dynamicTextColor = useWhiteText ? '#FFFFFF' : '#1C1C1E'
     const dynamicSubTextColor = useWhiteText
-      ? 'rgba(255, 255, 255, 0.8)'
+      ? 'rgba(255, 255, 255, 0.6)'
       : '#8E8E93'
 
     return (
@@ -116,14 +119,28 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
             >
               {hasPRs ? 'Personal Records' : 'Workout Complete'}
             </Text>
-            <Text
+            <View
               style={[
-                styles.durationText,
-                { color: dynamicTextColor, shadowOpacity },
+                styles.durationBadge,
+                {
+                  backgroundColor: badgeBg,
+                  borderColor: badgeBorder,
+                  shadowOpacity,
+                },
               ]}
             >
-              {durationDisplay}
-            </Text>
+              <Text style={[styles.durationLabel, { shadowOpacity }]}>
+                Duration
+              </Text>
+              <Text
+                style={[
+                  styles.durationValue,
+                  { color: dynamicTextColor, shadowOpacity },
+                ]}
+              >
+                {durationDisplay}
+              </Text>
+            </View>
           </View>
 
           {/* Middle Section: Workout Content */}
@@ -135,14 +152,17 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                   <View
                     style={[
                       styles.prCountCard,
-                      { backgroundColor: cardBg, borderColor: cardBorder },
+                      { 
+                        backgroundColor: isDark || isTransparent ? 'rgba(255, 107, 53, 0.15)' : 'rgba(255, 107, 53, 0.1)', 
+                        borderColor: isDark || isTransparent ? 'rgba(255, 107, 53, 0.3)' : 'rgba(255, 107, 53, 0.2)' 
+                      },
                     ]}
                   >
                     <Text style={styles.prCount}>
                       {prExercises.length} PR{prExercises.length > 1 ? 's' : ''}
                     </Text>
                     <Text
-                      style={[styles.prCountSubtext, { color: subTextColor }]}
+                      style={[styles.prCountSubtext, { color: dynamicSubTextColor }]}
                     >
                       Achieved Today
                     </Text>
@@ -174,13 +194,16 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
                           { backgroundColor: cardBg, borderColor: cardBorder },
                         ]}
                       >
-                        <View style={styles.prBadge}>
+                        <LinearGradient 
+                          colors={['#FF6B35', '#FF8C5A']}
+                          style={styles.prBadge}
+                        >
                           <Ionicons
                             name="trophy"
                             size={12}
-                            color="#FFD54A"
+                            color="#FFFFFF"
                           />
-                        </View>
+                        </LinearGradient>
                         <View style={styles.prInfo}>
                           <Text
                             style={[
@@ -376,19 +399,38 @@ const styles = StyleSheet.create({
     marginVertical: 16,
     justifyContent: 'center',
   },
-  durationText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: 0.5,
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
+  durationBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1F1F1F',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  durationTextLight: {
+  durationLabel: {
+    fontSize: 9,
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+  },
+  durationValue: {
+    fontSize: 16,
     color: '#FFFFFF',
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.5,
+    fontVariant: ['tabular-nums'],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   prSection: {
     gap: 14,
@@ -444,7 +486,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 107, 53, 0.15)',
   },
   prBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.12)',
     borderRadius: 999,
     width: 22,
     height: 22,
