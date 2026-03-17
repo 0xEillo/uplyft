@@ -846,15 +846,13 @@ export function StrengthBodyView({
             { borderColor: `${priorityPointsColor}${isDark ? "55" : "66"}` },
           ]}
         >
-          {!isDark && (
-            <View
-              style={[
-                StyleSheet.absoluteFillObject,
-                { backgroundColor: `${priorityPointsColor}12` },
-              ]}
-              pointerEvents="none"
-            />
-          )}
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: `${priorityPointsColor}${isDark ? '0C' : '12'}` },
+            ]}
+            pointerEvents="none"
+          />
           {/* Level header */}
           <View style={styles.heroPadded}>
             <View style={styles.heroTopRow}>

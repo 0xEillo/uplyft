@@ -166,10 +166,17 @@ export function LifterLevelsSheet({
                 debugLabel="lifter-level-current-card"
               >
                 <LinearGradient
-                  colors={[
-                    `${LEVEL_COLORS[currentLevel]}15`,
-                    `${LEVEL_COLORS[currentLevel]}05`,
-                  ]}
+                  colors={
+                    isDark
+                      ? [
+                          `${LEVEL_COLORS[currentLevel]}10`,
+                          `${LEVEL_COLORS[currentLevel]}03`,
+                        ]
+                      : [
+                          `${LEVEL_COLORS[currentLevel]}15`,
+                          `${LEVEL_COLORS[currentLevel]}05`,
+                        ]
+                  }
                   style={StyleSheet.absoluteFill}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
