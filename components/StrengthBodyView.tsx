@@ -813,7 +813,7 @@ export function StrengthBodyView({
       {/* Body Section */}
       <View style={styles.bodySection}>
         {/* ── SECTION 1: Gamified Hero Card ── */}
-        <View style={styles.sectionHeader}>
+        <View style={[styles.sectionHeader, styles.sectionHeaderFirst]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={styles.sectionHeaderText}>Lifter Level</Text>
             <TouchableOpacity
@@ -1458,6 +1458,9 @@ const createStyles = (
       marginTop: 32,
       marginBottom: 8,
       paddingHorizontal: 2,
+    },
+    sectionHeaderFirst: {
+      marginTop: 16,
     },
     sectionHeaderText: {
       fontSize: 17,
