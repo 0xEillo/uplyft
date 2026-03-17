@@ -849,7 +849,7 @@ export function StrengthBodyView({
           <View
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: `${priorityPointsColor}${isDark ? '0C' : '12'}` },
+              { backgroundColor: `${priorityPointsColor}${isDark ? '06' : '12'}` },
             ]}
             pointerEvents="none"
           />

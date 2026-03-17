@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react'
 import { View, Text, StyleSheet, Image, Animated, Easing } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { getColors } from '@/constants/colors'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { LEVEL_POINT_ANCHORS } from '@/lib/overall-strength-score'
@@ -23,9 +24,9 @@ export const PointsWidget = React.forwardRef<View, PointsWidgetProps>(
     const isDark = backgroundMode === 'dark'
     const isTransparent = backgroundMode === 'transparent'
     
-    const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
-    const brandColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
-    const dividerColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
+    const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
+    const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
+    const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'
     const shadowOpacity = isTransparent ? 0.5 : 0
     
     const isLevelUp = previousLevel !== currentLevel
@@ -62,8 +63,8 @@ export const PointsWidget = React.forwardRef<View, PointsWidgetProps>(
 
     const getGradientColors = () => {
       if (isTransparent) return ['transparent', 'transparent'] as const
-      if (isDark) return ['#1C1C1E', '#000000'] as const
-      return ['#FFFFFF', '#F2F2F7'] as const
+      const bg = getColors(isDark).shareableCardBg
+      return [bg, bg] as const
     }
 
     return (
@@ -137,23 +138,19 @@ export const PointsWidget = React.forwardRef<View, PointsWidgetProps>(
           {/* Bottom Section: Branding */}
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
-              <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
-              <View style={styles.brandContent}>
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('../../assets/images/bicep-icon.png')}
-                    style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
-                </View>
-                {username && (
-                  <Text style={[styles.userTagText, { color: subTextColor, shadowOpacity }]}>
-                    @{username}
-                  </Text>
-                )}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../assets/images/bicep-icon.png')}
+                  style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
               </View>
-              <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
+              {username && (
+                <Text style={[styles.userTagText, { color: textColor, shadowOpacity }]}>
+                  @{username}
+                </Text>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -168,7 +165,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 24,
+    borderRadius: 32,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -178,9 +175,9 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 24,
     justifyContent: 'space-between',
   },
   content: {
@@ -244,7 +241,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   ptsBadge: {
-    marginTop: 20,
+    marginTop: 8,
     paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 20,
@@ -256,54 +253,36 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   bottomSection: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  brandContent: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-  },
-  brandLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: '#E0E0E0',
+    width: 24,
+    height: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   brandText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8E8E93',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '400',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,

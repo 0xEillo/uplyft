@@ -21,14 +21,12 @@ import {
 } from 'react-native'
 
 import { WorkoutSummaryWidget } from './shareable-widgets/WorkoutSummaryWidget'
-import { StatsMetricsWidget } from './shareable-widgets/StatsMetricsWidget'
-import { StravaOverlayWidget } from './shareable-widgets/StravaOverlayWidget'
-import { AchievementWidget } from './shareable-widgets/AchievementWidget'
 import { StreakWidget } from './shareable-widgets/StreakWidget'
 import { PointsWidget } from './shareable-widgets/PointsWidget'
 import { ExerciseUpgradeWidget } from './shareable-widgets/ExerciseUpgradeWidget'
-import { PrDetail, PrService } from '@/lib/pr'
-import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
+import { StatsMetricsWidget } from './shareable-widgets/StatsMetricsWidget'
+import { VolumeComparisonWidget } from './shareable-widgets/VolumeComparisonWidget'
+import { MuscleHighlighterWidget } from './shareable-widgets/MuscleHighlighterWidget'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -58,8 +56,8 @@ type WidgetData =
     }
   | { type: 'summary' }
   | { type: 'stats' }
-  | { type: 'strava' }
-  | { type: 'achievement'; prData: { exerciseId: string; exerciseName: string; prs: PrDetail[] }[] }
+  | { type: 'volume_comparison' }
+  | { type: 'muscle_highlighter' }
 
 export function PostWorkoutCelebration({
   visible,
@@ -173,37 +171,11 @@ export function PostWorkoutCelebration({
         })
       }
 
-      // 4. Summary & Stats & Strava
+      // 4. Summary & Stats (reversed order)
+      widgets.push({ type: 'muscle_highlighter' })
       widgets.push({ type: 'summary' })
       widgets.push({ type: 'stats' })
-      widgets.push({ type: 'strava' })
-
-      // 5. Achievement (PRs)
-      try {
-        const prUserId = resolvePrContextUserId(data.workout.user_id, user?.id)
-        if (prUserId && data.workout.created_at && data.workout.date) {
-          const ctx = {
-            sessionId: data.workout.id,
-            userId: prUserId,
-            createdAt: data.workout.created_at,
-            date: data.workout.date,
-            exercises: (data.workout.workout_exercises || []).map((we) => ({
-              exerciseId: we.exercise_id,
-              exerciseName: we.exercise?.name || 'Exercise',
-              sets: mapSetsToPrContext(we.sets),
-            })),
-          }
-          const result = await PrService.computePrsForSession(ctx)
-          const exercisesWithPRs = result.perExercise.filter((ex) =>
-            ex.prs.some((pr) => pr.isCurrent),
-          )
-          if (exercisesWithPRs.length > 0) {
-            widgets.push({ type: 'achievement', prData: exercisesWithPRs })
-          }
-        }
-      } catch (error) {
-        console.error('Error computing PRs:', error)
-      }
+      widgets.push({ type: 'volume_comparison' })
 
       setAllWidgets(widgets)
     }
@@ -253,34 +225,10 @@ export function PostWorkoutCelebration({
           return <WorkoutSummaryWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} workoutTitle={data!.workoutTitle} backgroundMode={backgroundMode} />
         case 'stats':
           return <StatsMetricsWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} workoutCountThisWeek={workoutCountThisWeek} backgroundMode={backgroundMode} />
-        case 'strava':
-          return (
-            <View>
-              {backgroundMode === 'transparent' && (
-                <View style={[StyleSheet.absoluteFill, styles.checkerboardContainer]}>
-                  <View style={styles.checkerboardRow}>
-                    {Array.from({ length: 420 }).map((_, i) => {
-                      const squaresPerRow = Math.floor(360 / 20);
-                      const row = Math.floor(i / squaresPerRow);
-                      const col = i % squaresPerRow;
-                      return (
-                        <View
-                          key={i}
-                          style={[
-                            styles.checkerboardSquare,
-                            { backgroundColor: (row + col) % 2 === 0 ? '#3A3A3C' : '#2C2C2E' },
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-              <StravaOverlayWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} backgroundMode={backgroundMode} />
-            </View>
-          )
-        case 'achievement':
-          return <AchievementWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} prData={widget.prData} backgroundMode={backgroundMode} />
+        case 'volume_comparison':
+          return <VolumeComparisonWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} backgroundMode={backgroundMode} />
+        case 'muscle_highlighter':
+          return <MuscleHighlighterWidget ref={ref} workout={data!.workout} workoutTitle={data!.workoutTitle} backgroundMode={backgroundMode} gender={data!.workout.profile?.gender === 'female' ? 'female' : 'male'} />
       }
     })()
 
@@ -308,7 +256,7 @@ export function PostWorkoutCelebration({
     )
   }
 
-  const carouselWidgets = allWidgets.slice(0, 4)
+  const carouselWidgets = allWidgets
 
   return (
     <Modal
@@ -579,23 +527,6 @@ const createStyles = (
         { translateY: -420 * (1 - 0.45) / 2 },
         { scale: 0.45 },
       ],
-    },
-    checkerboardContainer: {
-      borderRadius: 24,
-      overflow: 'hidden',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      backgroundColor: '#FFFFFF',
-    },
-    checkerboardRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      width: '100%',
-      height: '100%',
-    },
-    checkerboardSquare: {
-      width: 20,
-      height: 20,
     },
     footer: {
       paddingHorizontal: 20,

@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, Image } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { getColors } from '@/constants/colors'
 import { Ionicons } from '@expo/vector-icons'
 
 interface StreakWidgetProps {
@@ -14,16 +15,15 @@ export const StreakWidget = React.forwardRef<View, StreakWidgetProps>(
     const isDark = backgroundMode === 'dark'
     const isTransparent = backgroundMode === 'transparent'
     
-    const textColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
-    const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
-    const brandColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
-    const dividerColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
+    const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
+    const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
+    const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'
     const shadowOpacity = isTransparent ? 0.5 : 0
 
     const getGradientColors = () => {
       if (isTransparent) return ['transparent', 'transparent'] as const
-      if (isDark) return ['#1C1C1E', '#000000'] as const
-      return ['#FFFFFF', '#F2F2F7'] as const
+      const bg = getColors(isDark).shareableCardBg
+      return [bg, bg] as const
     }
 
     return (
@@ -42,9 +42,10 @@ export const StreakWidget = React.forwardRef<View, StreakWidgetProps>(
                 color="#FFA500"
                 style={styles.flameIcon}
               />
-              <Text style={[styles.flameNumber, { color: textColor }]}>{currentStreak}</Text>
             </View>
-            <Text style={[styles.streakTitle, { color: textColor }]}>Week streak!</Text>
+            <Text style={[styles.streakTitle, { color: textColor }]}>
+              {currentStreak} Week streak!
+            </Text>
             <Text style={[styles.streakSubtitle, { color: subTextColor }]}>
               You&apos;ve worked out {currentStreak} week{currentStreak > 1 ? 's' : ''} in a row!
             </Text>
@@ -53,23 +54,19 @@ export const StreakWidget = React.forwardRef<View, StreakWidgetProps>(
           {/* Bottom Section: Branding */}
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
-              <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
-              <View style={styles.brandContent}>
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('../../assets/images/bicep-icon.png')}
-                    style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
-                </View>
-                {username && (
-                  <Text style={[styles.userTagText, { color: subTextColor, shadowOpacity }]}>
-                    @{username}
-                  </Text>
-                )}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../assets/images/bicep-icon.png')}
+                  style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
               </View>
-              <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
+              {username && (
+                <Text style={[styles.userTagText, { color: textColor, shadowOpacity }]}>
+                  @{username}
+                </Text>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -84,7 +81,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 24,
+    borderRadius: 32,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -94,92 +91,67 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 24,
     justifyContent: 'space-between',
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
   flameContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    position: 'relative',
+    marginBottom: 10,
   },
   flameIcon: {
-    textShadowColor: 'rgba(255, 165, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 10 },
-    textShadowRadius: 20,
-  },
-  flameNumber: {
-    position: 'absolute',
-    fontSize: 60,
-    fontWeight: '900',
-    marginTop: 20,
+    marginBottom: 10,
   },
   streakTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
-    marginBottom: 12,
+    letterSpacing: -1,
   },
   streakSubtitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   bottomSection: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  brandContent: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-  },
-  brandLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: '#E0E0E0',
+    width: 24,
+    height: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   brandText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8E8E93',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '400',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,

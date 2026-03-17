@@ -1,12 +1,9 @@
+import { getColors } from '@/constants/colors'
+import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
-import {
-    Image,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native'
+import { Image, StyleSheet, Text, View } from 'react-native'
 
 const formatStopwatch = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -15,14 +12,10 @@ const formatStopwatch = (seconds: number) => {
   const secs = safeSeconds % 60
 
   if (hours > 0) {
-    return `${hours}:${mins
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${hours}h ${mins}m`
   }
 
-  return `${mins.toString().padStart(2, '0')}:${secs
-    .toString()
-    .padStart(2, '0')}`
+  return `${mins}min`
 }
 
 interface WorkoutSummaryWidgetProps {
@@ -35,23 +28,26 @@ interface WorkoutSummaryWidgetProps {
 export const WorkoutSummaryWidget = React.forwardRef<
   View,
   WorkoutSummaryWidgetProps
->(  ({ workout, weightUnit, workoutTitle, backgroundMode = 'light' }, ref) => {
-  const durationDisplay = formatStopwatch(workout.duration ?? 0)
+>(({ workout, weightUnit, workoutTitle, backgroundMode = 'light' }, ref) => {
+  const stats = calculateWorkoutStats(workout, weightUnit)
+  const volume = formatVolume(stats.totalVolume, weightUnit)
+  const durationDisplay = formatStopwatch(stats.durationSeconds)
 
   // Determine colors based on background mode
   const isDark = backgroundMode === 'dark'
   const isTransparent = backgroundMode === 'transparent'
-  
-  const textColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
-  const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
-  const brandColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E'
-  const dividerColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
+
+  const colors = getColors(isDark || isTransparent)
+  const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
+  const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
+  const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'
+  const highlightColor = colors.shareableHighlight
   const shadowOpacity = isTransparent ? 0.5 : 0
 
   const getGradientColors = () => {
     if (isTransparent) return ['transparent', 'transparent'] as const
-    if (isDark) return ['#1C1C1E', '#000000'] as const
-    return ['#FFFFFF', '#F2F2F7'] as const
+    const bg = getColors(isDark).shareableCardBg
+    return [bg, bg] as const
   }
 
   return (
@@ -62,26 +58,37 @@ export const WorkoutSummaryWidget = React.forwardRef<
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        {/* Top Section: Date & Title */}
+        {/* Top Section: Title */}
         <View style={styles.topSection}>
-          <Text style={[styles.date, { color: subTextColor, shadowOpacity }]}>
-            {new Date(workout.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+          <Text style={[styles.title, { color: textColor, shadowOpacity }]} numberOfLines={2}>
+            {workoutTitle || 'Workout'}
           </Text>
-          {workoutTitle ? (
-            <Text style={[styles.title, { color: textColor, shadowOpacity }]}>{workoutTitle}</Text>
-          ) : (
-            <Text style={[styles.title, { color: textColor, shadowOpacity }]}>Workout Summary</Text>
-          )}
-          <Text style={[styles.durationText, { color: subTextColor, shadowOpacity }]}>{durationDisplay}</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Duration</Text>
+            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>{durationDisplay}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Volume</Text>
+            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>
+              {Number(volume.value).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 1,
+              })}{' '}
+              {volume.unit}
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Set</Text>
+            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>{stats.totalSets}</Text>
+          </View>
         </View>
 
         {/* Middle Section: Detailed Workout Content */}
         <View style={styles.middleSection}>
-          {/* Exercise list with set counts */}
           <View style={styles.exerciseSection}>
             {workout.workout_exercises?.slice(0, 8).map((exercise, index) => {
               const sets = exercise.sets || []
@@ -90,49 +97,39 @@ export const WorkoutSummaryWidget = React.forwardRef<
 
               return (
                 <View key={index} style={styles.exerciseRow}>
-                  <View style={[styles.exerciseIndicator, { shadowOpacity }]}>
-                    <View style={styles.exerciseDot} />
-                  </View>
+                  <Text style={[styles.setCount, { color: highlightColor, shadowOpacity }]}>
+                    {setCount}x
+                  </Text>
                   <Text style={[styles.exerciseName, { color: textColor, shadowOpacity }]} numberOfLines={1}>
                     {exerciseName}
-                  </Text>
-                  <Text style={[styles.setCount, { color: subTextColor, shadowOpacity }]}>
-                    {setCount > 0
-                      ? `${setCount} set${setCount > 1 ? 's' : ''}`
-                      : 'No sets'}
                   </Text>
                 </View>
               )
             })}
-            {workout.workout_exercises &&
-              workout.workout_exercises.length > 8 && (
-                <Text style={[styles.moreExercises, { color: subTextColor, shadowOpacity }]}>
-                  +{workout.workout_exercises.length - 8} more exercises
-                </Text>
-              )}
+            {workout.workout_exercises && workout.workout_exercises.length > 8 && (
+              <Text style={[styles.moreExercises, { color: subTextColor, shadowOpacity }]}>
+                +{workout.workout_exercises.length - 8} more exercises
+              </Text>
+            )}
           </View>
         </View>
 
         {/* Bottom Section: Branding */}
         <View style={styles.bottomSection}>
           <View style={styles.brandContainer}>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
-            <View style={styles.brandContent}>
-              <View style={styles.logoContainer}>
-                <Image
-                  source={require('../../assets/images/bicep-icon.png')}
-                  style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
-              </View>
-              {(workout.profile?.user_tag || workout.profile?.display_name) && (
-                <Text style={[styles.userTagText, { color: subTextColor, shadowOpacity }]}>
-                  @{workout.profile?.user_tag || workout.profile?.display_name}
-                </Text>
-              )}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/images/bicep-icon.png')}
+                style={[styles.brandIcon, { tintColor: brandColor, shadowOpacity }]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.brandText, { color: brandColor, shadowOpacity }]}>REP AI</Text>
             </View>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
+            {(workout.profile?.user_tag || workout.profile?.display_name) && (
+              <Text style={[styles.userTagText, { color: textColor, shadowOpacity }]}>
+                @{workout.profile?.user_tag || workout.profile?.display_name}
+              </Text>
+            )}
           </View>
         </View>
       </LinearGradient>
@@ -146,7 +143,7 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     height: 420,
-    borderRadius: 24,
+    borderRadius: 32,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -156,148 +153,113 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 24,
     justifyContent: 'space-between',
   },
   topSection: {
-    gap: 6,
-    marginBottom: 4,
-  },
-  date: {
-    fontSize: 10,
-    color: '#8E8E93',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -0.8,
-    lineHeight: 28,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    lineHeight: 34,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  durationText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
+  statsRow: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 24,
+  },
+  statItem: {
+    gap: 4,
+  },
+  statLabel: {
+    fontSize: 15,
+    fontWeight: '400',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   middleSection: {
     flex: 1,
-    marginVertical: 16,
   },
   exerciseSection: {
     flex: 1,
+    gap: 12,
   },
   exerciseRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    gap: 12,
   },
-  exerciseIndicator: {
-    width: 20,
-    alignItems: 'center',
-  },
-  exerciseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 0,
-    backgroundColor: '#FF6B35',
-  },
-  exerciseName: {
-    flex: 1,
-    fontSize: 15,
-    color: '#000000',
-    fontWeight: '700',
-    letterSpacing: -0.3,
+  setCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    width: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  setCount: {
-    fontSize: 13,
-    color: '#8E8E93',
-    fontWeight: '600',
-    letterSpacing: -0.2,
+  exerciseName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '400',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   moreExercises: {
-    fontSize: 11,
-    color: '#8E8E93',
+    fontSize: 14,
     fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 8,
-    fontWeight: '500',
+    marginTop: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   bottomSection: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  brandContent: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-  },
-  brandLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: '#E0E0E0',
+    width: 24,
+    height: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   brandText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
   userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8E8E93',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '400',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,

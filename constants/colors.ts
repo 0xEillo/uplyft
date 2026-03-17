@@ -39,6 +39,10 @@ const lightColors = {
   // Misc
   iconDefault: '#8e8e93',
   rowTint: 'rgba(0,0,0,0.02)', // Subtle tint for exercise rows
+
+  // Shareable widgets
+  shareableHighlight: '#ff4444',
+  shareableCardBg: '#ffffff',
 } as const
 
 const darkColors = {
@@ -77,6 +81,10 @@ const darkColors = {
   // Misc
   iconDefault: '#A8A8A8',
   rowTint: 'rgba(255,255,255,0.03)', // Subtle tint for exercise rows
+
+  // Shareable widgets
+  shareableHighlight: '#FF5252',
+  shareableCardBg: '#111112',
 } as const
 
 export function getColors(isDark: boolean) {

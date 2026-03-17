@@ -5,37 +5,23 @@ import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
 
-const formatStopwatch = (seconds: number) => {
-  const safeSeconds = Math.max(0, Math.floor(seconds))
-  const hours = Math.floor(safeSeconds / 3600)
-  const mins = Math.floor((safeSeconds % 3600) / 60)
-  const secs = safeSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}h ${mins}m`
-  }
-
-  return `${mins}min`
-}
-
-interface StatsMetricsWidgetProps {
+interface VolumeComparisonWidgetProps {
   workout: WorkoutSessionWithDetails
   weightUnit: 'kg' | 'lb'
-  workoutCountThisWeek: number
   backgroundMode?: 'light' | 'dark' | 'transparent'
 }
 
-export const StatsMetricsWidget = React.forwardRef<
+export const VolumeComparisonWidget = React.forwardRef<
   View,
-  StatsMetricsWidgetProps
->(({ workout, weightUnit, workoutCountThisWeek, backgroundMode = 'light' }, ref) => {
+  VolumeComparisonWidgetProps
+>(({ workout, weightUnit, backgroundMode = 'light' }, ref) => {
   const stats = calculateWorkoutStats(workout, weightUnit)
   const volume = formatVolume(stats.totalVolume, weightUnit)
-  const durationDisplay = formatStopwatch(stats.durationSeconds)
-
+  
   const isTransparent = backgroundMode === 'transparent'
   const isDark = backgroundMode === 'dark'
 
+  const colors = getColors(isDark || isTransparent)
   const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
   const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
   const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'
@@ -47,6 +33,37 @@ export const StatsMetricsWidget = React.forwardRef<
     return [bg, bg] as const
   }
 
+  // Determine comparison object based on volume
+  const volumeNum = Number(volume.value)
+  let comparisonText = "That's a lot of weight!"
+  let comparisonIcon = null
+  
+  if (volumeNum > 10000) {
+    comparisonText = "That's like lifting an elephant!"
+    comparisonIcon = '🐘'
+  } else if (volumeNum > 5000) {
+    comparisonText = "That's like lifting a truck!"
+    comparisonIcon = '🛻'
+  } else if (volumeNum > 2000) {
+    comparisonText = "That's like lifting a car!"
+    comparisonIcon = '🚗'
+  } else if (volumeNum > 800) {
+    comparisonText = "That's like lifting a motorcycle!"
+    comparisonIcon = '🏍️'
+  } else if (volumeNum > 400) {
+    comparisonText = "That's like lifting a piano!"
+    comparisonIcon = '🎹'
+  } else if (volumeNum > 200) {
+    comparisonText = "That's like lifting a gorilla!"
+    comparisonIcon = '🦍'
+  } else if (volumeNum > 100) {
+    comparisonText = "That's like lifting a giant panda!"
+    comparisonIcon = '🐼'
+  } else {
+    comparisonText = "That's like lifting a large dog!"
+    comparisonIcon = '🐕'
+  }
+
   return (
     <View ref={ref} style={styles.container} collapsable={false}>
       <LinearGradient
@@ -56,26 +73,25 @@ export const StatsMetricsWidget = React.forwardRef<
         style={styles.gradient}
       >
         <View style={styles.middleSection}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>{durationDisplay}</Text>
-            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Duration</Text>
-          </View>
+          <Text style={[styles.topText, { color: textColor, shadowOpacity }]}>
+            You lifted a total of
+          </Text>
           
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>
-              {Number(volume.value).toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 1,
-              })}{' '}
-              {volume.unit}
-            </Text>
-            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Volume</Text>
-          </View>
+          <Text style={[styles.volumeValue, { color: textColor, shadowOpacity }]}>
+            {Number(volume.value).toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 1,
+            })}{' '}
+            {volume.unit}
+          </Text>
           
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: textColor, shadowOpacity }]}>{stats.totalSets}</Text>
-            <Text style={[styles.statLabel, { color: subTextColor, shadowOpacity }]}>Set</Text>
-          </View>
+          <Text style={[styles.comparisonText, { color: textColor, shadowOpacity }]}>
+            {comparisonText}
+          </Text>
+          
+          <Text style={[styles.emojiIcon, { shadowOpacity }]}>
+            {comparisonIcon}
+          </Text>
         </View>
 
         {/* Bottom Section: Branding */}
@@ -101,7 +117,7 @@ export const StatsMetricsWidget = React.forwardRef<
   )
 })
 
-StatsMetricsWidget.displayName = 'StatsMetricsWidget'
+VolumeComparisonWidget.displayName = 'VolumeComparisonWidget'
 
 const styles = StyleSheet.create({
   container: {
@@ -126,23 +142,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 24,
+    gap: 16,
   },
-  statItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+  topText: {
+    fontSize: 20,
+    fontWeight: '600',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  statLabel: {
+  volumeValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    letterSpacing: -1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+  },
+  comparisonText: {
     fontSize: 18,
     fontWeight: '400',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+  },
+  emojiIcon: {
+    fontSize: 80,
+    marginTop: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
