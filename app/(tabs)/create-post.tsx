@@ -1,6 +1,6 @@
 import {
-    CreatePostTutorial,
-    type TutorialStepConfig,
+  CreatePostTutorial,
+  type TutorialStepConfig,
 } from '@/components/CreatePostTutorial'
 import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { EditorToolbar } from '@/components/editor-toolbar'
@@ -22,10 +22,10 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
-    getExerciseSuggestion,
-    parseRepRange,
-    useExerciseAutocompleteGroup,
-    useShowConvertButton,
+  getExerciseSuggestion,
+  parseRepRange,
+  useExerciseAutocompleteGroup,
+  useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
@@ -41,72 +41,72 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import {
-    getToolbarButtons,
-    getWarmupCalculatorEnabled,
-    type ToolbarButtonId,
+  getToolbarButtons,
+  getWarmupCalculatorEnabled,
+  type ToolbarButtonId,
 } from '@/lib/utils/create-post-settings'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import {
-    clearDraft as clearWorkoutDraft,
-    compactDraft as compactWorkoutDraft,
-    loadPendingWorkout,
-    loadDraft as loadWorkoutDraft,
-    saveDraft as saveWorkoutDraft,
-    saveDraftPatch as saveWorkoutDraftPatch,
+  clearDraft as clearWorkoutDraft,
+  compactDraft as compactWorkoutDraft,
+  loadPendingWorkout,
+  loadDraft as loadWorkoutDraft,
+  saveDraft as saveWorkoutDraft,
+  saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import {
-    generateWorkoutMessage,
-    parseCommitment,
+  generateWorkoutMessage,
+  parseCommitment,
 } from '@/lib/utils/workout-messages'
 import { formatVolume } from '@/lib/utils/workout-stats'
 import {
-    Exercise,
-    WorkoutRoutineWithDetails,
-    WorkoutSessionWithDetails,
+  Exercise,
+  WorkoutRoutineWithDetails,
+  WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-    TabActions,
-    useFocusEffect,
-    useNavigation,
+  TabActions,
+  useFocusEffect,
+  useNavigation,
 } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Alert,
-    Animated,
-    AppState,
-    Easing,
-    Image,
-    Keyboard,
-    type LayoutChangeEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  Image,
+  Keyboard,
+  type LayoutChangeEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native'
 import Reanimated, {
-    cancelAnimation,
-    Easing as ReanimatedEasing,
-    runOnUI,
-    useAnimatedKeyboard,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withSpring,
-    withTiming,
+  cancelAnimation,
+  Easing as ReanimatedEasing,
+  runOnUI,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -128,6 +128,211 @@ type ViewLayout = {
   y: number
   width: number
   height: number
+}
+
+type ExerciseResolutionCandidate = {
+  name: string
+  score: number
+  via: 'name' | 'alias'
+  matchedText: string
+  equipmentHints: string[]
+}
+
+type ExerciseResolutionResult = {
+  resolvedName: string | null
+  reason:
+    | 'empty-query'
+    | 'no-candidates'
+    | 'exact-name'
+    | 'exact-alias'
+    | 'high-confidence'
+    | 'ambiguous'
+    | 'low-confidence'
+  topCandidates: ExerciseResolutionCandidate[]
+  margin: number
+}
+
+const EXERCISE_EQUIPMENT_HINTS = [
+  'smith machine',
+  'body weight',
+  'bodyweight',
+  'ez bar',
+  'trap bar',
+  'barbell',
+  'dumbbell',
+  'cable',
+  'machine',
+  'kettlebell',
+] as const
+
+function normalizeExerciseMatchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[()]/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function tokenizeExerciseMatchText(value: string): string[] {
+  return normalizeExerciseMatchText(value).split(/\s+/).filter(Boolean)
+}
+
+function extractEquipmentHints(value: string): string[] {
+  const normalized = normalizeExerciseMatchText(value)
+  return EXERCISE_EQUIPMENT_HINTS.filter((hint) => normalized.includes(hint))
+}
+
+function resolveStructuredExercise(
+  typedName: string,
+  exercises: Exercise[],
+): ExerciseResolutionResult {
+  const normalizedQuery = normalizeExerciseMatchText(typedName)
+  if (!normalizedQuery) {
+    return {
+      resolvedName: null,
+      reason: 'empty-query',
+      topCandidates: [],
+      margin: 0,
+    }
+  }
+
+  const queryTokens = tokenizeExerciseMatchText(typedName)
+  const queryTokenSet = new Set(queryTokens)
+  const queryEquipmentHints = extractEquipmentHints(typedName)
+  const candidates: ExerciseResolutionCandidate[] = []
+
+  for (const exercise of exercises) {
+    const entries: {
+      raw: string
+      via: 'name' | 'alias'
+    }[] = [
+      { raw: exercise.name, via: 'name' },
+      ...((exercise.aliases ?? [])
+        .filter((alias): alias is string => Boolean(alias?.trim()))
+        .map((alias) => ({ raw: alias, via: 'alias' as const }))),
+    ]
+
+    let bestCandidate: ExerciseResolutionCandidate | null = null
+
+    for (const entry of entries) {
+      const normalizedCandidate = normalizeExerciseMatchText(entry.raw)
+      if (!normalizedCandidate) continue
+
+      const candidateEquipmentHints = extractEquipmentHints(
+        `${entry.raw} ${exercise.equipment ?? ''} ${(exercise.equipments ?? []).join(' ')}`,
+      )
+
+      if (
+        queryEquipmentHints.length > 0 &&
+        !queryEquipmentHints.some((hint) => candidateEquipmentHints.includes(hint))
+      ) {
+        continue
+      }
+
+      if (normalizedCandidate === normalizedQuery) {
+        bestCandidate = {
+          name: exercise.name,
+          score: 1,
+          via: entry.via,
+          matchedText: entry.raw,
+          equipmentHints: candidateEquipmentHints,
+        }
+        break
+      }
+
+      const candidateTokens = tokenizeExerciseMatchText(entry.raw)
+      if (candidateTokens.length === 0) continue
+
+      const candidateTokenSet = new Set(candidateTokens)
+      const commonTokenCount = queryTokens.filter((token) =>
+        candidateTokenSet.has(token),
+      ).length
+
+      if (commonTokenCount === 0) continue
+
+      const coverage = commonTokenCount / queryTokens.length
+      const precision = commonTokenCount / candidateTokens.length
+      const exactTokenSet =
+        coverage === 1 &&
+        precision === 1 &&
+        candidateTokenSet.size === queryTokenSet.size
+
+      let score = coverage * 0.65 + precision * 0.25
+
+      if (exactTokenSet) {
+        score = Math.max(score, 0.97)
+      } else if (
+        normalizedCandidate.includes(normalizedQuery) ||
+        normalizedQuery.includes(normalizedCandidate)
+      ) {
+        score += 0.05
+      }
+
+      if (
+        queryEquipmentHints.length > 0 &&
+        queryEquipmentHints.some((hint) => candidateEquipmentHints.includes(hint))
+      ) {
+        score += 0.05
+      }
+
+      const candidate: ExerciseResolutionCandidate = {
+        name: exercise.name,
+        score: Math.min(score, 0.99),
+        via: entry.via,
+        matchedText: entry.raw,
+        equipmentHints: candidateEquipmentHints,
+      }
+
+      if (!bestCandidate || candidate.score > bestCandidate.score) {
+        bestCandidate = candidate
+      }
+    }
+
+    if (bestCandidate) {
+      candidates.push(bestCandidate)
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+
+  const topCandidates = candidates.slice(0, 3)
+  const best = topCandidates[0]
+  const runnerUp = topCandidates[1]
+  const margin = best ? best.score - (runnerUp?.score ?? 0) : 0
+
+  if (!best) {
+    return {
+      resolvedName: null,
+      reason: 'no-candidates',
+      topCandidates,
+      margin,
+    }
+  }
+
+  if (best.score === 1) {
+    return {
+      resolvedName: best.name,
+      reason: best.via === 'alias' ? 'exact-alias' : 'exact-name',
+      topCandidates,
+      margin,
+    }
+  }
+
+  if (best.score >= 0.93 && margin >= 0.12) {
+    return {
+      resolvedName: best.name,
+      reason: 'high-confidence',
+      topCandidates,
+      margin,
+    }
+  }
+
+  return {
+    resolvedName: null,
+    reason: margin < 0.12 ? 'ambiguous' : 'low-confidence',
+    topCandidates,
+    margin,
+  }
 }
 
 function normalizeWindowRect(
@@ -554,6 +759,7 @@ export default function CreatePostScreen() {
   // TEXT-TO-STRUCTURED CONVERSION STATE
   // =============================================================================
   const [cursorPosition, setCursorPosition] = useState(0)
+  const [showEmptyExercisePrompt, setShowEmptyExercisePrompt] = useState(false)
 
   // Use hook for convert button visibility
   const showConvertButton = useShowConvertButton(
@@ -601,6 +807,9 @@ export default function CreatePostScreen() {
   )
   const keypadTapShieldRef = useRef(false)
   const keypadTapShieldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const emptyExercisePromptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
   const notesRef = useRef(notes)
   const titleRef = useRef(workoutTitle)
   const selectedSongRef = useRef<WorkoutSong | null>(selectedSong)
@@ -886,7 +1095,7 @@ export default function CreatePostScreen() {
           { icon: 'add-outline', label: 'Structured', detail: 'Type an exercise name and tap +' },
           { icon: 'search-outline', label: 'Search exercises', detail: 'Tap search to see exercises and videos' },
         ],
-        footer: 'No matter how you log, AI detects your exercises and formats your workout automatically.',
+        footer: 'No matter how you log, after you save, AI detects your exercises and saves them correctly.',
       },
     ],
     [getChatButtonTutorialRectFromLayout, measureRef],
@@ -948,50 +1157,6 @@ export default function CreatePostScreen() {
       setIsToolbarInsetLocked(false)
     }, 420)
   }, [])
-
-  const ensureFocusedInputVisibleForNativeKeyboard = useCallback(
-    (keyboardHeight: number) => {
-      if (!scrollViewRef.current || keyboardHeight <= 0 || keypadVisibleRef.current) {
-        return
-      }
-
-      const textInputState = (TextInput as unknown as {
-        State?: { currentlyFocusedInput?: () => unknown }
-      }).State
-      const activeInput = textInputState?.currentlyFocusedInput?.()
-      if (!activeInput) return
-
-      const scrollResponder = (
-        scrollViewRef.current as ScrollView & {
-          getScrollResponder?: () => {
-            scrollResponderScrollNativeHandleToKeyboard?: (
-              nodeHandle: unknown,
-              additionalOffset?: number,
-              preventNegativeScrollOffset?: boolean,
-            ) => void
-          }
-        }
-      ).getScrollResponder?.()
-
-      const toolbarHeight = toolbarVisibleRef.current
-        ? Math.max(toolbarBlockingHeightRef.current, TOOLBAR_FALLBACK_HEIGHT)
-        : 0
-      scrollResponder?.scrollResponderScrollNativeHandleToKeyboard?.(
-        activeInput,
-        KEYBOARD_CURSOR_CLEARANCE +
-          KEYBOARD_SCROLL_BUFFER +
-          toolbarHeight +
-          NATIVE_KEYBOARD_EXTRA_ESCAPE,
-        true,
-      )
-    },
-    [
-      KEYBOARD_CURSOR_CLEARANCE,
-      KEYBOARD_SCROLL_BUFFER,
-      NATIVE_KEYBOARD_EXTRA_ESCAPE,
-      TOOLBAR_FALLBACK_HEIGHT,
-    ],
-  )
 
   const ensureNotesCursorVisible = useCallback(
     (keyboardHeight?: number) => {
@@ -1093,14 +1258,12 @@ export default function CreatePostScreen() {
       }
 
       requestAnimationFrame(() => {
-        ensureFocusedInputVisibleForNativeKeyboard(keyboardHeight)
         ensureNotesCursorVisible(keyboardHeight)
       })
       keyboardSettleTimeoutRef.current = setTimeout(() => {
         const settledHeight = nativeKeyboardHeightRef.current
         if (settledHeight <= 0) return
 
-        ensureFocusedInputVisibleForNativeKeyboard(settledHeight)
         ensureNotesCursorVisible(settledHeight)
       }, 160)
     }
@@ -1138,7 +1301,7 @@ export default function CreatePostScreen() {
       hideSub.remove()
       frameSub?.remove()
     }
-  }, [ensureFocusedInputVisibleForNativeKeyboard, ensureNotesCursorVisible])
+  }, [ensureNotesCursorVisible])
 
   const logDraftDebug = useCallback(
     (_event: string, _payload?: Record<string, unknown>) => {
@@ -2666,29 +2829,6 @@ export default function CreatePostScreen() {
     [ensureNotesCursorVisible, isNotesFocused],
   )
 
-  // Calculate dynamic height of structured content
-  const calculateStructuredContentHeight = useCallback(() => {
-    if (!isStructuredMode || structuredData.length === 0) return 0
-
-    let totalHeight = 0
-
-    structuredData.forEach((exercise) => {
-      // Exercise header (name + delete button)
-      totalHeight += 32 // Exercise name line height
-
-      // Each set row
-      totalHeight += exercise.sets.length * 26 // ~26px per set row
-
-      // Add set button
-      totalHeight += 32
-
-      // Exercise bottom margin
-      totalHeight += 20
-    })
-
-    return totalHeight
-  }, [isStructuredMode, structuredData])
-
   // Handle content size changes to keep the cursor above the keyboard.
   const handleContentSizeChange = useCallback(
     (_event: {
@@ -2732,6 +2872,29 @@ export default function CreatePostScreen() {
   const showInlineVariations =
     isNotesFocused && variationSuggestions.length > 0 && !hasTrailingText
 
+  const clearEmptyExercisePrompt = useCallback(() => {
+    if (emptyExercisePromptTimeoutRef.current) {
+      clearTimeout(emptyExercisePromptTimeoutRef.current)
+      emptyExercisePromptTimeoutRef.current = null
+    }
+    setShowEmptyExercisePrompt(false)
+  }, [])
+
+  const showEmptyExerciseFeedback = useCallback(() => {
+    haptic('light')
+    notesInputRef.current?.focus()
+    setShowEmptyExercisePrompt(true)
+
+    if (emptyExercisePromptTimeoutRef.current) {
+      clearTimeout(emptyExercisePromptTimeoutRef.current)
+    }
+
+    emptyExercisePromptTimeoutRef.current = setTimeout(() => {
+      setShowEmptyExercisePrompt(false)
+      emptyExercisePromptTimeoutRef.current = null
+    }, 1600)
+  }, [])
+
   const stackedVariationSuggestions = useMemo(() => {
     if (!showInlineVariations) return []
     const primaryName = currentSuggestion?.name ?? null
@@ -2739,43 +2902,6 @@ export default function CreatePostScreen() {
       (suggestion) => suggestion.name !== primaryName,
     )
   }, [showInlineVariations, variationSuggestions, currentSuggestion])
-
-  // Auto-scroll to show variations when they appear
-  useEffect(() => {
-    if (
-      showInlineVariations &&
-      stackedVariationSuggestions.length > 0 &&
-      scrollViewRef.current
-    ) {
-      // Small delay to allow layout to update with new padding
-      requestAnimationFrame(() => {
-        if (scrollViewRef.current) {
-          // Calculate roughly where the cursor is
-          const cursorLineIndex = notes.substring(0, cursorPosition).split('\n')
-            .length
-          const lineHeight = 24
-          const structuredHeight = calculateStructuredContentHeight()
-
-          // Calculate explicit cursor Y position
-          const cursorY = structuredHeight + cursorLineIndex * lineHeight
-
-          // Scroll such that the cursor is positioned slightly down from the top
-          // giving context above (approx 3 lines) while maximizing space below for variations
-          // The buffer of -80 ensures previous lines are visible
-          scrollViewRef.current.scrollTo({
-            y: Math.max(0, cursorY - 80),
-            animated: true,
-          })
-        }
-      })
-    }
-  }, [
-    showInlineVariations,
-    stackedVariationSuggestions.length,
-    notes,
-    cursorPosition,
-    calculateStructuredContentHeight,
-  ])
 
   const acceptSuggestionByName = useCallback(
     async (exerciseName: string) => {
@@ -2816,9 +2942,31 @@ export default function CreatePostScreen() {
     void acceptSuggestionByName(currentSuggestion.name)
   }, [currentSuggestion, acceptSuggestionByName])
 
+  const handleToolbarAddExercise = useCallback(() => {
+    const parsed = parseExerciseFromText(notes, cursorPosition)
+    if (!parsed) {
+      showEmptyExerciseFeedback()
+      return
+    }
+
+    clearEmptyExercisePrompt()
+    void handleConvertToStructured()
+  }, [
+    clearEmptyExercisePrompt,
+    cursorPosition,
+    handleConvertToStructured,
+    notes,
+    parseExerciseFromText,
+    showEmptyExerciseFeedback,
+  ])
+
   // Handle text change
   const handleNotesChange = useCallback(
     async (text: string) => {
+      if (showEmptyExercisePrompt && text.trim().length > 0) {
+        clearEmptyExercisePrompt()
+      }
+
       // Check for Enter key press (newline addition) when a suggestion is active
       const isNewlineAdded =
         text.length > notes.length &&
@@ -2842,7 +2990,14 @@ export default function CreatePostScreen() {
 
       setNotes(text)
     },
-    [notes, cursorPosition, allExercises, acceptSuggestionByName],
+    [
+      showEmptyExercisePrompt,
+      clearEmptyExercisePrompt,
+      notes,
+      cursorPosition,
+      allExercises,
+      acceptSuggestionByName,
+    ],
   )
 
   // Convert text to structured format
@@ -2853,16 +3008,19 @@ export default function CreatePostScreen() {
     if (!parsed) return
 
     const { exerciseName, sets, startLineIndex, endLineIndex } = parsed
+    const resolution = resolveStructuredExercise(exerciseName, allExercises)
+    const resolvedExerciseName = resolution.resolvedName ?? exerciseName
 
     // Create exercise with history data, using the number of sets parsed from text
     const baseExercise = await createExerciseWithHistory(
-      exerciseName,
+      resolvedExerciseName,
       sets.length,
     )
 
     // Merge with user-typed data (preserve any values they already entered)
     const mergedExercise: StructuredExerciseDraft = {
       ...baseExercise,
+      name: resolvedExerciseName,
       sets: baseExercise.sets.map((set, index) => {
         const typedSet = sets[index]
         return {
@@ -2896,6 +3054,7 @@ export default function CreatePostScreen() {
   }, [
     notes,
     cursorPosition,
+    allExercises,
     parseExerciseFromText,
     isStructuredMode,
     createExerciseWithHistory,
@@ -3041,13 +3200,13 @@ export default function CreatePostScreen() {
       },
       onRoutinePress: handleOpenRoutineSelector,
       onSearchExercise: handleChooseExercisePress,
-      onAddExercise: handleConvertToStructured,
+      onAddExercise: handleToolbarAddExercise,
       isRecording,
       isTranscribing,
       isProcessingImage,
       isLoading,
       showAddExercise:
-        showConvertButton || pageTutorialToolbarMode === 'force-add',
+        isIOS || showConvertButton || pageTutorialToolbarMode === 'force-add',
       isRestTimerActive: restTimer.isActive,
       restTimerRemaining: restTimer.remainingSeconds,
       bottomInsetOverride: bottomSafeInset,
@@ -3063,12 +3222,13 @@ export default function CreatePostScreen() {
       blurInputs,
       handleOpenRoutineSelector,
       handleChooseExercisePress,
-      handleConvertToStructured,
+      handleToolbarAddExercise,
       isRecording,
       isTranscribing,
       isProcessingImage,
       isLoading,
       toolbarVisibleButtons,
+      isIOS,
       showConvertButton,
       pageTutorialToolbarMode,
       restTimer.isActive,
@@ -3076,6 +3236,14 @@ export default function CreatePostScreen() {
       bottomSafeInset,
     ],
   )
+
+  useEffect(() => {
+    return () => {
+      if (emptyExercisePromptTimeoutRef.current) {
+        clearTimeout(emptyExercisePromptTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Keyboard handling with Reanimated for perfect sync
   const keyboard = useAnimatedKeyboard()
@@ -3366,11 +3534,15 @@ export default function CreatePostScreen() {
                 // Android alignment fix
                 {...Platform.select({ android: { includeFontPadding: false } })}
                 placeholder={
-                  isStructuredMode
-                    ? ''
-                    : 'Log your exercises...'
+                  showEmptyExercisePrompt
+                    ? 'Type an exercise...'
+                    : isStructuredMode
+                      ? ''
+                      : 'Log your exercises...'
                 }
-                placeholderTextColor="#999"
+                placeholderTextColor={
+                  showEmptyExercisePrompt ? colors.brandPrimaryDark : '#999'
+                }
                 multiline
                 allowFontScaling={false}
                 value={notes}
@@ -3379,8 +3551,16 @@ export default function CreatePostScreen() {
                 textAlignVertical="top"
                 editable={!isRecording && !isTranscribing}
                 autoFocus={false}
-                cursorColor={colors.brandPrimary}
-                selectionColor={colors.brandPrimary}
+                cursorColor={
+                  showEmptyExercisePrompt
+                    ? colors.brandPrimaryDark
+                    : colors.brandPrimary
+                }
+                selectionColor={
+                  showEmptyExercisePrompt
+                    ? colors.brandPrimaryDark
+                    : colors.brandPrimary
+                }
                 onSelectionChange={handleNotesSelectionChange}
                 onFocus={() => {
                   if (keypadProps) {

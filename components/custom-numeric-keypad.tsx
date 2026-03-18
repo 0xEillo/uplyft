@@ -4,9 +4,9 @@ import { BlurView } from 'expo-blur'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   BackHandler,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import Animated, {
@@ -170,10 +170,11 @@ export function CustomNumericKeypad({
                     key === 'backspace' ? '⌫' : key === 'dot' ? '.' : key
 
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={key}
-                      style={[
+                      style={({ pressed }) => [
                         styles.keyButton,
+                        pressed && styles.keyButtonPressed,
                         isDotDisabled && styles.keyButtonDisabled,
                       ]}
                       disabled={isDotDisabled || !buttonsReady}
@@ -181,10 +182,9 @@ export function CustomNumericKeypad({
                         if (!buttonsReady) return
                         onKeyPress(key)
                       }}
-                      activeOpacity={0.75}
                     >
                       <Text style={styles.keyButtonText}>{label}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   )
                 })}
               </View>
@@ -192,26 +192,30 @@ export function CustomNumericKeypad({
           </View>
 
           <View style={styles.actionColumn}>
-            <TouchableOpacity
-              style={styles.nextButton}
+            <Pressable
+              style={({ pressed }) => [
+                styles.nextButton,
+                pressed && styles.nextButtonPressed,
+              ]}
               onPress={() => {
                 if (!buttonsReady) return
                 onNext()
               }}
-              activeOpacity={0.85}
               disabled={!buttonsReady}
             >
               <Text style={styles.nextButtonText}>Next</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.closeButton}
+            <Pressable
+              style={({ pressed }) => [
+                styles.closeButton,
+                pressed && styles.closeButtonPressed,
+              ]}
               onPress={handleDone}
-              activeOpacity={0.85}
               disabled={!buttonsReady}
             >
               <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </Animated.View>
@@ -292,8 +296,15 @@ const createStyles = (
     keyButton: {
       flex: 1,
       minHeight: 52,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    keyButtonPressed: {
+      backgroundColor: isDark
+        ? 'rgba(255, 255, 255, 0.14)'
+        : 'rgba(0, 0, 0, 0.08)',
+      transform: [{ scale: 0.97 }],
     },
     keyButtonDisabled: {
       opacity: 0.28,
@@ -316,6 +327,10 @@ const createStyles = (
       shadowRadius: 8,
       elevation: 3,
     },
+    nextButtonPressed: {
+      opacity: 0.92,
+      transform: [{ scale: 0.98 }],
+    },
     nextButtonText: {
       fontSize: 15,
       fontWeight: '600',
@@ -334,6 +349,12 @@ const createStyles = (
         : 'rgba(255, 255, 255, 0.78)',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    closeButtonPressed: {
+      backgroundColor: isDark
+        ? 'rgba(255, 255, 255, 0.18)'
+        : 'rgba(255, 255, 255, 0.92)',
+      transform: [{ scale: 0.98 }],
     },
     closeButtonText: {
       fontSize: 13,

@@ -264,6 +264,28 @@ const normalizeDailyLogDate = (value?: string): string => {
   return `${year}-${month}-${day}`
 }
 
+const normalizeDailyLogMealSource = (value?: unknown): DailyLogMealSource => {
+  if (
+    value === 'text' ||
+    value === 'photo' ||
+    value === 'voice' ||
+    value === 'manual' ||
+    value === 'correction'
+  ) {
+    return value
+  }
+
+  if (value === 'barcode' || value === 'manual_barcode') {
+    return 'manual'
+  }
+
+  if (value === 'chat_correction') {
+    return 'correction'
+  }
+
+  return 'text'
+}
+
 const toNonNegativeNumber = (value: number): number => {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Number(value.toFixed(1)))
@@ -4041,7 +4063,7 @@ export const database = {
           protein_g: toNonNegativeNumber(payload.protein_g),
           carbs_g: toNonNegativeNumber(payload.carbs_g),
           fat_g: toNonNegativeNumber(payload.fat_g),
-          source: payload.source ?? 'text',
+          source: normalizeDailyLogMealSource(payload.source),
           confidence: payload.confidence ?? null,
           chat_message_id: payload.chatMessageId ?? null,
           metadata: payload.metadata ?? {},
@@ -4099,7 +4121,9 @@ export const database = {
       if (typeof payload.fat_g === 'number') {
         updates.fat_g = toNonNegativeNumber(payload.fat_g)
       }
-      if (payload.source) updates.source = payload.source
+      if (payload.source) {
+        updates.source = normalizeDailyLogMealSource(payload.source)
+      }
       if (payload.confidence !== undefined)
         updates.confidence = payload.confidence
       if (payload.metadata !== undefined)
@@ -4125,6 +4149,19 @@ export const database = {
 
       if (error) throw error
       return data as DailyLogMeal
+    },
+
+    /**
+     * Delete one logged meal from the daily log.
+     */
+    async deleteMeal(userId: string, mealId: string): Promise<void> {
+      const { error } = await supabase
+        .from('daily_log_meals')
+        .delete()
+        .eq('id', mealId)
+        .eq('user_id', userId)
+
+      if (error) throw error
     },
 
     /**

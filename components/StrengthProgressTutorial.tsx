@@ -76,17 +76,17 @@ const SLIDES: TutorialSlide[] = [
   {
     id: 'map',
     description:
-      'The body map shows you how strong each of your muscle groups are.',
+      'Use the body map to see how strong each of your muscle groups are, and spot your weaknesses.',
   },
   {
     id: 'levels',
     description:
-      'Your lifter level shows you how strong you are. Get stronger on compound lifts to level up faster.',
+      'Your lifter level shows you how strong you are overall. Get stronger on tier 1 lifts to level up faster.',
   },
   {
     id: 'exercise-ranks',
     description:
-      'See exactly where you rank on key lifts and how close you are to the next level.',
+      'See exactly where you rank on different exercises and how close you are to the next level.',
   },
 ]
 
@@ -138,7 +138,9 @@ function LevelVisual() {
                 {SAMPLE_SCORE}
               </Text>
               <Text style={styles.pointsSlash}>/</Text>
-              <Text style={styles.pointsTotal}>{OVERALL_STRENGTH_SCORE_CAP}</Text>
+              <Text style={styles.pointsTotal}>
+                {OVERALL_STRENGTH_SCORE_CAP}
+              </Text>
             </View>
           </View>
           <LevelBadge
@@ -544,6 +546,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       lineHeight: 24,
       fontWeight: '600',
       color: colors.textPrimary,
+      textAlign: 'center',
     },
 
     // Footer

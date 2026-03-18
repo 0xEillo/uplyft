@@ -1,6 +1,7 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
 import { DailyMacrosSheet } from '@/components/daily-macros-sheet'
+import { ManualFoodLogSheet, ManualFoodLogData } from '@/components/manual-food-log-sheet'
 import { FoodScannerModal } from '@/components/food-scanner'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
@@ -964,6 +965,7 @@ export function WorkoutChat({
     false,
   )
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
+  const [manualFoodData, setManualFoodData] = useState<ManualFoodLogData | null>(null)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
   const hasRunInitialComposerRecoveryRef = useRef(false)
@@ -4659,10 +4661,77 @@ export function WorkoutChat({
             productData.nutriments?.fat_value ||
             0
 
-          setInput(
-            `Log ${serving} of ${name}${brand} (${cals} kcal, ${protein}p, ${carbs}c, ${fat}f)`,
-          )
-          setTimeout(() => inputRef.current?.focus(), 500)
+          setManualFoodData({
+            name: `${name}${brand}`,
+            calories: cals,
+            protein,
+            carbs,
+            fat,
+            servingSize: serving,
+          })
+        }}
+      />
+
+      <ManualFoodLogSheet
+        visible={!!manualFoodData}
+        foodData={manualFoodData}
+        onClose={() => setManualFoodData(null)}
+        onLog={async (data, quantity) => {
+          setManualFoodData(null)
+          if (!user?.id) {
+            Alert.alert('Sign In Required', 'Please sign in to save food logs.')
+            return
+          }
+          
+          const summary = `${quantity}x ${data.servingSize || 'serving'} of ${data.name}`
+          const cals = Math.round(data.calories * quantity)
+          const protein = Math.round(data.protein * quantity)
+          const carbs = Math.round(data.carbs * quantity)
+          const fat = Math.round(data.fat * quantity)
+          
+          try {
+            const today = getLocalDateString()
+            const mealPayload = {
+              description: summary,
+              calories: cals,
+              protein_g: protein,
+              carbs_g: carbs,
+              fat_g: fat,
+              source: 'manual' as const,
+              confidence: 'high' as const,
+              metadata: { from: 'manual_barcode_log' },
+              logDate: today,
+            }
+            
+            const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
+            setLatestLoggedMealId(inserted.id)
+            await refreshDailyLogSummary()
+            trackEvent(AnalyticsEvents.FOOD_LOGGED, {
+              source: 'manual_barcode',
+              action: 'log',
+              calories: cals,
+              has_macros: true,
+            })
+            hapticSuccess()
+            
+            // Optionally add a system message to the chat so the user sees it logged
+            const systemMessage: Message = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: `Logged **${summary}** manually.\n\n<food_log>{"action":"log","summary":"${summary}","calories":${cals},"protein_g":${protein},"carbs_g":${carbs},"fat_g":${fat},"source":"manual","confidence":"high"}</food_log>`,
+              createdAt: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, systemMessage])
+            setLoggedMealIdByMessage((prev) => ({
+              ...prev,
+              [systemMessage.id]: inserted.id,
+            }))
+            setFoodActionState((prev) => ({ ...prev, [systemMessage.id]: 'saved' }))
+            
+          } catch (error) {
+            console.error('[WorkoutChat] Failed to manually log meal:', error)
+            Alert.alert('Could not save meal', 'Please try again.')
+          }
         }}
       />
 

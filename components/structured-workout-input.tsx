@@ -588,7 +588,7 @@ export function StructuredWorkoutInput({
       const updates: Record<string, string | null> = {}
       exercises.forEach((ex) => {
         if (!ex.name.trim()) return
-        const match = exerciseLookup.findByName(ex.name.trim())
+        const match = exerciseLookup.findByNameExact(ex.name.trim())
         if (match?.gifUrl) {
           updates[ex.id] = match.gifUrl
         } else {
@@ -1041,7 +1041,7 @@ export function StructuredWorkoutInput({
       }
 
       await hapticAsync('medium')
-      const exerciseMeta = exerciseLookup.findByName(exercise.name)
+      const exerciseMeta = exerciseLookup.findByNameExact(exercise.name)
       const equipment = exerciseMeta?.equipment ?? null
       let previousWarmupWeight = 0
 
