@@ -65,7 +65,6 @@ export default function BodyScanFlowScreen() {
   const [isTakingPhoto, setIsTakingPhoto] = useState(false)
   const [activePhotoSlot, setActivePhotoSlot] = useState<number | null>(null)
   const [paywallVisible, setPaywallVisible] = useState(false)
-  const [openLibraryOnCapture, setOpenLibraryOnCapture] = useState(false)
 
   const ringRotation = useRef(new Animated.Value(0)).current
   const scanLineY = useRef(new Animated.Value(0)).current
@@ -113,13 +112,6 @@ export default function BodyScanFlowScreen() {
 
   const handleGetStarted = useCallback(() => {
     haptic('medium')
-    setOpenLibraryOnCapture(false)
-    setStep('capture')
-  }, [])
-
-  const handleUploadFromGallery = useCallback(() => {
-    haptic('medium')
-    setOpenLibraryOnCapture(true)
     setStep('capture')
   }, [])
 
@@ -462,37 +454,6 @@ export default function BodyScanFlowScreen() {
     opacity: progressOpacity.value,
   }))
 
-  // When navigating to capture with "Upload from Gallery", open library picker
-  useEffect(() => {
-    if (step === 'capture' && openLibraryOnCapture && user) {
-      setOpenLibraryOnCapture(false)
-      const openLib = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-        if (status !== 'granted') {
-          Alert.alert('Photo Library', 'Library access is required.')
-          return
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          aspect: [3, 4],
-          quality: 0.8,
-          allowsMultipleSelection: true,
-        })
-        if (!result.canceled && result.assets.length > 0) {
-          setPhotos((prev) => {
-            const next = [...prev]
-            result.assets.slice(0, 3).forEach((a, i) => {
-              next[i] = a.uri
-            })
-            return next
-          })
-          hapticSuccess()
-        }
-      }
-      openLib()
-    }
-  }, [step, openLibraryOnCapture, user])
-
   const styles = createStyles(colors)
 
   return (
@@ -562,13 +523,6 @@ export default function BodyScanFlowScreen() {
               activeOpacity={0.8}
             >
               <Text style={styles.introPrimaryBtnText}>Scan My Body</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.introSecondaryBtn}
-              onPress={handleUploadFromGallery}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.introSecondaryBtnText}>Upload Photo from Gallery</Text>
             </TouchableOpacity>
           </View>
         </Reanimated.View>
@@ -911,21 +865,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 17,
       fontWeight: '700',
       color: '#000000',
-      letterSpacing: -0.3,
-    },
-    introSecondaryBtn: {
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      paddingVertical: 16,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.2)',
-    },
-    introSecondaryBtnText: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: '#FFFFFF',
       letterSpacing: -0.3,
     },
 

@@ -535,12 +535,6 @@ export default function DailyFoodLogScreen() {
               >
                 {formatHeaderDate(activeDate)}
               </Text>
-              <View
-                style={[
-                  styles.dateTabDot,
-                  { backgroundColor: colors.textPrimary },
-                ]}
-              />
             </View>
             {formatHeaderDate(activeDate) === "Today" && (
               <View style={styles.dateTabInactive}>
@@ -1055,7 +1049,7 @@ export default function DailyFoodLogScreen() {
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Recently uploaded
+              Meals
             </Text>
           </View>
 
@@ -1275,11 +1269,6 @@ const createStyles = (
     dateTabTextActive: {
       fontSize: 16,
       fontWeight: "700",
-    },
-    dateTabDot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
     },
     dateTabInactive: {
       alignItems: "center",
