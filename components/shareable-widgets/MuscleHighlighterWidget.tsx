@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     width: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 24,
   },
   bodyWrapper: {
     height: 140,

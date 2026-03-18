@@ -633,8 +633,6 @@ export default function ProfileScreen() {
               <WeeklyStatsCard
                 streak={currentStreak}
                 workouts={weeklyWorkouts}
-                volume={weeklyVolume}
-                weightUnit={weightUnit}
                 activity={weeklyActivity}
                 onPress={() => router.push('/workout-calendar')}
                 showChevron={false}

@@ -68,25 +68,21 @@ export const StravaOverlayWidget = React.forwardRef<
         </View>
 
         {/* Branding */}
-        <View style={styles.footer}>
+        <View style={styles.bottomSection}>
           <View style={styles.brandContainer}>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
-            <View style={styles.brandContent}>
-              <View style={styles.logoContainer}>
-                <Image
-                  source={require('../../assets/images/bicep-icon.png')}
-                  style={[styles.brandIcon, { tintColor: textColor, shadowOpacity }]}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.logoText, { color: textColor, shadowOpacity }]}>REP AI</Text>
-              </View>
-              {(workout.profile?.user_tag || workout.profile?.display_name) && (
-                <Text style={[styles.userHandle, { color: subTextColor, shadowOpacity }]}>
-                  @{workout.profile?.user_tag || workout.profile?.display_name}
-                </Text>
-              )}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/images/bicep-icon.png')}
+                style={[styles.brandIcon, { tintColor: textColor, shadowOpacity }]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.brandText, { color: textColor, shadowOpacity }]}>REP AI</Text>
             </View>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor, shadowOpacity }]} />
+            {(workout.profile?.user_tag || workout.profile?.display_name) && (
+              <Text style={[styles.userTagText, { color: textColor, shadowOpacity }]}>
+                @{workout.profile?.user_tag || workout.profile?.display_name}
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -136,57 +132,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  footer: {
-    marginTop: 48,
-    alignItems: 'center',
+  bottomSection: {
+    paddingTop: 48,
     width: '100%',
-    paddingHorizontal: 40,
+    paddingHorizontal: 28,
+    paddingBottom: 24,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  brandContent: {
-    alignItems: 'center',
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-  },
-  brandLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
-  logoText: {
-    fontSize: 16,
+  brandText: {
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
-  userHandle: {
-    fontSize: 14,
-    fontWeight: '600',
-    opacity: 0.9,
+  userTagText: {
+    fontSize: 16,
+    fontWeight: '400',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
 })

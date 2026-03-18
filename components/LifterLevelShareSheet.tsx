@@ -1,4 +1,5 @@
 import { LifterLevelWidget, type LifterLevelWidgetProps } from '@/components/shareable-widgets/LifterLevelWidget'
+import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { Ionicons } from '@expo/vector-icons'
@@ -28,10 +29,14 @@ interface LifterLevelShareSheetProps
 export function LifterLevelShareSheet({
   visible,
   onClose,
+  userTag,
+  displayName,
   ...widgetProps
 }: LifterLevelShareSheetProps) {
   const colors = useThemedColors()
+  const { user } = useAuth()
   const { shareWorkoutWidget, isSharing } = useWorkoutShare()
+  const resolvedUserTag = userTag || displayName || user?.user_metadata?.user_tag || user?.user_metadata?.display_name
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('dark')
   const widgetRef = useRef<View>(null)
 
@@ -144,6 +149,8 @@ export function LifterLevelShareSheet({
             <LifterLevelWidget
               ref={widgetRef}
               {...widgetProps}
+              userTag={resolvedUserTag}
+              displayName={undefined}
               backgroundMode={backgroundMode}
             />
           </View>

@@ -1,4 +1,5 @@
 import { AnimatedFire } from '@/components/animated-fire'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { PostWorkoutCelebrationData } from '@/contexts/success-overlay-context'
@@ -149,17 +150,14 @@ export function PostWorkoutCelebration({
     const buildWidgets = async () => {
       const widgets: WidgetData[] = []
 
-      // 1. Streak
       if (data.streakData && data.streakData.currentStreak > 0 && data.streakData.isMilestone) {
         widgets.push({ type: 'streak', currentStreak: data.streakData.currentStreak })
       }
 
-      // 2. Points
       if (data.pointsData && data.pointsData.pointsGained > 0) {
         widgets.push({ type: 'points', ...data.pointsData })
       }
 
-      // 3. Exercise Upgrades
       if (data.exerciseUpgrades && data.exerciseUpgrades.length > 0) {
         data.exerciseUpgrades.forEach((upgrade) => {
           widgets.push({
@@ -171,7 +169,6 @@ export function PostWorkoutCelebration({
         })
       }
 
-      // 4. Summary & Stats (reversed order)
       widgets.push({ type: 'muscle_highlighter' })
       widgets.push({ type: 'summary' })
       widgets.push({ type: 'stats' })
@@ -210,17 +207,23 @@ export function PostWorkoutCelebration({
     }
   }
 
+  const username =
+    data?.workout?.profile?.user_tag ||
+    data?.workout?.profile?.display_name ||
+    user?.user_metadata?.user_tag ||
+    user?.user_metadata?.display_name
+
   const renderWidget = (widget: WidgetData, index: number, isGrid: boolean) => {
     const ref = getWidgetRef(index)
     
     const content = (() => {
       switch (widget.type) {
         case 'streak':
-          return <StreakWidget ref={ref} currentStreak={widget.currentStreak} username={user?.user_metadata?.user_tag || user?.user_metadata?.display_name} backgroundMode={backgroundMode} />
+          return <StreakWidget ref={ref} currentStreak={widget.currentStreak} username={username} backgroundMode={backgroundMode} />
         case 'points':
-          return <PointsWidget ref={ref} {...widget} username={user?.user_metadata?.user_tag || user?.user_metadata?.display_name} backgroundMode={backgroundMode} />
+          return <PointsWidget ref={ref} {...widget} username={username} backgroundMode={backgroundMode} />
         case 'exercise_upgrade':
-          return <ExerciseUpgradeWidget ref={ref} {...widget} username={user?.user_metadata?.user_tag || user?.user_metadata?.display_name} backgroundMode={backgroundMode} />
+          return <ExerciseUpgradeWidget ref={ref} {...widget} username={username} backgroundMode={backgroundMode} />
         case 'summary':
           return <WorkoutSummaryWidget ref={ref} workout={data!.workout} weightUnit={weightUnit} workoutTitle={data!.workoutTitle} backgroundMode={backgroundMode} />
         case 'stats':
@@ -276,29 +279,24 @@ export function PostWorkoutCelebration({
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={showGrid ? () => setShowGrid(false) : onClose} style={styles.closeButton}>
-              <Ionicons name={showGrid ? "chevron-back" : "close"} size={28} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <View style={styles.headerRight}>
+            <LiquidGlassSurface style={styles.headerButtonGlass}>
               <TouchableOpacity
-                style={styles.colorToggle}
-                onPress={() => {
-                  const modes: ('light' | 'dark' | 'transparent')[] = ['light', 'dark', 'transparent']
-                  setBackgroundMode(modes[(modes.indexOf(backgroundMode) + 1) % modes.length])
-                }}
+                onPress={showGrid ? () => setShowGrid(false) : onClose}
+                style={styles.headerButtonTouchable}
               >
-                {backgroundMode === 'light' && <View style={[styles.bgCircle, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E5EA' }]} />}
-                {backgroundMode === 'dark' && <View style={[styles.bgCircle, { backgroundColor: '#000' }]} />}
-                {backgroundMode === 'transparent' && <View style={[styles.bgCircle, { backgroundColor: '#D1D1D6', borderWidth: 1, borderColor: '#FFF' }]} />}
+                <Ionicons name={showGrid ? 'chevron-back' : 'close'} size={24} color={colors.textPrimary} />
               </TouchableOpacity>
-              
+            </LiquidGlassSurface>
+            <View style={styles.headerRight}>
               {!showGrid && (
-                <TouchableOpacity
-                  onPress={() => setShowGrid(true)}
-                  style={styles.plusButton}
-                >
-                  <Ionicons name="add" size={28} color={colors.textPrimary} />
-                </TouchableOpacity>
+                <LiquidGlassSurface style={styles.headerButtonGlass}>
+                  <TouchableOpacity
+                    onPress={() => setShowGrid(true)}
+                    style={styles.headerButtonTouchable}
+                  >
+                    <Ionicons name="add" size={24} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </LiquidGlassSurface>
               )}
             </View>
           </View>
@@ -326,13 +324,31 @@ export function PostWorkoutCelebration({
           </View>
 
           {showGrid ? (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={styles.scrollView}
-              contentContainerStyle={styles.gridContainer}
-            >
-              {allWidgets.map((widget, index) => renderWidget(widget, index, true))}
-            </ScrollView>
+            <>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.scrollView}
+                contentContainerStyle={styles.gridContainer}
+              >
+                {allWidgets.map((widget, index) => renderWidget(widget, index, true))}
+              </ScrollView>
+              <View style={[styles.footer, styles.gridFooter]}>
+                <View style={[styles.footerActions, styles.gridFooterActions]}>
+                  <TouchableOpacity
+                    style={[styles.colorButton, { backgroundColor: colors.textSecondary, borderWidth: 2, borderColor: colors.textPrimary }]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const modes: ('light' | 'dark' | 'transparent')[] = ['light', 'dark', 'transparent']
+                      setBackgroundMode(modes[(modes.indexOf(backgroundMode) + 1) % modes.length])
+                    }}
+                  >
+                    {backgroundMode === 'light' && <View style={[styles.bgCircle, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E5EA' }]} />}
+                    {backgroundMode === 'dark' && <View style={[styles.bgCircle, { backgroundColor: '#000' }]} />}
+                    {backgroundMode === 'transparent' && <View style={[styles.bgCircle, { backgroundColor: '#D1D1D6', borderWidth: 1, borderColor: '#FFF' }]} />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
           ) : (
             <>
               {/* Carousel */}
@@ -362,19 +378,33 @@ export function PostWorkoutCelebration({
                   ))}
                 </View>
 
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  activeOpacity={0.8}
-                  onPress={() => handleShare(currentPage)}
-                >
-                  <Ionicons
-                    name="share-outline"
-                    size={20}
-                    color={isDark ? colors.bg : colors.onPrimary}
-                    style={styles.actionIcon}
-                  />
-                  <Text style={styles.actionButtonText}>Share</Text>
-                </TouchableOpacity>
+                <View style={styles.footerActions}>
+                  <TouchableOpacity
+                    style={[styles.colorButton, { backgroundColor: colors.textSecondary, borderWidth: 2, borderColor: colors.textPrimary }]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const modes: ('light' | 'dark' | 'transparent')[] = ['light', 'dark', 'transparent']
+                      setBackgroundMode(modes[(modes.indexOf(backgroundMode) + 1) % modes.length])
+                    }}
+                  >
+                    {backgroundMode === 'light' && <View style={[styles.bgCircle, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E5EA' }]} />}
+                    {backgroundMode === 'dark' && <View style={[styles.bgCircle, { backgroundColor: '#000' }]} />}
+                    {backgroundMode === 'transparent' && <View style={[styles.bgCircle, { backgroundColor: '#D1D1D6', borderWidth: 1, borderColor: '#FFF' }]} />}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleShare(currentPage)}
+                  >
+                    <Ionicons
+                      name="share-outline"
+                      size={20}
+                      color={isDark ? colors.bg : colors.onPrimary}
+                      style={styles.actionIcon}
+                    />
+                    <Text style={styles.actionButtonText}>Share</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </>
           )}
@@ -470,19 +500,20 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      minWidth: 40,
-      gap: 8,
+      minWidth: 44,
     },
-    colorToggle: {
-      padding: 4,
+    headerButtonGlass: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    bgCircle: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-    },
-    plusButton: {
-      padding: 4,
+    headerButtonTouchable: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     scrollView: {
       flex: 1,
@@ -543,11 +574,35 @@ const createStyles = (
       height: 8,
       borderRadius: 4,
     },
-    actionButton: {
-      backgroundColor: colors.textPrimary,
+    footerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
       width: '100%',
-      paddingVertical: 18,
-      borderRadius: 30,
+    },
+    gridFooter: {
+      paddingTop: 0,
+    },
+    gridFooterActions: {
+      justifyContent: 'flex-end',
+    },
+    colorButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bgCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+    },
+    actionButton: {
+      flex: 1,
+      backgroundColor: colors.textPrimary,
+      height: 56,
+      borderRadius: 28,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',

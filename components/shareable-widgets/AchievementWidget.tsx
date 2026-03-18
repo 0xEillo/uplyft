@@ -281,60 +281,22 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
               </View>
             )}
           </View>
-
-          {/* Bottom Section: Branding */}
+          {/* Branding */}
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
-              <View
-                style={[
-                  styles.brandLine,
-                  { backgroundColor: dividerColor, shadowOpacity },
-                ]}
-              />
-              <View style={styles.brandContent}>
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('../../assets/images/bicep-icon.png')}
-                    style={[
-                      styles.brandIcon,
-                      {
-                        tintColor: dynamicTextColor,
-                        shadowOpacity,
-                      },
-                    ]}
-                    resizeMode="contain"
-                  />
-                  <Text
-                    style={[
-                      styles.brandText,
-                      {
-                        color: dynamicTextColor,
-                        shadowOpacity,
-                      },
-                    ]}
-                  >
-                    REP AI
-                  </Text>
-                </View>
-                {(workout.profile?.user_tag ||
-                  workout.profile?.display_name) && (
-                  <Text
-                    style={[
-                      styles.userTagText,
-                      { color: dynamicSubTextColor, shadowOpacity },
-                    ]}
-                  >
-                    @
-                    {workout.profile?.user_tag || workout.profile?.display_name}
-                  </Text>
-                )}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../assets/images/bicep-icon.png')}
+                  style={[styles.brandIcon, { tintColor: dynamicTextColor, shadowOpacity }]}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.brandText, { color: dynamicTextColor, shadowOpacity }]}>REP AI</Text>
               </View>
-              <View
-                style={[
-                  styles.brandLine,
-                  { backgroundColor: dividerColor, shadowOpacity },
-                ]}
-              />
+              {(workout.profile?.user_tag || workout.profile?.display_name) && (
+                <Text style={[styles.userTagText, { color: dynamicTextColor, shadowOpacity }]}>
+                  @{workout.profile?.user_tag || workout.profile?.display_name}
+                </Text>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -562,65 +524,38 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   bottomSection: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  brandContent: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
-  },
-  brandLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-  },
-  brandLineLight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   brandText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-  },
-  brandTextLight: {
-    color: '#FFFFFF',
-  },
-  userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8E8E93',
     letterSpacing: 0.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  userTagTextLight: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  userTagText: {
+    fontSize: 16,
+    fontWeight: '400',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
 })

@@ -233,9 +233,8 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
 
           {/* Branding */}
           <View style={styles.brandSection}>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor }]} />
-            <View style={styles.brandContent}>
-              <View style={styles.logoRow}>
+            <View style={styles.brandContainer}>
+              <View style={styles.logoContainer}>
                 <Image
                   source={require('../../assets/images/bicep-icon.png')}
                   style={[styles.brandIcon, { tintColor: textColor }]}
@@ -246,12 +245,11 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
                 </Text>
               </View>
               {(userTag || displayName) && (
-                <Text style={[styles.userTagText, { color: subTextColor }]}>
+                <Text style={[styles.userTagText, { color: textColor }]}>
                   @{userTag || displayName}
                 </Text>
               )}
             </View>
-            <View style={[styles.brandLine, { backgroundColor: dividerColor }]} />
           </View>
         </LinearGradient>
       </View>
@@ -351,37 +349,40 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   brandSection: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  brandLine: {
-    flex: 1,
-    height: 1,
-  },
-  brandContent: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  logoRow: {
+  logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   brandIcon: {
-    width: 18,
-    height: 18,
+    width: 24,
+    height: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   brandText: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '400',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
 })

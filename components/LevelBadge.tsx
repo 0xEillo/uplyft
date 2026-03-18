@@ -18,6 +18,7 @@ import Svg, {
 
 // Helper to lighten a hex color
 function lightenColor(hex: string, percent: number): string {
+  if (!hex || typeof hex !== 'string') return '#6B7280'
   const num = parseInt(hex.replace('#', ''), 16)
   const amt = Math.round(2.55 * percent)
   const R = (num >> 16) + amt
@@ -77,7 +78,7 @@ export function LevelBadge({
   iconOnly = false,
   onPress,
 }: LevelBadgeProps) {
-  const color = LEVEL_COLORS[level]
+  const color = LEVEL_COLORS[level] ?? '#6B7280'
   const [showTooltip, setShowTooltip] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const timeoutRef = useRef<any>(null)

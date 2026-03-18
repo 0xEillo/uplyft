@@ -322,32 +322,24 @@ export const ConsistencyWidget = React.forwardRef<View, ConsistencyWidgetProps>(
             {variant === 'multi-year' && renderMultiYearView()}
           </View>
 
-          {/* Bottom Section: Branding */}
+          {/* Branding */}
           <View style={styles.bottomSection}>
             <View style={styles.brandContainer}>
-              <View
-                style={[styles.brandLine, { backgroundColor: dividerColor }]}
-              />
-              <View style={styles.brandContent}>
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('../../assets/images/bicep-icon.png')}
-                    style={[styles.brandIcon, { tintColor: brandTextColor }]}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.brandText, { color: brandTextColor }]}>
-                    REP AI
-                  </Text>
-                </View>
-                {(userTag || displayName) && (
-                  <Text style={[styles.userTagText, { color: subTextColor }]}>
-                    @{userTag || displayName}
-                  </Text>
-                )}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../assets/images/bicep-icon.png')}
+                  style={[styles.brandIcon, { tintColor: brandTextColor }]}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.brandText, { color: brandTextColor }]}>
+                  REP AI
+                </Text>
               </View>
-              <View
-                style={[styles.brandLine, { backgroundColor: dividerColor }]}
-              />
+              {(userTag || displayName) && (
+                <Text style={[styles.userTagText, { color: brandTextColor }]}>
+                  @{userTag || displayName}
+                </Text>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -478,41 +470,38 @@ const styles = StyleSheet.create({
   },
   // Branding styles
   bottomSection: {
-    alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  brandContent: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 2,
+    justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
   brandIcon: {
-    width: 20,
-    height: 20,
-  },
-  brandLine: {
-    width: 40,
-    height: 2,
+    width: 24,
+    height: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   brandText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
   userTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '400',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
   },
 })

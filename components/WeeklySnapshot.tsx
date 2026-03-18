@@ -74,9 +74,9 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
       iconColor = colors.statusSuccess
       iconName = 'caret-up'
     } else if (isNegative) {
-      pillBg = `${colors.statusError}20`
-      pillText = colors.statusError
-      iconColor = colors.statusError
+      pillBg = colors.surfaceSubtle
+      pillText = colors.textTertiary
+      iconColor = colors.textTertiary
       iconName = 'caret-down'
     }
 

@@ -59,6 +59,10 @@ export default function EditProfileScreen() {
   ] = useState<ExperienceLevel | null>(null)
   const [editedBio, setEditedBio] = useState('')
   const [editedProfileDescription, setEditedProfileDescription] = useState('')
+  const [editedUserTag, setEditedUserTag] = useState('')
+  const [originalUserTag, setOriginalUserTag] = useState('')
+  const [userTagError, setUserTagError] = useState<string | null>(null)
+  const [isCheckingTag, setIsCheckingTag] = useState(false)
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return
@@ -86,6 +90,8 @@ export default function EditProfileScreen() {
       setEditedExperienceLevel(profile?.experience_level || null)
       setEditedBio(profile?.bio || '')
       setEditedProfileDescription(profile?.profile_description || '')
+      setEditedUserTag(profile?.user_tag || '')
+      setOriginalUserTag(profile?.user_tag || '')
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
@@ -100,6 +106,50 @@ export default function EditProfileScreen() {
   useEffect(() => {
     trackEvent(AnalyticsEvents.EDIT_PROFILE_VIEWED)
   }, [trackEvent])
+
+  useEffect(() => {
+    const checkTag = async () => {
+      const tag = editedUserTag.trim().toLowerCase()
+      
+      if (!tag) {
+        setUserTagError('Usertag cannot be empty')
+        return
+      }
+
+      if (tag.length < 3) {
+        setUserTagError('Usertag must be at least 3 characters')
+        return
+      }
+
+      const tagRegex = /^[a-z0-9._]+$/
+      if (!tagRegex.test(tag)) {
+        setUserTagError('Only lowercase letters, numbers, dots, and underscores allowed')
+        return
+      }
+
+      if (tag === originalUserTag) {
+        setUserTagError(null)
+        return
+      }
+
+      setIsCheckingTag(true)
+      try {
+        const existing = await database.profiles.getByUserTag(tag)
+        if (existing) {
+          setUserTagError('This usertag is already taken')
+        } else {
+          setUserTagError(null)
+        }
+      } catch (error) {
+        console.error('Error checking user tag:', error)
+      } finally {
+        setIsCheckingTag(false)
+      }
+    }
+
+    const timer = setTimeout(checkTag, 500)
+    return () => clearTimeout(timer)
+  }, [editedUserTag, originalUserTag])
 
   const styles = createStyles(colors, weightUnit)
 
@@ -176,8 +226,16 @@ export default function EditProfileScreen() {
 
     try {
       setIsSaving(true)
+
+      // Final check for usertag to be sure
+      if (userTagError) {
+        Alert.alert('Error', userTagError)
+        return
+      }
+
       await database.profiles.update(user.id, {
         display_name: editedDisplayName.trim() || undefined,
+        user_tag: editedUserTag.trim().toLowerCase() || undefined,
         gender: editedGender,
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
         weight_kg: editedWeight
@@ -286,14 +344,38 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          {/* User Tag */}
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.label}>Usertag (@handle)</Text>
+              {isCheckingTag && <ActivityIndicator size="small" color={colors.brandPrimary} />}
+            </View>
+            <TextInput
+              style={[
+                styles.input,
+                userTagError && editedUserTag !== originalUserTag && { borderColor: '#ff4444' }
+              ]}
+              value={editedUserTag}
+              onChangeText={(text) => setEditedUserTag(text.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
+              placeholder="e.g., fitness_pro"
+              placeholderTextColor={colors.textPlaceholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={30}
+            />
+            {userTagError && editedUserTag !== originalUserTag && (
+              <Text style={{ color: '#ff4444', fontSize: 12, marginTop: 4 }}>{userTagError}</Text>
+            )}
+          </View>
+
           {/* Display Name */}
           <View style={styles.section}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>Display Name</Text>
             <TextInput
               style={styles.input}
               value={editedDisplayName}
               onChangeText={setEditedDisplayName}
-              placeholder="Enter your username"
+              placeholder="Enter your display name"
               placeholderTextColor={colors.textPlaceholder}
               maxLength={50}
             />

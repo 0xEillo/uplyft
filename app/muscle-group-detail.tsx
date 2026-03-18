@@ -145,10 +145,10 @@ export default function MuscleGroupDetailScreen() {
           <TouchableOpacity
             key={exercise.exerciseName}
             style={[
-              styles.exerciseCard,
-              isDark && exercise.isDone && { backgroundColor: colors.rowTint },
-              !exercise.isDone && styles.untrackedCard,
-              index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
+               styles.exerciseCard,
+               !isDark && exercise.isDone && { borderColor: colors.border },
+               !exercise.isDone && styles.untrackedCard,
+               index === allMuscleExercises.length - 1 && styles.lastExerciseCard,
             ]}
             onPress={() =>
               exercise.exerciseId && navigateToExercise(exercise.exerciseId)
@@ -167,22 +167,38 @@ export default function MuscleGroupDetailScreen() {
                 />
               </View>
               <View style={styles.exerciseInfo}>
-                <Text
-                  style={[
-                    styles.exerciseName,
-                    !exercise.isDone && styles.untrackedText,
-                  ]}
-                >
-                  {exercise.exerciseName}
-                </Text>
+                <View style={styles.exerciseNameRow}>
+                  <Text
+                    style={[
+                      styles.exerciseName,
+                      !exercise.isDone && styles.untrackedText,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {exercise.exerciseName}
+                  </Text>
+                  {exercise.isTierOne && (
+                    <Ionicons
+                      name="trophy"
+                      size={12}
+                      color={exercise.isDone ? colors.textPrimary : TIER_ONE_ICON_COLOR}
+                      style={{ opacity: exercise.isDone ? 0.8 : 0.4 }}
+                    />
+                  )}
+                </View>
               </View>
             </View>
 
-            <View style={styles.exerciseRight}>
-              {exercise.isTierOne ? (
-                <Ionicons name="trophy" size={16} color={TIER_ONE_ICON_COLOR} />
-              ) : null}
-            </View>
+             <View style={styles.exerciseRight}>
+               {exercise.isDone && (
+                 <Ionicons
+                   name="checkmark-circle"
+                   size={18}
+                   color={colors.statusSuccess}
+                   style={{ opacity: 0.8 }}
+                 />
+               )}
+             </View>
           </TouchableOpacity>
         ))}
 
@@ -413,8 +429,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'flex-end',
       gap: 8,
     },
-    untrackedCard: {
-      backgroundColor: colors.bg,
+     untrackedCard: {
+      backgroundColor: 'transparent',
+      borderColor: colors.border + '35',
       elevation: 0,
       shadowOpacity: 0,
     },
@@ -422,9 +439,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       position: 'relative',
     },
     untrackedThumbnail: {
-      opacity: 0.7,
+      opacity: 0.35,
     },
     untrackedText: {
-      color: colors.textSecondary,
+      color: colors.textTertiary,
     },
   })

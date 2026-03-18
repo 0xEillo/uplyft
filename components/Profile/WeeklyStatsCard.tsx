@@ -1,3 +1,4 @@
+import { AnimatedFire } from '@/components/animated-fire'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useCallback, useMemo, useState } from 'react'
@@ -5,9 +6,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface WeeklyStatsCardProps {
   streak: number
-  workouts: number
-  volume: number
-  weightUnit: 'kg' | 'lb'
   activity: boolean[]
   onPress: () => void
   showChevron?: boolean
@@ -15,9 +13,6 @@ interface WeeklyStatsCardProps {
 
 export const WeeklyStatsCard = ({
   streak,
-  workouts,
-  volume,
-  weightUnit,
   activity,
   onPress,
   showChevron = true,
@@ -25,23 +20,13 @@ export const WeeklyStatsCard = ({
   const colors = useThemedColors()
   const styles = useMemo(() => createStyles(colors), [colors])
   const [showStreakLabel, setShowStreakLabel] = useState(false)
-  const [showVolumeLabel, setShowVolumeLabel] = useState(false)
 
   const handleStreakTap = useCallback(() => {
     setShowStreakLabel(true)
     setTimeout(() => setShowStreakLabel(false), 1000)
   }, [])
 
-  const handleVolumeTap = useCallback(() => {
-    setShowVolumeLabel(true)
-    setTimeout(() => setShowVolumeLabel(false), 1000)
-  }, [])
 
-  // Calculate volume display
-  const volumeDisplay = (weightUnit === 'lb'
-    ? (volume * 2.20462) / 1000
-    : volume / 1000
-  ).toFixed(1)
 
   return (
     <View style={styles.container}>
@@ -58,24 +43,13 @@ export const WeeklyStatsCard = ({
             activeOpacity={0.7}
           >
             {showStreakLabel && <Text style={styles.statLabel}>Streak</Text>}
-            <Ionicons name="flame" size={16} color={colors.brandPrimary} />
+            <AnimatedFire
+              size={18}
+              isActive={streak > 0}
+              inactiveColor={colors.textSecondary + '40'}
+            />
             <Text style={styles.statValue}>
               {streak} <Text style={styles.statUnit}>weeks</Text>
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.statDivider} />
-
-          <TouchableOpacity
-            style={styles.statItem}
-            onPress={handleVolumeTap}
-            activeOpacity={0.7}
-          >
-            {showVolumeLabel && <Text style={styles.statLabel}>Volume</Text>}
-            <Ionicons name="barbell" size={16} color={colors.brandPrimary} />
-            <Text style={styles.statValue}>
-              {volumeDisplay}
-              <Text style={styles.statUnit}>k</Text>
             </Text>
           </TouchableOpacity>
 
