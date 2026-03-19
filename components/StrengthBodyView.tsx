@@ -869,6 +869,8 @@ export function StrengthBodyView({
                     styles.heroLevelName,
                     { color: priorityPointsColor },
                   ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
                 >
                   {overallLevel?.balancedLevel ?? "Unranked"}
                 </Text>
@@ -1402,15 +1404,15 @@ const createStyles = (
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      paddingTop: 18,
-      paddingBottom: 14,
+      paddingTop: 16,
+      paddingBottom: 12,
     },
     heroLevelLeft: {
       flex: 1,
       paddingRight: 12,
     },
     heroLevelName: {
-      fontSize: 34,
+      fontSize: 30,
       fontWeight: "900",
       letterSpacing: -1,
       lineHeight: 38,
@@ -1422,7 +1424,7 @@ const createStyles = (
       marginBottom: 10,
     },
     heroXpCurrent: {
-      fontSize: 21,
+      fontSize: 19,
       fontWeight: "800",
       fontVariant: ["tabular-nums"] as any,
     },
@@ -1458,8 +1460,8 @@ const createStyles = (
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "center",
-      gap: 10,
-      paddingVertical: 12,
+      gap: 8,
+      paddingVertical: 10,
     },
 
     // Body Section - consistent 14px horizontal padding

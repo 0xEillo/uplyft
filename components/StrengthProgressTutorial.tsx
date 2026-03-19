@@ -137,7 +137,9 @@ function LevelVisual() {
       <View style={[styles.levelCard, { borderColor: `${levelColor}66` }]}>
         <View style={styles.levelCardContent}>
           <View style={styles.levelCardLeft}>
-            <Text style={styles.levelCardValue}>{SAMPLE_LEVEL}</Text>
+            <Text style={styles.levelCardValue} numberOfLines={1} adjustsFontSizeToFit>
+              {SAMPLE_LEVEL}
+            </Text>
             <View style={styles.pointsRow}>
               <Text style={[styles.pointsCurrent, { color: levelColor }]}>
                 {SAMPLE_SCORE}
@@ -428,8 +430,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexGrow: 0,
     },
     cardContent: {
-      padding: 24,
-      gap: 24,
+      padding: 20,
+      gap: 16,
     },
     stepCounter: {
       fontSize: 12,
@@ -447,17 +449,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     mapWrap: {
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 220,
+      minHeight: 160,
       backgroundColor: colors.surfaceSubtle + '40',
       borderRadius: 24,
-      padding: 10,
+      padding: 6,
     },
     legendGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: 6,
-      marginTop: 8,
+      gap: 4,
+      marginTop: 4,
     },
 
     // Level card
@@ -465,8 +467,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.surfaceCard,
       borderRadius: 24,
       borderWidth: 1,
-      paddingHorizontal: 24,
-      paddingVertical: 24,
+      paddingHorizontal: 20,
+      paddingVertical: 20,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.1,
@@ -477,13 +479,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 12,
     },
     levelCardLeft: {
       flex: 1,
       justifyContent: 'center',
     },
     levelCardValue: {
-      fontSize: 32,
+      fontSize: 24,
       fontWeight: '900',
       color: colors.textPrimary,
       letterSpacing: -1,
@@ -494,7 +497,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'baseline',
     },
     pointsCurrent: {
-      fontSize: 26,
+      fontSize: 20,
       fontWeight: '900',
       fontVariant: ['tabular-nums'] as any,
     },
@@ -630,8 +633,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 8,
     },
     slideDescription: {
-      fontSize: 16,
-      lineHeight: 24,
+      fontSize: 15,
+      lineHeight: 22,
       fontWeight: '600',
       color: colors.textPrimary,
       textAlign: 'center',
@@ -640,10 +643,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
 
     // Footer
     footer: {
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 24,
-      gap: 20,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 20,
+      gap: 16,
       borderTopWidth: 1,
       borderTopColor: colors.border + '22',
     },
@@ -679,7 +682,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     nextBtn: {
       borderRadius: 20,
       paddingHorizontal: 28,
-      paddingVertical: 14,
+      paddingVertical: 12,
       minWidth: 120,
       alignItems: 'center',
       shadowColor: colors.brandPrimary,

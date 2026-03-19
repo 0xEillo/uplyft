@@ -121,7 +121,11 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
           <View style={styles.headerSection}>
             <View style={styles.headerRow}>
               <View style={styles.levelLeft}>
-                <Text style={[styles.levelName, { color: levelColor }]}>
+                <Text
+                  style={[styles.levelName, { color: levelColor }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   {level}
                 </Text>
                 <View style={styles.xpRow}>
@@ -286,10 +290,10 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   levelName: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '900',
     letterSpacing: -1,
-    lineHeight: 38,
+    lineHeight: 34,
     marginBottom: 8,
   },
   xpRow: {
@@ -298,7 +302,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   xpCurrent: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
