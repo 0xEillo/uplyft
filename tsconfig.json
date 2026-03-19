@@ -16,6 +16,8 @@
     "expo-env.d.ts"
   ],
   "exclude": [
-    "supabase/functions/**"
+    "supabase/functions/**",
+    "temp.tsx",
+    "temp_styles.tsx"
   ]
 }

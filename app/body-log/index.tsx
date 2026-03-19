@@ -41,6 +41,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BodyFatAddSheet } from '@/components/BodyFatAddSheet'
 import { BodyFatInputModal } from '@/components/BodyFatInputModal'
+import { DailyCalorieGoalHeader } from '@/components/BodyLog/DailyCalorieGoalHeader'
 import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
 import { WeightInputModal } from '@/components/WeightInputModal'
 
@@ -623,6 +624,7 @@ export default function BodyLogScreen() {
 
   const [shouldExit, setShouldExit] = useState(false)
   const [entries, setEntries] = useState<EntryWithSignedUrl[]>([])
+  const [todayCalorieGoal, setTodayCalorieGoal] = useState<number | null>(null)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -807,6 +809,19 @@ export default function BodyLogScreen() {
         setHasMore(bodyPage.hasMore || dailyPage.hasMore)
         bodyPageRef.current = 1
         dailyPageRef.current = 1
+
+        // Extract today's goal
+        const todayKey = getLocalDateKey(new Date().toISOString())
+        const todayEntry = mergedEntries.find(e => e.logDate === todayKey)
+        if (todayEntry?.dailySummary?.goals.calorie_goal) {
+          setTodayCalorieGoal(todayEntry.dailySummary.goals.calorie_goal)
+        } else {
+          // Fallback check: if no entry for today, we might need to fetch summary explicitly if we want it always.
+          // But getSummariesForDates already covers all dates in the list.
+          // If today is NOT in the list, we can fetch it.
+          const summary = await database.dailyLog.getDaySummary(user.id, todayKey)
+          setTodayCalorieGoal(summary?.goals.calorie_goal ?? null)
+        }
       } catch (e) {
         console.error('Error loading entries:', e)
       } finally {
@@ -1367,7 +1382,13 @@ export default function BodyLogScreen() {
             ListHeaderComponent={
               <View>
                 {TabsHeader}
-              
+                {user && (
+                    <DailyCalorieGoalHeader 
+                        userId={user.id} 
+                        currentGoal={todayCalorieGoal}
+                        onUpdate={(goal) => setTodayCalorieGoal(goal)}
+                    />
+                )}
               </View>
             }
             ListEmptyComponent={

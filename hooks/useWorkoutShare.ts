@@ -13,7 +13,7 @@ import { Alert, Linking, Platform, Share, View } from 'react-native'
 import { useWeightUnits } from './useWeightUnits'
 
 // Type for view refs that can be captured (supports both RefObject and View directly)
-type CaptureableViewRef = RefObject<View> | View
+type CaptureableViewRef = RefObject<View | null> | View
 
 // Lazy import expo-sharing to avoid crashes in Expo Go (requires native module)
 let Sharing: typeof import('expo-sharing') | null = null

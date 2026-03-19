@@ -38,7 +38,6 @@ import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
-import { useTutorial } from '@/contexts/tutorial-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
@@ -252,7 +251,6 @@ export default function BodyLogDetailScreen() {
   const { coachId } = useProfile()
   const { isProMember } = useSubscription()
   const coach = getCoach(coachId)
-  const { completeStep } = useTutorial()
   const router = useRouter()
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()

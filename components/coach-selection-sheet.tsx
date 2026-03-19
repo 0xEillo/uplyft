@@ -2,10 +2,9 @@ import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
-import { calculateMaintenanceCalories } from '@/lib/nutrition'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +15,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native'
@@ -25,26 +23,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 interface CoachSelectionSheetProps {
   visible: boolean
   onClose: () => void
-  currentCalorieGoal?: number | null
-  onUpdateCalorieGoal?: (goal: number) => Promise<void>
 }
 
 export function CoachSelectionSheet({
   visible,
   onClose,
-  currentCalorieGoal,
-  onUpdateCalorieGoal,
 }: CoachSelectionSheetProps) {
   const router = useRouter()
   const { profile, updateProfile } = useProfile()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const [isUpdating, setIsUpdating] = useState(false)
-  const [calorieInput, setCalorieInput] = useState('')
-  const maintenanceCalories = useMemo(
-    () => calculateMaintenanceCalories(profile ?? null),
-    [profile],
-  )
 
   // Check if user has all necessary data
   const hasProfileStats = 
@@ -53,25 +42,7 @@ export function CoachSelectionSheet({
       profile?.age && 
       profile?.gender
 
-  const recommendations = useMemo(() => {
-    if (!hasProfileStats || !maintenanceCalories) return null
 
-    return [
-      { label: 'Aggressive Cut', calories: Math.round(maintenanceCalories * 0.75), color: '#ef4444' },
-      { label: 'Cut', calories: Math.round(maintenanceCalories * 0.85), color: '#f97316' },
-      { label: 'Maintenance', calories: maintenanceCalories, color: '#3b82f6' },
-      { label: 'Bulk', calories: Math.round(maintenanceCalories * 1.1), color: '#10b981' },
-    ]
-  }, [hasProfileStats, maintenanceCalories])
-
-  useEffect(() => {
-    const effectiveGoal = currentCalorieGoal ?? maintenanceCalories ?? null
-    if (effectiveGoal) {
-      setCalorieInput(effectiveGoal.toString())
-    } else {
-      setCalorieInput('')
-    }
-  }, [currentCalorieGoal, maintenanceCalories, visible])
 
   const handleSelectCoach = async (coachId: CoachId) => {
     haptic('light')
@@ -98,32 +69,7 @@ export function CoachSelectionSheet({
       }, 300)
   }
 
-  const handleSaveCalories = async () => {
-    if (!onUpdateCalorieGoal) return
-    const goal = parseInt(calorieInput.replace(/[^0-9]/g, ''), 10)
-    if (isNaN(goal)) return
 
-    try {
-      setIsUpdating(true)
-      await onUpdateCalorieGoal(goal)
-      haptic('medium')
-    } catch (error) {
-      console.error('Error updating calorie goal:', error)
-      Alert.alert('Error', 'Unable to update calorie goal.')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const applyRecommendation = (calories: number) => {
-      setCalorieInput(calories.toString())
-      haptic('medium')
-      // Optional: Auto-save or wait for user to hit enter? 
-      // User likely wants to review it. Let's trigger the update prop immediately for better UX
-      if (onUpdateCalorieGoal) {
-          onUpdateCalorieGoal(calories)
-      }
-  }
 
   const styles = createStyles(colors, insets)
 
@@ -155,46 +101,6 @@ export function CoachSelectionSheet({
               </TouchableOpacity>
             </View>
         )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nutrition Targets</Text>
-          <View style={styles.settingRow}>
-            <View>
-              <Text style={styles.settingLabel}>Daily Calorie Goal</Text>
-              <Text style={styles.settingDescription}>
-                Your target for today
-              </Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={calorieInput}
-                onChangeText={setCalorieInput}
-                keyboardType="numeric"
-                placeholder={maintenanceCalories ? String(maintenanceCalories) : '2000'}
-                placeholderTextColor={colors.textTertiary}
-                onBlur={handleSaveCalories}
-                returnKeyType="done"
-              />
-              <Text style={styles.unitText}>kcal</Text>
-            </View>
-          </View>
-
-          {recommendations && (
-             <View style={styles.recommendationsGrid}>
-                 {recommendations.map((rec) => (
-                     <TouchableOpacity
-                        key={rec.label}
-                        style={styles.recommendationCard}
-                        onPress={() => applyRecommendation(rec.calories)}
-                     >
-                         <Text style={[styles.recommendationLabel, { color: rec.color }]}>{rec.label}</Text>
-                         <Text style={styles.recommendationValue}>{rec.calories} kcal</Text>
-                     </TouchableOpacity>
-                 ))}
-             </View>
-          )}
-        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI Coach</Text>

@@ -21,9 +21,7 @@ export const VolumeComparisonWidget = React.forwardRef<
   const isTransparent = backgroundMode === 'transparent'
   const isDark = backgroundMode === 'dark'
 
-  const colors = getColors(isDark || isTransparent)
   const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
-  const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
   const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'
   const shadowOpacity = isTransparent ? 0.5 : 0
 

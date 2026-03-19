@@ -27,9 +27,6 @@ export const ConsistencyWidget = React.forwardRef<View, ConsistencyWidgetProps>(
       isDark || isTransparent ? 'rgba(255, 255, 255, 0.8)' : '#8E8E93'
     const brandColor = '#FF6B35' // for calendar dots
     const brandTextColor = isDark || isTransparent ? '#FFFFFF' : '#1C1C1E' // for REP AI
-    const dividerColor =
-      isDark || isTransparent ? 'rgba(255, 255, 255, 0.3)' : '#E5E5EA'
-
     const getGradientColors = () => {
       if (isTransparent) return ['transparent', 'transparent'] as const
       if (isDark) return ['#1C1C1E', '#000000'] as const

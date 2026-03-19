@@ -4,7 +4,7 @@ import {
   getSelectedCommitmentDays,
   getWeeklyCommitmentTarget,
   isCommitmentFrequency,
-} from './commitment.ts'
+} from './commitment'
 
 type CommitmentInput = {
   commitment?: unknown

@@ -109,8 +109,6 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
       ? (['#0D0D1A', '#131325'] as const)
       : (['#FFFFFF', '#F2F2F7'] as const)
 
-    const dividerColor = isDark ? 'rgba(255,255,255,0.12)' : '#E5E5EA'
-
     return (
       <View ref={ref} style={styles.container} collapsable={false}>
         <LinearGradient

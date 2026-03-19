@@ -9,8 +9,6 @@ const formatStopwatch = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
-  const secs = safeSeconds % 60
-
   if (hours > 0) {
     return `${hours}h ${mins}m`
   }
@@ -37,7 +35,7 @@ export const WorkoutSummaryWidget = React.forwardRef<
   const isDark = backgroundMode === 'dark'
   const isTransparent = backgroundMode === 'transparent'
 
-  const colors = getColors(isDark || isTransparent)
+  const colors = getColors(isDark)
   const textColor = isDark || isTransparent ? '#FFFFFF' : '#000'
   const subTextColor = isDark || isTransparent ? 'rgba(255, 255, 255, 0.7)' : '#6B7280'
   const brandColor = isDark || isTransparent ? '#FFFFFF' : '#000'

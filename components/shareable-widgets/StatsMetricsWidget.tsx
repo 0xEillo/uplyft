@@ -9,8 +9,6 @@ const formatStopwatch = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const mins = Math.floor((safeSeconds % 3600) / 60)
-  const secs = safeSeconds % 60
-
   if (hours > 0) {
     return `${hours}h ${mins}m`
   }

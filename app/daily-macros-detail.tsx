@@ -69,12 +69,7 @@ export default function DailyMacrosDetailScreen() {
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const { width: windowWidth } = useWindowDimensions()
-  const pagerRef = useRef<ScrollView>(null)
-  const [sheetWidth, setSheetWidth] = useState(0)
-  const [activePage, setActivePage] = useState(0)
   const [currentCalorieGoal, setCurrentCalorieGoal] = useState<number | null>(null)
-  const [calorieInput, setCalorieInput] = useState('')
-  const [isSavingGoal, setIsSavingGoal] = useState(false)
   const styles = createStyles(colors, isDark)
 
   const totalsJson = firstParam(rawParams.totalsJson)
@@ -140,103 +135,12 @@ export default function DailyMacrosDetailScreen() {
   const macroRadius = (macroSize - macroStroke) / 2
   const macroCircumference = macroRadius * 2 * Math.PI
 
-  const pageWidth = sheetWidth || windowWidth
-  const presetBase =
-    maintenanceCalories && maintenanceCalories > 0
-      ? maintenanceCalories
-      : safeCalGoal
 
-  const goalPresets = useMemo(
-    () => [
-      {
-        label: 'Aggressive Cut',
-        calories: Math.max(1200, Math.round(presetBase * 0.75)),
-        color: '#EF4444',
-      },
-      {
-        label: 'Cut',
-        calories: Math.max(1200, Math.round(presetBase * 0.85)),
-        color: '#F97316',
-      },
-      {
-        label: 'Maintenance',
-        calories: Math.round(presetBase),
-        color: '#3B82F6',
-      },
-      {
-        label: 'Bulk',
-        calories: Math.round(presetBase * 1.1),
-        color: '#10B981',
-      },
-    ],
-    [presetBase],
-  )
 
   useEffect(() => {
-    setActivePage(0)
-    requestAnimationFrame(() => {
-      pagerRef.current?.scrollTo({ x: 0, animated: false })
-    })
   }, [])
 
-  useEffect(() => {
-    setCalorieInput(roundMacro(safeCalGoal).toString())
-  }, [safeCalGoal])
 
-  const handlePagerMomentumEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!pageWidth) return
-      const nextPage = Math.round(event.nativeEvent.contentOffset.x / pageWidth)
-      if (nextPage !== activePage) {
-        setActivePage(nextPage)
-      }
-    },
-    [activePage, pageWidth],
-  )
-
-  const saveGoal = useCallback(
-    async (nextGoal: number) => {
-      if (!user?.id) {
-        Alert.alert('Sign in required', 'Please sign in to update your calorie goal.')
-        return
-      }
-
-      try {
-        setIsSavingGoal(true)
-        await database.dailyLog.updateDay(user.id, {
-          logDate,
-          calorieGoal: nextGoal,
-        })
-        setCurrentCalorieGoal(nextGoal)
-      } catch (error) {
-        console.error('[DailyMacrosDetail] Failed to update calorie goal:', error)
-        Alert.alert('Error', 'Unable to update calorie goal right now.')
-      } finally {
-        setIsSavingGoal(false)
-      }
-    },
-    [logDate, user?.id],
-  )
-
-  const handleSaveGoal = useCallback(async () => {
-    const parsedGoal = parseInt(calorieInput.replace(/[^0-9]/g, ''), 10)
-    if (Number.isNaN(parsedGoal)) {
-      Alert.alert('Invalid Goal', 'Enter a number like 2200 kcal.')
-      return
-    }
-
-    const boundedGoal = Math.max(1200, Math.min(6000, parsedGoal))
-    setCalorieInput(boundedGoal.toString())
-    await saveGoal(boundedGoal)
-  }, [calorieInput, saveGoal])
-
-  const handlePresetPress = useCallback(
-    async (presetCalories: number) => {
-      setCalorieInput(presetCalories.toString())
-      await saveGoal(presetCalories)
-    },
-    [saveGoal],
-  )
 
   return (
     <View
@@ -264,316 +168,228 @@ export default function DailyMacrosDetailScreen() {
         </View>
       </View>
 
-      <View
-        style={styles.pagerViewport}
-        onLayout={(event) => {
-          const width = event.nativeEvent.layout.width
-          if (width && width !== sheetWidth) {
-            setSheetWidth(width)
-          }
-        }}
-      >
-        <ScrollView
-          ref={pagerRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          onMomentumScrollEnd={handlePagerMomentumEnd}
-          scrollEventThrottle={16}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={[styles.page, { width: pageWidth }]}>
-            <View style={styles.caloriesHero}>
-              <View style={styles.caloriesTextColumn}>
-                <Text
-                  style={[
-                    styles.caloriesValue,
-                    calOver && { color: '#FF6B6B' },
-                  ]}
-                >
-                  {roundMacro(calOver ? calories - safeCalGoal : calRemaining)}
-                </Text>
-                <Text style={styles.caloriesLabel}>
-                  {calOver ? 'Calories over' : 'Calories left'}
-                </Text>
-              </View>
+      <View style={styles.page}>
+        <View style={styles.caloriesHero}>
+          <View style={styles.caloriesTextColumn}>
+            <Text
+              style={[
+                styles.caloriesValue,
+                calOver && { color: '#FF6B6B' },
+              ]}
+            >
+              {roundMacro(calOver ? calories - safeCalGoal : calRemaining)}
+            </Text>
+            <Text style={styles.caloriesLabel}>
+              {calOver ? 'Calories over' : 'Calories left'}
+            </Text>
+          </View>
 
-              <View style={styles.caloriesRingContainer}>
-                <Svg width={calSize} height={calSize}>
-                  <G rotation="-90" origin={`${calSize / 2}, ${calSize / 2}`}>
-                    <Circle
-                      cx={calSize / 2}
-                      cy={calSize / 2}
-                      r={calRadius}
-                      stroke={isDark ? colors.border : '#E8E8ED'}
-                      strokeWidth={calStroke}
-                      fill="transparent"
-                    />
-                    <Circle
-                      cx={calSize / 2}
-                      cy={calSize / 2}
-                      r={calRadius}
-                      stroke={calOver ? '#FF6B6B' : colors.textPrimary}
-                      strokeWidth={calStroke}
-                      fill="transparent"
-                      strokeDasharray={`${calCircumference}`}
-                      strokeDashoffset={`${calCircumference * (1 - calProgress)}`}
-                      strokeLinecap="round"
-                    />
-                  </G>
-                </Svg>
-                <View style={styles.caloriesRingCenter}>
-                  <Ionicons
-                    name="flame"
-                    size={22}
-                    color={calOver ? '#FF6B6B' : colors.textPrimary}
+          <View style={styles.caloriesRingContainer}>
+            <Svg width={calSize} height={calSize}>
+              <G rotation="-90" origin={`${calSize / 2}, ${calSize / 2}`}>
+                <Circle
+                  cx={calSize / 2}
+                  cy={calSize / 2}
+                  r={calRadius}
+                  stroke={isDark ? colors.border : '#E8E8ED'}
+                  strokeWidth={calStroke}
+                  fill="transparent"
+                />
+                <Circle
+                  cx={calSize / 2}
+                  cy={calSize / 2}
+                  r={calRadius}
+                  stroke={calOver ? '#FF6B6B' : colors.textPrimary}
+                  strokeWidth={calStroke}
+                  fill="transparent"
+                  strokeDasharray={`${calCircumference}`}
+                  strokeDashoffset={`${calCircumference * (1 - calProgress)}`}
+                  strokeLinecap="round"
+                />
+              </G>
+            </Svg>
+            <View style={styles.caloriesRingCenter}>
+              <Ionicons
+                name="flame"
+                size={22}
+                color={calOver ? '#FF6B6B' : colors.textPrimary}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.macroGrid}>
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>
+              {roundMacro(protOver ? protein_g - safeProtGoal : protRemaining)}g
+            </Text>
+            <Text style={styles.macroLabel}>
+              Protein {protOver ? 'over' : 'left'}
+            </Text>
+            <View style={styles.macroRingContainer}>
+              <Svg width={macroSize} height={macroSize}>
+                <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="rgba(248, 113, 113, 0.15)"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
                   />
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.macroGrid}>
-              <View style={styles.macroCard}>
-                <Text style={styles.macroValue}>
-                  {roundMacro(protOver ? protein_g - safeProtGoal : protRemaining)}g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Protein {protOver ? 'over' : 'left'}
-                </Text>
-                <View style={styles.macroRingContainer}>
-                  <Svg width={macroSize} height={macroSize}>
-                    <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="rgba(248, 113, 113, 0.15)"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                      />
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="#F87171"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                        strokeDasharray={`${macroCircumference}`}
-                        strokeDashoffset={`${macroCircumference * (1 - protProgress)}`}
-                        strokeLinecap="round"
-                      />
-                    </G>
-                  </Svg>
-                  <View style={styles.macroRingIcon}>
-                    <MaterialCommunityIcons
-                      name="food-drumstick"
-                      size={16}
-                      color="#F87171"
-                    />
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.macroCard}>
-                <Text style={styles.macroValue}>
-                  {roundMacro(carbOver ? carbs_g - safeCarbGoal : carbRemaining)}g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Carbs {carbOver ? 'over' : 'left'}
-                </Text>
-                <View style={styles.macroRingContainer}>
-                  <Svg width={macroSize} height={macroSize}>
-                    <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="rgba(251, 191, 36, 0.15)"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                      />
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="#FBBF24"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                        strokeDasharray={`${macroCircumference}`}
-                        strokeDashoffset={`${macroCircumference * (1 - carbProgress)}`}
-                        strokeLinecap="round"
-                      />
-                    </G>
-                  </Svg>
-                  <View style={styles.macroRingIcon}>
-                    <Ionicons name="nutrition" size={16} color="#FBBF24" />
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.macroCard}>
-                <Text style={styles.macroValue}>
-                  {roundMacro(fatOver ? fat_g - safeFatGoal : fatRemaining)}g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Fats {fatOver ? 'over' : 'left'}
-                </Text>
-                <View style={styles.macroRingContainer}>
-                  <Svg width={macroSize} height={macroSize}>
-                    <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="rgba(96, 165, 250, 0.15)"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                      />
-                      <Circle
-                        cx={macroSize / 2}
-                        cy={macroSize / 2}
-                        r={macroRadius}
-                        stroke="#60A5FA"
-                        strokeWidth={macroStroke}
-                        fill="transparent"
-                        strokeDasharray={`${macroCircumference}`}
-                        strokeDashoffset={`${macroCircumference * (1 - fatProgress)}`}
-                        strokeLinecap="round"
-                      />
-                    </G>
-                  </Svg>
-                  <View style={styles.macroRingIcon}>
-                    <Ionicons name="water" size={16} color="#60A5FA" />
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.breakdownContainer}>
-              <View style={styles.breakdownBar}>
-                <View
-                  style={[
-                    styles.breakdownSegment,
-                    {
-                      flex: protein_g * 4 || 0.01,
-                      backgroundColor: '#F87171',
-                      borderTopLeftRadius: 6,
-                      borderBottomLeftRadius: 6,
-                    },
-                  ]}
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="#F87171"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
+                    strokeDasharray={`${macroCircumference}`}
+                    strokeDashoffset={`${macroCircumference * (1 - protProgress)}`}
+                    strokeLinecap="round"
+                  />
+                </G>
+              </Svg>
+              <View style={styles.macroRingIcon}>
+                <MaterialCommunityIcons
+                  name="food-drumstick"
+                  size={16}
+                  color="#F87171"
                 />
-                <View
-                  style={[
-                    styles.breakdownSegment,
-                    {
-                      flex: carbs_g * 4 || 0.01,
-                      backgroundColor: '#FBBF24',
-                    },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.breakdownSegment,
-                    {
-                      flex: fat_g * 9 || 0.01,
-                      backgroundColor: '#60A5FA',
-                      borderTopRightRadius: 6,
-                      borderBottomRightRadius: 6,
-                    },
-                  ]}
-                />
-              </View>
-              <View style={styles.breakdownLabels}>
-                <View style={styles.breakdownLabelItem}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#F87171' }]} />
-                  <Text style={styles.breakdownLabelText}>
-                    {roundMacro((protein_g * 4 / Math.max(calories, 1)) * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.breakdownLabelItem}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#FBBF24' }]} />
-                  <Text style={styles.breakdownLabelText}>
-                    {roundMacro((carbs_g * 4 / Math.max(calories, 1)) * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.breakdownLabelItem}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#60A5FA' }]} />
-                  <Text style={styles.breakdownLabelText}>
-                    {roundMacro((fat_g * 9 / Math.max(calories, 1)) * 100)}%
-                  </Text>
-                </View>
               </View>
             </View>
           </View>
 
-          <View style={[styles.page, styles.goalPage, { width: pageWidth }]}>
-            <Text style={styles.goalCardLabel}>Daily goal</Text>
-            <View style={styles.goalCard}>
-              <View style={styles.goalCardRow}>
-                <View style={styles.goalCardInputGroup}>
-                  <TextInput
-                    style={styles.goalCardInput}
-                    value={calorieInput}
-                    onChangeText={setCalorieInput}
-                    keyboardType="numeric"
-                    placeholder="2200"
-                    placeholderTextColor={colors.textTertiary}
-                    returnKeyType="done"
-                    onSubmitEditing={() => void handleSaveGoal()}
-                    onBlur={() => void handleSaveGoal()}
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>
+              {roundMacro(carbOver ? carbs_g - safeCarbGoal : carbRemaining)}g
+            </Text>
+            <Text style={styles.macroLabel}>
+              Carbs {carbOver ? 'over' : 'left'}
+            </Text>
+            <View style={styles.macroRingContainer}>
+              <Svg width={macroSize} height={macroSize}>
+                <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="rgba(251, 191, 36, 0.15)"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
                   />
-                  <Text style={styles.goalCardUnit}>kcal</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.goalCardSave}
-                  onPress={() => void handleSaveGoal()}
-                  activeOpacity={0.85}
-                  disabled={isSavingGoal}
-                >
-                  {isSavingGoal ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.goalCardSaveText}>Save</Text>
-                  )}
-                </TouchableOpacity>
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="#FBBF24"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
+                    strokeDasharray={`${macroCircumference}`}
+                    strokeDashoffset={`${macroCircumference * (1 - carbProgress)}`}
+                    strokeLinecap="round"
+                  />
+                </G>
+              </Svg>
+              <View style={styles.macroRingIcon}>
+                <Ionicons name="nutrition" size={16} color="#FBBF24" />
               </View>
             </View>
+          </View>
 
-            <Text style={styles.goalPresetSectionLabel}>Quick set</Text>
-            <View style={styles.goalPresetGrid}>
-              {goalPresets.map((preset) => {
-                const isSelected = roundMacro(safeCalGoal) === preset.calories
-                return (
-                  <TouchableOpacity
-                    key={preset.label}
-                    style={[
-                      styles.goalPresetCard,
-                      isSelected && styles.goalPresetCardSelected,
-                    ]}
-                    onPress={() => {
-                      void handlePresetPress(preset.calories)
-                    }}
-                    activeOpacity={0.85}
-                    disabled={isSavingGoal}
-                  >
-                    <Text style={styles.goalPresetLabel}>
-                      {preset.label}
-                    </Text>
-                    <Text style={styles.goalPresetValue}>
-                      {preset.calories} kcal
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
+          <View style={styles.macroCard}>
+            <Text style={styles.macroValue}>
+              {roundMacro(fatOver ? fat_g - safeFatGoal : fatRemaining)}g
+            </Text>
+            <Text style={styles.macroLabel}>
+              Fats {fatOver ? 'over' : 'left'}
+            </Text>
+            <View style={styles.macroRingContainer}>
+              <Svg width={macroSize} height={macroSize}>
+                <G rotation="-90" origin={`${macroSize / 2}, ${macroSize / 2}`}>
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="rgba(96, 165, 250, 0.15)"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
+                  />
+                  <Circle
+                    cx={macroSize / 2}
+                    cy={macroSize / 2}
+                    r={macroRadius}
+                    stroke="#60A5FA"
+                    strokeWidth={macroStroke}
+                    fill="transparent"
+                    strokeDasharray={`${macroCircumference}`}
+                    strokeDashoffset={`${macroCircumference * (1 - fatProgress)}`}
+                    strokeLinecap="round"
+                  />
+                </G>
+              </Svg>
+              <View style={styles.macroRingIcon}>
+                <Ionicons name="water" size={16} color="#60A5FA" />
+              </View>
             </View>
           </View>
-        </ScrollView>
-      </View>
+        </View>
 
-      <View style={styles.paginationDots}>
-        <View style={[styles.paginationDot, activePage === 0 && styles.paginationDotActive]} />
-        <View style={[styles.paginationDot, activePage === 1 && styles.paginationDotActive]} />
+        <View style={styles.breakdownContainer}>
+          <View style={styles.breakdownBar}>
+            <View
+              style={[
+                styles.breakdownSegment,
+                {
+                  flex: protein_g * 4 || 0.01,
+                  backgroundColor: '#F87171',
+                  borderTopLeftRadius: 6,
+                  borderBottomLeftRadius: 6,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.breakdownSegment,
+                {
+                  flex: carbs_g * 4 || 0.01,
+                  backgroundColor: '#FBBF24',
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.breakdownSegment,
+                {
+                  flex: fat_g * 9 || 0.01,
+                  backgroundColor: '#60A5FA',
+                  borderTopRightRadius: 6,
+                  borderBottomRightRadius: 6,
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.breakdownLabels}>
+            <View style={styles.breakdownLabelItem}>
+              <View style={[styles.breakdownDot, { backgroundColor: '#F87171' }]} />
+              <Text style={styles.breakdownLabelText}>
+                {roundMacro((protein_g * 4 / Math.max(calories, 1)) * 100)}%
+              </Text>
+            </View>
+            <View style={styles.breakdownLabelItem}>
+              <View style={[styles.breakdownDot, { backgroundColor: '#FBBF24' }]} />
+              <Text style={styles.breakdownLabelText}>
+                {roundMacro((carbs_g * 4 / Math.max(calories, 1)) * 100)}%
+              </Text>
+            </View>
+            <View style={styles.breakdownLabelItem}>
+              <View style={[styles.breakdownDot, { backgroundColor: '#60A5FA' }]} />
+              <Text style={styles.breakdownLabelText}>
+                {roundMacro((fat_g * 9 / Math.max(calories, 1)) * 100)}%
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   )

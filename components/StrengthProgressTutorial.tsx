@@ -12,7 +12,6 @@ import type { BodyPartSlug } from '@/lib/body-mapping'
 import { getExerciseNameMap } from '@/lib/exercise-standards-config'
 import { OVERALL_STRENGTH_SCORE_CAP } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
-import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Modal,
@@ -695,4 +694,3 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       letterSpacing: -0.3,
     },
   })
-

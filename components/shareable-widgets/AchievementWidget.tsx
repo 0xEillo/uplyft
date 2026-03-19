@@ -76,8 +76,6 @@ export const AchievementWidget = React.forwardRef<View, AchievementWidgetProps>(
       : isTransparent
       ? 'rgba(255, 255, 255, 0.2)'
       : '#2C2C2E'
-    const dividerColor =
-      isDark || isTransparent ? 'rgba(255, 255, 255, 0.2)' : '#E5E5EA'
     const shadowOpacity = isTransparent ? 0.5 : 0
 
     const getGradientColors = () => {

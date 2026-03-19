@@ -36,9 +36,7 @@ export const StravaOverlayWidget = React.forwardRef<
       : '#1C1C1E'
   
   const textColor = isLight ? '#1C1C1E' : '#FFFFFF'
-  const subTextColor = isLight ? '#8E8E93' : 'rgba(255, 255, 255, 0.8)'
   const labelColor = isLight ? '#8E8E93' : 'rgba(255, 255, 255, 0.9)'
-  const dividerColor = isLight ? '#E5E5EA' : 'rgba(255, 255, 255, 0.3)'
   const shadowOpacity = isTransparent ? 0.5 : 0 // Only show shadow on transparent mode
 
   return (

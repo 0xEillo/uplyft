@@ -6,6 +6,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface WeeklyStatsCardProps {
   streak: number
+  workouts?: number
+  volume?: number
+  weightUnit?: 'kg' | 'lb'
   activity: boolean[]
   onPress: () => void
   showChevron?: boolean

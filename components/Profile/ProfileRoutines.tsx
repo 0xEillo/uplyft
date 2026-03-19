@@ -7,7 +7,7 @@ import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
     FlatList,
     StyleSheet,

@@ -12,9 +12,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useLiveActivity } from '@/contexts/live-activity-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
-import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useSubscription } from '@/contexts/subscription-context'
-import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
@@ -28,14 +26,12 @@ import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
-import { SubmitWorkoutError, useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
-import { clearExerciseHistoryCache } from '@/lib/services/exerciseHistoryService'
 import {
   getToolbarButtons,
   getWarmupCalculatorEnabled,
@@ -52,10 +48,6 @@ import {
   saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
-import {
-  generateWorkoutMessage,
-  parseCommitment,
-} from '@/lib/utils/workout-messages'
 import { formatVolume } from '@/lib/utils/workout-stats'
 import {
   Exercise,
@@ -66,9 +58,7 @@ import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  TabActions,
   useFocusEffect,
-  useNavigation,
 } from '@react-navigation/native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -330,19 +320,9 @@ function formatDurationMinSec(seconds: number): string {
   return secs > 0 ? `${mins}min ${secs}s` : `${mins}min`
 }
 
-const NEW_USER_STRUCTURED_PREVIEW: StructuredExerciseDraft[] = [
-  {
-    id: 'preview-bench-press',
-    name: 'Bench Press',
-    sets: [{ weight: '135', reps: '8' }],
-  },
-]
-
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertInputToKg } = useWeightUnits()
-  const { scrollToTop } = useScrollToTop()
-  const navigation = useNavigation()
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const coachFirstName = coach.name.split(' ')[1] || coach.name
@@ -385,13 +365,10 @@ export default function CreatePostScreen() {
   // =============================================================================
   // FINALIZE OVERLAY STATE
   // =============================================================================
-  const [finalizeDescription, setFinalizeDescription] = useState('')
-  const [finalizeDate, setFinalizeDate] = useState(new Date())
 
   // =============================================================================
   // UI STATE
   // =============================================================================
-  const [userWorkoutCount, setUserWorkoutCount] = useState(-1)
   const [isNotesFocused, setIsNotesFocused] = useState(false)
   const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
     false,
@@ -402,9 +379,6 @@ export default function CreatePostScreen() {
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [isFirstCoachOpen, setIsFirstCoachOpen] = useState(false)
   const [isCoachSheetFirstOpen, setIsCoachSheetFirstOpen] = useState(false)
-  const chatButtonPulse = useSharedValue(1)
-  const chatButtonRingOpacity = useSharedValue(0)
-  const chatButtonRingScale = useSharedValue(1)
   const chatHandWave = useSharedValue(0)
   const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
   const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
@@ -413,8 +387,6 @@ export default function CreatePostScreen() {
   const [toolbarVisibleButtons, setToolbarVisibleButtons] = useState<
     ToolbarButtonId[]
   >(() => getToolbarButtons())
-  const handleStructuredPreviewChange = useCallback(() => {}, [])
-
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
   // =============================================================================
@@ -432,7 +404,6 @@ export default function CreatePostScreen() {
     pause: pauseWorkoutTimer,
     reset: resetWorkoutTimer,
     hydrate: hydrateWorkoutTimer,
-    getElapsedSeconds: getWorkoutElapsedSeconds,
     serializableState: workoutTimerSerializableState,
   } = useWorkoutTimer()
 
@@ -711,12 +682,8 @@ export default function CreatePostScreen() {
   // =============================================================================
   // IMAGE ATTACHMENT STATE
   // =============================================================================
-  const [attachedImageUri, setAttachedImageUri] = useState<string | null>(null)
-
-  const { setPendingStreakData } = useSuccessOverlay()
   const spinValue = useRef(new Animated.Value(0)).current
   const buttonScaleAnim = useRef(new Animated.Value(1)).current
-  const imageOpacity = useRef(new Animated.Value(0)).current
 
   const notesInputRef = useRef<TextInput>(null)
   const scrollViewRef = useRef<ScrollView>(null)
@@ -760,8 +727,7 @@ export default function CreatePostScreen() {
   const { trackEvent } = useAnalytics()
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
-  const { submitWorkout: queueWorkout } = useSubmitWorkout()
-  const { canPostWorkout, refresh: refreshFreemiumLimits } = useFreemiumLimits()
+  const { canPostWorkout } = useFreemiumLimits()
 
   // Complete tutorial step when user actually starts a workout (has content)
   useEffect(() => {
@@ -1218,15 +1184,12 @@ export default function CreatePostScreen() {
     resetWorkoutTimer()
     setNotes('')
     setWorkoutTitle('')
-    setAttachedImageUri(null)
     setIsStructuredMode(false)
     setSelectedRoutine(null)
     setPendingDraftRoutineId(null)
     setPendingRoutineSource(null)
     setStructuredData([])
     setLastRoutineWorkout(null)
-    setFinalizeDescription('')
-    setFinalizeDate(new Date())
     setSelectedSong(null)
 
     lastDraftSavedAtRef.current = 0
@@ -1280,8 +1243,6 @@ export default function CreatePostScreen() {
     isProcessing: isProcessingImage,
     handleScanWithCamera,
     handleScanWithLibrary,
-    handleAttachWithCamera,
-    handleAttachWithLibrary,
   } = useImageTranscription({
     onStructuredExtractionComplete: (data) => {
       // Set title if extracted
@@ -1326,10 +1287,6 @@ export default function CreatePostScreen() {
         ? `${data.description}\n\n${data.workout}`
         : data.workout
       setNotes((prev) => (prev ? `${prev}\n\n${newNotes}` : newNotes))
-    },
-    onImageAttached: (uri) => {
-      imageOpacity.setValue(0)
-      setAttachedImageUri(uri)
     },
   })
 
@@ -1714,7 +1671,7 @@ export default function CreatePostScreen() {
               user.id,
               1,
             )
-            setUserWorkoutCount(workouts.length)
+            void workouts.length
           }
         } catch (error) {
           console.error('Error loading workout count:', error)
@@ -1923,12 +1880,6 @@ export default function CreatePostScreen() {
     )
   }, [blurInputs, resetLocalWorkoutDraftState])
 
-  const handleRemoveAttachedImage = async () => {
-    haptic('light')
-    imageOpacity.setValue(0)
-    setAttachedImageUri(null)
-  }
-
   const handleToggleRecording = useCallback(async () => {
     haptic('medium')
     await toggleRecording()
@@ -1971,251 +1922,6 @@ export default function CreatePostScreen() {
       },
     ])
   }, [blurInputs, handleScanWithCamera, handleScanWithLibrary])
-
-  const performSubmission = useCallback(
-    async (
-      notesValue: string,
-      titleValue: string,
-      imageUriValue: string | null,
-      routineIdValue: string | null,
-      descriptionValue?: string,
-      parserNotesValue?: string,
-      dateValue?: Date,
-    ) => {
-      if (!user) {
-        throw new Error('User must be authenticated to submit workouts')
-      }
-
-      const trimmedNotes = notesValue.trim()
-      const trimmedTitle = titleValue.trim()
-      // Cap duration at 4 hours to prevent absurdly long durations from forgotten timers
-      const MAX_WORKOUT_DURATION_SECONDS = 4 * 60 * 60 // 4 hours
-      const durationSeconds = Math.min(
-        Math.max(0, getWorkoutElapsedSeconds()),
-        MAX_WORKOUT_DURATION_SECONDS,
-      )
-
-      await queueWorkout({
-        notes: trimmedNotes,
-        title: trimmedTitle,
-        imageUri: imageUriValue,
-        routineId: routineIdValue,
-        durationSeconds,
-        description: descriptionValue?.trim() || undefined,
-        parserNotes: parserNotesValue,
-        song: selectedSong,
-        structuredData: isStructuredMode ? structuredData : undefined,
-        isStructuredMode,
-        date: dateValue,
-      })
-
-      // Refresh freemium limits after successful submission
-      refreshFreemiumLimits()
-
-      // Complete tutorial step for logging first workout
-      completeStep('log_workout')
-
-      trackEvent(AnalyticsEvents.WORKOUT_SAVED_TO_PENDING, {
-        hasTitle: Boolean(trimmedTitle),
-        length: trimmedNotes.length,
-      })
-
-      let message = 'Well done on completing another workout!'
-      let workoutNumber = 1
-      let weeklyTarget = 2
-      let currentStreak = 0
-      let previousStreak = 0
-
-      try {
-        const now = new Date()
-        const startOfWeek = new Date(now)
-        startOfWeek.setDate(now.getDate() - now.getDay())
-        startOfWeek.setHours(0, 0, 0, 0)
-
-        // Fetch profile and week count in parallel (no dependency between them)
-        const [profile, workoutsThisWeek] = await Promise.all([
-          database.profiles.getById(user.id),
-          database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
-        ])
-
-        workoutNumber = workoutsThisWeek + 1
-        weeklyTarget = parseCommitment(
-          profile.commitment,
-          profile.commitment_frequency,
-        )
-
-        // Both streak calculations can also run in parallel
-        const [previousStreakResult, currentStreakResult] = await Promise.all([
-          database.stats.calculateStreak(
-            user.id,
-            weeklyTarget,
-            false, // Don't include current week - this is the streak before submission
-          ),
-          database.stats.calculateStreak(
-            user.id,
-            weeklyTarget,
-            true, // Include current week since workout is being submitted
-          ),
-        ])
-
-        previousStreak = previousStreakResult.currentStreak ?? 0
-        currentStreak = currentStreakResult.currentStreak ?? 0
-
-        message = generateWorkoutMessage({
-          workoutNumber,
-          weeklyTarget,
-        })
-      } catch (error) {
-        console.error('Error generating workout message:', error)
-      }
-
-      hapticSuccess()
-
-      await clearWorkoutDraft('create-post-submit-success')
-      clearExerciseHistoryCache() // Clear cache so new workout data is available next time
-      resetLocalWorkoutDraftState()
-      blurInputs()
-
-      setPendingStreakData({
-        message,
-        workoutNumber,
-        weeklyTarget,
-        currentStreak,
-        previousStreak,
-        workoutTitle: trimmedTitle || undefined,
-      })
-      navigation.dispatch(TabActions.jumpTo('index'))
-      runAfterInteractions(() => {
-        requestAnimationFrame(() => {
-          scrollToTop('index')
-        })
-      })
-
-      // NOTE: Rating prompt is now triggered from index.tsx handlePendingPost
-      // to avoid duplicate triggers causing modal overlap and iOS freeze
-    },
-    [
-      user,
-      queueWorkout,
-      trackEvent,
-      blurInputs,
-      setPendingStreakData,
-      refreshFreemiumLimits,
-      getWorkoutElapsedSeconds,
-      resetLocalWorkoutDraftState,
-      completeStep,
-      isStructuredMode,
-      structuredData,
-      selectedSong,
-      scrollToTop,
-      navigation,
-    ],
-  )
-
-  const submitWorkout = async (caption?: string) => {
-    // Check if user can post workout (freemium limit)
-    if (!canPostWorkout) {
-      // Reset loading state before showing paywall
-      isSubmittingRef.current = false
-      setIsLoading(false)
-      setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'workout_logging',
-        source_screen: 'create_post',
-        subscription_status: isProMember ? 'active' : 'none',
-      })
-      return
-    }
-
-    // Combine structured data with free-form notes
-    let workoutNotes = notes
-    let parserNotes = notes
-    // We no longer prepend caption to notes, as it's handled separately
-
-    if (isStructuredMode && structuredData.length > 0) {
-      const structuredText = convertStructuredDataToText(structuredData)
-      // Add structured workout first, then notes
-      workoutNotes = structuredText + (notes.trim() ? '\n\n' + notes : '')
-      // Only parse the user's actual free-form notes, not the synthetic
-      // structured text we generate for raw storage/debugging.
-      parserNotes = notes
-    }
-
-    try {
-      await performSubmission(
-        workoutNotes,
-        workoutTitle,
-        attachedImageUri,
-        selectedRoutine?.id ?? null,
-        caption, // Pass caption as description
-        parserNotes,
-        finalizeDate,
-      )
-      // Success - reset loading state
-      isSubmittingRef.current = false
-      setIsLoading(false)
-    } catch (error) {
-      if (
-        error instanceof SubmitWorkoutError &&
-        error.code === 'IMAGE_UPLOAD'
-      ) {
-        // IMAGE_UPLOAD error - show Alert and let user decide
-        // Don't reset loading state here - Alert handlers will do it
-        console.error('Error uploading image:', error.originalError ?? error)
-        Alert.alert(
-          'Image Upload Failed',
-          'Unable to upload your workout photo. Would you like to continue without it?',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-              onPress: () => {
-                isSubmittingRef.current = false
-                setIsLoading(false)
-              },
-            },
-            {
-              text: 'Continue',
-              onPress: async () => {
-                setAttachedImageUri(null)
-                try {
-                  await performSubmission(
-                    workoutNotes,
-                    workoutTitle,
-                    null,
-                    selectedRoutine?.id ?? null,
-                    caption,
-                    parserNotes,
-                  )
-                } catch (retryError) {
-                  console.error('Error saving pending post:', retryError)
-                  Alert.alert(
-                    'Save Failed',
-                    'Unable to save your workout. Please try again.',
-                    [{ text: 'OK' }],
-                  )
-                } finally {
-                  isSubmittingRef.current = false
-                  setIsLoading(false)
-                }
-              },
-            },
-          ],
-        )
-        return
-      }
-
-      // Generic error - reset loading state
-      console.error('Error saving pending post:', error)
-      isSubmittingRef.current = false
-      setIsLoading(false)
-      Alert.alert(
-        'Save Failed',
-        'Unable to save your workout. Please try again.',
-        [{ text: 'OK' }],
-      )
-    }
-  }
 
   // =============================================================================
   // ROUTINE MANAGEMENT HANDLERS
@@ -2394,35 +2100,6 @@ export default function CreatePostScreen() {
       length: notes.trim().length,
     })
   }
-
-  // Convert structured workout data to text format
-  const convertStructuredDataToText = useCallback(
-    (data: StructuredExerciseDraft[], unitDisplay: string = 'kg'): string => {
-      if (!data || data.length === 0) return ''
-
-      return data
-        .map((exercise) => {
-          const lines = [exercise.name]
-
-          exercise.sets.forEach((set, index) => {
-            if (set.weight || set.reps) {
-              const weightText = set.weight || '___'
-              const repsText = set.reps || '___'
-
-              lines.push(
-                `Set ${
-                  index + 1
-                }: ${weightText} ${unitDisplay} x ${repsText} reps`,
-              )
-            }
-          })
-
-          return lines.join('\n')
-        })
-        .join('\n\n')
-    },
-    [],
-  )
 
   // Parse text around cursor to extract exercise name and sets
   const parseExerciseFromText = useCallback(
@@ -2943,15 +2620,6 @@ export default function CreatePostScreen() {
   }, [keypadProps, isToolbarInsetLocked, CUSTOM_KEYPAD_HEIGHT, customKeypadSpacerH])
   const combinedSpacerStyle = useAnimatedStyle(() => ({
     height: Math.max(customKeypadSpacerH.value, keyboard.height.value),
-  }))
-
-  const chatIconAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: chatButtonPulse.value }],
-  }))
-
-  const chatGlowRingStyle = useAnimatedStyle(() => ({
-    opacity: chatButtonRingOpacity.value,
-    transform: [{ scale: chatButtonRingScale.value }],
   }))
 
   const chatHandWaveStyle = useAnimatedStyle(() => ({

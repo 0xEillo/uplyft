@@ -5,8 +5,7 @@ import {
   type ToolbarButtonId,
 } from '@/lib/utils/create-post-settings'
 import { Ionicons } from '@expo/vector-icons'
-import type { ReactNode } from 'react'
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import {
     Animated,
     Dimensions,

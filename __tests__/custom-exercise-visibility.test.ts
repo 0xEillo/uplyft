@@ -36,7 +36,9 @@ jest.mock('@/lib/exercise-metadata', () => ({
 }))
 
 jest.mock('@/lib/exercise-standards-config', () => ({
+  getExerciseNameMap: jest.fn(() => new Map()),
   getLeaderboardExercises: jest.fn(() => []),
+  isRepBasedExercise: jest.fn(() => false),
 }))
 
 jest.mock('@/lib/strength-progress', () => ({

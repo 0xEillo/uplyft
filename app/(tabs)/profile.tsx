@@ -95,7 +95,7 @@ export default function ProfileScreen() {
 
   // This week stats
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
-  const [weeklyVolume, setWeeklyVolume] = useState(0)
+  const [, setWeeklyVolume] = useState(0)
   const [currentStreak, setCurrentStreak] = useState(0)
   const [weeklyActivity, setWeeklyActivity] = useState<boolean[]>(
     new Array(7).fill(false),

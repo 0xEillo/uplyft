@@ -966,9 +966,7 @@ export function WorkoutChat({
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
-  const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(
-    false,
-  )
+
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [manualFoodData, setManualFoodData] = useState<ManualFoodLogData | null>(null)
   const [navGlassKey, setNavGlassKey] = useState(0)
@@ -1271,20 +1269,6 @@ export function WorkoutChat({
       console.error('[WorkoutChat] Failed to load daily log summary:', error)
     }
   }, [user?.id])
-
-  const handleUpdateCalorieGoal = useCallback(
-    async (goal: number) => {
-      if (!user?.id) return
-      try {
-        await database.dailyLog.updateDay(user.id, { calorieGoal: goal })
-        await refreshDailyLogSummary()
-      } catch (error) {
-        console.error('[WorkoutChat] Failed to update calorie goal:', error)
-        throw error
-      }
-    },
-    [user?.id, refreshDailyLogSummary],
-  )
 
   useFocusEffect(
     useCallback(() => {
@@ -3130,35 +3114,7 @@ export function WorkoutChat({
                   style={[styles.headerActionGroupGlass, { top: 8 }]}
                 >
                   <View style={styles.headerActionGroup}>
-                    <TouchableOpacity
-                      style={styles.foodToggleButton}
-                      onPress={() => {
-                        haptic('light')
-                        Keyboard.dismiss()
-                        if (Platform.OS === 'ios' && dailyLogSummary) {
-                          router.push({
-                            pathname: '/daily-macros-detail',
-                            params: {
-                              logDate: dailyLogSummary.logDate,
-                              entryId: dailyLogSummary.entryId || undefined,
-                              totalsJson: JSON.stringify(
-                                dailyLogSummary.totals,
-                              ),
-                              goalsJson: JSON.stringify(dailyLogSummary.goals),
-                            },
-                          })
-                          return
-                        }
-                        setIsDailyMacrosSheetVisible(true)
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name="nutrition"
-                        size={24}
-                        color={colors.brandPrimary}
-                      />
-                    </TouchableOpacity>
+
 
                     <TouchableOpacity
                       style={styles.newChatButton}
@@ -3862,45 +3818,68 @@ export function WorkoutChat({
                                       : 'Log Meal'
 
                                     return (
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.foodLogActionButton,
-                                          isSaved &&
-                                            styles.foodLogActionButtonDone,
-                                        ]}
-                                        onPress={() =>
-                                          handleFoodLogAction(
-                                            message.id,
-                                            foodLogPayload,
-                                          )
-                                        }
-                                        disabled={isSaving || isSaved}
-                                        activeOpacity={0.85}
-                                      >
-                                        {isSaving ? (
-                                          <ActivityIndicator
-                                            size="small"
-                                            color={colors.bg}
-                                          />
-                                        ) : (
-                                          <Ionicons
-                                            name={
-                                              isSaved
-                                                ? 'checkmark-circle'
-                                                : 'add-circle'
-                                            }
-                                            size={24}
-                                            color={colors.bg}
-                                          />
-                                        )}
-                                        <Text
-                                          style={styles.foodLogActionButtonText}
+                                      <View style={styles.foodLogActionsRow}>
+                                        <TouchableOpacity
+                                          style={[
+                                            styles.foodLogActionButton,
+                                            { flex: 1 },
+                                            isSaved && styles.foodLogActionButtonDone,
+                                          ]}
+                                          onPress={() =>
+                                            handleFoodLogAction(
+                                              message.id,
+                                              foodLogPayload,
+                                            )
+                                          }
+                                          disabled={isSaving || isSaved}
+                                          activeOpacity={0.85}
                                         >
-                                          {isSaving
-                                            ? 'Logging...'
-                                            : buttonLabel}
-                                        </Text>
-                                      </TouchableOpacity>
+                                          {isSaving ? (
+                                            <ActivityIndicator
+                                              size="small"
+                                              color={colors.bg}
+                                            />
+                                          ) : (
+                                            <>
+                                              <Ionicons
+                                                name={
+                                                  isSaved
+                                                    ? 'checkmark-circle'
+                                                    : 'add-circle'
+                                                }
+                                                size={20}
+                                                color={colors.bg}
+                                              />
+                                              <Text
+                                                style={styles.foodLogActionButtonText}
+                                              >
+                                                {buttonLabel}
+                                              </Text>
+                                            </>
+                                          )}
+                                        </TouchableOpacity>
+
+                                        {isSaved && (
+                                          <TouchableOpacity
+                                            style={styles.foodLogSecondaryButton}
+                                            onPress={() =>
+                                              router.push('/body-log/daily-food-log')
+                                            }
+                                            activeOpacity={0.85}
+                                          >
+                                            <Ionicons
+                                              name="nutrition"
+                                              size={20}
+                                              color={colors.textPrimary}
+                                            />
+                                            <Text
+                                              style={styles.foodLogSecondaryButtonText}
+                                            >
+                                              Open Food Log
+                                            </Text>
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
                                     )
                                   })()}
                                 </TouchableOpacity>
@@ -4828,21 +4807,8 @@ export function WorkoutChat({
       <CoachSelectionSheet
         visible={isCoachSheetVisible}
         onClose={() => setIsCoachSheetVisible(false)}
-        currentCalorieGoal={
-          dailyLogSummary?.goals.calorie_goal ?? maintenanceCalories ?? null
-        }
-        onUpdateCalorieGoal={handleUpdateCalorieGoal}
       />
-      {dailyLogSummary && Platform.OS !== 'ios' && (
-        <DailyMacrosSheet
-          visible={isDailyMacrosSheetVisible}
-          onClose={() => setIsDailyMacrosSheetVisible(false)}
-          totals={dailyLogSummary.totals}
-          goals={dailyLogSummary.goals}
-          maintenanceCalories={maintenanceCalories}
-          onUpdateCalorieGoal={handleUpdateCalorieGoal}
-        />
-      )}
+
     </>
   )
 }
@@ -4878,8 +4844,8 @@ function createStyles(
     },
     headerActionGroupGlass: {
       position: 'absolute',
-      right: 20,
-      width: 104,
+      right: 16,
+      width: 48,
       height: 48,
       borderRadius: 24,
       justifyContent: 'center',
@@ -4891,8 +4857,7 @@ function createStyles(
       height: '100%',
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 4,
+      justifyContent: 'center',
     },
 
     actionButtonsContainer: {
@@ -5187,23 +5152,46 @@ function createStyles(
       fontWeight: '500',
       color: colors.textSecondary,
     },
-    foodLogActionButton: {
+    foodLogActionsRow: {
+      flexDirection: 'row',
+      gap: 10,
       marginTop: 16,
+      width: '100%',
+    },
+    foodLogActionButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      borderRadius: 20,
-      paddingVertical: 16,
+      borderRadius: 16,
+      paddingVertical: 14,
       backgroundColor: colors.textPrimary, // Contrast button
-      width: '100%',
+      minHeight: 52,
     },
     foodLogActionButtonDone: {
       backgroundColor: colors.statusSuccess,
     },
     foodLogActionButtonText: {
       color: colors.bg,
-      fontSize: 16,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    foodLogSecondaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: 16,
+      paddingVertical: 14,
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 52,
+    },
+    foodLogSecondaryButtonText: {
+      color: colors.textPrimary,
+      fontSize: 15,
       fontWeight: '700',
     },
     statsCard: { width: 0, height: 0 },
@@ -5816,23 +5804,6 @@ function createStyles(
       width: '100%',
       height: '100%',
     },
-    foodToggleButton: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 0,
-    },
-    foodToggleButtonGlass: {
-      position: 'absolute',
-      left: 16,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 10,
-    },
+
   })
 }

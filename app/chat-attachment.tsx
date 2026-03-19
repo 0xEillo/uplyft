@@ -6,10 +6,14 @@ import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Image as ExpoImage } from 'expo-image'
+import * as ImagePicker from 'expo-image-picker'
 import * as MediaLibrary from 'expo-media-library'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
+  Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -56,6 +60,134 @@ export default function ChatAttachmentScreen() {
     haptic('light')
     await setPendingChatAttachment(action)
     router.back()
+  }
+
+  const launchCamera = async () => {
+    try {
+      const currentStatus = await ImagePicker.getCameraPermissionsAsync()
+
+      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+        Alert.alert(
+          'Camera Access Needed',
+          Platform.select({
+            ios:
+              'To take photos, please enable camera access in Settings > Rep AI > Camera.',
+            android:
+              'To take photos, please enable camera access in Settings > Apps > Rep AI > Permissions.',
+          }),
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      const permission = await ImagePicker.requestCameraPermissionsAsync()
+
+      if (permission.status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Rep AI needs camera access to take photos. You can enable this in your device settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images' as any,
+        allowsEditing: false,
+        quality: 0.8,
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        await dispatch({
+          action: 'photo_selected',
+          uri: result.assets[0].uri,
+        })
+      }
+    } catch (error) {
+      console.error('Error launching camera from attachment sheet:', error)
+      Alert.alert(
+        'Camera Error',
+        'Failed to open camera. Please check your camera permissions in device settings.',
+      )
+    }
+  }
+
+  const launchLibrary = async () => {
+    try {
+      const currentStatus = await ImagePicker.getMediaLibraryPermissionsAsync()
+
+      if (currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+        Alert.alert(
+          'Photo Library Access Needed',
+          Platform.select({
+            ios:
+              'To select photos, please enable photo library access in Settings > Rep AI > Photos.',
+            android:
+              'To select photos, please enable storage access in Settings > Apps > Rep AI > Permissions.',
+          }),
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+      if (permission.status !== 'granted') {
+        Alert.alert(
+          'Photo Library Permission Required',
+          'Rep AI needs photo library access to select photos. You can enable this in your device settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        )
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images' as any,
+        allowsEditing: false,
+        quality: 0.8,
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_SELECTABLE,
+      })
+
+      if (!result.canceled && result.assets.length > 0) {
+        const uris = result.assets.map((asset) => asset.uri)
+        await dispatch(
+          uris.length === 1
+            ? { action: 'photo_selected', uri: uris[0] }
+            : { action: 'photos_selected', uris },
+        )
+      }
+    } catch (error) {
+      console.error('Error launching library from attachment sheet:', error)
+      Alert.alert(
+        'Photo Library Error',
+        'Failed to open photo library. Please check your photo library permissions in device settings.',
+      )
+    }
   }
 
   const togglePhoto = (uri: string) => {
@@ -114,7 +246,9 @@ export default function ChatAttachmentScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => dispatch({ action: 'launch_library' })}
+          onPress={() => {
+            void launchLibrary()
+          }}
           hitSlop={8}
         >
           <Text
@@ -153,7 +287,9 @@ export default function ChatAttachmentScreen() {
       >
         {/* Camera tile */}
         <TouchableOpacity
-          onPress={() => dispatch({ action: 'launch_camera' })}
+          onPress={() => {
+            void launchCamera()
+          }}
           style={{
             width: PHOTO_SIZE,
             height: PHOTO_SIZE,

@@ -17,7 +17,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { BodyPartSlug } from '@/lib/body-mapping'
 import { getWeeklyCommitmentTarget } from '@/lib/commitment'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
@@ -1602,7 +1601,6 @@ export default function OnboardingScreen() {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [deprioritizedMuscles, setDeprioritizedMuscles] = useState<string[]>([])
   const [focusPoints, setFocusPoints] = useState<Record<string, number>>({})
-  const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
   const [heightRulerWidth, setHeightRulerWidth] = useState(SCREEN_WIDTH - 48)
   const [data, setData] = useState<OnboardingData>({
     name: '',
