@@ -3,20 +3,30 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
-import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
+import {
+  resolveOnboardingDisplayName,
+  resolveUserTagBase,
+} from '@/lib/profile-identity'
 import { supabase } from '@/lib/supabase'
-import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  CommitmentMode,
+  ExperienceLevel,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -27,7 +37,9 @@ type OnboardingData = {
   weight_kg: number | null
   age: number | null
   goal: Goal[]
-  commitment: string[]
+  commitment: CommitmentDay[]
+  commitment_frequency: CommitmentFrequency | null
+  commitment_mode: CommitmentMode
   experience_level: ExperienceLevel | null
   bio: string | null
 }
@@ -69,7 +81,8 @@ export default function SignupOptionsScreen() {
       weight_kg: number | null
       age: number | null
       goals: Goal[] | null
-      commitment: string[]
+      commitment: CommitmentDay[] | null
+      commitment_frequency: CommitmentFrequency | null
       experience_level: ExperienceLevel | null
       bio: string | null
     } = {
@@ -79,7 +92,14 @@ export default function SignupOptionsScreen() {
       weight_kg: onboardingData.weight_kg,
       age: onboardingData.age,
       goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-      commitment: onboardingData.commitment,
+      commitment:
+        onboardingData.commitment_mode === 'specific_days'
+          ? onboardingData.commitment
+          : null,
+      commitment_frequency:
+        onboardingData.commitment_mode === 'frequency'
+          ? onboardingData.commitment_frequency
+          : null,
       experience_level: onboardingData.experience_level,
       bio: onboardingData.bio,
     }
@@ -221,12 +241,12 @@ export default function SignupOptionsScreen() {
                     {isAppleLoading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <>
+                      <View style={styles.buttonRow}>
                         <Ionicons name="logo-apple" size={30} color="#FFFFFF" />
                         <Text style={styles.appleButtonText}>
                           Sign in with Apple
                         </Text>
-                      </>
+                      </View>
                     )}
                   </HapticButton>
                 )}
@@ -243,12 +263,12 @@ export default function SignupOptionsScreen() {
                   {isGoogleLoading ? (
                     <ActivityIndicator color={colors.textPrimary} />
                   ) : (
-                    <>
+                    <View style={styles.buttonRow}>
                       <Ionicons name="logo-google" size={30} />
                       <Text style={styles.googleButtonText}>
                         Sign in with Google
                       </Text>
-                    </>
+                    </View>
                   )}
                 </HapticButton>
               </View>
@@ -315,6 +335,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     stepContent: {
       gap: 16,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
     },
     appleButton: {
       height: 64,

@@ -2377,7 +2377,10 @@ export default function CreatePostScreen() {
         ])
 
         workoutNumber = workoutsThisWeek + 1
-        weeklyTarget = parseCommitment(profile.commitment?.[0] ?? null)
+        weeklyTarget = parseCommitment(
+          profile.commitment,
+          profile.commitment_frequency,
+        )
 
         // Both streak calculations can also run in parallel
         const [previousStreakResult, currentStreakResult] = await Promise.all([

@@ -1,3 +1,7 @@
+import {
+  getSelectedCommitmentDays,
+  getWeeklyCommitmentTarget,
+} from './commitment.ts'
 import type { SupabaseClient } from './supabase.ts'
 
 export type RecoveryStatus =
@@ -146,13 +150,6 @@ const WEEKDAY_INDEX: Record<string, number> = {
   saturday: 6,
 }
 
-const LEGACY_COMMITMENT_MAP: Record<string, number> = {
-  '2_times': 2,
-  '3_times': 3,
-  '4_times': 4,
-  '5_plus': 5,
-}
-
 function toDateOnly(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value)
   return date.toISOString().split('T')[0]
@@ -219,35 +216,6 @@ function calculateRecoveryPercentage(
   return Math.round(
     Math.min(100, (hoursSinceLastWorkout / recoveryTimeHours) * 100),
   )
-}
-
-function parseCommitmentDays(commitment: unknown): string[] {
-  if (!commitment) return []
-
-  if (Array.isArray(commitment)) {
-    return commitment
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => value.trim().toLowerCase())
-      .filter((value) => value.length > 0 && value !== 'not_sure')
-  }
-
-  if (typeof commitment === 'string') {
-    const normalized = commitment.trim().toLowerCase()
-    return WEEKDAY_INDEX[normalized] !== undefined ? [normalized] : []
-  }
-
-  return []
-}
-
-function getWeeklyTarget(commitment: unknown): number {
-  const commitmentDays = parseCommitmentDays(commitment)
-  if (commitmentDays.length > 0) return commitmentDays.length
-
-  if (typeof commitment === 'string') {
-    return LEGACY_COMMITMENT_MAP[commitment] ?? 3
-  }
-
-  return 3
 }
 
 function dedupeSortedDates(dates: string[]): string[] {
@@ -543,6 +511,7 @@ export async function buildAdherenceSummary(
   supabase: SupabaseClient,
   userId: string,
   commitment: unknown,
+  commitmentFrequency: unknown = null,
   options: { weeksBack?: number; calendarDays?: number; now?: Date } = {},
 ): Promise<AdherenceSummary> {
   const now = options.now ?? new Date()
@@ -572,8 +541,11 @@ export async function buildAdherenceSummary(
     ? diffInDays(lastWorkoutDateObj, now)
     : null
 
-  const weeklyTarget = getWeeklyTarget(commitment)
-  const commitmentDays = parseCommitmentDays(commitment)
+  const weeklyTarget = getWeeklyCommitmentTarget({
+    commitment,
+    commitmentFrequency,
+  })
+  const commitmentDays = getSelectedCommitmentDays(commitment)
   const currentWeekStart = startOfWeek(now)
   const currentWeekEnd = addDays(currentWeekStart, 6)
   const currentWeekStartKey = toDateOnly(currentWeekStart)

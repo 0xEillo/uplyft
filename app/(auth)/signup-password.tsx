@@ -6,7 +6,13 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
-import { Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  CommitmentMode,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
@@ -30,7 +36,9 @@ type OnboardingData = {
   weight_kg: number | null
   age: number | null
   goal: Goal[]
-  commitment: string[] | null
+  commitment: CommitmentDay[] | null
+  commitment_frequency: CommitmentFrequency | null
+  commitment_mode: CommitmentMode
   bio: string | null
 }
 
@@ -73,7 +81,8 @@ export default function SignupPasswordScreen() {
       weight_kg: number | null
       age: number | null
       goals: Goal[] | null
-      commitment: string[] | null
+      commitment: CommitmentDay[] | null
+      commitment_frequency: CommitmentFrequency | null
       bio: string | null
     } = {
       display_name: displayName,
@@ -82,7 +91,14 @@ export default function SignupPasswordScreen() {
       weight_kg: onboardingData.weight_kg,
       age: onboardingData.age,
       goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-      commitment: onboardingData.commitment,
+      commitment:
+        onboardingData.commitment_mode === 'specific_days'
+          ? onboardingData.commitment
+          : null,
+      commitment_frequency:
+        onboardingData.commitment_mode === 'frequency'
+          ? onboardingData.commitment_frequency
+          : null,
       bio: onboardingData.bio,
     }
 

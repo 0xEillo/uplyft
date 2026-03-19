@@ -234,10 +234,10 @@ export default function CreateAccountScreen() {
                     {isAppleLoading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <>
+                      <View style={styles.buttonRow}>
                         <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
                         <Text style={styles.socialButtonText}>Apple</Text>
-                      </>
+                      </View>
                     )}
                   </HapticButton>
                 </View>
@@ -252,10 +252,10 @@ export default function CreateAccountScreen() {
                   {isGoogleLoading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <>
+                    <View style={styles.buttonRow}>
                       <Ionicons name="logo-google" size={24} color="#FFFFFF" />
                       <Text style={styles.socialButtonText}>Google</Text>
-                    </>
+                    </View>
                   )}
                 </HapticButton>
               </View>
@@ -365,6 +365,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     socialButtonWrapper: {
       flex: 1,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     socialButton: {
       height: 56,

@@ -63,9 +63,17 @@ export function HapticButton({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={1}
+      style={style}
       {...props}
     >
-      <Animated.View style={[style, { transform: [{ scale: scaleAnim }] }]}>
+      <Animated.View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale: scaleAnim }],
+        }}
+      >
         {children}
       </Animated.View>
     </TouchableOpacity>

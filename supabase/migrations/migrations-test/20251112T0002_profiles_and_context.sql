@@ -188,7 +188,8 @@ alter table profiles add constraint valid_weight
 -- Age and commitment fields
 alter table profiles
   add column age integer,
-  add column commitment text[];
+  add column commitment text[],
+  add column commitment_frequency text;
 
 alter table profiles add constraint valid_age
   check (age is null or (age >= 13 and age <= 120));
@@ -201,6 +202,22 @@ alter table profiles add constraint valid_commitment
       and array_length(commitment, 1) > 0
     )
   );
+
+alter table profiles add constraint valid_commitment_frequency
+  check (
+    commitment_frequency is null
+    or commitment_frequency in (
+      '1_time',
+      '2_times',
+      '3_times',
+      '4_times',
+      '5_plus',
+      'not_sure'
+    )
+  );
+
+alter table profiles add constraint valid_commitment_selection
+  check (commitment is null or commitment_frequency is null);
 
 -- Convert single goal to array of goals
 alter table profiles drop constraint if exists valid_goal;
@@ -257,4 +274,3 @@ create index if not exists idx_profiles_trial_notification_id
 create index if not exists idx_profiles_trial_start_date
   on profiles(trial_start_date)
   where trial_start_date is not null;
-

@@ -1,4 +1,10 @@
-import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  ExperienceLevel,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 
 /**
@@ -24,8 +30,8 @@ export const GENDERS: { value: Gender; label: string }[] = [
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ]
 
-export const COMMITMENTS: {
-  value: string
+export const COMMITMENT_DAYS: {
+  value: CommitmentDay
   label: string
 }[] = [
   { value: 'sunday', label: 'Sunday' },
@@ -37,6 +43,20 @@ export const COMMITMENTS: {
   { value: 'saturday', label: 'Saturday' },
   { value: 'not_sure', label: 'Not sure' },
 ]
+
+export const COMMITMENT_FREQUENCIES: {
+  value: CommitmentFrequency
+  label: string
+}[] = [
+  { value: '1_time', label: '1x week' },
+  { value: '2_times', label: '2x week' },
+  { value: '3_times', label: '3x week' },
+  { value: '4_times', label: '4x week' },
+  { value: '5_plus', label: '5+ week' },
+  { value: 'not_sure', label: 'Not sure' },
+]
+
+export const COMMITMENTS = COMMITMENT_DAYS
 
 
 export const EXPERIENCE_LEVELS: {

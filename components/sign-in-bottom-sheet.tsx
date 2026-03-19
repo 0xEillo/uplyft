@@ -97,7 +97,9 @@ export function SignInBottomSheet({
     } catch (error) {
       Alert.alert(
         'Sign In Failed',
-        error instanceof Error ? error.message : 'Failed to sign in with Google',
+        error instanceof Error
+          ? error.message
+          : 'Failed to sign in with Google',
       )
     } finally {
       setIsGoogleLoading(false)
@@ -110,7 +112,12 @@ export function SignInBottomSheet({
   }
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={onClose}
+    >
       <View style={styles.container}>
         <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
           <Pressable style={styles.backdropPress} onPress={onClose} />
@@ -136,7 +143,11 @@ export function SignInBottomSheet({
                 <Text style={styles.subtitle}>{subtitle}</Text>
               </View>
 
-              <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8}>
+              <Pressable
+                onPress={onClose}
+                style={styles.closeButton}
+                hitSlop={8}
+              >
                 <Ionicons name="close" size={20} color={colors.textPrimary} />
               </Pressable>
             </View>
@@ -155,10 +166,12 @@ export function SignInBottomSheet({
                   {isAppleLoading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <>
+                    <View style={styles.buttonRow}>
                       <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
-                      <Text style={styles.appleButtonText}>Continue with Apple</Text>
-                    </>
+                      <Text style={styles.appleButtonText}>
+                        Continue with Apple
+                      </Text>
+                    </View>
                   )}
                 </HapticButton>
               )}
@@ -175,16 +188,33 @@ export function SignInBottomSheet({
                 {isGoogleLoading ? (
                   <ActivityIndicator color={colors.textPrimary} />
                 ) : (
-                  <>
-                    <Ionicons name="logo-google" size={18} color={colors.textPrimary} />
-                    <Text style={styles.glassButtonText}>Continue with Google</Text>
-                  </>
+                  <View style={styles.buttonRow}>
+                    <Ionicons
+                      name="logo-google"
+                      size={18}
+                      color={colors.textPrimary}
+                    />
+                    <Text style={styles.glassButtonText}>
+                      Continue with Google
+                    </Text>
+                  </View>
                 )}
               </HapticButton>
 
-              <HapticButton style={styles.primaryButton} onPress={handleEmailSignIn}>
-                <Ionicons name="mail-outline" size={18} color={colors.onPrimary} />
-                <Text style={styles.primaryButtonText}>Continue with Email</Text>
+              <HapticButton
+                style={styles.primaryButton}
+                onPress={handleEmailSignIn}
+              >
+                <View style={styles.buttonRow}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={colors.onPrimary}
+                  />
+                  <Text style={styles.primaryButtonText}>
+                    Continue with Email
+                  </Text>
+                </View>
               </HapticButton>
             </View>
           </LiquidGlassSurface>
@@ -221,14 +251,18 @@ const createStyles = (
       paddingHorizontal: 18,
       paddingTop: 10,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.56)',
+      borderColor: isDark
+        ? 'rgba(255, 255, 255, 0.14)'
+        : 'rgba(255, 255, 255, 0.56)',
       shadowColor: '#000000',
       shadowOpacity: isDark ? 0.28 : 0.14,
       shadowRadius: 22,
       shadowOffset: { width: 0, height: -8 },
     },
     sheetFallback: {
-      backgroundColor: isDark ? 'rgba(24, 24, 28, 0.84)' : 'rgba(248, 249, 255, 0.85)',
+      backgroundColor: isDark
+        ? 'rgba(24, 24, 28, 0.84)'
+        : 'rgba(248, 249, 255, 0.85)',
     },
     handleBar: {
       width: 42,
@@ -279,6 +313,11 @@ const createStyles = (
       gap: 10,
       paddingBottom: 4,
     },
+    buttonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
     appleButton: {
       height: 54,
       backgroundColor: '#000000',
@@ -303,9 +342,7 @@ const createStyles = (
       alignItems: 'center',
       gap: 10,
       borderWidth: 1,
-      borderColor: isDark
-        ? 'rgba(255,255,255,0.14)'
-        : 'rgba(255,255,255,0.62)',
+      borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.62)',
       backgroundColor: isDark
         ? 'rgba(255,255,255,0.08)'
         : 'rgba(255,255,255,0.46)',

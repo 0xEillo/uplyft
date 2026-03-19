@@ -54,7 +54,7 @@ import {
 } from '@/lib/utils/workout-draft'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as FileSystem from 'expo-file-system/legacy'
 import { Image } from 'expo-image'
@@ -960,6 +960,7 @@ export function WorkoutChat({
     setLoadedDraftContext,
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
+  const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   const [isDailyMacrosSheetVisible, setIsDailyMacrosSheetVisible] = useState(
     false,
@@ -1000,6 +1001,7 @@ export function WorkoutChat({
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const tabBarVisibility = useTabBarVisibility()
+  const isFocused = useIsFocused()
 
   const closeWizardAndRestoreTabBar = useCallback(() => {
     tabBarVisibility?.setHideForFullscreenOverlay(false)
@@ -1082,11 +1084,14 @@ export function WorkoutChat({
     })
   }, [])
 
+  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Show welcome message for first-time users (fullscreen mode only)
   useEffect(() => {
     // Wait for profile to load before showing welcome message so we have the user's name
     if (
       mode !== 'fullscreen' ||
+      !isFocused ||
       hasLoadedWelcome ||
       !user?.id ||
       isProfileLoading
@@ -1099,7 +1104,9 @@ export function WorkoutChat({
         const hasSeen = await AsyncStorage.getItem(storageKey)
 
         if (!hasSeen) {
-          // Show welcome message from coach
+          // Show typing indicator first (like create-post coach sheet)
+          setIsWelcomeTyping(true)
+
           const welcomeContent = getWelcomeMessage(
             coachId,
             profile?.display_name?.split(' ')[0], // First name only
@@ -1111,22 +1118,35 @@ export function WorkoutChat({
             content: welcomeContent,
           }
 
-          setMessages([welcomeMessage])
-
-          // Mark as seen
-          await AsyncStorage.setItem(storageKey, 'true')
+          // Delay ~1.2s before revealing message for a more realistic feel
+          welcomeTimerRef.current = setTimeout(() => {
+            welcomeTimerRef.current = null
+            setIsWelcomeTyping(false)
+            setMessages([welcomeMessage])
+            setHasLoadedWelcome(true)
+            AsyncStorage.setItem(storageKey, 'true')
+          }, 1200)
+        } else {
+          setHasLoadedWelcome(true)
         }
-
-        setHasLoadedWelcome(true)
       } catch (error) {
         console.error('[WorkoutChat] Error checking welcome message:', error)
+        setIsWelcomeTyping(false)
         setHasLoadedWelcome(true)
       }
     }
 
     checkAndShowWelcome()
+
+    return () => {
+      if (welcomeTimerRef.current) {
+        clearTimeout(welcomeTimerRef.current)
+        welcomeTimerRef.current = null
+      }
+    }
   }, [
     mode,
+    isFocused,
     hasLoadedWelcome,
     user?.id,
     coachId,
@@ -3118,6 +3138,14 @@ export function WorkoutChat({
               ref={messagesListRef}
               style={styles.messagesContainer}
               data={messages}
+              extraData={{
+                isLoading,
+                isWelcomeTyping,
+                input: input.trim(),
+                mode,
+                coachId,
+                coachName: profile?.display_name ?? '',
+              }}
               keyExtractor={(item: Message) => item.id}
               getItemType={(item: Message) => item.role}
               estimatedItemSize={260}
@@ -4135,10 +4163,14 @@ export function WorkoutChat({
                 logLayout('scrollView', e.nativeEvent.layout)
               }
               onContentSizeChange={() => {
-                ;(messages.length > 0 || isLoading) && scrollToBottom()
+                ;(messages.length > 0 || isLoading || isWelcomeTyping) &&
+                  scrollToBottom()
               }}
               ListEmptyComponent={
-                messages.length === 0 && !isLoading && !input.trim() ? (
+                messages.length === 0 &&
+                !isLoading &&
+                !isWelcomeTyping &&
+                !input.trim() ? (
                   <View style={styles.emptyState}>
                     {mode === 'fullscreen' && (
                       <View style={styles.welcomeSection}>
@@ -4160,7 +4192,7 @@ export function WorkoutChat({
               }
               ListFooterComponent={
                 <>
-                  {isLoading && (
+                  {(isLoading || isWelcomeTyping) && (
                     <View style={styles.loadingMessageContainer}>
                       <View style={styles.messageAvatarContainer}>
                         <Image
@@ -4184,6 +4216,7 @@ export function WorkoutChat({
             {!generatedPlanContent &&
               !planningState.isActive &&
               !isLoading &&
+              !isWelcomeTyping &&
               !hasChatStarted &&
               !messages.some((m) => m.role === 'user') &&
               !input.trim() && (

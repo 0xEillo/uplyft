@@ -376,6 +376,7 @@ async function buildUserContext(
         supabase,
         userId,
         summary.profile.commitment,
+        summary.profile.commitmentFrequency,
       )
     }
 
@@ -1401,6 +1402,7 @@ async function buildUserContext(
           supabase,
           userId,
           summary.profile.commitment,
+          summary.profile.commitmentFrequency,
           {
             weeksBack,
             calendarDays,

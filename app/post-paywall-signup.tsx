@@ -160,12 +160,12 @@ export default function PostPaywallSignupScreen() {
                   {isAppleLoading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <>
+                    <View style={styles.buttonRow}>
                       <Ionicons name="logo-apple" size={19} color="#FFFFFF" />
                       <Text style={styles.appleButtonText}>
                         Continue with Apple
                       </Text>
-                    </>
+                    </View>
                   )}
                 </HapticButton>
               )}
@@ -182,7 +182,7 @@ export default function PostPaywallSignupScreen() {
                 {isGoogleLoading ? (
                   <ActivityIndicator color={colors.textPrimary} />
                 ) : (
-                  <>
+                  <View style={styles.buttonRow}>
                     <Ionicons
                       name="logo-google"
                       size={18}
@@ -191,7 +191,7 @@ export default function PostPaywallSignupScreen() {
                     <Text style={styles.glassButtonText}>
                       Continue with Google
                     </Text>
-                  </>
+                  </View>
                 )}
               </HapticButton>
 
@@ -204,14 +204,16 @@ export default function PostPaywallSignupScreen() {
                 disabled={isAnyLoading}
                 hapticEnabled={!isAnyLoading}
               >
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={colors.onPrimary}
-                />
-                <Text style={styles.primaryButtonText}>
-                  Continue with Email
-                </Text>
+                <View style={styles.buttonRow}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={colors.onPrimary}
+                  />
+                  <Text style={styles.primaryButtonText}>
+                    Continue with Email
+                  </Text>
+                </View>
               </HapticButton>
 
               <Pressable
@@ -317,6 +319,11 @@ const createStyles = (
     buttonsContainer: {
       gap: 10,
       marginTop: 2,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
     },
     primaryButton: {
       height: 54,

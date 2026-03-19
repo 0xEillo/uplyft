@@ -9,6 +9,23 @@ export type Goal =
   | 'become_flexible'
   | 'general_fitness'
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
+export type CommitmentDay =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'not_sure'
+export type CommitmentFrequency =
+  | '1_time'
+  | '2_times'
+  | '3_times'
+  | '4_times'
+  | '5_plus'
+  | 'not_sure'
+export type CommitmentMode = 'specific_days' | 'frequency'
 
 export interface Profile {
   id: string
@@ -24,7 +41,8 @@ export interface Profile {
   weight_kg: number | null
   age: number | null
   goals: Goal[] | null
-  commitment: string[] | null
+  commitment: CommitmentDay[] | null
+  commitment_frequency: CommitmentFrequency | null
   training_years: string | null
   experience_level: ExperienceLevel | null
   expo_push_token: string | null

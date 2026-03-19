@@ -1,3 +1,5 @@
+import { getWeeklyCommitmentTarget } from '@/lib/commitment'
+
 /**
  * Generates motivational messages based on weekly workout progress
  */
@@ -9,26 +11,16 @@ export interface WorkoutProgress {
 
 /**
  * Parse commitment value to numeric target
- * Commitment is now an array of day strings like ['monday', 'wednesday', 'friday']
+ * Supports both specific-day commitments and flexible weekly frequency.
  */
-export function parseCommitment(commitment: string[] | string | null): number {
-  if (!commitment) return 3 // Default to 3x per week
-
-  // Handle new array format (days of the week)
-  if (Array.isArray(commitment)) {
-    const validDays = commitment.filter(c => c !== 'not_sure')
-    return validDays.length > 0 ? validDays.length : 3
-  }
-
-  // Handle legacy frequency format for backwards compatibility
-  const commitmentMap: Record<string, number> = {
-    '2_times': 2,
-    '3_times': 3,
-    '4_times': 4,
-    '5_plus': 5,
-  }
-
-  return commitmentMap[commitment] || 3
+export function parseCommitment(
+  commitment: string[] | null,
+  commitmentFrequency?: string | null,
+): number {
+  return getWeeklyCommitmentTarget({
+    commitment,
+    commitment_frequency: commitmentFrequency,
+  })
 }
 
 /**

@@ -1,3 +1,8 @@
+import type { CommitmentDay } from '../_shared/commitment.ts'
+import {
+  getAdaptiveWeeklyPushLimit,
+  getScheduledReminderPlan,
+} from '../_shared/retention.ts'
 import { createServiceClient } from '../_shared/supabase.ts'
 
 type RetentionNotificationType =
@@ -27,6 +32,7 @@ type PreferenceRow = {
         id: string
         display_name: string
         commitment: string[] | null
+        commitment_frequency: string | null
         expo_push_token: string | null
       }
     | null
@@ -41,6 +47,7 @@ type ProfileRow = {
   id: string
   display_name: string
   commitment: string[] | null
+  commitment_frequency: string | null
   expo_push_token: string | null
 }
 
@@ -268,13 +275,13 @@ function pickMessage(input: {
       (item) => item.type === type && withinLastHours(item.created_at, now, hours),
     )
 
-  const commitmentDays = (pref.profile?.commitment ?? []).filter(
-    (day) => day !== 'not_sure',
-  )
-  const hasCommitment = commitmentDays.length > 0
-  const isCommitmentDay = hasCommitment
-    ? commitmentDays.includes(localWeekday)
-    : true
+  const scheduledReminderPlan = getScheduledReminderPlan({
+    todayDateKey,
+    localWeekday: localWeekday as Exclude<CommitmentDay, 'not_sure'>,
+    workoutDateKeys: dateKeys,
+    commitment: pref.profile?.commitment,
+    commitmentFrequency: pref.profile?.commitment_frequency,
+  })
 
   const weeklyWindowCount = dateKeys.filter((dateKey) => {
     const delta = diffDays(todayDateKey, dateKey)
@@ -299,10 +306,49 @@ function pickMessage(input: {
   if (
     pref.scheduled_reminders_enabled &&
     localHour === pref.preferred_reminder_hour &&
-    isCommitmentDay &&
+    scheduledReminderPlan.shouldSendScheduledReminderToday &&
     !hasRecentType('retention_scheduled_workout', 20)
   ) {
     const name = firstName(pref.profile?.display_name ?? '')
+
+    if (scheduledReminderPlan.needsWorkoutTodayToHitGoal) {
+      return {
+        type: 'retention_scheduled_workout',
+        title: 'Today keeps your week on track',
+        body: `Hey ${name}, you’re at ${scheduledReminderPlan.workoutsThisWeek}/${scheduledReminderPlan.weeklyTarget} this week. A workout today keeps the goal alive.`,
+        route: '/(tabs)/create-post',
+        metadata: {
+          category: 'scheduled',
+          weekday: localWeekday,
+          weeklyTarget: scheduledReminderPlan.weeklyTarget,
+          workoutsThisWeek: scheduledReminderPlan.workoutsThisWeek,
+          workoutsRemainingThisWeek:
+            scheduledReminderPlan.workoutsRemainingThisWeek,
+          behindTargetBy: scheduledReminderPlan.behindTargetBy,
+          urgency: 'must_train_today',
+        },
+      }
+    }
+
+    if (scheduledReminderPlan.isBehindWeeklyPace) {
+      return {
+        type: 'retention_scheduled_workout',
+        title: 'Catch-up workout today?',
+        body: `Hey ${name}, you’re ${scheduledReminderPlan.behindTargetBy} workout${scheduledReminderPlan.behindTargetBy === 1 ? '' : 's'} behind your weekly goal. Training today puts you back on pace.`,
+        route: '/(tabs)/create-post',
+        metadata: {
+          category: 'scheduled',
+          weekday: localWeekday,
+          weeklyTarget: scheduledReminderPlan.weeklyTarget,
+          workoutsThisWeek: scheduledReminderPlan.workoutsThisWeek,
+          workoutsRemainingThisWeek:
+            scheduledReminderPlan.workoutsRemainingThisWeek,
+          behindTargetBy: scheduledReminderPlan.behindTargetBy,
+          urgency: 'behind_pace',
+        },
+      }
+    }
+
     return {
       type: 'retention_scheduled_workout',
       title: 'Time to train 💪',
@@ -311,6 +357,13 @@ function pickMessage(input: {
       metadata: {
         category: 'scheduled',
         weekday: localWeekday,
+        weeklyTarget: scheduledReminderPlan.weeklyTarget,
+        workoutsThisWeek: scheduledReminderPlan.workoutsThisWeek,
+        workoutsRemainingThisWeek:
+          scheduledReminderPlan.workoutsRemainingThisWeek,
+        urgency: scheduledReminderPlan.isPlannedWorkoutDay
+          ? 'planned_day'
+          : 'open_goal',
       },
     }
   }
@@ -510,7 +563,7 @@ Deno.serve(async (req) => {
 
     const { data: profileRows, error: profileError } = await supabase
       .from('profiles')
-      .select('id, display_name, commitment, expo_push_token')
+      .select('id, display_name, commitment, commitment_frequency, expo_push_token')
       .in(
         'id',
         prefRows.map((pref) => pref.user_id),
@@ -652,8 +705,15 @@ Deno.serve(async (req) => {
       const pushesLast7Days = userHistory.filter(
         (item) => new Date(item.created_at) >= weeklyLimitLookback,
       ).length
+      const effectiveWeeklyPushLimit = getAdaptiveWeeklyPushLimit(
+        pref.max_pushes_per_week,
+        {
+          commitment: pref.profile?.commitment,
+          commitmentFrequency: pref.profile?.commitment_frequency,
+        },
+      )
 
-      if (pushesLast7Days >= pref.max_pushes_per_week) {
+      if (pushesLast7Days >= effectiveWeeklyPushLimit) {
         skipped.push({ userId: pref.user_id, reason: 'weekly_limit' })
         continue
       }

@@ -1,7 +1,8 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import {
-    COMMITMENTS,
+    COMMITMENT_DAYS,
+    COMMITMENT_FREQUENCIES,
     EXPERIENCE_LEVELS,
     GENDERS,
     GOALS,
@@ -11,9 +12,17 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { getCommitmentMode } from '@/lib/commitment'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
-import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  CommitmentMode,
+  ExperienceLevel,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
@@ -52,7 +61,11 @@ export default function EditProfileScreen() {
   const [editedWeight, setEditedWeight] = useState('')
   const [editedAge, setEditedAge] = useState('')
   const [editedGoals, setEditedGoals] = useState<Goal[]>([])
-  const [editedCommitment, setEditedCommitment] = useState<string[]>([])
+  const [editedCommitment, setEditedCommitment] = useState<CommitmentDay[]>([])
+  const [editedCommitmentFrequency, setEditedCommitmentFrequency] =
+    useState<CommitmentFrequency | null>(null)
+  const [editedCommitmentMode, setEditedCommitmentMode] =
+    useState<CommitmentMode>('frequency')
   const [
     editedExperienceLevel,
     setEditedExperienceLevel,
@@ -87,6 +100,13 @@ export default function EditProfileScreen() {
       setEditedAge(profile?.age?.toString() || '')
       setEditedGoals(profile?.goals || [])
       setEditedCommitment(profile?.commitment || [])
+      setEditedCommitmentFrequency(profile?.commitment_frequency || null)
+      setEditedCommitmentMode(
+        getCommitmentMode({
+          commitment: profile?.commitment,
+          commitment_frequency: profile?.commitment_frequency,
+        }),
+      )
       setEditedExperienceLevel(profile?.experience_level || null)
       setEditedBio(profile?.bio || '')
       setEditedProfileDescription(profile?.profile_description || '')
@@ -243,7 +263,14 @@ export default function EditProfileScreen() {
           : null,
         age: editedAge ? parseInt(editedAge) : null,
         goals: editedGoals.length > 0 ? editedGoals : null,
-        commitment: editedCommitment.length > 0 ? editedCommitment : null,
+        commitment:
+          editedCommitmentMode === 'specific_days' && editedCommitment.length > 0
+            ? editedCommitment
+            : null,
+        commitment_frequency:
+          editedCommitmentMode === 'frequency'
+            ? editedCommitmentFrequency
+            : null,
         experience_level: editedExperienceLevel,
         bio: editedBio.trim() || null,
         profile_description: editedProfileDescription.trim() || null,
@@ -505,46 +532,105 @@ export default function EditProfileScreen() {
 
           {/* Commitment Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Which Days?</Text>
-            <View style={styles.goalOptions}>
-              {COMMITMENTS.map((commitment) => (
+            <Text style={styles.label}>Workout commitment</Text>
+            <View style={styles.commitmentModeToggle}>
+              {[
+                {
+                  value: 'frequency' as CommitmentMode,
+                  label: 'Frequency',
+                },
+                {
+                  value: 'specific_days' as CommitmentMode,
+                  label: 'Days',
+                },
+              ].map((mode) => (
                 <TouchableOpacity
-                  key={commitment.value}
+                  key={mode.value}
                   style={[
-                    styles.goalOption,
-                    editedCommitment.includes(commitment.value) &&
-                      styles.goalOptionSelected,
+                    styles.commitmentModeOption,
+                    editedCommitmentMode === mode.value &&
+                      styles.commitmentModeOptionActive,
                   ]}
-                  onPress={() => {
-                    let newCommitment: string[]
-                    if (commitment.value === 'not_sure') {
-                      newCommitment = ['not_sure']
-                    } else {
-                      const withoutNotSure = editedCommitment.filter(
-                        (c) => c !== 'not_sure',
-                      )
-                      if (withoutNotSure.includes(commitment.value)) {
-                        newCommitment = withoutNotSure.filter(
-                          (c) => c !== commitment.value,
-                        )
-                      } else {
-                        newCommitment = [...withoutNotSure, commitment.value]
-                      }
-                    }
-                    setEditedCommitment(newCommitment)
-                  }}
+                  onPress={() => setEditedCommitmentMode(mode.value)}
                 >
                   <Text
                     style={[
-                      styles.goalOptionText,
-                      editedCommitment.includes(commitment.value) &&
-                        styles.goalOptionTextSelected,
+                      styles.commitmentModeOptionText,
+                      editedCommitmentMode === mode.value &&
+                        styles.commitmentModeOptionTextActive,
                     ]}
                   >
-                    {commitment.label}
+                    {mode.label}
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+            <Text style={styles.commitmentHelperText}>
+              {editedCommitmentMode === 'specific_days'
+                ? 'Choose the exact days you usually want to train.'
+                : 'Pick how many times per week you want to train without choosing days.'}
+            </Text>
+            <View style={styles.goalOptions}>
+              {editedCommitmentMode === 'specific_days'
+                ? COMMITMENT_DAYS.map((commitment) => (
+                    <TouchableOpacity
+                      key={commitment.value}
+                      style={[
+                        styles.goalOption,
+                        editedCommitment.includes(commitment.value) &&
+                          styles.goalOptionSelected,
+                      ]}
+                      onPress={() => {
+                        let newCommitment: CommitmentDay[]
+                        if (commitment.value === 'not_sure') {
+                          newCommitment = ['not_sure']
+                        } else {
+                          const withoutNotSure = editedCommitment.filter(
+                            (value) => value !== 'not_sure',
+                          )
+                          if (withoutNotSure.includes(commitment.value)) {
+                            newCommitment = withoutNotSure.filter(
+                              (value) => value !== commitment.value,
+                            )
+                          } else {
+                            newCommitment = [...withoutNotSure, commitment.value]
+                          }
+                        }
+                        setEditedCommitment(newCommitment)
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.goalOptionText,
+                          editedCommitment.includes(commitment.value) &&
+                            styles.goalOptionTextSelected,
+                        ]}
+                      >
+                        {commitment.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                : COMMITMENT_FREQUENCIES.map((frequency) => (
+                    <TouchableOpacity
+                      key={frequency.value}
+                      style={[
+                        styles.goalOption,
+                        editedCommitmentFrequency === frequency.value &&
+                          styles.goalOptionSelected,
+                      ]}
+                      onPress={() => setEditedCommitmentFrequency(frequency.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.goalOptionText,
+                          editedCommitmentFrequency === frequency.value &&
+                            styles.goalOptionTextSelected,
+                        ]}
+                      >
+                        {frequency.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
             </View>
           </View>
 
@@ -732,6 +818,48 @@ const createStyles = (
     },
     goalOptions: {
       gap: 8,
+    },
+    commitmentModeToggle: {
+      flexDirection: 'row',
+      padding: 4,
+      borderRadius: 12,
+      backgroundColor: colors.border + '40',
+      marginBottom: 10,
+      alignSelf: 'stretch',
+    },
+    commitmentModeOption: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 0,
+    },
+    commitmentModeOptionActive: {
+      backgroundColor: colors.surface,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    commitmentModeOptionText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    commitmentModeOptionTextActive: {
+      color: colors.textPrimary,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    commitmentHelperText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      marginBottom: 12,
     },
     goalOption: {
       paddingVertical: 14,

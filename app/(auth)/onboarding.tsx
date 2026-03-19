@@ -6,19 +6,32 @@ import {
   WORKOUT_PLANNING_PREFS_KEY,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
-import { COMMITMENTS, GENDERS, GOALS } from '@/constants/options'
+import {
+  COMMITMENT_DAYS,
+  COMMITMENT_FREQUENCIES,
+  GENDERS,
+  GOALS,
+} from '@/constants/options'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { BodyPartSlug } from '@/lib/body-mapping'
+import { getWeeklyCommitmentTarget } from '@/lib/commitment'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
-import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  CommitmentMode,
+  ExperienceLevel,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Picker } from '@react-native-picker/picker'
@@ -60,7 +73,9 @@ type OnboardingData = {
   birth_month: string
   birth_year: string
   goal: Goal[]
-  commitment: string[]
+  commitment: CommitmentDay[]
+  commitment_frequency: CommitmentFrequency | null
+  commitment_mode: CommitmentMode
   experience_level: ExperienceLevel | null
   equipment: string[]
   bio: string
@@ -126,15 +141,37 @@ const STEP_NAMES: { [key: number]: string } = {
   19: 'habit_reinforcement',
   20: 'equipment_selection',
   // Continuation of main flow
-  21: 'focus_areas',
-  22: 'body_scan_feature',
-  23: 'processing',
-  24: 'plan_ready',
-  25: 'commitment_pledge',
+  21: 'focus_muscles',
+  22: 'deprioritize_muscles',
+  23: 'body_scan_feature',
+  24: 'processing',
+  25: 'plan_ready',
+  26: 'commitment_pledge',
 }
 
 // Total number of steps in the onboarding flow
-const TOTAL_STEPS = 25
+const TOTAL_STEPS = 26
+
+const BODY_HALF_CONFIG = {
+  upper: { scale: 0.52, offsetY: 42 },
+  lower: { scale: 0.36, offsetY: -26 },
+}
+
+const ONBOARDING_MUSCLES = [
+  { id: 'chest', label: 'Chest', slug: 'chest', side: 'front', bodyHalf: 'upper' },
+  { id: 'upper_back', label: 'Upper Back', slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  { id: 'lats', label: 'Lats', slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  { id: 'biceps', label: 'Biceps', slug: 'biceps', side: 'front', bodyHalf: 'upper' },
+  { id: 'triceps', label: 'Triceps', slug: 'triceps', side: 'back', bodyHalf: 'upper' },
+  { id: 'front_delts', label: 'Front Delts', slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+  { id: 'side_delts', label: 'Side Delts', slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
+  { id: 'lower_back', label: 'Lower Back', slug: 'lower-back', side: 'back', bodyHalf: 'upper' },
+  { id: 'abs', label: 'Abs', slug: 'abs', side: 'front', bodyHalf: 'upper' },
+  { id: 'glutes', label: 'Glutes', slug: 'gluteal', side: 'back', bodyHalf: 'lower' },
+  { id: 'quads', label: 'Quads', slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
+  { id: 'hamstrings', label: 'Hamstrings', slug: 'hamstring', side: 'back', bodyHalf: 'lower' },
+  { id: 'calves', label: 'Calves', slug: 'calves', side: 'back', bodyHalf: 'lower' },
+] as const;
 
 const GOAL_COLORS: Record<string, string> = {
   gain_strength: '#EF4444', // Red
@@ -638,7 +675,7 @@ const HabitReinforcementStepContent = ({
     habitGoalInfo[activeGoal] || habitGoalInfo.build_muscle
 
   return (
-    <View style={styles.stepContainer}>
+    <View style={[styles.stepContainer, { minHeight: 200 }]}>
       <View style={styles.stepHeader}>
         <Text
           style={[
@@ -1450,10 +1487,18 @@ const FinalPlanStepContent = ({
     data.birth_day,
   )
   const displayAge = age !== null ? age.toString() : '35'
+  const weeklyCommitmentTarget = getWeeklyCommitmentTarget({
+    commitment:
+      data.commitment_mode === 'specific_days' ? data.commitment : null,
+    commitment_frequency:
+      data.commitment_mode === 'frequency'
+        ? data.commitment_frequency
+        : null,
+  })
 
   // Determine Optimal Intensity (biased towards High)
   const intensity =
-    data.experience_level === 'beginner' && data.commitment.length < 3
+    data.experience_level === 'beginner' && weeklyCommitmentTarget < 3
       ? 'Moderate'
       : 'High'
 
@@ -1555,6 +1600,8 @@ export default function OnboardingScreen() {
   >('select')
   const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
+  const [deprioritizedMuscles, setDeprioritizedMuscles] = useState<string[]>([])
+  const [focusPoints, setFocusPoints] = useState<Record<string, number>>({})
   const [focusAreas, setFocusAreas] = useState<BodyPartSlug[]>([])
   const [heightRulerWidth, setHeightRulerWidth] = useState(SCREEN_WIDTH - 48)
   const [data, setData] = useState<OnboardingData>({
@@ -1569,6 +1616,8 @@ export default function OnboardingScreen() {
     birth_year: '2001', // Average age 25 (Current year 2026)
     goal: [],
     commitment: [],
+    commitment_frequency: null,
+    commitment_mode: 'frequency',
     experience_level: null,
     equipment: [],
     bio: '',
@@ -1597,7 +1646,7 @@ export default function OnboardingScreen() {
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 21) {
+    if (step === 21 || step === 22) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -1776,7 +1825,10 @@ export default function OnboardingScreen() {
         stepMetadata.equipment = data.equipment
         break
       case 21:
-        stepMetadata.focus_areas = focusAreas
+        stepMetadata.focus_points = focusPoints
+        break
+      case 22:
+        stepMetadata.deprioritized_muscles = deprioritizedMuscles
         break
     }
 
@@ -1865,9 +1917,8 @@ export default function OnboardingScreen() {
       return
     }
 
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1)
-    } else {
+    // The paywall/app entry should only happen after the commitment step is completed.
+    if (step === 25 || step >= TOTAL_STEPS) {
       const age = calculateAgeFromBirthDate(
         data.birth_year,
         data.birth_month,
@@ -1893,7 +1944,6 @@ export default function OnboardingScreen() {
         ? convertInputToKg(parseFloat(data.weight_kg))
         : null
 
-      // Create guest profile and navigate to profile page with paywall flag
       const finishOnboarding = async () => {
         try {
           let currentUserId = user?.id
@@ -1924,8 +1974,14 @@ export default function OnboardingScreen() {
               age: age,
               goals: data.goal.length > 0 ? data.goal : null,
               commitment:
-                data.commitment && data.commitment.length > 0
+                data.commitment_mode === 'specific_days' &&
+                data.commitment &&
+                data.commitment.length > 0
                   ? data.commitment
+                  : null,
+              commitment_frequency:
+                data.commitment_mode === 'frequency'
+                  ? data.commitment_frequency
                   : null,
               experience_level: data.experience_level,
               bio: data.bio.trim() || null,
@@ -1980,6 +2036,8 @@ export default function OnboardingScreen() {
       }
 
       finishOnboarding()
+    } else {
+      setStep(step + 1)
     }
   }
 
@@ -2112,7 +2170,9 @@ export default function OnboardingScreen() {
       case 17:
         return false // Section interstitial
       case 18:
-        return data.commitment.length > 0
+        return data.commitment_mode === 'specific_days'
+          ? data.commitment.length > 0
+          : data.commitment_frequency !== null
       case 19:
         return true // Habit reinforcement
       case 20:
@@ -2508,53 +2568,129 @@ export default function OnboardingScreen() {
             </View>
 
             <View style={styles.stepContent}>
-              <View style={styles.optionsContainer}>
-                {COMMITMENTS.map((commitment) => (
+              <View style={styles.commitmentModeToggle}>
+                {[
+                  {
+                    value: 'frequency' as CommitmentMode,
+                    label: 'Frequency',
+                  },
+                  {
+                    value: 'specific_days' as CommitmentMode,
+                    label: 'Days',
+                  },
+                ].map((mode) => (
                   <HapticButton
-                    key={commitment.value}
+                    key={mode.value}
                     style={[
-                      styles.card,
-                      data.commitment.includes(commitment.value) &&
-                        styles.cardSelected,
+                      styles.commitmentModeButton,
+                      data.commitment_mode === mode.value &&
+                        styles.commitmentModeButtonActive,
                     ]}
                     onPress={() => {
-                      let newCommitment: string[]
-                      if (commitment.value === 'not_sure') {
-                        // If "not sure" is selected, clear others
-                        newCommitment = ['not_sure']
-                      } else {
-                        // If a day is selected, remove "not_sure" if present
-                        const withoutNotSure = data.commitment.filter(
-                          (c) => c !== 'not_sure',
-                        )
-                        if (withoutNotSure.includes(commitment.value)) {
-                          newCommitment = withoutNotSure.filter(
-                            (c) => c !== commitment.value,
-                          )
-                        } else {
-                          newCommitment = [...withoutNotSure, commitment.value]
-                        }
-                      }
-                      setData({ ...data, commitment: newCommitment })
+                      setData({ ...data, commitment_mode: mode.value })
                     }}
                     hapticIntensity="light"
                   >
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardLabel}>{commitment.label}</Text>
-                      <View
-                        style={[
-                          styles.radioButton,
-                          data.commitment.includes(commitment.value) &&
-                            styles.radioButtonSelected,
-                        ]}
-                      >
-                        {data.commitment.includes(commitment.value) && (
-                          <View style={styles.radioButtonInner} />
-                        )}
-                      </View>
-                    </View>
+                    <Text
+                      style={[
+                        styles.commitmentModeButtonText,
+                        data.commitment_mode === mode.value &&
+                          styles.commitmentModeButtonTextActive,
+                      ]}
+                    >
+                      {mode.label}
+                    </Text>
                   </HapticButton>
                 ))}
+              </View>
+
+              <Text style={styles.commitmentHelperText}>
+                {data.commitment_mode === 'specific_days'
+                  ? 'Choose the exact days you want to train.'
+                  : 'Pick your weekly training frequency without locking in days.'}
+              </Text>
+
+              <View style={styles.optionsContainer}>
+                {data.commitment_mode === 'specific_days'
+                  ? COMMITMENT_DAYS.map((commitment) => (
+                      <HapticButton
+                        key={commitment.value}
+                        style={[
+                          styles.card,
+                          data.commitment.includes(commitment.value) &&
+                            styles.cardSelected,
+                        ]}
+                        onPress={() => {
+                          let newCommitment: CommitmentDay[]
+                          if (commitment.value === 'not_sure') {
+                            newCommitment = ['not_sure']
+                          } else {
+                            const withoutNotSure = data.commitment.filter(
+                              (value) => value !== 'not_sure',
+                            )
+                            if (withoutNotSure.includes(commitment.value)) {
+                              newCommitment = withoutNotSure.filter(
+                                (value) => value !== commitment.value,
+                              )
+                            } else {
+                              newCommitment = [
+                                ...withoutNotSure,
+                                commitment.value,
+                              ]
+                            }
+                          }
+                          setData({ ...data, commitment: newCommitment })
+                        }}
+                        hapticIntensity="light"
+                      >
+                        <View style={styles.cardContent}>
+                          <Text style={styles.cardLabel}>{commitment.label}</Text>
+                          <View
+                            style={[
+                              styles.radioButton,
+                              data.commitment.includes(commitment.value) &&
+                                styles.radioButtonSelected,
+                            ]}
+                          >
+                            {data.commitment.includes(commitment.value) && (
+                              <View style={styles.radioButtonInner} />
+                            )}
+                          </View>
+                        </View>
+                      </HapticButton>
+                    ))
+                  : COMMITMENT_FREQUENCIES.map((frequency) => (
+                      <HapticButton
+                        key={frequency.value}
+                        style={[
+                          styles.card,
+                          data.commitment_frequency === frequency.value &&
+                            styles.cardSelected,
+                        ]}
+                        onPress={() => {
+                          setData({
+                            ...data,
+                            commitment_frequency: frequency.value,
+                          })
+                        }}
+                        hapticIntensity="light"
+                      >
+                        <View style={styles.cardContent}>
+                          <Text style={styles.cardLabel}>{frequency.label}</Text>
+                          <View
+                            style={[
+                              styles.radioButton,
+                              data.commitment_frequency === frequency.value &&
+                                styles.radioButtonSelected,
+                            ]}
+                          >
+                            {data.commitment_frequency === frequency.value && (
+                              <View style={styles.radioButtonInner} />
+                            )}
+                          </View>
+                        </View>
+                      </HapticButton>
+                    ))}
               </View>
             </View>
           </View>
@@ -3563,311 +3699,195 @@ export default function OnboardingScreen() {
           </View>
         )
       case 21: {
-        const MUSCLE_GROUP_MAPPING: Record<
-          string,
-          { label: string; slugs: BodyPartSlug[] }
-        > = {
-          shoulders: { label: 'Shoulders', slugs: ['deltoids', 'neck'] },
-          arms: { label: 'Arms', slugs: ['biceps', 'triceps', 'forearm'] },
-          back: {
-            label: 'Back',
-            slugs: ['upper-back', 'trapezius', 'lower-back'],
-          },
-          chest: { label: 'Chest', slugs: ['chest'] },
-          abs: { label: 'Abs', slugs: ['abs', 'obliques'] },
-          glutes: { label: 'Glutes', slugs: ['gluteal'] },
-          legs: {
-            label: 'Legs',
-            slugs: ['quadriceps', 'hamstring', 'calves', 'adductors'],
-          },
-        }
+        const totalFocusPoints = Object.values(focusPoints).reduce((sum, val) => sum + val, 0)
 
-        const allMuscleSlugs: BodyPartSlug[] = Object.values(
-          MUSCLE_GROUP_MAPPING,
-        ).flatMap((v) => v.slugs)
-
-        const bodyData = focusAreas.map((slug) => ({
-          slug,
-          intensity: 1,
-        }))
-
-        const toggleArea = (groupKey: string) => {
-          const slugsToToggle = MUSCLE_GROUP_MAPPING[groupKey].slugs
-          setFocusAreas((prev) => {
-            const hasAll = slugsToToggle.every((s) => prev.includes(s))
-            if (hasAll) {
-              return prev.filter((p) => !slugsToToggle.includes(p))
+        const handleUpdateFocus = (muscleId: string, increment: boolean) => {
+          setFocusPoints((prev) => {
+            const current = prev[muscleId] || 0
+            if (increment) {
+              if (totalFocusPoints < 5) {
+                return { ...prev, [muscleId]: current + 1 }
+              }
             } else {
-              const newAreas = [...prev]
-              slugsToToggle.forEach((s) => {
-                if (!newAreas.includes(s)) newAreas.push(s)
-              })
-              return newAreas
+              if (current > 0) {
+                const updated = { ...prev, [muscleId]: current - 1 }
+                if (updated[muscleId] === 0) delete updated[muscleId]
+                return updated
+              }
             }
+            return prev
           })
         }
 
-        const handleBodyPartPress = (bodyPart: { slug?: string }) => {
-          if (!bodyPart.slug) return
-          // Find which group this anatomical slug belongs to
-          const groupKey = Object.keys(MUSCLE_GROUP_MAPPING).find((key) =>
-            MUSCLE_GROUP_MAPPING[key].slugs.includes(
-              bodyPart.slug as BodyPartSlug,
-            ),
-          )
-          if (groupKey) {
-            toggleArea(groupKey)
-          }
-        }
+        const upperMuscles = ONBOARDING_MUSCLES.filter((m) => m.bodyHalf === 'upper')
+        const lowerMuscles = ONBOARDING_MUSCLES.filter((m) => m.bodyHalf === 'lower')
 
-        const isFullBody = focusAreas.length >= allMuscleSlugs.length
+        const renderMuscleListItem = (muscle: typeof ONBOARDING_MUSCLES[number]) => {
+          const points = focusPoints[muscle.id] || 0
+          return (
+            <View key={muscle.id} style={styles.onboardingMuscleListItem}>
+              <View style={styles.onboardingMuscleListItemBody}>
+                <View
+                  style={[
+                    styles.onboardingMuscleBodyWrapper,
+                    { transform: [{ translateY: BODY_HALF_CONFIG[muscle.bodyHalf].offsetY }] },
+                  ]}
+                >
+                  <Body
+                    data={[{ slug: muscle.slug, intensity: 1 }]}
+                    gender={data.gender === 'female' ? 'female' : 'male'}
+                    side={muscle.side}
+                    scale={BODY_HALF_CONFIG[muscle.bodyHalf].scale}
+                    colors={['#3B82F6']}
+                    border="#D1D5DB"
+                  />
+                </View>
+              </View>
+              <Text style={styles.onboardingMuscleListItemLabel}>{muscle.label}</Text>
+              <View style={styles.onboardingStepperContainer}>
+                <TouchableOpacity
+                  style={styles.onboardingStepperButton}
+                  onPress={() => handleUpdateFocus(muscle.id, false)}
+                >
+                  <Ionicons name="remove" size={20} color={points > 0 ? colors.textPrimary : colors.textTertiary} />
+                </TouchableOpacity>
+                <Text style={styles.onboardingStepperValue}>{points}</Text>
+                <TouchableOpacity
+                  style={styles.onboardingStepperButton}
+                  onPress={() => handleUpdateFocus(muscle.id, true)}
+                >
+                  <Ionicons name="add" size={20} color={totalFocusPoints < 5 ? colors.textPrimary : colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
+        }
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Choose your focus areas.</Text>
+              <Text style={styles.stepTitle}>
+                Would you like to give extra focus to any muscles?
+              </Text>
             </View>
 
-            <View style={styles.bodyHighlightContainer}>
-              {/* Side-by-side body views */}
-              <View style={styles.bodySideBySide}>
-                <View style={styles.bodyViewItem}>
-                  <Body
-                    data={bodyData}
-                    gender={data.gender === 'female' ? 'female' : 'male'}
-                    side="front"
-                    scale={0.65}
-                    colors={[getGoalColor(data.goal[0])]}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.textPrimary}
-                  />
-                </View>
-                <View style={styles.bodyViewItem}>
-                  <Body
-                    data={bodyData}
-                    gender={data.gender === 'female' ? 'female' : 'male'}
-                    side="back"
-                    scale={0.65}
-                    colors={[getGoalColor(data.goal[0])]}
-                    onBodyPartPress={handleBodyPartPress}
-                    border={colors.textPrimary}
-                  />
-                </View>
+            <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.muscleSectionTitle, styles.muscleSectionTitleFirst]}>
+                Upper
+              </Text>
+              <View style={styles.onboardingMuscleList}>
+                {upperMuscles.map(renderMuscleListItem)}
               </View>
 
-              {/* Muscle selection buttons in organized rows */}
-              <View style={styles.focusMuscleGrid}>
-                {/* Row 1: Full Body, Shoulders, Chest */}
-                <View style={styles.focusMuscleRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.focusMuscleButton,
-                      isFullBody && styles.focusMuscleButtonSelected,
-                      isFullBody && {
-                        backgroundColor: getGoalColor(data.goal[0]) + '20',
-                        borderColor: getGoalColor(data.goal[0]),
-                      },
-                    ]}
-                    onPress={() => {
-                      if (isFullBody) {
-                        setFocusAreas([])
-                      } else {
-                        setFocusAreas([...allMuscleSlugs])
-                      }
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.focusMuscleButtonText,
-                        isFullBody && styles.focusMuscleButtonTextSelected,
-                        isFullBody && { color: getGoalColor(data.goal[0]) },
-                      ]}
-                    >
-                      Full body
-                    </Text>
-                  </TouchableOpacity>
-
-                  {['shoulders', 'chest'].map((key) => {
-                    const group = MUSCLE_GROUP_MAPPING[key]
-                    const isSelected =
-                      group.slugs.every((s) => focusAreas.includes(s)) &&
-                      !isFullBody
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.focusMuscleButton,
-                          isSelected && styles.focusMuscleButtonSelected,
-                        ]}
-                        onPress={() => toggleArea(key)}
-                      >
-                        <Text
-                          style={[
-                            styles.focusMuscleButtonText,
-                            isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) },
-                          ]}
-                        >
-                          {group.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-
-                {/* Row 2: Back, Arms, Abs */}
-                <View style={styles.focusMuscleRow}>
-                  {['back', 'arms', 'abs'].map((key) => {
-                    const group = MUSCLE_GROUP_MAPPING[key]
-                    const isSelected =
-                      group.slugs.every((s) => focusAreas.includes(s)) &&
-                      !isFullBody
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.focusMuscleButton,
-                          isSelected && styles.focusMuscleButtonSelected,
-                        ]}
-                        onPress={() => toggleArea(key)}
-                      >
-                        <Text
-                          style={[
-                            styles.focusMuscleButtonText,
-                            isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) },
-                          ]}
-                        >
-                          {group.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-
-                {/* Row 3: Glutes, Legs */}
-                <View style={styles.focusMuscleRow}>
-                  {['glutes', 'legs'].map((key) => {
-                    const group = MUSCLE_GROUP_MAPPING[key]
-                    const isSelected =
-                      group.slugs.every((s) => focusAreas.includes(s)) &&
-                      !isFullBody
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.focusMuscleButton,
-                          isSelected && styles.focusMuscleButtonSelected,
-                          isSelected && {
-                            backgroundColor: getGoalColor(data.goal[0]) + '20',
-                            borderColor: getGoalColor(data.goal[0]),
-                          },
-                        ]}
-                        onPress={() => toggleArea(key)}
-                      >
-                        <Text
-                          style={[
-                            styles.focusMuscleButtonText,
-                            isSelected && styles.focusMuscleButtonTextSelected,
-                            isSelected && { color: getGoalColor(data.goal[0]) },
-                          ]}
-                        >
-                          {group.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
+              <Text style={styles.muscleSectionTitle}>Lower</Text>
+              <View style={styles.onboardingMuscleList}>
+                {lowerMuscles.map(renderMuscleListItem)}
               </View>
-            </View>
+              <View style={{ height: 100 }} />
+            </ScrollView>
           </View>
         )
       }
       case 22: {
-        // Body Scan Feature Step
-        const currentWeightNum = parseFloat(data.weight_kg) || 75
-        const isLosing = data.goal.includes('lose_fat')
-        const goalAction = isLosing ? 'FAT LOSS' : 'MUSCLE GAIN'
+        const handleToggleDeprioritize = (muscleId: string) => {
+          setDeprioritizedMuscles((prev) => {
+            if (prev.includes(muscleId)) {
+              return prev.filter((id) => id !== muscleId)
+            }
+            if (prev.length < 5) {
+              return [...prev, muscleId]
+            }
+            return prev
+          })
+        }
 
-        // Placeholder values for the scan
-        const mockMuscleMass = (currentWeightNum * 0.78).toFixed(1)
-        const mockBodyFat = isLosing ? '24' : '18'
-
-        const scanImage =
-          data.gender === 'female'
-            ? require('../../assets/images/coach/body-scan-female.png')
-            : require('../../assets/images/coach/body-scan-male.png')
+        const upperMuscles = ONBOARDING_MUSCLES.filter((m) => m.bodyHalf === 'upper')
+        const lowerMuscles = ONBOARDING_MUSCLES.filter((m) => m.bodyHalf === 'lower')
 
         return (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
-              <Text style={styles.bodyScanTitle}>
-                Body Scan analyzes your lean muscle so you can accurately track
-                your{' '}
-                <Text
-                  style={{
-                    color: getGoalColor(data.goal[0]),
-                    fontStyle: 'italic',
-                    fontWeight: '900',
-                    fontFamily: 'System',
-                  }}
-                >
-                  {goalAction}
-                </Text>
-                !
+              <Text style={styles.stepTitle}>
+                Would you like to deprioritize any specific muscles?
               </Text>
             </View>
 
-            <View style={styles.bodyScanMockupContainer}>
-              <View style={styles.bodyScanPhoneFrame}>
-                <Image
-                  source={scanImage}
-                  defaultSource={require('../../assets/images/icon.png')}
-                  style={styles.bodyScanImage}
-                />
-                <View style={styles.bodyScanOverlay}>
-                  <View style={styles.scanLine} />
-                  <View style={[styles.scanLine, { top: '45%' }]} />
-                  <View style={[styles.scanLine, { top: '60%' }]} />
-                </View>
+            <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.muscleSectionTitle, styles.muscleSectionTitleFirst]}>
+                Upper
+              </Text>
+              <View style={styles.onboardingMuscleGrid}>
+                {upperMuscles.map((muscle) => (
+                  <HapticButton
+                    key={muscle.id}
+                    style={styles.onboardingMuscleGridItem}
+                    onPress={() => handleToggleDeprioritize(muscle.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    hapticIntensity="light"
+                  >
+                    <View style={[styles.onboardingMuscleGridItemInner, deprioritizedMuscles.includes(muscle.id) && styles.onboardingMuscleGridItemSelected]}>
+                      <View style={[styles.onboardingMuscleBodyContainer, { pointerEvents: 'none' as const }]}>
+                        <View
+                          style={[
+                            styles.onboardingMuscleBodyWrapper,
+                            { transform: [{ translateY: BODY_HALF_CONFIG.upper.offsetY }] },
+                          ]}
+                        >
+                          <Body
+                            data={[{ slug: muscle.slug, intensity: 1 }]}
+                            gender={data.gender === 'female' ? 'female' : 'male'}
+                            side={muscle.side}
+                            scale={BODY_HALF_CONFIG.upper.scale}
+                            colors={['#3B82F6']}
+                            border="#D1D5DB"
+                          />
+                        </View>
+                      </View>
+                      <Text style={styles.onboardingMuscleGridItemLabel}>{muscle.label}</Text>
+                    </View>
+                  </HapticButton>
+                ))}
               </View>
 
-              {/* Right side callouts */}
-              <View style={styles.bodyScanCallouts}>
-                <View style={styles.bodyScanCalloutItem}>
-                  <Text style={styles.bodyScanCalloutLabel}>Muscle Mass</Text>
-                  <Text
-                    style={[styles.bodyScanCalloutValue, { color: '#F59E0B' }]}
+              <Text style={styles.muscleSectionTitle}>Lower</Text>
+              <View style={styles.onboardingMuscleGrid}>
+                {lowerMuscles.map((muscle) => (
+                  <HapticButton
+                    key={muscle.id}
+                    style={styles.onboardingMuscleGridItem}
+                    onPress={() => handleToggleDeprioritize(muscle.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    hapticIntensity="light"
                   >
-                    {mockMuscleMass} kg
-                  </Text>
-                  <View style={styles.bodyScanCalloutLineContainer}>
-                    <View style={styles.bodyScanCalloutLine} />
-                  </View>
-                </View>
-
-                <View style={[styles.bodyScanCalloutItem, { marginTop: 60 }]}>
-                  <Text style={styles.bodyScanCalloutLabel}>Body Fat</Text>
-                  <Text
-                    style={[styles.bodyScanCalloutValue, { color: '#EF4444' }]}
-                  >
-                    {mockBodyFat}%
-                  </Text>
-                  <View style={styles.bodyScanCalloutLineContainer}>
-                    <View
-                      style={[
-                        styles.bodyScanCalloutLine,
-                        { transform: [{ rotate: '-10deg' }] },
-                      ]}
-                    />
-                  </View>
-                </View>
+                    <View style={[styles.onboardingMuscleGridItemInner, deprioritizedMuscles.includes(muscle.id) && styles.onboardingMuscleGridItemSelected]}>
+                      <View style={[styles.onboardingMuscleBodyContainer, { pointerEvents: 'none' as const }]}>
+                        <View
+                          style={[
+                            styles.onboardingMuscleBodyWrapper,
+                            { transform: [{ translateY: BODY_HALF_CONFIG.lower.offsetY }] },
+                          ]}
+                        >
+                          <Body
+                            data={[{ slug: muscle.slug, intensity: 1 }]}
+                            gender={data.gender === 'female' ? 'female' : 'male'}
+                            side={muscle.side}
+                            scale={BODY_HALF_CONFIG.lower.scale}
+                            colors={['#3B82F6']}
+                            border="#D1D5DB"
+                          />
+                        </View>
+                      </View>
+                      <Text style={styles.onboardingMuscleGridItemLabel}>{muscle.label}</Text>
+                    </View>
+                  </HapticButton>
+                ))}
               </View>
-            </View>
+              <View style={{ height: 100 }} />
+            </ScrollView>
           </View>
         )
       }
-      case 23: {
+     case 23: {
         return (
           <ProcessingStepContent
             data={data}
@@ -3900,6 +3920,12 @@ export default function OnboardingScreen() {
           />
         )
       }
+      case 26:
+        return (
+          <View style={[styles.stepContainer, { justifyContent: 'center' }]}>
+            <Text style={styles.stepTitle}>Setting up your plan...</Text>
+          </View>
+        )
       default:
         return null
     }
@@ -4276,6 +4302,18 @@ export default function OnboardingScreen() {
           {/* Footer - Fixed at bottom */}
           {!hasAutoSwipe() && (
             <View style={[styles.footer, step === 24 && { paddingBottom: 40 }]}>
+              {step === 21 && (
+                <View style={styles.focusPointsRemaining}>
+                  <Text style={styles.focusPointsRemainingText}>
+                    {5 -
+                      Object.values(focusPoints).reduce(
+                        (sum, val) => sum + val,
+                        0,
+                      )}{' '}
+                    points remaining
+                  </Text>
+                </View>
+              )}
               <HapticButton
                 style={[
                   styles.nextButton,
@@ -4643,6 +4681,48 @@ const createStyles = (
     optionsContainer: {
       gap: 12,
     },
+    commitmentModeToggle: {
+      flexDirection: 'row',
+      padding: 4,
+      borderRadius: 12,
+      backgroundColor: colors.border + '40',
+      marginBottom: 14,
+      alignSelf: 'stretch',
+    },
+    commitmentModeButton: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 0,
+    },
+    commitmentModeButtonActive: {
+      backgroundColor: colors.surface,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    commitmentModeButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    commitmentModeButtonTextActive: {
+      color: colors.textPrimary,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    commitmentHelperText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      marginBottom: 16,
+    },
     multiSelectContainer: {
       gap: 8,
     },
@@ -4815,6 +4895,15 @@ const createStyles = (
       paddingHorizontal: 24,
       paddingVertical: 16,
       paddingBottom: 20,
+    },
+    focusPointsRemaining: {
+      marginBottom: 12,
+      alignItems: 'center',
+    },
+    focusPointsRemainingText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
     },
     nextButton: {
       height: 64,
@@ -5636,6 +5725,127 @@ const createStyles = (
       width: 1,
       height: 30,
       backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    // Muscle Grid Styles
+    onboardingMuscleGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -4,
+    },
+    onboardingMuscleGridItem: {
+      width: '33.33%',
+      padding: 4,
+      alignItems: 'center',
+    },
+    onboardingMuscleGridItemInner: {
+      width: '100%',
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    onboardingMuscleGridItemSelected: {
+      backgroundColor: isDarkMode ? '#1C1C1E' : '#F3F4F6',
+      borderWidth: 2,
+      borderColor: colors.brandPrimary,
+    },
+    onboardingMuscleBodyContainer: {
+      width: 74,
+      height: 74,
+      borderRadius: 12,
+      backgroundColor: isDarkMode ? '#1C1C1E' : '#F3F4F6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      marginBottom: 8,
+    },
+    onboardingMuscleBodyWrapper: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      width: 120,
+      height: 240,
+      marginTop: -120,
+      marginLeft: -60,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    onboardingMuscleGridItemLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    muscleSectionTitle: {
+      width: '100%',
+      marginTop: 24,
+      marginBottom: 10,
+      paddingLeft: 2,
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textAlign: 'left',
+      letterSpacing: -0.4,
+      lineHeight: 28,
+    },
+    muscleSectionTitleFirst: {
+      marginTop: 0,
+    },
+
+    // Muscle List Styles
+    onboardingMuscleList: {
+      marginTop: 8,
+    },
+    onboardingMuscleListItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    onboardingMuscleListItemBody: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      backgroundColor: isDarkMode ? '#1C1C1E' : '#F3F4F6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      marginRight: 16,
+    },
+    onboardingMuscleListItemLabel: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    onboardingStepperContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDarkMode ? '#1C1C1E' : '#F3F4F6',
+      borderRadius: 20,
+      paddingHorizontal: 4,
+      paddingVertical: 4,
+    },
+    onboardingStepperButton: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 16,
+    },
+    onboardingStepperValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginHorizontal: 12,
+      minWidth: 12,
+      textAlign: 'center',
     },
   })
 }

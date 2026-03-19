@@ -9,7 +9,14 @@ import { database } from '@/lib/database'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { supabase } from '@/lib/supabase'
-import { ExperienceLevel, Gender, Goal } from '@/types/database.types'
+import {
+  CommitmentDay,
+  CommitmentFrequency,
+  CommitmentMode,
+  ExperienceLevel,
+  Gender,
+  Goal,
+} from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -50,7 +57,9 @@ export default function TrialOfferScreen() {
     weight_kg: number | null
     age: number | null
     goal: Goal[]
-    commitment: string[] | null
+    commitment: CommitmentDay[] | null
+    commitment_frequency: CommitmentFrequency | null
+    commitment_mode: CommitmentMode
     experience_level: ExperienceLevel | null
     bio: string | null
     coach: string | null
@@ -77,7 +86,8 @@ export default function TrialOfferScreen() {
         weight_kg: number | null
         age: number | null
         goals: Goal[] | null
-        commitment: string[] | null
+        commitment: CommitmentDay[] | null
+        commitment_frequency: CommitmentFrequency | null
         experience_level: ExperienceLevel | null
         bio: string | null
         coach?: string | null
@@ -92,8 +102,14 @@ export default function TrialOfferScreen() {
         age: onboardingData.age,
         goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
         commitment:
-          onboardingData.commitment && onboardingData.commitment.length > 0
+          onboardingData.commitment_mode === 'specific_days' &&
+          onboardingData.commitment &&
+          onboardingData.commitment.length > 0
             ? onboardingData.commitment
+            : null,
+        commitment_frequency:
+          onboardingData.commitment_mode === 'frequency'
+            ? onboardingData.commitment_frequency
             : null,
         experience_level: onboardingData.experience_level,
         bio: onboardingData.bio,

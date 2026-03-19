@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
+import { formatCommitmentSummary } from '../_shared/commitment.ts'
 import type {
   AdherenceSummary,
   RecoverySummary,
@@ -51,6 +52,7 @@ export interface UserContextSummary {
     age?: number | null
     goals?: string[] | null
     commitment?: string[] | null
+    commitmentFrequency?: string | null
     trainingYears?: string | null
     bio?: string | null
   }
@@ -492,7 +494,12 @@ export async function buildUserContextSummary(
     buildUserStrengthProfile(supabase, userId),
     getMuscleGroupDistribution(supabase, userId, { daysBack: 60 }),
     buildRecoverySummary(supabase, userId),
-    buildAdherenceSummary(supabase, userId, profile.commitment),
+    buildAdherenceSummary(
+      supabase,
+      userId,
+      profile.commitment,
+      profile.commitment_frequency,
+    ),
   ])
   const closestUpgrades = strengthProfile.exerciseRanks
     .filter(
@@ -573,6 +580,7 @@ export async function buildUserContextSummary(
       age: profile.age,
       goals: profile.goals,
       commitment: profile.commitment,
+      commitmentFrequency: profile.commitment_frequency,
       trainingYears: profile.training_years,
       bio: profile.bio,
     },
@@ -637,8 +645,13 @@ export function userContextToPrompt(ctx: UserContextSummary): string {
     personalInfo.push(
       `goals=${ctx.profile.goals.map((g) => g.replace('_', ' ')).join(', ')}`,
     )
-  if (ctx.profile.commitment?.length)
-    personalInfo.push(`commitment=${ctx.profile.commitment.join(', ')}`)
+  const commitmentSummary = formatCommitmentSummary({
+    commitment: ctx.profile.commitment,
+    commitmentFrequency: ctx.profile.commitmentFrequency,
+  })
+  if (commitmentSummary) {
+    personalInfo.push(`commitment=${commitmentSummary}`)
+  }
   if (ctx.profile.trainingYears)
     personalInfo.push(
       `training_years=${ctx.profile.trainingYears.replace('_', ' ')}`,
