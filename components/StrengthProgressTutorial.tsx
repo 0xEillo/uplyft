@@ -12,6 +12,7 @@ import type { BodyPartSlug } from '@/lib/body-mapping'
 import { getExerciseNameMap } from '@/lib/exercise-standards-config'
 import { OVERALL_STRENGTH_SCORE_CAP } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
+import { Ionicons } from '@expo/vector-icons'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Modal,
@@ -74,19 +75,24 @@ const SAMPLE_BODY_DATA: SampleBodyDatum[] = [
 
 const SLIDES: TutorialSlide[] = [
   {
-    id: 'map',
-    description:
-      'Use the body map to see how strong each of your muscle groups are, and spot your weaknesses.',
-  },
-  {
     id: 'levels',
     description:
-      'Your lifter level shows you how strong you are overall. Get stronger on tier 1 lifts to level up faster.',
+      'Your Lifter Level is the ultimate measure of your strength. Reach new milestones by progressing in core lifts.',
+  },
+  {
+    id: 'tiers',
+    description:
+      'Not all lifts are equal. Focus on free-weight compounds to level up faster—they contribute more to your strength score than machines and cables.',
+  },
+  {
+    id: 'map',
+    description:
+      'Identify your strengths and weaknesses at a glance with the Body Map. Focus on local weak points to level up faster.',
   },
   {
     id: 'exercise-ranks',
     description:
-      'See exactly where you rank on different exercises and how close you are to the next level.',
+      'Track your progress on every individual lift, from Beginner all the way to World Class.',
   },
 ]
 
@@ -168,6 +174,56 @@ const SAMPLE_EXERCISES = [
   },
 ]
 
+function TiersVisual() {
+  const colors = useThemedColors()
+  const styles = createStyles(colors)
+
+  const pairs = [
+    { compound: 'Bench Press (Barbell)', accessory: 'Chest Press (Machine)', label: 'Chest' },
+    { compound: 'Squat (Barbell)', accessory: 'Leg Press (Machine)', label: 'Legs' },
+    { compound: 'Shoulder Press (Barbell)', accessory: 'Shoulder Press (Machine)', label: 'Shoulders' },
+  ]
+
+  const renderExercise = (name: string, isFreeWeight: boolean) => {
+    const config = EXERCISE_NAME_MAP.get(name)
+    const cleanName = name.split('(')[0].trim()
+    const accentColor = isFreeWeight ? colors.brandPrimary : colors.textSecondary
+
+    return (
+      <View style={styles.gridThumbWrap}>
+        <View style={[styles.gridThumbContainer, { borderColor: accentColor + '22', borderWidth: 1 }]}>
+          <ExerciseMediaThumbnail
+            gifUrl={config?.gifUrl ?? null}
+            style={styles.gridThumb}
+          />
+        </View>
+        <Text style={[styles.gridThumbLabel, { color: accentColor }]} numberOfLines={1}>
+          {cleanName}
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.visualSection}>
+      <View style={styles.sampleCard}>
+        <View style={styles.tierGroupHeader}>
+          <Text style={[styles.tierGroupTitle, { color: colors.textPrimary }]}>Free Weights vs Machines</Text>
+        </View>
+        <View style={styles.comparisonGrid}>
+          {pairs.map((pair) => (
+            <View key={pair.label} style={styles.comparisonCol}>
+              {renderExercise(pair.compound, true)}
+              <View style={styles.vsLine} />
+              {renderExercise(pair.accessory, false)}
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  )
+}
+
 function ExerciseRankVisual() {
   const colors = useThemedColors()
   const styles = createStyles(colors)
@@ -240,6 +296,8 @@ export function StrengthProgressTutorial({
         return <MapVisual />
       case 'levels':
         return <LevelVisual />
+      case 'tiers':
+        return <TiersVisual />
       default:
         return <ExerciseRankVisual />
     }
@@ -346,21 +404,23 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.72)',
+      backgroundColor: 'rgba(0,0,0,0.75)',
       justifyContent: 'center',
       alignItems: 'center',
     },
     card: {
-      maxHeight: '88%',
-      borderRadius: 24,
+      maxHeight: '90%',
+      borderRadius: 32,
       backgroundColor: colors.bg,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border + '33',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.25,
-          shadowRadius: 32,
+          shadowOffset: { width: 0, height: 20 },
+          shadowOpacity: 0.3,
+          shadowRadius: 40,
         },
         android: { elevation: 24 },
       }),
@@ -369,43 +429,49 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexGrow: 0,
     },
     cardContent: {
-      padding: 20,
-      gap: 20,
+      padding: 24,
+      gap: 24,
     },
     stepCounter: {
-      fontSize: 13,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '800',
       color: colors.textTertiary,
       textAlign: 'right',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
     },
 
     // Shared visual section
     visualSection: {
-      gap: 10,
+      gap: 12,
     },
     mapWrap: {
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 200,
+      minHeight: 220,
+      backgroundColor: colors.surfaceSubtle + '40',
+      borderRadius: 24,
+      padding: 10,
     },
     legendGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: 8,
+      gap: 6,
+      marginTop: 8,
     },
 
-    // Level card — mirrors StrengthBodyView.levelCard
+    // Level card
     levelCard: {
       backgroundColor: colors.surfaceCard,
-      borderRadius: 16,
+      borderRadius: 24,
       borderWidth: 1,
-      paddingHorizontal: 20,
-      paddingVertical: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 24,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
       elevation: 4,
     },
     levelCardContent: {
@@ -418,10 +484,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'center',
     },
     levelCardValue: {
-      fontSize: 28,
-      fontWeight: '800',
+      fontSize: 32,
+      fontWeight: '900',
       color: colors.textPrimary,
-      letterSpacing: -0.5,
+      letterSpacing: -1,
       marginBottom: 4,
     },
     pointsRow: {
@@ -429,91 +495,112 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'baseline',
     },
     pointsCurrent: {
-      fontSize: 24,
-      fontWeight: '800',
+      fontSize: 26,
+      fontWeight: '900',
       fontVariant: ['tabular-nums'] as any,
     },
     pointsSlash: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.textSecondary,
-      marginLeft: 2,
+      marginHorizontal: 2,
+      opacity: 0.5,
     },
     pointsTotal: {
       fontSize: 18,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.textSecondary,
       fontVariant: ['tabular-nums'] as any,
+      opacity: 0.8,
     },
 
-    // Sample cards — mirrors StrengthBodyView exercise/priority cards
+    // Sample cards
     sampleCard: {
       backgroundColor: colors.surfaceCard,
-      borderRadius: 16,
-      padding: 14,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border + '22',
     },
     sampleCardRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 12,
     },
     sampleThumb: {
-      width: 52,
-      height: 52,
-      borderRadius: 14,
+      width: 56,
+      height: 56,
+      borderRadius: 16,
       backgroundColor: colors.bg,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     sampleCardTextWrap: {
       flex: 1,
       gap: 4,
     },
     sampleCardName: {
-      fontSize: 16,
-      fontWeight: '600',
-      lineHeight: 20,
+      fontSize: 17,
+      fontWeight: '700',
       color: colors.textPrimary,
+      letterSpacing: -0.3,
     },
-    sampleCardMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    sampleCardAction: {
-      fontSize: 12,
-      fontWeight: '600',
+    sampleCardSubtext: {
+      fontSize: 13,
       color: colors.textSecondary,
-      flexShrink: 1,
+      fontWeight: '500',
+      marginBottom: 2,
     },
-    ptsLine: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 3,
+    tierGroupHeader: {
+      marginBottom: 16,
+      alignItems: 'center',
     },
-    ptsValue: {
+    tierGroupTitle: {
       fontSize: 16,
-      lineHeight: 18,
       fontWeight: '800',
-      fontVariant: ['tabular-nums'] as any,
+      textAlign: 'center',
     },
-    ptsSuffix: {
+    comparisonGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    comparisonCol: {
+      flex: 1,
+      gap: 6,
+      alignItems: 'center',
+    },
+    vsLine: {
+      height: 10,
+      width: 1,
+      backgroundColor: colors.border + '66',
+    },
+    gridThumbWrap: {
+      width: '100%',
+      gap: 6,
+      alignItems: 'center',
+    },
+    gridThumbContainer: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 14,
+      backgroundColor: colors.bg,
+      overflow: 'hidden',
+    },
+    gridThumb: {
+      width: '100%',
+      height: '100%',
+    },
+    gridThumbLabel: {
       fontSize: 10,
       fontWeight: '700',
-      letterSpacing: 0.1,
+      textAlign: 'center',
     },
-
+    divider: {
+      height: 1,
+    },
     // Exercise rank details
     exerciseContentWrap: {
       flex: 1,
-      minHeight: 52,
-      justifyContent: 'space-between',
-      paddingVertical: 2,
+      gap: 6,
     },
     exerciseProgressWrap: {
       gap: 4,
@@ -525,53 +612,56 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     exercisePercent: {
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '800',
       fontVariant: ['tabular-nums'] as any,
     },
     barTrack: {
-      height: 5,
-      backgroundColor: colors.border,
-      borderRadius: 999,
+      height: 6,
+      backgroundColor: colors.border + '44',
+      borderRadius: 3,
       overflow: 'hidden',
     },
     barFill: {
       height: '100%',
-      borderRadius: 999,
+      borderRadius: 3,
     },
 
     // Copy
-    copyBlock: {},
+    copyBlock: {
+      paddingHorizontal: 8,
+    },
     slideDescription: {
-      fontSize: 15,
+      fontSize: 16,
       lineHeight: 24,
       fontWeight: '600',
       color: colors.textPrimary,
       textAlign: 'center',
+      letterSpacing: -0.2,
     },
 
     // Footer
     footer: {
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 18,
-      gap: 14,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 24,
+      gap: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border + '22',
     },
     footerDots: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
     dot: {
-      width: 7,
-      height: 7,
+      width: 8,
+      height: 8,
       borderRadius: 4,
-      backgroundColor: colors.border,
+      backgroundColor: colors.border + '66',
     },
     dotActive: {
-      width: 22,
+      width: 24,
     },
     footerActions: {
       flexDirection: 'row',
@@ -579,25 +669,30 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'center',
     },
     backBtn: {
-      paddingHorizontal: 4,
-      paddingVertical: 8,
+      paddingVertical: 12,
+      paddingRight: 20,
     },
     backBtnText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '700',
       color: colors.textSecondary,
     },
     nextBtn: {
-      borderRadius: 999,
-      paddingHorizontal: 22,
-      paddingVertical: 12,
-      minWidth: 100,
+      borderRadius: 20,
+      paddingHorizontal: 28,
+      paddingVertical: 14,
+      minWidth: 120,
       alignItems: 'center',
+      shadowColor: colors.brandPrimary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
     },
     nextBtnText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '800',
       color: '#FFFFFF',
-      letterSpacing: -0.2,
+      letterSpacing: -0.3,
     },
   })
+

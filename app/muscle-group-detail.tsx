@@ -93,12 +93,12 @@ export default function MuscleGroupDetailScreen() {
           exerciseName: config.name,
           gifUrl: userExercise?.gifUrl || config.gifUrl || null,
           isDone: !!userExercise,
+          tier: config.tier || 3,
           isTierOne: config.tier === 1,
         }
       })
       .sort((a, b) => {
-        if (a.isTierOne && !b.isTierOne) return -1
-        if (!a.isTierOne && b.isTierOne) return 1
+        if (a.tier !== b.tier) return a.tier - b.tier
         if (a.isDone && !b.isDone) return -1
         if (!a.isDone && b.isDone) return 1
         return a.exerciseName.localeCompare(b.exerciseName)
@@ -421,6 +421,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textPrimary,
       marginBottom: 2,
       letterSpacing: -0.2,
+    },
+    exerciseNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     exerciseRight: {
       minWidth: 48,

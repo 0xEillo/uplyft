@@ -264,6 +264,13 @@ export function StrengthBodyView({
       );
 
     return tracked.sort((a, b) => {
+      const tierA = EXERCISE_CONFIG_BY_NAME.get(a.exerciseName)?.tier ?? 3;
+      const tierB = EXERCISE_CONFIG_BY_NAME.get(b.exerciseName)?.tier ?? 3;
+      
+      if (tierA !== tierB) {
+        return tierA - tierB;
+      }
+
       const intensityA = getLevelIntensity(a.level);
       const intensityB = getLevelIntensity(b.level);
       if (intensityA !== intensityB) {
