@@ -158,7 +158,7 @@ const BODY_HALF_CONFIG = {
 
 const ONBOARDING_MUSCLES = [
   { id: 'chest', label: 'Chest', slug: 'chest', side: 'front', bodyHalf: 'upper' },
-  { id: 'upper_back', label: 'Upper Back', slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  { id: 'upper_back', label: 'Upper Back', slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
   { id: 'lats', label: 'Lats', slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
   { id: 'biceps', label: 'Biceps', slug: 'biceps', side: 'front', bodyHalf: 'upper' },
   { id: 'triceps', label: 'Triceps', slug: 'triceps', side: 'back', bodyHalf: 'upper' },
