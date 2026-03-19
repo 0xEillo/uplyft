@@ -31,6 +31,8 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 
+import { WorkoutExerciseMenuBottomSheet } from '@/components/workout-exercise-menu-bottom-sheet'
+
 // Enable LayoutAnimation on Android
 if (
   Platform.OS === 'android' &&
@@ -290,6 +292,7 @@ interface WorkoutExerciseHeaderProps {
   onMoveExerciseDown: (index: number) => void
   onDropExercise: () => void
   onDeleteExercise: (index: number) => void
+  onMenuPress: (index: number) => void
 }
 
 const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
@@ -307,6 +310,7 @@ const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
   onMoveExerciseDown,
   onDropExercise,
   onDeleteExercise,
+  onMenuPress,
 }: WorkoutExerciseHeaderProps) {
   return (
     <View style={styles.exerciseHeader}>
@@ -332,7 +336,7 @@ const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
         </TouchableOpacity>
       </View>
 
-      {/* Drag Controls or Delete Button */}
+      {/* Drag Controls or Menu Button */}
       {isDragging ? (
         <View style={styles.dragControls}>
           <TouchableOpacity
@@ -380,11 +384,11 @@ const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
         </View>
       ) : !compactPreview ? (
         <TouchableOpacity
-          style={styles.deleteExerciseButton}
-          onPress={() => onDeleteExercise(exerciseIndex)}
+          style={styles.menuExerciseButton}
+          onPress={() => onMenuPress(exerciseIndex)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="close-circle" size={20} color={colors.statusError} />
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textTertiary} />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -422,6 +426,7 @@ interface StructuredWorkoutInputProps {
    * Parent can use this to navigate to exercise details if it exists in the database.
    */
   onExerciseNamePress?: (exerciseName: string) => void
+  onReplaceExercise?: (index: number) => void
   warmupCalculatorEnabled?: boolean
 }
 
@@ -440,6 +445,7 @@ export function StructuredWorkoutInput({
   onKeypadStateChange,
   onFetchSetHistory,
   onExerciseNamePress,
+  onReplaceExercise,
   warmupCalculatorEnabled = false,
 }: StructuredWorkoutInputProps) {
   const debugNext = useCallback((...args: unknown[]) => {
@@ -502,6 +508,9 @@ export function StructuredWorkoutInput({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const draggingScale = useSharedValue(1)
   const draggingOpacity = useSharedValue(1)
+
+  // Menu state
+  const [menuExerciseIndex, setMenuExerciseIndex] = useState<number | null>(null)
 
   // Exercise GIF lookup cache (exercise id -> gifUrl) for display
   const [exerciseGifUrls, setExerciseGifUrls] = useState<Record<string, string | null>>({})
@@ -1658,6 +1667,11 @@ export function StructuredWorkoutInput({
     setDraggingIndex(null)
   }, [draggingScale, draggingOpacity])
 
+  const handleMenuPress = useCallback(async (index: number) => {
+    await hapticAsync('light')
+    setMenuExerciseIndex(index)
+  }, [])
+
   // Single animated style for the dragging exercise
   const dragAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: draggingScale.value }],
@@ -1695,6 +1709,7 @@ export function StructuredWorkoutInput({
               onMoveExerciseDown={handleMoveExerciseDown}
               onDropExercise={handleDropExercise}
               onDeleteExercise={handleDeleteExercise}
+              onMenuPress={handleMenuPress}
             />
 
             {/* Sets as inline text with inputs - hide when dragging for cleaner look */}
@@ -1831,6 +1846,26 @@ export function StructuredWorkoutInput({
         })}
       </View>
       {/* Keypad is rendered by parent via onKeypadStateChange to avoid Modal focus-stealing */}
+      
+      <WorkoutExerciseMenuBottomSheet
+        visible={menuExerciseIndex !== null}
+        onClose={() => setMenuExerciseIndex(null)}
+        onReorder={() => {
+          if (menuExerciseIndex !== null) {
+            handleLongPressExercise(menuExerciseIndex)
+          }
+        }}
+        onReplace={() => {
+          if (menuExerciseIndex !== null && onReplaceExercise) {
+            onReplaceExercise(menuExerciseIndex)
+          }
+        }}
+        onRemove={() => {
+          if (menuExerciseIndex !== null) {
+            handleDeleteExercise(menuExerciseIndex)
+          }
+        }}
+      />
     </>
   )
 }
@@ -1844,7 +1879,7 @@ const createStyles = (
       width: '100%',
     },
     exerciseBlock: {
-      marginBottom: compactPreview ? 6 : 14,
+      marginBottom: compactPreview ? 6 : 22,
     },
     exerciseHeader: {
       flexDirection: 'row',
@@ -1873,7 +1908,7 @@ const createStyles = (
       color: colors.textPrimary,
       lineHeight: compactPreview ? 20 : 24,
     },
-    deleteExerciseButton: {
+    menuExerciseButton: {
       marginLeft: 8,
       padding: 4,
       flexShrink: 0,

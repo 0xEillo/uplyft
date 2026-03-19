@@ -35,7 +35,7 @@ const TOOLBAR_BUTTON_OPTIONS: {
   { id: 'voice-log', label: 'Voice Log', icon: 'mic-outline' },
   { id: 'rest-timer', label: 'Rest Timer', icon: 'stopwatch-outline' },
   { id: 'routines', label: 'Routines', icon: 'albums-outline' },
-  { id: 'search', label: 'Search', icon: 'search-outline' },
+  { id: 'search', label: 'Add Exercise', icon: 'add-outline' },
 ]
 
 const NAVBAR_HEIGHT = 76

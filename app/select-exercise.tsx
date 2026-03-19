@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import Body from '@/components/PatchedBodyHighlighter'
 import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -8,8 +9,8 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { useExercises } from '@/hooks/useExercises'
-import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
+import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { BodyPartSlug } from '@/lib/body-mapping'
 import { haptic } from '@/lib/haptics'
@@ -17,28 +18,32 @@ import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
-import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import {
-    memo,
-    useCallback,
-    useDeferredValue,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  Link,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router'
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react'
 import {
-    Dimensions,
-    Keyboard,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
-import Body from '@/components/PatchedBodyHighlighter'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Mapping from database muscle group names to body part slugs for highlighting
@@ -157,12 +162,13 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
       style={[
         styles.exerciseCard,
         {
-          backgroundColor: isDark
-            ? colors.rowTint
-            : colors.surfaceCard,
+          backgroundColor: isDark ? colors.rowTint : colors.surfaceCard,
           borderColor: colors.border,
         },
-        isCurrentExercise && { borderColor: colors.brandPrimary, borderWidth: 2 },
+        isCurrentExercise && {
+          borderColor: colors.brandPrimary,
+          borderWidth: 2,
+        },
         isSelected && {
           borderColor: colors.brandPrimary,
           borderWidth: 2,
@@ -237,9 +243,18 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
         >
           {exercise.name}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            flexWrap: 'wrap',
+          }}
+        >
           {exercise.muscle_group && (
-            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.cardSubtitle, { color: colors.textSecondary }]}
+            >
               {exercise.muscle_group}
             </Text>
           )}
@@ -287,11 +302,11 @@ const ExerciseListItem = memo(function ExerciseListItem({
           isDark && { backgroundColor: colors.rowTint },
         ]}
       >
-          <ExerciseMediaThumbnail
-            gifUrl={exercise.gif_url}
-            style={styles.exerciseListItemThumbnail}
-            isCustom={!!exercise.created_by}
-          />
+        <ExerciseMediaThumbnail
+          gifUrl={exercise.gif_url}
+          style={styles.exerciseListItemThumbnail}
+          isCustom={!!exercise.created_by}
+        />
         <View style={styles.exerciseListItemContent}>
           <Text
             style={[
@@ -420,8 +435,10 @@ export default function SelectExerciseScreen() {
   const { user } = useAuth()
 
   // If currentExerciseName is present, we are selecting ONE exercise (e.g. replacing).
+  // '__replace__' is used when we don't have a specific name to highlight, just want single-select mode.
   // Otherwise, we are adding exercises (Multi-select allowed).
   const isMultiSelect = !currentExerciseName
+  const isReplaceMode = !!currentExerciseName
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchVisible, setIsSearchVisible] = useState(false)
@@ -482,10 +499,9 @@ export default function SelectExerciseScreen() {
     deferredShowOnlyMine ||
     deferredShowOnlyFavorites
 
-  const selectedMuscleGroupSet = useMemo(
-    () => new Set(selectedMuscleGroups),
-    [selectedMuscleGroups],
-  )
+  const selectedMuscleGroupSet = useMemo(() => new Set(selectedMuscleGroups), [
+    selectedMuscleGroups,
+  ])
   const deferredSelectedMuscleSet = useMemo(
     () => new Set(deferredSelectedMuscleGroups),
     [deferredSelectedMuscleGroups],
@@ -925,7 +941,7 @@ export default function SelectExerciseScreen() {
           </LiquidGlassSurface>
 
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-            Add exercises
+            {isReplaceMode ? 'Replace exercise' : 'Add exercises'}
           </Text>
 
           <View style={styles.headerRightButtons}>
@@ -937,7 +953,9 @@ export default function SelectExerciseScreen() {
                 <Ionicons
                   name="search"
                   size={24}
-                  color={isSearchVisible ? colors.brandPrimary : colors.textPrimary}
+                  color={
+                    isSearchVisible ? colors.brandPrimary : colors.textPrimary
+                  }
                 />
               </TouchableOpacity>
             </LiquidGlassSurface>
@@ -949,7 +967,9 @@ export default function SelectExerciseScreen() {
                 <Ionicons
                   name="filter"
                   size={24}
-                  color={isFilterVisible ? colors.brandPrimary : colors.textPrimary}
+                  color={
+                    isFilterVisible ? colors.brandPrimary : colors.textPrimary
+                  }
                 />
               </TouchableOpacity>
             </LiquidGlassSurface>
@@ -970,10 +990,7 @@ export default function SelectExerciseScreen() {
             <LiquidGlassSurface style={styles.searchGlass}>
               <TextInput
                 ref={searchInputRef}
-                style={[
-                  styles.searchInput,
-                  { color: colors.textPrimary },
-                ]}
+                style={[styles.searchInput, { color: colors.textPrimary }]}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Search exercises..."
@@ -1146,7 +1163,10 @@ export default function SelectExerciseScreen() {
           >
             <View style={styles.floatingButtonRow}>
               <TouchableOpacity
-                style={[styles.deselectAllButton, { backgroundColor: '#FFFFFF' }]}
+                style={[
+                  styles.deselectAllButton,
+                  { backgroundColor: '#FFFFFF' },
+                ]}
                 onPress={handleDeselectAll}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 accessibilityLabel="Deselect all"

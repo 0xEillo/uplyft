@@ -1560,7 +1560,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         gap: 24
     },
     mediaContainer: {
-        aspectRatio: 4 / 3,
+        aspectRatio: 6 / 5,
         backgroundColor: '#FFFFFF',
         // Negative margins to extend edge-to-edge (counteract tabContent padding)
         marginHorizontal: -16,

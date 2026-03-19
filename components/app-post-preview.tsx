@@ -11,14 +11,6 @@ interface AppPostPreviewProps {
   type: AppPostPreviewType
 }
 
-const TOOLBAR_ITEMS = [
-  { icon: 'camera-outline', label: 'Scan' },
-  { icon: 'mic-outline', label: 'Voice' },
-  { icon: 'stopwatch-outline', label: 'Timer' },
-  { icon: 'albums-outline', label: 'Routines' },
-  { icon: 'search-outline', label: 'Search' },
-] as const
-
 const WAVE_BARS = [8, 14, 20, 28, 18, 24, 14, 10]
 const SHARE_CARDS = [
   { label: 'Volume', value: '18.4k' },
@@ -100,18 +92,38 @@ function EditorToolbarPreview() {
         </View>
       </View>
       <View style={styles.toolbarRow}>
-        {TOOLBAR_ITEMS.map((item) => (
-          <View key={item.label} style={styles.toolbarItem}>
-            <View style={styles.iconBubble}>
+        <View style={styles.toolsPill}>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={colors.textPrimary}
+          />
+        </View>
+        <View style={styles.addPill}>
+          <Ionicons
+            name="add-circle-outline"
+            size={20}
+            color={colors.textPrimary}
+          />
+          <Text style={styles.addPillLabel}>Add exercise</Text>
+        </View>
+        <View style={styles.toolsGhostRow}>
+          {['camera-outline', 'mic-outline', 'stopwatch-outline'].map((icon) => (
+            <View key={icon} style={styles.ghostBubble}>
               <Ionicons
-                name={item.icon}
-                size={20}
-                color={colors.textPrimary}
+                name={icon as React.ComponentProps<typeof Ionicons>['name']}
+                size={15}
+                color={colors.textTertiary}
               />
             </View>
-            <Text style={styles.iconLabel}>{item.label}</Text>
-          </View>
-        ))}
+          ))}
+        </View>
+      </View>
+      <View style={styles.previewCaptionRow}>
+        <Text style={styles.previewCaption}>
+          Tools stay tucked away until you expand them.
+        </Text>
+        <Text style={styles.previewCaption}>The add action stays front and center.</Text>
       </View>
     </View>
   )
@@ -711,26 +723,54 @@ function createToolbarStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     toolbarRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 10,
     },
-    toolbarItem: {
-      alignItems: 'center',
-      width: 58,
-    },
-    iconBubble: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+    toolsPill: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: colors.surfaceSubtle,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 6,
     },
-    iconLabel: {
+    addPill: {
+      flex: 1,
+      minHeight: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceSubtle,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+    },
+    addPillLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    toolsGhostRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    ghostBubble: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: 0.8,
+    },
+    previewCaptionRow: {
+      marginTop: 12,
+      gap: 4,
+    },
+    previewCaption: {
       fontSize: 11,
       color: colors.textSecondary,
-      textAlign: 'center',
     },
   })
 }
