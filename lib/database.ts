@@ -80,10 +80,10 @@ type VisibleWorkoutExerciseExerciseDetailsRow = {
 }
 
 type WorkoutWithNullableExerciseRelations = {
-  workout_exercises?: Array<{
+  workout_exercises?: {
     id: string
     exercise?: Exercise | null
-  }> | null
+  }[] | null
 }
 
 type VisibleWorkoutRoutineExerciseExerciseDetailsRow = {
@@ -106,10 +106,10 @@ type VisibleWorkoutRoutineExerciseExerciseDetailsRow = {
 }
 
 type RoutineWithNullableExerciseRelations = {
-  workout_routine_exercises?: Array<{
+  workout_routine_exercises?: {
     id: string
     exercise?: Exercise | null
-  }> | null
+  }[] | null
 }
 
 // Body log entry from Supabase before transformation
@@ -4127,7 +4127,28 @@ export const database = {
       if (payload.confidence !== undefined)
         updates.confidence = payload.confidence
       if (payload.metadata !== undefined)
-        updates.metadata = payload.metadata ?? {}
+        {
+          const { data: existingMeal, error: existingMealError } = await supabase
+            .from('daily_log_meals')
+            .select('metadata')
+            .eq('id', mealId)
+            .eq('user_id', userId)
+            .maybeSingle()
+
+          if (existingMealError) throw existingMealError
+
+          const existingMetadata =
+            existingMeal?.metadata &&
+            typeof existingMeal.metadata === 'object' &&
+            !Array.isArray(existingMeal.metadata)
+              ? (existingMeal.metadata as Record<string, unknown>)
+              : {}
+
+          updates.metadata = {
+            ...existingMetadata,
+            ...(payload.metadata ?? {}),
+          }
+        }
 
       if (payload.logDate) {
         const targetDate = normalizeDailyLogDate(payload.logDate)

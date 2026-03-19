@@ -419,10 +419,10 @@ export function ExerciseDetailCard({
           onPress={() => {
             if (!exercisePressId) return
             router.push({
-              pathname: '/exercise/[exerciseId]',
+              pathname: '/compare/[userId]',
               params: {
-                exerciseId: exercisePressId,
-                statsUserId: workoutUserId,
+                userId: workoutUserId,
+                initialExerciseId: exercisePressId,
               },
             })
           }}

@@ -60,7 +60,10 @@ interface ExerciseComparison {
 }
 
 export default function CompareScreen() {
-  const { userId } = useLocalSearchParams<{ userId: string }>()
+  const { userId, initialExerciseId } = useLocalSearchParams<{
+    userId: string
+    initialExerciseId?: string
+  }>()
   const { user } = useAuth()
   const router = useRouter()
   const { trackEvent } = useAnalytics()
@@ -105,6 +108,7 @@ export default function CompareScreen() {
   )
 
   const isDataLoadedRef = useRef(false)
+  const isInitialExerciseHandledRef = useRef(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -305,12 +309,7 @@ export default function CompareScreen() {
       setIsLoading(false)
       setIsUpdating(false)
     }
-  }, [
-    isGlobalExercise,
-    user?.id,
-    userId,
-    timePeriod,
-  ])
+  }, [isGlobalExercise, user?.id, userId, timePeriod])
 
   const loadExerciseComparison = useCallback(
     async (exercise: ExerciseInCommon) => {
@@ -391,6 +390,30 @@ export default function CompareScreen() {
     },
     [isGlobalExercise, user?.id, userId],
   )
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isUpdating &&
+      initialExerciseId &&
+      exercisesInCommon.length > 0 &&
+      !isInitialExerciseHandledRef.current
+    ) {
+      const exercise = exercisesInCommon.find(
+        (e) => e.exerciseId === initialExerciseId,
+      )
+      if (exercise) {
+        isInitialExerciseHandledRef.current = true
+        loadExerciseComparison(exercise)
+      }
+    }
+  }, [
+    isLoading,
+    isUpdating,
+    initialExerciseId,
+    exercisesInCommon,
+    loadExerciseComparison,
+  ])
 
   useFocusEffect(
     useCallback(() => {
@@ -932,8 +955,10 @@ const createStyles = (
       paddingVertical: 100,
     },
     backButton: {
-      padding: 8,
-      marginLeft: -8,
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     headerTitle: {
       fontSize: 18,

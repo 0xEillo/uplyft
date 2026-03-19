@@ -236,7 +236,7 @@ export default function WorkoutDetailScreen() {
           .filter(Boolean) as string[]
 
         if (exerciseIds && exerciseIds.length > 0) {
-          const doneExercises = await database.workoutSessions.getExercisesDoneByUser(
+          const doneExercises = await database.stats.getExercisesDoneByUser(
             user.id,
             exerciseIds
           )

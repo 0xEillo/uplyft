@@ -475,7 +475,7 @@ const TabEmptyState = memo(
             ]}
           >
             <Text style={[emptyTabStyles.overviewEyebrow, { color: colors.textSecondary }]}>
-              Available in Gym Log
+              Available in Body Log
             </Text>
             <View style={emptyTabStyles.overviewChips}>
               {TABS.map((tab) => {
@@ -1238,7 +1238,7 @@ export default function BodyLogScreen() {
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <BlurredHeader fadeExtension={12}>
           <ScreenHeader
-            title="Gym Log"
+            title="Body Log"
             onLeftPress={() => setShouldExit(true)}
             leftIcon="arrow-back"
             rightIcon="add"

@@ -141,7 +141,7 @@ export const ProfileDashboard = memo(
               compact
             />
             <DashboardButton
-              title="Gym Log"
+              title="Body Log"
               icon="body-outline"
               onPress={() => router.push('/body-log/' as any)}
               compact

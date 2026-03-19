@@ -46,7 +46,9 @@ import {
 } from '@/lib/nutrition'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
+import { withDailyLogMealImagePath } from '@/lib/utils/daily-log-meals'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
+import { uploadMealImage } from '@/lib/utils/meal-image-storage'
 import {
   loadDraft as loadWorkoutDraft,
   saveDraft,
@@ -150,6 +152,8 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   images?: string[] // Image URIs for display
+  linkedUserMessageId?: string
+  createdAt?: string
   status?: 'sending' | 'sent' | 'failed'
 }
 
@@ -1981,6 +1985,54 @@ export function WorkoutChat({
 
     try {
       const today = getLocalDateString()
+      let mealImagePath: string | null = null
+      const assistantMessageIndex = messages.findIndex(
+        (message) => message.id === messageId,
+      )
+
+      if (assistantMessageIndex >= 0) {
+        const assistantMessage = messages[assistantMessageIndex]
+        const linkedUserImages = assistantMessage.linkedUserMessageId
+          ? messages.find(
+              (message) => message.id === assistantMessage.linkedUserMessageId,
+            )?.images
+          : undefined
+
+        let sourceImageUri = linkedUserImages?.[0] ?? null
+
+        if (!sourceImageUri) {
+          for (
+            let index = assistantMessageIndex - 1;
+            index >= 0 && assistantMessageIndex - index <= 8;
+            index -= 1
+          ) {
+            const candidate = messages[index]
+            if (candidate.role !== 'user' || !candidate.images?.length) {
+              continue
+            }
+
+            sourceImageUri = candidate.images[0] ?? null
+            if (sourceImageUri) break
+          }
+        }
+
+        if (sourceImageUri) {
+          try {
+            mealImagePath = await uploadMealImage(sourceImageUri, user.id)
+          } catch (error) {
+            console.error(
+              '[FoodLog] Failed to persist source image for meal:',
+              error,
+            )
+          }
+        }
+      }
+
+      const mealMetadata = withDailyLogMealImagePath(
+        { from: 'chat_food_log' },
+        mealImagePath,
+      )
+
       const mealPayload = {
         description: payload.summary,
         calories: payload.calories,
@@ -1992,7 +2044,7 @@ export function WorkoutChat({
             ? ('correction' as const)
             : payload.source,
         confidence: payload.confidence,
-        metadata: { from: 'chat_food_log' },
+        metadata: mealMetadata,
         logDate: today,
       }
 
@@ -2327,7 +2379,12 @@ export function WorkoutChat({
       // create placeholder assistant message for streaming
       setMessages((prev) => [
         ...prev,
-        { id: assistantMessageId, role: 'assistant', content: '' },
+        {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          linkedUserMessageId: hiddenPrompt ? undefined : userMessageId,
+        },
       ])
 
       const reader = response.body?.getReader()

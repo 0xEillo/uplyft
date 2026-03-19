@@ -140,7 +140,7 @@ export const APP_POSTS: AppPost[] = [
     createdAt: '2026-01-26T12:40:00.000Z',
     preview: 'body_log',
     badge: 'TRACK',
-    ctaText: 'Open Gym Log',
+    ctaText: 'Open Body Log',
     ctaRoute: '/body-log/',
   },
   {

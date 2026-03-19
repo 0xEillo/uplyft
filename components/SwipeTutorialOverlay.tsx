@@ -83,7 +83,7 @@ export default function SwipeTutorialOverlay({
           <Animated.View style={[styles.handContainer, handAnimatedStyle]}>
             <Ionicons name="hand-left" size={64} color="#fff" />
           </Animated.View>
-          <Text style={styles.text}>Swipe left for Gym Log</Text>
+          <Text style={styles.text}>Swipe left for Body Log</Text>
         </View>
       </Animated.View>
     </Modal>
