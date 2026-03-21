@@ -1,9 +1,11 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
-import { DailyMacrosSheet } from '@/components/daily-macros-sheet'
-import { ManualFoodLogSheet, ManualFoodLogData } from '@/components/manual-food-log-sheet'
 import { FoodScannerModal } from '@/components/food-scanner'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import {
+  ManualFoodLogData,
+  ManualFoodLogSheet,
+} from '@/components/manual-food-log-sheet'
 import { Paywall } from '@/components/paywall'
 import { WorkoutCard } from '@/components/workout-card'
 import {
@@ -536,8 +538,7 @@ function buildDefaultSuggestions(input: {
       },
       {
         text: 'Rep ranges okay?',
-        prompt:
-          'Are my rep ranges right for my goal, or should I change them?',
+        prompt: 'Are my rep ranges right for my goal, or should I change them?',
       },
       {
         text: 'Program okay?',
@@ -968,7 +969,10 @@ export function WorkoutChat({
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
 
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
-  const [manualFoodData, setManualFoodData] = useState<ManualFoodLogData | null>(null)
+  const [
+    manualFoodData,
+    setManualFoodData,
+  ] = useState<ManualFoodLogData | null>(null)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
   const hasRunInitialComposerRecoveryRef = useRef(false)
@@ -3114,8 +3118,6 @@ export function WorkoutChat({
                   style={[styles.headerActionGroupGlass, { top: 8 }]}
                 >
                   <View style={styles.headerActionGroup}>
-
-
                     <TouchableOpacity
                       style={styles.newChatButton}
                       onPress={
@@ -3364,8 +3366,9 @@ export function WorkoutChat({
 
                         const coachText =
                           statsReportPayload && displayContent
-                            ? (displayContent.match(/^[^.!?\n]+[.!?]?/)?.[0]?.trim() ||
-                                displayContent.slice(0, 120).trim())
+                            ? displayContent
+                                .match(/^[^.!?\n]+[.!?]?/)?.[0]
+                                ?.trim() || displayContent.slice(0, 120).trim()
                             : displayContent
 
                         // Don't render empty bubbles (prevents glitch when streaming JSON)
@@ -3393,7 +3396,9 @@ export function WorkoutChat({
                                     <TouchableOpacity
                                       activeOpacity={1}
                                       onLongPress={() =>
-                                        handleCopyMessage(displayContent || coachText)
+                                        handleCopyMessage(
+                                          displayContent || coachText,
+                                        )
                                       }
                                       delayLongPress={220}
                                     >
@@ -3823,7 +3828,8 @@ export function WorkoutChat({
                                           style={[
                                             styles.foodLogActionButton,
                                             { flex: 1 },
-                                            isSaved && styles.foodLogActionButtonDone,
+                                            isSaved &&
+                                              styles.foodLogActionButtonDone,
                                           ]}
                                           onPress={() =>
                                             handleFoodLogAction(
@@ -3851,7 +3857,9 @@ export function WorkoutChat({
                                                 color={colors.bg}
                                               />
                                               <Text
-                                                style={styles.foodLogActionButtonText}
+                                                style={
+                                                  styles.foodLogActionButtonText
+                                                }
                                               >
                                                 {buttonLabel}
                                               </Text>
@@ -3861,9 +3869,13 @@ export function WorkoutChat({
 
                                         {isSaved && (
                                           <TouchableOpacity
-                                            style={styles.foodLogSecondaryButton}
+                                            style={
+                                              styles.foodLogSecondaryButton
+                                            }
                                             onPress={() =>
-                                              router.push('/body-log/daily-food-log')
+                                              router.push(
+                                                '/body-log/daily-food-log',
+                                              )
                                             }
                                             activeOpacity={0.85}
                                           >
@@ -3873,7 +3885,9 @@ export function WorkoutChat({
                                               color={colors.textPrimary}
                                             />
                                             <Text
-                                              style={styles.foodLogSecondaryButtonText}
+                                              style={
+                                                styles.foodLogSecondaryButtonText
+                                              }
                                             >
                                               Open Food Log
                                             </Text>
@@ -3885,153 +3899,225 @@ export function WorkoutChat({
                                 </TouchableOpacity>
                               )}
 
-                              {statsReportPayload && (() => {
-                                const stripDelta = (s: string | undefined) =>
-                                  (s || '')
-                                    .replace(/\s+vs\s+[\w\s]+$/i, '')
-                                    .trim()
-                                const trendColor = (t?: string) =>
-                                  t === 'up'
-                                    ? '#34C759'
-                                    : t === 'down'
-                                    ? '#FF3B30'
-                                    : undefined
-                                return (
-                                <View style={styles.statsGrid}>
-                                  {/* Header */}
-                                  <View style={styles.statsGridHeader}>
-                                    <Text style={styles.statsGridTitle}>
-                                      {statsReportPayload.title || 'Stats Snapshot'}
-                                    </Text>
-                                    {statsReportPayload.period_label ? (
-                                      <Text style={styles.statsGridPeriod}>
-                                        {statsReportPayload.period_label}
-                                      </Text>
-                                    ) : null}
-                                  </View>
-
-                                  {/* Highlights */}
-                                  {statsReportPayload.highlights.length > 0 ? (
-                                    <View style={styles.statsGridSection}>
-                                      <Text style={styles.statsGridSectionLabel}>
-                                        Highlights
-                                      </Text>
-                                      {statsReportPayload.highlights.map(
-                                        (metric, idx) => (
-                                          <View
-                                            key={`${metric.id}-${idx}`}
-                                            style={styles.statsGridRow}
-                                          >
-                                            <Text style={styles.statsGridRowLabel}>
-                                              {metric.label}
-                                            </Text>
-                                            <Text style={styles.statsGridRowValue}>
-                                              {metric.value}
-                                            </Text>
-                                            <Text
-                                              style={[
-                                                styles.statsGridRowDelta,
-                                                trendColor(metric.trend)
-                                                  ? { color: trendColor(metric.trend) }
-                                                  : null,
-                                              ]}
-                                            >
-                                              {stripDelta(metric.delta) || ''}
-                                            </Text>
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  ) : null}
-
-                                  {/* Top Lifts */}
-                                  {statsReportPayload.top_lifts.length > 0 ? (
-                                    <View style={styles.statsGridSection}>
-                                      <Text style={styles.statsGridSectionLabel}>
-                                        Top Lifts
-                                      </Text>
-                                      {statsReportPayload.top_lifts.map(
-                                        (lift, idx) => (
-                                          <View
-                                            key={`${lift.exercise}-${idx}`}
-                                            style={styles.statsGridRow}
-                                          >
-                                            <Text
-                                              style={styles.statsGridRowLabel}
-                                              numberOfLines={1}
-                                            >
-                                              {lift.exercise}
-                                            </Text>
-                                            <Text style={styles.statsGridRowValue}>
-                                              {lift.value}
-                                            </Text>
-                                            <Text
-                                              style={[
-                                                styles.statsGridRowDelta,
-                                                trendColor(lift.trend)
-                                                  ? { color: trendColor(lift.trend) }
-                                                  : null,
-                                              ]}
-                                            >
-                                              {stripDelta(lift.delta) || ''}
-                                            </Text>
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  ) : null}
-
-                                  {/* Muscle Balance */}
-                                  {statsReportPayload.muscle_balance.length > 0 ? (
-                                    <View style={styles.statsGridSection}>
-                                      <Text style={styles.statsGridSectionLabel}>
-                                        Muscle Balance
-                                      </Text>
-                                      {statsReportPayload.muscle_balance.map(
-                                        (muscle, idx) => (
-                                          <View
-                                            key={`${muscle.muscle_group}-${idx}`}
-                                            style={styles.statsGridMuscleRow}
-                                          >
-                                            <Text style={styles.statsGridMuscleLabel}>
-                                              {muscle.muscle_group}
-                                            </Text>
-                                            <View style={styles.statsGridMuscleTrack}>
-                                              <View
-                                                style={[
-                                                  styles.statsGridMuscleFill,
-                                                  { width: `${Math.max(muscle.percentage, 2)}%` },
-                                                ]}
-                                              />
-                                            </View>
-                                            <Text style={styles.statsGridMusclePct}>
-                                              {muscle.percentage}%
-                                            </Text>
-                                          </View>
-                                        ),
-                                      )}
-                                    </View>
-                                  ) : null}
-
-                                  {/* Focus Areas */}
-                                  {statsReportPayload.focus_areas && statsReportPayload.focus_areas.length > 0 ? (
-                                    <View style={styles.statsGridSection}>
-                                      <Text style={styles.statsGridSectionLabel}>
-                                        Focus Areas
-                                      </Text>
-                                      {statsReportPayload.focus_areas.map((area, idx) => (
-                                        <View key={idx} style={styles.statsGridFocusRow}>
-                                          <Text style={styles.statsGridFocusDot}>·</Text>
-                                          <Text style={styles.statsGridFocusText}>
-                                            {area}
+                              {statsReportPayload &&
+                                (() => {
+                                  const stripDelta = (s: string | undefined) =>
+                                    (s || '')
+                                      .replace(/\s+vs\s+[\w\s]+$/i, '')
+                                      .trim()
+                                  const trendColor = (t?: string) =>
+                                    t === 'up'
+                                      ? '#34C759'
+                                      : t === 'down'
+                                      ? '#FF3B30'
+                                      : undefined
+                                  return (
+                                    <View style={styles.statsGrid}>
+                                      {/* Header */}
+                                      <View style={styles.statsGridHeader}>
+                                        <Text style={styles.statsGridTitle}>
+                                          {statsReportPayload.title ||
+                                            'Stats Snapshot'}
+                                        </Text>
+                                        {statsReportPayload.period_label ? (
+                                          <Text style={styles.statsGridPeriod}>
+                                            {statsReportPayload.period_label}
                                           </Text>
+                                        ) : null}
+                                      </View>
+
+                                      {/* Highlights */}
+                                      {statsReportPayload.highlights.length >
+                                      0 ? (
+                                        <View style={styles.statsGridSection}>
+                                          <Text
+                                            style={styles.statsGridSectionLabel}
+                                          >
+                                            Highlights
+                                          </Text>
+                                          {statsReportPayload.highlights.map(
+                                            (metric, idx) => (
+                                              <View
+                                                key={`${metric.id}-${idx}`}
+                                                style={styles.statsGridRow}
+                                              >
+                                                <Text
+                                                  style={
+                                                    styles.statsGridRowLabel
+                                                  }
+                                                >
+                                                  {metric.label}
+                                                </Text>
+                                                <Text
+                                                  style={
+                                                    styles.statsGridRowValue
+                                                  }
+                                                >
+                                                  {metric.value}
+                                                </Text>
+                                                <Text
+                                                  style={[
+                                                    styles.statsGridRowDelta,
+                                                    trendColor(metric.trend)
+                                                      ? {
+                                                          color: trendColor(
+                                                            metric.trend,
+                                                          ),
+                                                        }
+                                                      : null,
+                                                  ]}
+                                                >
+                                                  {stripDelta(metric.delta) ||
+                                                    ''}
+                                                </Text>
+                                              </View>
+                                            ),
+                                          )}
                                         </View>
-                                      ))}
+                                      ) : null}
+
+                                      {/* Top Lifts */}
+                                      {statsReportPayload.top_lifts.length >
+                                      0 ? (
+                                        <View style={styles.statsGridSection}>
+                                          <Text
+                                            style={styles.statsGridSectionLabel}
+                                          >
+                                            Top Lifts
+                                          </Text>
+                                          {statsReportPayload.top_lifts.map(
+                                            (lift, idx) => (
+                                              <View
+                                                key={`${lift.exercise}-${idx}`}
+                                                style={styles.statsGridRow}
+                                              >
+                                                <Text
+                                                  style={
+                                                    styles.statsGridRowLabel
+                                                  }
+                                                  numberOfLines={1}
+                                                >
+                                                  {lift.exercise}
+                                                </Text>
+                                                <Text
+                                                  style={
+                                                    styles.statsGridRowValue
+                                                  }
+                                                >
+                                                  {lift.value}
+                                                </Text>
+                                                <Text
+                                                  style={[
+                                                    styles.statsGridRowDelta,
+                                                    trendColor(lift.trend)
+                                                      ? {
+                                                          color: trendColor(
+                                                            lift.trend,
+                                                          ),
+                                                        }
+                                                      : null,
+                                                  ]}
+                                                >
+                                                  {stripDelta(lift.delta) || ''}
+                                                </Text>
+                                              </View>
+                                            ),
+                                          )}
+                                        </View>
+                                      ) : null}
+
+                                      {/* Muscle Balance */}
+                                      {statsReportPayload.muscle_balance
+                                        .length > 0 ? (
+                                        <View style={styles.statsGridSection}>
+                                          <Text
+                                            style={styles.statsGridSectionLabel}
+                                          >
+                                            Muscle Balance
+                                          </Text>
+                                          {statsReportPayload.muscle_balance.map(
+                                            (muscle, idx) => (
+                                              <View
+                                                key={`${muscle.muscle_group}-${idx}`}
+                                                style={
+                                                  styles.statsGridMuscleRow
+                                                }
+                                              >
+                                                <Text
+                                                  style={
+                                                    styles.statsGridMuscleLabel
+                                                  }
+                                                >
+                                                  {muscle.muscle_group}
+                                                </Text>
+                                                <View
+                                                  style={
+                                                    styles.statsGridMuscleTrack
+                                                  }
+                                                >
+                                                  <View
+                                                    style={[
+                                                      styles.statsGridMuscleFill,
+                                                      {
+                                                        width: `${Math.max(
+                                                          muscle.percentage,
+                                                          2,
+                                                        )}%`,
+                                                      },
+                                                    ]}
+                                                  />
+                                                </View>
+                                                <Text
+                                                  style={
+                                                    styles.statsGridMusclePct
+                                                  }
+                                                >
+                                                  {muscle.percentage}%
+                                                </Text>
+                                              </View>
+                                            ),
+                                          )}
+                                        </View>
+                                      ) : null}
+
+                                      {/* Focus Areas */}
+                                      {statsReportPayload.focus_areas &&
+                                      statsReportPayload.focus_areas.length >
+                                        0 ? (
+                                        <View style={styles.statsGridSection}>
+                                          <Text
+                                            style={styles.statsGridSectionLabel}
+                                          >
+                                            Focus Areas
+                                          </Text>
+                                          {statsReportPayload.focus_areas.map(
+                                            (area, idx) => (
+                                              <View
+                                                key={idx}
+                                                style={styles.statsGridFocusRow}
+                                              >
+                                                <Text
+                                                  style={
+                                                    styles.statsGridFocusDot
+                                                  }
+                                                >
+                                                  ·
+                                                </Text>
+                                                <Text
+                                                  style={
+                                                    styles.statsGridFocusText
+                                                  }
+                                                >
+                                                  {area}
+                                                </Text>
+                                              </View>
+                                            ),
+                                          )}
+                                        </View>
+                                      ) : null}
                                     </View>
-                                  ) : null}
-                                </View>
-                                )
-                              })()}
+                                  )
+                                })()}
 
                               {exerciseSuggestions.length > 0 && (
                                 <View style={styles.exerciseCardsContainer}>
@@ -4218,8 +4304,8 @@ export function WorkoutChat({
                           />
                         </View>
                         <Text style={styles.welcomeDescription}>
-                          Create personalized workouts, log meals, and track
-                          macros
+                          Plan your next workout, dive into your stats, or log a
+                          meal — just ask.
                         </Text>
                       </View>
                     )}
@@ -4751,13 +4837,15 @@ export function WorkoutChat({
             Alert.alert('Sign In Required', 'Please sign in to save food logs.')
             return
           }
-          
-          const summary = `${quantity}x ${data.servingSize || 'serving'} of ${data.name}`
+
+          const summary = `${quantity}x ${data.servingSize || 'serving'} of ${
+            data.name
+          }`
           const cals = Math.round(data.calories * quantity)
           const protein = Math.round(data.protein * quantity)
           const carbs = Math.round(data.carbs * quantity)
           const fat = Math.round(data.fat * quantity)
-          
+
           try {
             const today = getLocalDateString()
             const mealPayload = {
@@ -4771,8 +4859,11 @@ export function WorkoutChat({
               metadata: { from: 'manual_barcode_log' },
               logDate: today,
             }
-            
-            const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
+
+            const inserted = await database.dailyLog.logMeal(
+              user.id,
+              mealPayload,
+            )
             setLatestLoggedMealId(inserted.id)
             await refreshDailyLogSummary()
             trackEvent(AnalyticsEvents.FOOD_LOGGED, {
@@ -4782,7 +4873,7 @@ export function WorkoutChat({
               has_macros: true,
             })
             hapticSuccess()
-            
+
             // Optionally add a system message to the chat so the user sees it logged
             const systemMessage: Message = {
               id: Date.now().toString(),
@@ -4795,8 +4886,10 @@ export function WorkoutChat({
               ...prev,
               [systemMessage.id]: inserted.id,
             }))
-            setFoodActionState((prev) => ({ ...prev, [systemMessage.id]: 'saved' }))
-            
+            setFoodActionState((prev) => ({
+              ...prev,
+              [systemMessage.id]: 'saved',
+            }))
           } catch (error) {
             console.error('[WorkoutChat] Failed to manually log meal:', error)
             Alert.alert('Could not save meal', 'Please try again.')
@@ -4808,7 +4901,6 @@ export function WorkoutChat({
         visible={isCoachSheetVisible}
         onClose={() => setIsCoachSheetVisible(false)}
       />
-
     </>
   )
 }
@@ -5207,9 +5299,7 @@ function createStyles(
       gap: 8,
       paddingBottom: 10,
       borderBottomWidth: 1,
-      borderBottomColor: isDark
-        ? 'rgba(255,255,255,0.12)'
-        : 'rgba(0,0,0,0.1)',
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
     },
     statsGridTitle: {
       fontSize: 13,
@@ -5225,9 +5315,7 @@ function createStyles(
       paddingTop: 8,
       paddingBottom: 4,
       borderBottomWidth: 1,
-      borderBottomColor: isDark
-        ? 'rgba(255,255,255,0.06)'
-        : 'rgba(0,0,0,0.06)',
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
     },
     statsGridSectionLabel: {
       fontSize: 10,
@@ -5279,9 +5367,7 @@ function createStyles(
     statsGridMuscleTrack: {
       flex: 1,
       height: 3,
-      backgroundColor: isDark
-        ? 'rgba(255,255,255,0.1)'
-        : 'rgba(0,0,0,0.07)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
       overflow: 'hidden',
     },
     statsGridMuscleFill: {
@@ -5804,6 +5890,5 @@ function createStyles(
       width: '100%',
       height: '100%',
     },
-
   })
 }

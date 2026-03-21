@@ -9,7 +9,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
-import { WorkoutRoutineWithDetails } from '@/types/database.types'
+import { WorkoutRoutineWithDetails, UserProgram } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { Image } from 'expo-image'
@@ -41,6 +41,8 @@ export default function RoutinesScreen() {
   const { callCallback } = useRoutineSelection()
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
+  const [programs, setPrograms] = useState<UserProgram[]>([])
+  const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [shouldExit, setShouldExit] = useState(false)
 
@@ -54,8 +56,12 @@ export default function RoutinesScreen() {
 
     setIsLoading(true)
     try {
-      const data = await database.workoutRoutines.getAll(user.id)
-      setRoutines(data)
+      const [routinesData, programsData] = await Promise.all([
+        database.workoutRoutines.getAll(user.id),
+        database.userPrograms.getAll(user.id),
+      ])
+      setRoutines(routinesData)
+      setPrograms(programsData)
     } catch (error) {
       console.error('Error loading routines:', error)
     } finally {
@@ -113,9 +119,15 @@ export default function RoutinesScreen() {
     router.back()
   }, [router])
 
+  const handleToggleProgram = useCallback((programId: string) => {
+    haptic('light')
+    setExpandedProgramId(prev => prev === programId ? null : programId)
+  }, [])
+
   const renderRoutineCard = (
     routine: WorkoutRoutineWithDetails,
     index: number,
+    customWidth?: number,
   ) => {
     const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
     const tintColor =
@@ -129,7 +141,7 @@ export default function RoutinesScreen() {
     const imageSource = getRoutineImage()
 
     return (
-      <View key={routine.id} style={styles.routineCardWrapper}>
+      <View key={routine.id} style={[styles.routineCardWrapper, customWidth ? { width: customWidth } : undefined]}>
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.routineCard}
@@ -205,6 +217,107 @@ export default function RoutinesScreen() {
     )
   }
 
+  const renderProgramCard = (
+    program: UserProgram,
+    programRoutines: WorkoutRoutineWithDetails[],
+    index: number,
+  ) => {
+    const isExpanded = expandedProgramId === program.id
+    const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
+    const tintColor = program.tint_color || tintColors[index % tintColors.length]
+
+    const getProgramImage = () => {
+      if (!program.image_path) return null
+      return getRoutineImageUrl(program.image_path)
+    }
+
+    const imageSource = getProgramImage()
+
+    return (
+      <View key={`program-${program.id}`} style={{ width: '100%', marginBottom: GAP }}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.programCard, isExpanded && styles.programCardExpanded]}
+          onPress={() => handleToggleProgram(program.id)}
+        >
+          {imageSource ? (
+            <>
+              <Image
+                source={typeof imageSource === 'string' ? { uri: imageSource } : imageSource}
+                style={styles.routineImage}
+                contentFit="cover"
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
+                style={styles.routineOverlay}
+              />
+            </>
+          ) : (
+            <LinearGradient
+              colors={[tintColor + '50', tintColor + '20']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.routineGradientBg}
+            />
+          )}
+
+          <LiquidGlassSurface style={styles.programGlassOverlay}>
+            <View style={styles.programHeader}>
+              <View style={styles.programInfo}>
+                <Text style={styles.programTitle} numberOfLines={1}>{program.name}</Text>
+                <Text style={styles.programSubtitle}>{programRoutines.length} Routines</Text>
+              </View>
+              <View style={styles.expandIconContainer}>
+                <Ionicons 
+                  name={isExpanded ? "chevron-up" : "chevron-down"} 
+                  size={24} 
+                  color="#FFF" 
+                />
+              </View>
+            </View>
+          </LiquidGlassSurface>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.expandedRoutinesContainer}>
+            <View style={styles.routinesGrid}>
+              {programRoutines.map((routine, idx) => renderRoutineCard(routine, idx, (SCREEN_WIDTH - 32 - 24 - GAP) / COLUMN_COUNT))}
+            </View>
+          </View>
+        )}
+      </View>
+    )
+  }
+
+  const renderContent = () => {
+    // Group routines by program
+    const standaloneRoutines = routines.filter(r => !r.program_id)
+    const programGroups = programs.map(program => ({
+      program,
+      routines: routines.filter(r => r.program_id === program.id).sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+    })).filter(group => group.routines.length > 0 || true) // Keep empty programs too
+
+    return (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {programGroups.map((group, index) => 
+          renderProgramCard(group.program, group.routines, index)
+        )}
+        <View style={styles.routinesGrid}>
+          {standaloneRoutines.map((routine, index) => renderRoutineCard(routine, index))}
+        </View>
+      </ScrollView>
+    )
+  }
+
   return (
     <SlideInView
       style={{ flex: 1 }}
@@ -244,7 +357,7 @@ export default function RoutinesScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
-        ) : routines.length === 0 ? (
+        ) : routines.length === 0 && programs.length === 0 ? (
           <EmptyState
             icon="albums-outline"
             title="No Routines Yet"
@@ -253,20 +366,7 @@ export default function RoutinesScreen() {
             onPress={handleCreateRoutine}
           />
         ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: insets.bottom + 100 },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.routinesGrid}>
-              {routines.map((routine, index) =>
-                renderRoutineCard(routine, index),
-              )}
-            </View>
-          </ScrollView>
+          renderContent()
         )}
       </View>
     </SlideInView>
@@ -385,5 +485,58 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    programCard: {
+      height: 100,
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceCard,
+    },
+    programCardExpanded: {
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    programGlassOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+    },
+    programHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    programInfo: {
+      flex: 1,
+    },
+    programTitle: {
+      color: '#FFF',
+      fontSize: 22,
+      fontWeight: '800',
+      letterSpacing: -0.5,
+      marginBottom: 4,
+    },
+    programSubtitle: {
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    expandIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    expandedRoutinesContainer: {
+      backgroundColor: colors.surfaceCard,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      paddingTop: 26,
+      paddingBottom: 16,
+      paddingHorizontal: 12,
+      marginTop: -10,
+      zIndex: -1,
     },
   })

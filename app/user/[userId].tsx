@@ -61,7 +61,7 @@ export default function UserProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const strengthCardWidth = width - 28
-  const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
+  const [viewMode, setViewMode] = useState<'feed' | 'grid'>('feed')
   const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
     userId,
   )

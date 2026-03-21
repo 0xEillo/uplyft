@@ -287,89 +287,88 @@ const ExerciseListItem = memo(function ExerciseListItem({
   colors: ReturnType<typeof useThemedColors>
 }) {
   const { isDark } = useTheme()
+  const router = useRouter()
 
   return (
-    <Link
-      asChild
-      href={{
-        pathname: '/exercise/[exerciseId]',
-        params: { exerciseId: exercise.id },
-      }}
+    <TouchableOpacity
+      style={[
+        styles.exerciseListItem,
+        isDark && { backgroundColor: colors.rowTint },
+      ]}
+      onPress={() =>
+        router.push({
+          pathname: '/exercise/[exerciseId]',
+          params: { exerciseId: exercise.id },
+        })
+      }
     >
-      <TouchableOpacity
-        style={[
-          styles.exerciseListItem,
-          isDark && { backgroundColor: colors.rowTint },
-        ]}
-      >
-        <ExerciseMediaThumbnail
-          gifUrl={exercise.gif_url}
-          style={styles.exerciseListItemThumbnail}
-          isCustom={!!exercise.created_by}
-        />
-        <View style={styles.exerciseListItemContent}>
-          <Text
-            style={[
-              styles.exerciseListItemText,
-              { color: colors.textPrimary },
-              (isCurrentExercise || isSelected) && {
-                fontWeight: '600',
-                color: colors.brandPrimary,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {exercise.name}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {exercise.muscle_group && (
-              <Text
-                style={[
-                  styles.exerciseListItemMuscle,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {exercise.muscle_group}
-              </Text>
-            )}
-            {exercise.created_by && (
-              <View style={styles.customBadge}>
-                <Text style={styles.customBadgeText}>Custom</Text>
-              </View>
-            )}
-          </View>
+      <ExerciseMediaThumbnail
+        gifUrl={exercise.gif_url}
+        style={styles.exerciseListItemThumbnail}
+        isCustom={!!exercise.created_by}
+      />
+      <View style={styles.exerciseListItemContent}>
+        <Text
+          style={[
+            styles.exerciseListItemText,
+            { color: colors.textPrimary },
+            (isCurrentExercise || isSelected) && {
+              fontWeight: '600',
+              color: colors.brandPrimary,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {exercise.name}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {exercise.muscle_group && (
+            <Text
+              style={[
+                styles.exerciseListItemMuscle,
+                { color: colors.textSecondary },
+              ]}
+            >
+              {exercise.muscle_group}
+            </Text>
+          )}
+          {exercise.created_by && (
+            <View style={styles.customBadge}>
+              <Text style={styles.customBadgeText}>Custom</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.listItemActions}>
-          <TouchableOpacity
-            style={styles.listItemFavoriteButton}
-            onPress={(e) => {
-              e.stopPropagation()
-              onToggleFavorite()
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Ionicons
-              name={isFavorited ? 'bookmark' : 'bookmark-outline'}
-              size={22}
-              color={isFavorited ? colors.brandPrimary : colors.textTertiary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.listItemCheckbox}
-            onPress={(e) => {
-              e.stopPropagation()
-              onSelect()
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            disabled={isCurrentExercise}
-          >
-            {!isSelected && !isCurrentExercise ? (
-              <Ionicons name="add" size={22} color={colors.textTertiary} />
-            ) : null}
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Link>
+      </View>
+      <View style={styles.listItemActions}>
+        <TouchableOpacity
+          style={styles.listItemFavoriteButton}
+          onPress={(e) => {
+            e.stopPropagation()
+            onToggleFavorite()
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons
+            name={isFavorited ? 'bookmark' : 'bookmark-outline'}
+            size={22}
+            color={isFavorited ? colors.brandPrimary : colors.textTertiary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemCheckbox}
+          onPress={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          disabled={isCurrentExercise}
+        >
+          {!isSelected && !isCurrentExercise ? (
+            <Ionicons name="add" size={22} color={colors.textTertiary} />
+          ) : null}
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
   )
 })
 
@@ -571,7 +570,13 @@ export default function SelectExerciseScreen() {
 
   // Scroll to top when search results change
   useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false })
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false })
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [
     deferredTrimmedQuery,
     deferredSelectedMuscleGroups,
@@ -708,9 +713,13 @@ export default function SelectExerciseScreen() {
     [toggleFavoriteExercise],
   )
 
-  // FlashList render item
+  // List render item
   const renderItem = useCallback(
-    ({ item, index }: { item: Exercise; index: number }) => {
+    ({ item, index }: { item: Exercise | undefined; index: number }) => {
+      if (!item) {
+        return null
+      }
+
       const isCurrentExercise = item.name === currentExerciseName // Should probably rely on ID but name is passed
       const isSelected = selectedIds.has(item.id)
 
@@ -816,6 +825,25 @@ export default function SelectExerciseScreen() {
 
   // Show recent performed section if there are matching recent exercises
   const shouldShowRecent = filteredRecentExercises.length > 0
+
+  const listExtraData = useMemo(
+    () => ({
+      currentExerciseName,
+      favoriteExerciseIds,
+      selectedIds,
+      viewMode,
+      recentCount: filteredRecentExercises.length,
+      shouldShowRecent,
+    }),
+    [
+      currentExerciseName,
+      favoriteExerciseIds,
+      selectedIds,
+      viewMode,
+      filteredRecentExercises.length,
+      shouldShowRecent,
+    ],
+  )
 
   // Create exercise header component (includes Recent Performed and All Exercises header)
   const ListHeader = useMemo(() => {
@@ -997,6 +1025,21 @@ export default function SelectExerciseScreen() {
                 placeholderTextColor={colors.textPlaceholder}
                 autoCapitalize="words"
               />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearSearchButton}
+                  onPress={() => {
+                    setSearchQuery('')
+                    haptic('light')
+                  }}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={colors.textTertiary}
+                  />
+                </TouchableOpacity>
+              )}
             </LiquidGlassSurface>
           </View>
         )}
@@ -1140,7 +1183,7 @@ export default function SelectExerciseScreen() {
             ref={listRef}
             key={viewMode}
             data={filteredExercises}
-            extraData={{ selectedIds, favoriteExerciseIds }}
+            extraData={listExtraData}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             numColumns={viewMode === 'grid' ? 2 : 1}
@@ -1259,10 +1302,17 @@ const styles = StyleSheet.create({
   },
   searchGlass: {
     borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   searchInput: {
+    flex: 1,
     padding: 12,
     fontSize: 16,
+  },
+  clearSearchButton: {
+    padding: 8,
+    marginRight: 4,
   },
   filtersWrapper: {
     marginBottom: 8,
@@ -1305,7 +1355,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gridItemWrapper: {
-    flex: 1,
+    width: GRID_ITEM_WIDTH,
     marginBottom: CARD_GAP,
   },
   gridItemLeftColumn: {

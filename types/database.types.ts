@@ -140,9 +140,26 @@ export interface Set {
   created_at: string
 }
 
+export interface UserProgram {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  image_path: string | null
+  tint_color: string | null
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UserProgramWithRoutines extends UserProgram {
+  routines: WorkoutRoutineWithDetails[]
+}
+
 export interface WorkoutRoutine {
   id: string
   user_id: string
+  program_id: string | null
   name: string
   notes: string | null
   is_archived: boolean

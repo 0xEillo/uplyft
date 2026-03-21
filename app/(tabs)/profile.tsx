@@ -83,7 +83,7 @@ export default function ProfileScreen() {
   const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(
     null,
   )
-  const [viewMode, setViewMode] = useState<'feed' | 'grid'>('grid')
+  const [viewMode, setViewMode] = useState<'feed' | 'grid'>('feed')
 
   // Track if initial load has completed - prevents showing spinner on subsequent focuses
   const hasLoadedOnce = useRef(false)

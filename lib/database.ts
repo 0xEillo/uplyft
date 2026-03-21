@@ -27,6 +27,7 @@ import type {
     ParsedWorkout,
     Profile,
     RetentionPushPreferences,
+    UserProgram,
     WorkoutComment,
     WorkoutCommentLike,
     WorkoutLike,
@@ -4484,6 +4485,82 @@ export const database = {
     },
   },
 
+  // User Programs operations
+  userPrograms: {
+    async create(
+      userId: string,
+      name: string,
+      options?: {
+        description?: string
+        imagePath?: string
+        tintColor?: string
+      },
+    ) {
+      const { data, error } = await supabase
+        .from('user_programs')
+        .insert({
+          user_id: userId,
+          name,
+          description: options?.description ?? null,
+          image_path: options?.imagePath ?? null,
+          tint_color: options?.tintColor ?? null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as UserProgram
+    },
+
+    async getAll(userId: string) {
+      const { data, error } = await supabase
+        .from('user_programs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_archived', false)
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+      return data as UserProgram[]
+    },
+
+    async update(
+      programId: string,
+      updates: {
+        name?: string
+        description?: string
+        imagePath?: string
+        tintColor?: string
+        isArchived?: boolean
+      },
+    ) {
+      const { data, error } = await supabase
+        .from('user_programs')
+        .update({
+          ...(updates.name !== undefined && { name: updates.name }),
+          ...(updates.description !== undefined && { description: updates.description }),
+          ...(updates.imagePath !== undefined && { image_path: updates.imagePath }),
+          ...(updates.tintColor !== undefined && { tint_color: updates.tintColor }),
+          ...(updates.isArchived !== undefined && { is_archived: updates.isArchived }),
+        })
+        .eq('id', programId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as UserProgram
+    },
+
+    async delete(programId: string) {
+      const { error } = await supabase
+        .from('user_programs')
+        .delete()
+        .eq('id', programId)
+
+      if (error) throw error
+    },
+  },
+
   // Workout Routine operations
   workoutRoutines: {
     /**
@@ -4496,6 +4573,7 @@ export const database = {
         notes?: string
         imagePath?: string
         tintColor?: string
+        programId?: string
       },
     ) {
       const { data, error } = await supabase
@@ -4506,6 +4584,7 @@ export const database = {
           notes: options?.notes ?? null,
           image_path: options?.imagePath ?? null,
           tint_color: options?.tintColor ?? null,
+          program_id: options?.programId ?? null,
         })
         .select()
         .single()
@@ -4679,6 +4758,7 @@ export const database = {
         is_archived?: boolean
         image_path?: string | null
         tint_color?: string | null
+        program_id?: string | null
       },
     ) {
       const { data, error } = await supabase
@@ -5017,7 +5097,7 @@ export const database = {
     /**
      * Save an explore routine to user's personal routines
      */
-    async saveRoutineToUser(routineId: string, userId: string) {
+    async saveRoutineToUser(routineId: string, userId: string, programId?: string) {
       // Get the explore routine with exercises
       const exploreRoutine = await this.getRoutineById(routineId)
 
@@ -5028,6 +5108,7 @@ export const database = {
           user_id: userId,
           name: exploreRoutine.name,
           notes: exploreRoutine.description,
+          program_id: programId ?? null,
         })
         .select()
         .single()
@@ -5098,14 +5179,22 @@ export const database = {
      */
     async saveProgramToUser(programId: string, userId: string) {
       const program = await this.getProgramById(programId)
+      
+      // Create the user program
+      const userProgram = await database.userPrograms.create(userId, program.name, {
+        description: program.description,
+        imagePath: program.image_path,
+        tintColor: program.tint_color,
+      })
+
       const savedRoutines = []
 
       for (const routine of program.routines) {
-        const saved = await this.saveRoutineToUser(routine.id, userId)
+        const saved = await this.saveRoutineToUser(routine.id, userId, userProgram.id)
         savedRoutines.push(saved)
       }
 
-      return savedRoutines
+      return { program: userProgram, routines: savedRoutines }
     },
   },
 }
