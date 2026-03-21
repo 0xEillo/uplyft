@@ -313,10 +313,13 @@ export function EditorToolbar({
     })
   }
 
+  const singleSecondaryButton =
+    secondaryButtons.length === 1 ? secondaryButtons[0] : null
   const hasSecondaryButtons = secondaryButtons.length > 0
+  const hasExpandableSecondaryButtons = secondaryButtons.length > 1
   const showAddButton = show('search')
   const isToolsExpanded =
-    hasSecondaryButtons &&
+    hasExpandableSecondaryButtons &&
     (presentationMode === 'force-tools' ||
       (presentationMode === 'default' && isToolsExpandedLocal))
 
@@ -440,61 +443,80 @@ export function EditorToolbar({
     >
       {isIOS ? (
         <View style={styles.iosToolbarRow}>
-          {hasSecondaryButtons && (
-            <LiquidGlassSurface
-              style={[
-                isToolsExpanded
-                  ? styles.iosToolbarGlass
-                  : styles.iosToolsCollapsedGlass,
-                isToolsExpanded && { width: expandedToolsWidth },
-              ]}
-            >
-              {isToolsExpanded ? (
-                <View style={styles.iosToolbarExpanded}>
+          {hasSecondaryButtons &&
+            (singleSecondaryButton ? (
+              <LiquidGlassSurface style={styles.iosSingleToolGlass}>
+                <View ref={singleSecondaryButton.ref} collapsable={false}>
                   <TouchableOpacity
-                    style={styles.iosToolsCloseButton}
-                    onPress={handleCloseTools}
+                    style={[
+                      styles.iosSingleToolButton,
+                      singleSecondaryButton.active && styles.activeButton,
+                      singleSecondaryButton.id === 'rest-timer' &&
+                        singleSecondaryButton.active &&
+                        styles.activeTimerButton,
+                    ]}
+                    onPress={() => singleSecondaryButton.onPress()}
+                    disabled={isDisabled}
+                  >
+                    {singleSecondaryButton.renderContent()}
+                  </TouchableOpacity>
+                </View>
+              </LiquidGlassSurface>
+            ) : (
+              <LiquidGlassSurface
+                style={[
+                  isToolsExpanded
+                    ? styles.iosToolbarGlass
+                    : styles.iosToolsCollapsedGlass,
+                  isToolsExpanded && { width: expandedToolsWidth },
+                ]}
+              >
+                {isToolsExpanded ? (
+                  <View style={styles.iosToolbarExpanded}>
+                    <TouchableOpacity
+                      style={styles.iosToolsCloseButton}
+                      onPress={handleCloseTools}
+                      disabled={isDisabled}
+                    >
+                      <Ionicons
+                        name="close-outline"
+                        size={20}
+                        color={colors.textPrimary}
+                      />
+                    </TouchableOpacity>
+                    {secondaryButtons.map((button) => (
+                      <View key={button.id} ref={button.ref} collapsable={false}>
+                        <TouchableOpacity
+                          style={[
+                            styles.iosButton,
+                            button.active && styles.activeButton,
+                            button.id === 'rest-timer' &&
+                              button.active &&
+                              styles.activeTimerButton,
+                          ]}
+                          onPress={() => handleToolAction(button.onPress)}
+                          disabled={isDisabled}
+                        >
+                          {button.renderContent()}
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.iosToolsCollapsedButton}
+                    onPress={handleToggleTools}
                     disabled={isDisabled}
                   >
                     <Ionicons
-                      name="close-outline"
-                      size={20}
+                      name="ellipsis-vertical"
+                      size={18}
                       color={colors.textPrimary}
                     />
                   </TouchableOpacity>
-                  {secondaryButtons.map((button) => (
-                    <View key={button.id} ref={button.ref} collapsable={false}>
-                      <TouchableOpacity
-                        style={[
-                          styles.iosButton,
-                          button.active && styles.activeButton,
-                          button.id === 'rest-timer' &&
-                            button.active &&
-                            styles.activeTimerButton,
-                        ]}
-                        onPress={() => handleToolAction(button.onPress)}
-                        disabled={isDisabled}
-                      >
-                        {button.renderContent()}
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.iosToolsCollapsedButton}
-                  onPress={handleToggleTools}
-                  disabled={isDisabled}
-                >
-                  <Ionicons
-                    name="ellipsis-vertical"
-                    size={18}
-                    color={colors.textPrimary}
-                  />
-                </TouchableOpacity>
-              )}
-            </LiquidGlassSurface>
-          )}
+                )}
+              </LiquidGlassSurface>
+            ))}
 
           {showAddButton && (
             <View
@@ -558,7 +580,23 @@ export function EditorToolbar({
         <View style={styles.toolbar}>
           {hasSecondaryButtons && (
             <View style={styles.androidToolsWrap}>
-              {isToolsExpanded ? (
+              {singleSecondaryButton ? (
+                <View ref={singleSecondaryButton.ref} collapsable={false}>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      singleSecondaryButton.active && styles.activeButton,
+                      singleSecondaryButton.id === 'rest-timer' &&
+                        singleSecondaryButton.active &&
+                        styles.activeTimerButton,
+                    ]}
+                    onPress={() => singleSecondaryButton.onPress()}
+                    disabled={isDisabled}
+                  >
+                    {singleSecondaryButton.renderContent()}
+                  </TouchableOpacity>
+                </View>
+              ) : isToolsExpanded ? (
                 <View
                   style={[
                     styles.androidToolsExpanded,
@@ -711,6 +749,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderColor: 'rgba(255,255,255,0.12)',
       borderWidth: StyleSheet.hairlineWidth,
     },
+    iosSingleToolGlass: {
+      minWidth: 46,
+      height: 46,
+      borderRadius: 23,
+      borderColor: 'rgba(255,255,255,0.12)',
+      borderWidth: StyleSheet.hairlineWidth,
+      overflow: 'hidden',
+    },
     iosToolbarGlass: {
       borderRadius: 28,
       borderColor: 'rgba(255,255,255,0.12)',
@@ -733,6 +779,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     iosToolsCollapsedButton: {
       width: 46,
+      height: 46,
+      borderRadius: 23,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iosSingleToolButton: {
+      minWidth: 46,
       height: 46,
       borderRadius: 23,
       justifyContent: 'center',

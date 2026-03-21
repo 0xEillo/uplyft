@@ -208,7 +208,11 @@ export default function FeedScreen() {
     setPendingStreakData,
   } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
-  const { isTutorialDismissed, isLoading: isTutorialLoading } = useTutorial()
+  const {
+    isTutorialDismissed,
+    isLoading: isTutorialLoading,
+    completeStep,
+  } = useTutorial()
   const flatListRef = useRef<FlashListRef<FeedItem>>(null)
   const isPresentingGuestPromptRef = useRef(false)
   const scrollY = useRef(new Animated.Value(0)).current
@@ -745,6 +749,11 @@ export default function FeedScreen() {
           exerciseUpgradeNames: celebrationPayload.exerciseUpgrades?.map((u) => u.exerciseName),
           hadPendingStreakData: !!pendingStreakData,
         })
+
+        if ((finalExerciseUpgrades?.length ?? 0) > 0) {
+          completeStep('first_exercise_rank')
+        }
+
         showCelebration(celebrationPayload)
         setPendingStreakData(null) // Clear pending streak data
 
@@ -807,6 +816,7 @@ export default function FeedScreen() {
     pendingStreakData,
     setPendingStreakData,
     maybeQueueGuestSignInPrompt,
+    completeStep,
   ])
 
   const handleRefresh = useCallback(async () => {

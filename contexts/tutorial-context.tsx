@@ -198,6 +198,15 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           stepsToComplete.push('log_workout')
         }
 
+        // Check for exercise rank data (strength standards-backed lifts)
+        const strengthExercises = await database.stats.getMajorCompoundLiftsData(user.id)
+        if (
+          strengthExercises.length > 0 &&
+          !completedSteps.has('first_exercise_rank')
+        ) {
+          stepsToComplete.push('first_exercise_rank')
+        }
+
         // Check for routines
         const routines = await database.workoutRoutines.getAll(user.id)
         if (routines.length > 0 && !completedSteps.has('save_routine')) {

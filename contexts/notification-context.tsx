@@ -11,13 +11,18 @@ let isNotificationsAvailable = true
 try {
   // Configure how notifications are handled when app is in foreground
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+      const isRestTimerNotification =
+        notification.request.content.data?.type === 'rest_timer'
+
+      return {
+        shouldShowAlert: !isRestTimerNotification,
+        shouldPlaySound: !isRestTimerNotification,
+        shouldSetBadge: !isRestTimerNotification,
+        shouldShowBanner: !isRestTimerNotification,
+        shouldShowList: !isRestTimerNotification,
+      }
+    },
   })
 } catch {
   console.warn('[Notifications] Native module not available. Please rebuild the app.')

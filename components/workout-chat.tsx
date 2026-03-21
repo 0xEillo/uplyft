@@ -4315,7 +4315,7 @@ export function WorkoutChat({
                                       ? colors.brandPrimary
                                       : colors.textPrimary
                                   }
-                                  style={{ marginRight: 6 }}
+                                  style={{ marginRight: 8 }}
                                 />
                               ) : null
                             }
@@ -4356,7 +4356,7 @@ export function WorkoutChat({
                                 name={item.icon as any}
                                 size={14}
                                 color={colors.brandPrimary}
-                                style={{ marginRight: 6 }}
+                                style={{ marginRight: 8 }}
                               />
                             }
                             onPress={() => handleSuggestionPress(item)}
@@ -5464,9 +5464,9 @@ function createStyles(
           ? colors.surfaceSubtle
           : colors.surfaceCard
         : '#f4f4f5',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 24,
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      borderRadius: 100,
       borderWidth: 0,
     },
     planWorkoutBubble: {
@@ -5477,9 +5477,9 @@ function createStyles(
       fontWeight: '600',
     },
     suggestionBackBubble: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
       backgroundColor: isDark
         ? mode === 'sheet'
           ? colors.surfaceSubtle
@@ -5492,7 +5492,7 @@ function createStyles(
     suggestionText: {
       fontSize: 15,
       color: colors.textPrimary,
-      fontWeight: '600',
+      fontWeight: '500',
     },
     // Image preview in input area
     imagePreviewContainer: {
