@@ -23,6 +23,7 @@ import {
     UIManager,
     View,
 } from 'react-native'
+import { Swipeable } from 'react-native-gesture-handler'
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -61,6 +62,7 @@ interface SetData {
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
+  isCompleted?: boolean
 }
 
 interface ExerciseData {
@@ -94,6 +96,7 @@ interface WorkoutSetRowProps {
   colors: ReturnType<typeof useThemedColors>
   styles: ReturnType<typeof createStyles>
   onToggleSetType: (exerciseIndex: number, setIndex: number) => void
+  onToggleComplete: (exerciseIndex: number, setIndex: number) => void
   onWeightChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
@@ -123,6 +126,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   colors,
   styles,
   onToggleSetType,
+  onToggleComplete,
   onWeightChange,
   onRepsChange,
   onFocus,
@@ -135,9 +139,32 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   registerRepsRef,
   canDelete,
 }: WorkoutSetRowProps) {
+  const renderRightActions = useCallback(() => {
+    if (compactPreview || !canDelete) return null
+
+    return (
+      <View style={styles.swipeActionContainer}>
+        <TouchableOpacity
+          style={styles.swipeDeleteButton}
+          onPress={() => onDeleteSet(exerciseIndex, setIndex)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.swipeDeleteText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }, [compactPreview, canDelete, onDeleteSet, exerciseIndex, setIndex, styles])
+
   return (
-    <View style={styles.setRow}>
-      <View style={styles.setColSet}>
+    <Swipeable
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      containerStyle={styles.swipeableContainer}
+    >
+      <View style={{ backgroundColor: colors.bg, borderRadius: 6 }}>
+        <View style={[styles.setRow, set.isCompleted && styles.setRowCompleted]}>
+          <View style={styles.setColSet}>
         <LiquidGlassSurface
           style={styles.setNumberBadge}
           fallbackStyle={styles.setNumberBadgeFallback}
@@ -262,18 +289,28 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
         />
       </View>
 
-      <View style={styles.setColAction}>
-        {!compactPreview && canDelete && (
+      <View style={styles.setColCheckmark}>
+        {!compactPreview && (
           <TouchableOpacity
-            style={styles.deleteSetButton}
-            onPress={() => onDeleteSet(exerciseIndex, setIndex)}
+            style={[
+              styles.checkmarkButton,
+              set.isCompleted && styles.checkmarkButtonCompleted
+            ]}
+            onPress={() => onToggleComplete(exerciseIndex, setIndex)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
           >
-            <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            <Ionicons 
+              name="checkmark" 
+              size={20} 
+              color={set.isCompleted ? '#FFF' : colors.textTertiary} 
+            />
           </TouchableOpacity>
         )}
       </View>
     </View>
+    </View>
+    </Swipeable>
   )
 })
 
@@ -768,18 +805,9 @@ export function StructuredWorkoutInput({
       set.reps = value
       const repsNowHasData = Boolean(set.reps.trim())
 
-      // Start rest timer when user enters reps (goes from empty to having data)
-      if (repsWasEmpty && repsNowHasData && onRestTimerStart) {
-        if (set.targetRestSeconds) {
-          onRestTimerStart(set.targetRestSeconds)
-        } else if (autoRestEnabled && autoRestDuration) {
-          onRestTimerStart(autoRestDuration)
-        }
-      }
-
       commitExercises(newExercises)
     },
-    [commitExercises, onRestTimerStart, autoRestEnabled, autoRestDuration],
+    [commitExercises],
   )
 
   const handleAddSet = useCallback(
@@ -793,9 +821,8 @@ export function StructuredWorkoutInput({
         return null
       }
 
-      // Get the weight from the previous set (if it exists)
+      // Get the previous set (if it exists) to carry over targets
       const previousSet = exercise.sets[exercise.sets.length - 1]
-      const prefillWeight = previousSet?.weight || ''
       const newSetIndex = exercise.sets.length
 
       // The new set number (1-indexed)
@@ -817,9 +844,9 @@ export function StructuredWorkoutInput({
         }
       }
 
-      // Create a new set with prefilled weight and history data
+      // Create a new set with empty inputs and history data
       const newSet: SetData = {
-        weight: prefillWeight,
+        weight: '',
         reps: '',
         lastWorkoutWeight: historyWeight,
         lastWorkoutReps: historyReps,
@@ -846,8 +873,9 @@ export function StructuredWorkoutInput({
     const exercise = newExercises[exerciseIndex]
     if (!exercise) return
 
-    // Don't allow deleting if only one set remains
+    // If only one set remains, delete the whole exercise
     if (exercise.sets.length <= 1) {
+      handleDeleteExercise(exerciseIndex)
       return
     }
 
@@ -884,6 +912,35 @@ export function StructuredWorkoutInput({
     }
     commitExercises(newExercises)
   }
+
+  const handleToggleComplete = useCallback(
+    async (exerciseIndex: number, setIndex: number) => {
+      const currentExercises = exercisesRef.current
+      const exercise = currentExercises[exerciseIndex]
+      const set = exercise?.sets[setIndex]
+      if (!set) return
+
+      const nextCompleted = !set.isCompleted
+      await hapticAsync(nextCompleted ? 'medium' : 'light')
+
+      const newExercises = [...currentExercises]
+      const updatedSet = newExercises[exerciseIndex]?.sets[setIndex]
+      if (!updatedSet) return
+
+      updatedSet.isCompleted = nextCompleted
+
+      if (updatedSet.isCompleted && onRestTimerStart) {
+        if (updatedSet.targetRestSeconds) {
+          onRestTimerStart(updatedSet.targetRestSeconds)
+        } else if (autoRestEnabled && autoRestDuration) {
+          onRestTimerStart(autoRestDuration)
+        }
+      }
+
+      commitExercises(newExercises)
+    },
+    [commitExercises, onRestTimerStart, autoRestEnabled, autoRestDuration],
+  )
 
   const parseWorkingWeightInput = useCallback((value: string): number | null => {
     const normalized = value.trim().replace(',', '.')
@@ -1210,6 +1267,21 @@ export function StructuredWorkoutInput({
         setFocusedInputState({ exerciseIndex, setIndex, field: 'reps' })
         focusInput(exerciseIndex, setIndex, 'reps')
         return
+      }
+
+      // When moving from Reps, auto-validate the current set (mark as completed)
+      const newExercises = [...exercisesRef.current]
+      const currentSet = newExercises[exerciseIndex]?.sets[setIndex]
+      if (currentSet && !currentSet.isCompleted) {
+        currentSet.isCompleted = true
+        if (onRestTimerStart) {
+          if (currentSet.targetRestSeconds) {
+            onRestTimerStart(currentSet.targetRestSeconds)
+          } else if (autoRestEnabled && autoRestDuration) {
+            onRestTimerStart(autoRestDuration)
+          }
+        }
+        commitExercises(newExercises)
       }
 
       const nextSetIndex = setIndex + 1
@@ -1723,7 +1795,7 @@ export function StructuredWorkoutInput({
                       {unitDisplay.toUpperCase()}
                     </Text>
                     <Text style={[styles.setHeaderText, styles.setColInput]}>REPS</Text>
-                    <View style={styles.setColAction} />
+                    <View style={styles.setColCheckmark} />
                   </View>
                 )}
                 {(() => {
@@ -1769,6 +1841,7 @@ export function StructuredWorkoutInput({
                         colors={colors}
                         styles={styles}
                         onToggleSetType={handleToggleSetType}
+                        onToggleComplete={handleToggleComplete}
                         onWeightChange={handleWeightChange}
                         onRepsChange={handleRepsChange}
                         onFocus={handleFocus}
@@ -1791,7 +1864,7 @@ export function StructuredWorkoutInput({
                         onSelectionRepsChange={undefined}
                         registerWeightRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref }}
                         registerRepsRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref }}
-                        canDelete={setIndex === exercise.sets.length - 1 && exercise.sets.length > 1}
+                        canDelete={true}
                       />
                     )
                   })
@@ -1947,8 +2020,8 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
     },
-    setColAction: {
-      width: 36,
+    setColCheckmark: {
+      width: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1958,6 +2031,22 @@ const createStyles = (
       marginBottom: compactPreview ? 4 : 8,
       width: '100%',
       paddingHorizontal: 4,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    setRowCompleted: {
+      backgroundColor: (colors.statusSuccess || '#34C759') + '1A', // ~10% opacity green
+    },
+    checkmarkButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceSubtle,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkmarkButtonCompleted: {
+      backgroundColor: colors.statusSuccess || '#34C759',
     },
     setNumberBadge: {
       width: compactPreview ? 24 : 28,
@@ -2023,10 +2112,28 @@ const createStyles = (
       color: colors.statusError,
       borderWidth: 1.5,
     },
-    deleteSetButton: {
-      padding: 4,
-      alignItems: 'center',
+    swipeableContainer: {
+      width: '100%',
+    },
+    swipeActionContainer: {
+      width: 75,
+      height: '100%',
       justifyContent: 'center',
+      alignItems: 'center',
+    },
+    swipeDeleteButton: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: colors.statusError || '#FF3B30',
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'absolute',
+      right: 0,
+    },
+    swipeDeleteText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 15,
     },
     setActionsRow: {
       flexDirection: 'row',

@@ -113,11 +113,17 @@ function normalizeUrl(value: string | null | undefined): string {
   return trimmed.replace(/\/+$/g, '')
 }
 
-function buildFeedbackUrl(appName: string, feedbackEmail: string): string {
+function buildFeedbackUrl(
+  appName: string,
+  feedbackEmail: string,
+  customSubject?: string,
+): string {
   const explicit = asString(Deno.env.get('EMAIL_FEEDBACK_URL'))
   if (explicit) return explicit
 
-  const subject = encodeURIComponent(`Cancellation feedback for ${appName}`)
+  const subject = encodeURIComponent(
+    customSubject || `Cancellation feedback for ${appName}`,
+  )
   return `mailto:${feedbackEmail}?subject=${subject}`
 }
 
@@ -158,16 +164,22 @@ function resolveRevenueCatEmail(event: RevenueCatEvent): string | null {
 function makeTemplate(input: {
   appName: string
   preheader: string
-  title: string
+  title: string | null
   intro: string
   lines: string[]
   ctaLabel?: string
   ctaUrl?: string
   footer: string
   supportEmail: string
+  ctaFallbackPrefix?: string
 }): { html: string; text: string } {
   const lineHtml = input.lines
-    .map((line) => `<p style="margin:0 0 16px;">${escapeHtml(line)}</p>`)
+    .map((line) => {
+      const isBullet = line.trim().startsWith('•')
+      return `<p style="margin:0 0 ${
+        isBullet ? '4px' : '16px'
+      };font-size:16px;line-height:24px;">${escapeHtml(line)}</p>`
+    })
     .join('')
 
   const ctaHtml =
@@ -184,7 +196,9 @@ function makeTemplate(input: {
   const ctaFallbackHtml =
     input.ctaLabel && input.ctaUrl
       ? `<p style="margin:0 0 18px;font-size:14px;line-height:20px;color:#475569;">
-  Button not working? Open this link:<br />
+  ${escapeHtml(
+    input.ctaFallbackPrefix ?? 'Button not working? Open this link:',
+  )}<br />
   <a href="${escapeHtml(
     input.ctaUrl,
   )}" style="color:#0f172a;text-decoration:underline;word-break:break-all;">${escapeHtml(
@@ -198,7 +212,7 @@ function makeTemplate(input: {
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>${escapeHtml(input.title)}</title>
+    <title>${escapeHtml(input.title || '')}</title>
   </head>
   <body style="margin:0;padding:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
@@ -210,12 +224,17 @@ function makeTemplate(input: {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
             <tr>
               <td style="padding:24px 20px;">
+      ${
+        input.title
+          ? `
       <p style="margin:0 0 8px;color:#64748b;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;">${escapeHtml(
         input.appName,
       )}</p>
       <h1 style="margin:0 0 14px;font-size:24px;line-height:30px;">${escapeHtml(
-        input.title,
-      )}</h1>
+        input.title as string,
+      )}</h1>`
+          : ''
+      }
       <p style="margin:0 0 16px;font-size:16px;line-height:24px;">${escapeHtml(
         input.intro,
       )}</p>
@@ -243,11 +262,12 @@ function makeTemplate(input: {
 </html>`
 
   const textParts = [
-    input.title,
+    input.title || '',
     '',
     input.preheader,
     '',
     input.intro,
+    '',
     ...input.lines,
     input.ctaLabel && input.ctaUrl ? `${input.ctaLabel}: ${input.ctaUrl}` : '',
     '',
@@ -297,24 +317,39 @@ function buildCancellationFeedbackTemplate(input: {
   const content = makeTemplate({
     appName: input.appName,
     preheader:
-      'Personal note from Oliver: what made you cancel, and what should I improve first?',
-    title: 'A quick personal favor?',
-    intro: `Hey ${firstName(
-      input.displayName,
-    )}, Oliver here. I build and maintain ${input.appName} as a solo founder.`,
+      'Quick reply = 1 free month of Rep AI Pro (personal thank-you from Oliver)',
+    title: null,
+    intro: `Hey ${firstName(input.displayName)},`,
     lines: [
-      'I noticed you cancelled, and I genuinely want to understand why.',
-      'What felt missing, confusing, or not worth it?',
-      'A one-line reply is enough and helps me prioritize what to fix next.',
+      'Quick reply from you = I’ll immediately gift you 1 full extra month of Rep AI completely free (no strings, no auto-renew, just my personal thank-you).',
+      'Oliver here — solo founder who builds and reads every single Rep AI email himself.',
+      'I saw you cancelled and I’m genuinely bummed. Life gets in the way, I totally understand. No hard feelings at all.',
+      'Your opinion is the highest-leverage feedback I get. One honest reply last week made me ship a much faster logging flow that everyone is now loving.',
+      'So here’s my deal:',
+      'Just reply with one line — anything at all — about what felt missing, confusing, or not worth it, and the free month is yours instantly.',
+      'Examples (copy-paste or write your own):',
+      '• “Logging sets took too many taps”',
+      '• “Wanted better progress visuals / streaks”',
+      '• “Notifications were too much”',
+      '• “Too expensive for how much I used it”',
+      '• “Switched to Hevy / Strong”',
+      '• “Just got too busy — nothing wrong with the app”',
+      'Takes 10 seconds. I’ll read it personally, action it this week, and add the free month to your account right away.',
+      'You already helped me by trying the app — this is just my way of saying a proper thank you.',
+      'Hit reply whenever you have a moment. I read and reply to every single one myself.',
+      'You’ve got this 💪',
     ],
-    ctaLabel: 'Send Feedback to Oliver',
+    ctaLabel: 'Claim my free month',
     ctaUrl: input.feedbackUrl,
-    footer: `Thanks for trying ${input.appName}. I read every reply personally. - Oliver`,
+    ctaFallbackPrefix:
+      'P.S. If the button isn’t working, just reply or use this link:',
+    footer: `– Oliver (repaifit.app solo founder)`,
     supportEmail: input.supportEmail,
   })
 
   return {
-    subject: 'Oliver here - could I ask a quick favor?',
+    subject:
+      'Oliver here — your feedback = I’ll give you 1 month completely free right now',
     html: content.html,
     text: content.text,
   }
@@ -740,7 +775,11 @@ async function prepareFromRevenueCatWebhook(
     DEFAULT_SUPPORT_EMAIL
   const feedbackEmail =
     normalizeEmail(asString(Deno.env.get('EMAIL_REPLY_TO'))) ?? supportEmail
-  const feedbackUrl = buildFeedbackUrl(appName, feedbackEmail)
+  const feedbackUrl = buildFeedbackUrl(
+    appName,
+    feedbackEmail,
+    'Feedback + 1 free month gift',
+  )
 
   let emailType: EmailType
   let template: EmailTemplate

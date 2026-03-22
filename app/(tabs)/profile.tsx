@@ -424,7 +424,7 @@ export default function ProfileScreen() {
               style={[styles.headerTitle, { marginLeft: 6 }]}
               numberOfLines={1}
             >
-              Profile
+              {profile?.user_tag ? `@${profile.user_tag}` : 'Profile'}
             </Text>
           }
           rightContent={
@@ -556,7 +556,7 @@ export default function ProfileScreen() {
                     >
                       <View style={styles.nameRow}>
                         <Text style={styles.displayName}>
-                          {profile?.display_name || 'User'}
+                          {profile?.display_name || (profile?.user_tag ? `@${profile.user_tag}` : 'User')}
                         </Text>
                         {userLevel && (
                           <LevelBadge
@@ -567,9 +567,6 @@ export default function ProfileScreen() {
                           />
                         )}
                       </View>
-                      {profile?.user_tag && (
-                        <Text style={styles.userTag}>@{profile.user_tag}</Text>
-                      )}
                     </TouchableOpacity>
 
                     {/* Stats Row - title above number, all on one line */}

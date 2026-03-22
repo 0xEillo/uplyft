@@ -444,6 +444,15 @@ export default function UserProfileScreen() {
                 </TouchableOpacity>
               </NavbarIsland>
             }
+            centerContent={
+              userTag ? (
+                <NavbarIsland style={{ width: 'auto', paddingHorizontal: 12 }}>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    @{userTag}
+                  </Text>
+                </NavbarIsland>
+              ) : null
+            }
           />
         </BlurredHeader>
 
@@ -521,7 +530,7 @@ export default function UserProfileScreen() {
                 {/* Name and Stats */}
                 <View style={styles.nameContainer}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.displayName}>{userName || 'User'}</Text>
+                    <Text style={styles.displayName}>{userName || (userTag ? `@${userTag}` : 'User')}</Text>
                     {userLevel && (
                       <LevelBadge
                         level={userLevel}
@@ -531,7 +540,6 @@ export default function UserProfileScreen() {
                       />
                     )}
                   </View>
-                  {userTag && <Text style={styles.userTag}>@{userTag}</Text>}
 
                   {/* Stats Row - title above number, all on one line */}
                   <View style={styles.statsRow}>
