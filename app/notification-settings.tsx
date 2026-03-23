@@ -229,172 +229,128 @@ export default function NotificationSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <View style={styles.preferenceCard}>
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Workout Reminders</Text>
-                <Text style={styles.preferenceDescription}>
-                  Off-app reminders to help you stay consistent.
-                </Text>
+          <Text style={styles.sectionTitle}>Reminders & Nudges</Text>
+          <View style={styles.card}>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Workout Reminders</Text>
+                  <Text style={styles.actionButtonSubtext}>Off-app reminders to help you stay consistent</Text>
+                </View>
               </View>
               <Switch
                 value={notificationsEnabled}
-                onValueChange={(value) =>
-                  handleToggleRetention('enabled', value)
-                }
+                onValueChange={(value) => handleToggleRetention('enabled', value)}
                 disabled={isPushSettingsUpdating || !retentionPrefs}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  notificationsEnabled ? colors.brandPrimary : '#F3F4F6'
-                }
+                thumbColor={notificationsEnabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
 
-            <View style={styles.preferenceDivider} />
+            <View style={styles.cardDivider} />
 
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Scheduled Workout</Text>
-                <Text style={styles.preferenceDescription}>
-                  Nudge near your preferred training hour.
-                </Text>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Scheduled Workout</Text>
+                  <Text style={styles.actionButtonSubtext}>Nudge near your preferred training hour</Text>
+                </View>
               </View>
               <Switch
                 value={retentionPrefs?.scheduled_reminders_enabled ?? false}
-                onValueChange={(value) =>
-                  handleToggleRetention('scheduled_reminders_enabled', value)
-                }
-                disabled={
-                  isPushSettingsUpdating ||
-                  !retentionPrefs ||
-                  !notificationsEnabled
-                }
+                onValueChange={(value) => handleToggleRetention('scheduled_reminders_enabled', value)}
+                disabled={isPushSettingsUpdating || !retentionPrefs || !notificationsEnabled}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  retentionPrefs?.scheduled_reminders_enabled
-                    ? colors.brandPrimary
-                    : '#F3F4F6'
-                }
+                thumbColor={retentionPrefs?.scheduled_reminders_enabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
 
-            <View style={styles.preferenceDivider} />
+            <View style={styles.cardDivider} />
 
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Streak Protection</Text>
-                <Text style={styles.preferenceDescription}>
-                  Evening reminder when your streak is in danger.
-                </Text>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="flame-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Streak Protection</Text>
+                  <Text style={styles.actionButtonSubtext}>Evening reminder when your streak is in danger</Text>
+                </View>
               </View>
               <Switch
                 value={retentionPrefs?.streak_protection_enabled ?? false}
-                onValueChange={(value) =>
-                  handleToggleRetention('streak_protection_enabled', value)
-                }
-                disabled={
-                  isPushSettingsUpdating ||
-                  !retentionPrefs ||
-                  !notificationsEnabled
-                }
+                onValueChange={(value) => handleToggleRetention('streak_protection_enabled', value)}
+                disabled={isPushSettingsUpdating || !retentionPrefs || !notificationsEnabled}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  retentionPrefs?.streak_protection_enabled
-                    ? colors.brandPrimary
-                    : '#F3F4F6'
-                }
+                thumbColor={retentionPrefs?.streak_protection_enabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
 
-            <View style={styles.preferenceDivider} />
+            <View style={styles.cardDivider} />
 
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Inactivity Nudges</Text>
-                <Text style={styles.preferenceDescription}>
-                  Comeback reminders after a few days away.
-                </Text>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="walk-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Inactivity Nudges</Text>
+                  <Text style={styles.actionButtonSubtext}>Comeback reminders after a few days away</Text>
+                </View>
               </View>
               <Switch
                 value={retentionPrefs?.inactivity_enabled ?? false}
-                onValueChange={(value) =>
-                  handleToggleRetention('inactivity_enabled', value)
-                }
-                disabled={
-                  isPushSettingsUpdating ||
-                  !retentionPrefs ||
-                  !notificationsEnabled
-                }
+                onValueChange={(value) => handleToggleRetention('inactivity_enabled', value)}
+                disabled={isPushSettingsUpdating || !retentionPrefs || !notificationsEnabled}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  retentionPrefs?.inactivity_enabled
-                    ? colors.brandPrimary
-                    : '#F3F4F6'
-                }
+                thumbColor={retentionPrefs?.inactivity_enabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
 
-            <View style={styles.preferenceDivider} />
+            <View style={styles.cardDivider} />
 
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Weekly Recap</Text>
-                <Text style={styles.preferenceDescription}>
-                  Monday recap to kick off your week.
-                </Text>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="calendar-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Weekly Recap</Text>
+                  <Text style={styles.actionButtonSubtext}>Monday recap to kick off your week</Text>
+                </View>
               </View>
               <Switch
                 value={retentionPrefs?.weekly_recaps_enabled ?? false}
-                onValueChange={(value) =>
-                  handleToggleRetention('weekly_recaps_enabled', value)
-                }
-                disabled={
-                  isPushSettingsUpdating ||
-                  !retentionPrefs ||
-                  !notificationsEnabled
-                }
+                onValueChange={(value) => handleToggleRetention('weekly_recaps_enabled', value)}
+                disabled={isPushSettingsUpdating || !retentionPrefs || !notificationsEnabled}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  retentionPrefs?.weekly_recaps_enabled
-                    ? colors.brandPrimary
-                    : '#F3F4F6'
-                }
+                thumbColor={retentionPrefs?.weekly_recaps_enabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
 
-            <View style={styles.preferenceDivider} />
+            <View style={styles.cardDivider} />
 
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceLeft}>
-                <Text style={styles.preferenceTitle}>Milestones</Text>
-                <Text style={styles.preferenceDescription}>
-                  Celebrate major training milestones.
-                </Text>
+            <View style={styles.actionButton}>
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="trophy-outline" size={22} color={colors.textSecondary} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={styles.actionButtonTextNeutral}>Milestones</Text>
+                  <Text style={styles.actionButtonSubtext}>Celebrate major training milestones</Text>
+                </View>
               </View>
               <Switch
                 value={retentionPrefs?.milestones_enabled ?? false}
-                onValueChange={(value) =>
-                  handleToggleRetention('milestones_enabled', value)
-                }
-                disabled={
-                  isPushSettingsUpdating ||
-                  !retentionPrefs ||
-                  !notificationsEnabled
-                }
+                onValueChange={(value) => handleToggleRetention('milestones_enabled', value)}
+                disabled={isPushSettingsUpdating || !retentionPrefs || !notificationsEnabled}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  retentionPrefs?.milestones_enabled
-                    ? colors.brandPrimary
-                    : '#F3F4F6'
-                }
+                thumbColor={retentionPrefs?.milestones_enabled ? colors.brandPrimary : '#F3F4F6'}
               />
             </View>
+          </View>
+        </View>
 
-            <View style={styles.preferenceDivider} />
-
-            <View style={styles.preferenceLeft}>
-              <Text style={styles.preferenceTitle}>Global Snooze</Text>
-              <Text style={styles.preferenceDescription}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Global Snooze</Text>
+          <View style={styles.card}>
+            <View style={styles.snoozeContainer}>
+              <Text style={styles.actionButtonTextNeutral}>Pause Notifications</Text>
+              <Text style={styles.actionButtonSubtext}>
                 Pause all reminder categories for a while.
               </Text>
               <View style={styles.notificationPillGroup}>
@@ -402,14 +358,10 @@ export default function NotificationSettingsScreen() {
                   <TouchableOpacity
                     key={days}
                     style={styles.notificationPillButton}
-                    onPress={() =>
-                      handleSnoozeNotifications(days as 1 | 3 | 7)
-                    }
+                    onPress={() => handleSnoozeNotifications(days as 1 | 3 | 7)}
                     disabled={isPushSettingsUpdating || !retentionPrefs}
                   >
-                    <Text style={styles.notificationPillButtonText}>
-                      {days}d
-                    </Text>
+                    <Text style={styles.notificationPillButtonText}>{days}d</Text>
                   </TouchableOpacity>
                 ))}
                 {retentionPrefs?.snoozed_until && (
@@ -423,7 +375,7 @@ export default function NotificationSettingsScreen() {
                 )}
               </View>
               {snoozedUntilLabel && (
-                <Text style={styles.preferenceDescription}>
+                <Text style={styles.snoozedLabel}>
                   Snoozed until {snoozedUntilLabel}
                 </Text>
               )}
@@ -468,52 +420,78 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingHorizontal: 20,
       paddingTop: 20,
     },
-    preferenceCard: {
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    card: {
       backgroundColor: colors.surface,
       borderRadius: 16,
-      padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      overflow: 'hidden',
     },
-    preferenceRow: {
+    cardDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginLeft: 50,
+    },
+    actionButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    preferenceLeft: {
+    actionButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      flex: 1,
+      marginRight: 16,
+    },
+    actionTextContainer: {
       flex: 1,
     },
-    preferenceTitle: {
+    actionButtonTextNeutral: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.textPrimary,
-      marginBottom: 2,
     },
-    preferenceDescription: {
+    actionButtonSubtext: {
       fontSize: 13,
       color: colors.textSecondary,
+      marginTop: 2,
     },
-    preferenceDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginVertical: 16,
+    snoozeContainer: {
+      padding: 16,
+    },
+    snoozedLabel: {
+      fontSize: 13,
+      color: colors.brandPrimary,
+      marginTop: 12,
+      fontWeight: '500',
     },
     notificationPillGroup: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginTop: 10,
+      marginTop: 12,
     },
     notificationPillButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surfaceSubtle,
     },
     notificationPillButtonText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.textSecondary,
     },

@@ -35,6 +35,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import React, { useEffect, useState } from 'react'
+import { BlurView } from 'expo-blur'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Alert,
   Platform,
@@ -64,6 +66,7 @@ function formatAccessoryElapsed(seconds: number): string {
 function TabLayoutContent() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
+  const insets = useSafeAreaInsets()
   const segments = useSegments()
   const router = useRouter()
   const { scrollToTop } = useScrollToTop()
@@ -193,6 +196,11 @@ function TabLayoutContent() {
     !isTabBarHidden &&
     currentTab !== 'chat' &&
     (isRestTimerActive || hasDraft)
+  const showCustomBottomAccessory =
+    !isIOS26OrNewer &&
+    !isTabBarHidden &&
+    currentTab !== 'chat' &&
+    (isRestTimerActive || hasDraft)
   const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
     workoutElapsedSeconds,
   )}`
@@ -266,7 +274,7 @@ function TabLayoutContent() {
           <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }}
-            md="bar_chart"
+            md="trending_up"
           />
         </NativeTabs.Trigger>
 
@@ -300,7 +308,9 @@ function TabLayoutContent() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="create-post" role="search">
-          <NativeTabs.Trigger.Label hidden />
+          <NativeTabs.Trigger.Label>
+            Start
+          </NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'plus', selected: 'plus' }}
             md="add"
@@ -321,6 +331,34 @@ function TabLayoutContent() {
           </NativeTabs.BottomAccessory>
         ) : null}
       </NativeTabs>
+
+      {showCustomBottomAccessory ? (
+        <BlurView
+          intensity={80}
+          tint={isDark ? 'dark' : 'light'}
+          style={{
+            position: 'absolute',
+            bottom: insets.bottom + 49 + 10,
+            left: 16,
+            right: 16,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            overflow: 'hidden',
+						zIndex: 50,
+          }}
+        >
+          <BaseAccessoryAction
+            title={bottomAccessoryTitle}
+            textPrimary={colors.textPrimary}
+            accentColor={colors.statusSuccess}
+            onOpen={handleOpenCreatePost}
+            onDiscard={handleDiscardWorkoutProgress}
+            isInline={false}
+          />
+        </BlurView>
+      ) : null}
+
       <PostWorkoutCelebration
         visible={isCelebrationVisible}
         data={celebrationData}
@@ -338,21 +376,21 @@ function TabLayoutContent() {
   )
 }
 
-function BottomAccessoryAction({
+function BaseAccessoryAction({
   title,
   textPrimary,
   accentColor,
   onOpen,
   onDiscard,
+  isInline,
 }: {
   title: string
   textPrimary: string
   accentColor: string
   onOpen: () => void
   onDiscard: () => void
+  isInline: boolean
 }) {
-  const placement = NativeTabs.BottomAccessory.usePlacement()
-  const isInline = placement === 'inline'
   const sideSlotWidth = isInline ? 56 : 68
   const contentTranslateY = isInline ? 3 : -2
 
@@ -467,6 +505,18 @@ function BottomAccessoryAction({
       </TouchableOpacity>
     </View>
   )
+}
+
+function BottomAccessoryAction(props: {
+  title: string
+  textPrimary: string
+  accentColor: string
+  onOpen: () => void
+  onDiscard: () => void
+}) {
+  const placement = NativeTabs.BottomAccessory.usePlacement()
+  const isInline = placement === 'inline'
+  return <BaseAccessoryAction {...props} isInline={isInline} />
 }
 
 export default function TabLayout() {

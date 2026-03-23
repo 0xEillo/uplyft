@@ -3,6 +3,7 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
+import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
 import {
   getLevelColor,
@@ -1275,6 +1276,24 @@ export function StrengthBodyView({
             })}
           </View>
         </>
+
+        {/* Share/Invite Section */}
+        <View style={styles.shareSection}>
+          <Image
+            source={require("@/assets/images/train-together.png")}
+            style={styles.shareImage}
+            contentFit="contain"
+          />
+          <Text style={styles.shareTitle}>Train together. Get stronger.</Text>
+          <TouchableOpacity
+            style={styles.shareButton}
+            activeOpacity={0.8}
+            onPress={() => router.push("/invite-friends")}
+          >
+            <Ionicons name="person-add" size={18} color="#fff" />
+            <Text style={styles.shareButtonText}>Add Friends</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </>
   );
@@ -1703,5 +1722,48 @@ const createStyles = (
     unrankedCtaText: {
       fontSize: 14,
       fontWeight: "600",
+    },
+
+    // Share Section
+    shareSection: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 24,
+      marginBottom: 8,
+      paddingHorizontal: 14,
+      gap: 12,
+    },
+    shareImage: {
+      width: 320,
+      height: 320,
+      maxWidth: "100%",
+    },
+    shareTitle: {
+      fontSize: 19,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+      letterSpacing: -0.4,
+      marginBottom: 4,
+    },
+    shareButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.brandPrimary,
+      width: "100%",
+      paddingVertical: 14,
+      borderRadius: 999,
+      gap: 10,
+      shadowColor: colors.brandPrimary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    shareButtonText: {
+      color: "#fff",
+      fontSize: 17,
+      fontWeight: "700",
     },
   });

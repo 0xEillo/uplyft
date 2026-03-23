@@ -3,8 +3,8 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
-import { StrengthProgressTutorial } from '@/components/StrengthProgressTutorial'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
+import { StrengthProgressTutorial } from '@/components/StrengthProgressTutorial'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -16,12 +16,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-    Animated,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -48,7 +49,7 @@ export default function AnalyticsScreen() {
   const CONTROL_WIDTH = 210
   const TAB_WIDTH = CONTROL_WIDTH / 2
   const PILL_PADDING = 3
-  
+
   // Animation for the sliding pill indicator
   const indicatorLeft = useRef(new Animated.Value(PILL_PADDING)).current
   const strengthTutorialSeenKey = user?.id
@@ -105,7 +106,7 @@ export default function AnalyticsScreen() {
 
   const handleTabPress = useCallback((tab: BodyTab) => {
     if (tab === bodyTab) return
-    
+
     haptic('light')
     setBodyTab(tab)
     setViewMode(tab)
@@ -221,9 +222,9 @@ const createStyles = (
       flex: 1,
     },
     scrollContent: {
-      paddingBottom: 100,
+      paddingBottom: 10,
     },
-    
+
     // Segmented Control Styles
     segmentedControl: {
       flexDirection: 'row',
