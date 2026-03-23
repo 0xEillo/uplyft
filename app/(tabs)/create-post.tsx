@@ -336,8 +336,8 @@ export default function CreatePostScreen() {
   const NATIVE_KEYBOARD_EXTRA_ESCAPE = 20
   const CUSTOM_KEYBOARD_EXTRA_ESCAPE = 20
   const TOOLBAR_FALLBACK_HEIGHT = isIOS ? 60 : 50
-  // Custom keypad actual height: paddingTop(8) + 4 rows×52 + 3 gaps×8 + paddingBottom(max(inset,10)+6)
-  const CUSTOM_KEYPAD_HEIGHT = 246 + Math.max(bottomSafeInset, 10)
+  // Custom keypad actual height: paddingTop(16) + 4 rows×52 + 3 gaps×8 + paddingBottom(max(inset,10)+6)
+  const CUSTOM_KEYPAD_HEIGHT = 254 + Math.max(bottomSafeInset, 10)
 
   // Exercise history hook for creating exercises with last performance data
   const {
@@ -487,6 +487,7 @@ export default function CreatePostScreen() {
     let setsCount = 0
     structuredData.forEach((exercise) => {
       exercise.sets.forEach((set) => {
+        if (!set.isCompleted) return
         const w = parseFloat(set.weight)
         const r = parseFloat(set.reps)
         if (!Number.isNaN(r) && r > 0) {
@@ -2631,7 +2632,7 @@ export default function CreatePostScreen() {
     toolbarVisibleButtons.length > 0 &&
     (!isStructuredInputFocused || Boolean(keypadProps))
   const toolbarBottomInsetOverride =
-    keypadProps || isToolbarInsetLocked ? 0 : bottomSafeInset
+    keypadProps || isToolbarInsetLocked ? 8 : bottomSafeInset
 
   return (
     <>

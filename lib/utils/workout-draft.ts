@@ -29,6 +29,7 @@ export interface StructuredSetDraft {
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
+  isCompleted?: boolean
 }
 
 export interface StructuredExerciseDraft {

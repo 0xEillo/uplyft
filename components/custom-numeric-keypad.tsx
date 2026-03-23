@@ -256,7 +256,7 @@ const createStyles = (
         ? 'rgba(255, 255, 255, 0.2)'
         : 'rgba(255, 255, 255, 0.88)',
       paddingHorizontal: 12,
-      paddingTop: 8,
+      paddingTop: 16,
       gap: 10,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -8 },
