@@ -18,10 +18,13 @@ export function useExerciseSelection() {
   }, [])
 
   const callCallback = useCallback((exercise: Exercise | Exercise[]) => {
-    if (globalSelectionCallback) {
-      globalSelectionCallback(exercise)
-      clearCallback()
-    }
+    const callback = globalSelectionCallback
+    if (!callback) return
+
+    // Clear first so the callback can only be consumed once, even if the
+    // caller double-taps or the callback triggers more navigation.
+    clearCallback()
+    callback(exercise)
   }, [clearCallback])
 
   return {

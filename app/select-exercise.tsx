@@ -295,12 +295,8 @@ const ExerciseListItem = memo(function ExerciseListItem({
         styles.exerciseListItem,
         isDark && { backgroundColor: colors.rowTint },
       ]}
-      onPress={() =>
-        router.push({
-          pathname: '/exercise/[exerciseId]',
-          params: { exerciseId: exercise.id },
-        })
-      }
+      onPress={onSelect}
+      disabled={isCurrentExercise}
     >
       <ExerciseMediaThumbnail
         gifUrl={exercise.gif_url}
@@ -355,6 +351,23 @@ const ExerciseListItem = memo(function ExerciseListItem({
           />
         </TouchableOpacity>
         <TouchableOpacity
+          style={styles.listItemInfoButton}
+          onPress={(e) => {
+            e.stopPropagation()
+            router.push({
+              pathname: '/exercise/[exerciseId]',
+              params: { exerciseId: exercise.id },
+            })
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={22}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.listItemCheckbox}
           onPress={(e) => {
             e.stopPropagation()
@@ -363,9 +376,17 @@ const ExerciseListItem = memo(function ExerciseListItem({
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           disabled={isCurrentExercise}
         >
-          {!isSelected && !isCurrentExercise ? (
-            <Ionicons name="add" size={22} color={colors.textTertiary} />
-          ) : null}
+          <Ionicons
+            name={
+              isCurrentExercise || isSelected ? 'checkmark-circle' : 'add'
+            }
+            size={22}
+            color={
+              isCurrentExercise || isSelected
+                ? colors.brandPrimary
+                : colors.textTertiary
+            }
+          />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -429,7 +450,7 @@ export default function SelectExerciseScreen() {
   const { currentExerciseName } = useLocalSearchParams<{
     currentExerciseName?: string
   }>()
-  const { callCallback } = useExerciseSelection()
+  const { callCallback, clearCallback } = useExerciseSelection()
   const { isProMember } = useSubscription()
   const { user } = useAuth()
 
@@ -460,6 +481,7 @@ export default function SelectExerciseScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
+  const selectionCommittedRef = useRef(false)
 
   // Use cached exercises hook with recent exercises support
   const {
@@ -630,6 +652,8 @@ export default function SelectExerciseScreen() {
         })
       } else {
         // Single select mode (return immediately)
+        if (selectionCommittedRef.current) return
+        selectionCommittedRef.current = true
         callCallback(exercise)
         router.back()
       }
@@ -638,9 +662,10 @@ export default function SelectExerciseScreen() {
   )
 
   const handleConfirmSelection = useCallback(() => {
-    if (selectedIds.size === 0) return
+    if (selectionCommittedRef.current || selectedIds.size === 0) return
 
     const selectedExercises = exercises.filter((e) => selectedIds.has(e.id))
+    selectionCommittedRef.current = true
     callCallback(selectedExercises)
     router.back()
   }, [selectedIds, exercises, callCallback, router])
@@ -667,8 +692,11 @@ export default function SelectExerciseScreen() {
 
   const handleBack = useCallback(() => {
     haptic('light')
+    if (!selectionCommittedRef.current) {
+      clearCallback()
+    }
     setShouldExit(true)
-  }, [])
+  }, [clearCallback])
 
   const handleExitComplete = useCallback(() => {
     router.back()
@@ -1406,6 +1434,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   listItemFavoriteButton: {
+    padding: 4,
+  },
+  listItemInfoButton: {
     padding: 4,
   },
   listItemCheckbox: {
