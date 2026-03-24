@@ -62,18 +62,31 @@ export default function SignupOptionsScreen() {
 
     const displayName = resolveOnboardingDisplayName(onboardingData.name)
     const userTagBase = resolveUserTagBase(displayName)
+    const existingProfile = await database.profiles
+      .getByIdOrNull(userId)
+      .catch((error) => {
+        console.warn(
+          '[SignupOptions] Failed to load existing profile before onboarding sync.',
+          error,
+        )
+        return null
+      })
 
-    let userTag: string | null = null
-    try {
-      userTag = await database.profiles.generateUniqueUserTag(userTagBase)
-    } catch (tagError) {
-      console.warn(
-        '[SignupOptions] Failed to generate user tag from onboarding name. Keeping existing tag.',
-        tagError,
-      )
+    let userTag: string | null = existingProfile?.user_tag ?? null
+    if (!userTag) {
+      try {
+        userTag = await database.profiles.generateUniqueUserTag(userTagBase)
+      } catch (tagError) {
+        console.warn(
+          '[SignupOptions] Failed to generate user tag from onboarding name. Falling back to Athlete.',
+          tagError,
+        )
+        userTag = await database.profiles.generateUniqueUserTag('Athlete')
+      }
     }
 
     const profileUpdates: {
+      id: string
       user_tag?: string
       display_name: string
       gender: Gender | null
@@ -86,6 +99,7 @@ export default function SignupOptionsScreen() {
       experience_level: ExperienceLevel | null
       bio: string | null
     } = {
+      id: userId,
       display_name: displayName,
       gender: onboardingData.gender,
       height_cm: onboardingData.height_cm,
@@ -104,11 +118,9 @@ export default function SignupOptionsScreen() {
       bio: onboardingData.bio,
     }
 
-    if (userTag) {
-      profileUpdates.user_tag = userTag
-    }
+    profileUpdates.user_tag = userTag
 
-    await database.profiles.update(userId, profileUpdates)
+    await database.profiles.upsert(profileUpdates)
   }
 
   const handleAppleSignup = async () => {

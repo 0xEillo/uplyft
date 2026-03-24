@@ -520,6 +520,18 @@ export const database = {
       return data as Profile
     },
 
+    async upsert(profile: Partial<Profile> & Pick<Profile, 'id'>) {
+      const sanitizedProfile = sanitizeProfileUpdates(profile)
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(sanitizedProfile)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as Profile
+    },
+
     async searchByUserTag(userTag: string) {
       const { data, error } = await supabase
         .from('profiles')

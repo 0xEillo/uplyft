@@ -36,7 +36,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
 )
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, isAuthTransitioning } = useAuth()
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null)
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -170,6 +170,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           const { customerInfo: info } = await Purchases.logIn(user.id)
           setCustomerInfo(info)
         } else {
+          // Avoid detaching the purchaser during auth handoff.
+          // Sign-in flows can briefly clear the auth user before the next
+          // identified session lands, and logging out RevenueCat in that window
+          // drops the just-purchased entitlement.
+          if (isAuthTransitioning) {
+            return
+          }
           if (currentAppUserId.startsWith('$RCAnonymousID')) {
             return
           }
@@ -182,7 +189,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     syncRevenueCatUser()
-  }, [user?.id, isLoading, hasConfigured]) // Run when user ID changes or initialization completes
+  }, [user?.id, isAuthTransitioning, isLoading, hasConfigured]) // Run when user ID changes or initialization completes
 
   // Check if user has Pro entitlement (case-sensitive: must match RevenueCat dashboard)
   const proEntitlement = customerInfo?.entitlements.active['Pro']

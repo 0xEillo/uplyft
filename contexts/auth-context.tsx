@@ -22,6 +22,7 @@ interface AuthContextType {
   session: Session | null
   isLoading: boolean
   isAnonymous: boolean
+  isAuthTransitioning: boolean
   signUp: (email: string, password: string) => Promise<{ userId: string }>
   signIn: (email: string, password: string) => Promise<void>
   signInAnonymously: () => Promise<{ userId: string }>
@@ -84,9 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [authTransitionCount, setAuthTransitionCount] = useState(0)
 
   // Check if user is anonymous (guest mode)
   const isAnonymous = user?.is_anonymous === true
+  const isAuthTransitioning = authTransitionCount > 0
 
   useEffect(() => {
     // Get initial session (works offline - Supabase caches session locally)
@@ -150,6 +153,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const runDuringAuthTransition = async <T,>(operation: () => Promise<T>) => {
+    setAuthTransitionCount((count) => count + 1)
+
+    try {
+      return await operation()
+    } finally {
+      setAuthTransitionCount((count) => Math.max(0, count - 1))
+    }
+  }
+
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -174,16 +187,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    await runDuringAuthTransition(async () => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) throw error
+      if (error) throw error
 
-    mixpanel.track('Auth Login', {
-      method: 'password',
-      email: email.toLowerCase(),
+      mixpanel.track('Auth Login', {
+        method: 'password',
+        email: email.toLowerCase(),
+      })
     })
   }
 
@@ -250,53 +265,124 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGoogle = async (signInOnly = false) => {
-    const redirectUrl = makeRedirectUri({
-      scheme: 'repai',
-      path: 'auth/callback',
-    })
+    await runDuringAuthTransition(async () => {
+      const redirectUrl = makeRedirectUri({
+        scheme: 'repai',
+        path: 'auth/callback',
+      })
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-      },
-    })
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      })
 
-    if (error) {
-      throw error
+      if (error) {
+        throw error
+      }
+
+      if (!data.url) {
+        throw new Error('No OAuth URL generated')
+      }
+
+      // Open OAuth in browser - works with standalone builds only
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
+
+      if (result.type === 'success' && result.url) {
+        // Parse tokens from URL
+        const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
+        const queryParams = new URLSearchParams(
+          result.url.split('?')[1]?.split('#')[0] || '',
+        )
+
+        const accessToken =
+          hashParams.get('access_token') || queryParams.get('access_token')
+        const refreshToken =
+          hashParams.get('refresh_token') || queryParams.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+          const { data: sessionData } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+
+          // If signInOnly mode, check if this is a new account
+          if (signInOnly && sessionData.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', sessionData.user.id)
+              .single()
+
+            // If no profile exists, this is a new account - reject it
+            if (!profile) {
+              // Sign out the newly created user
+              await supabase.auth.signOut()
+              throw new Error(
+                "It looks like you don't have an account yet. Please sign up first.",
+              )
+            }
+          }
+
+          await syncProviderAvatarIfMissing(sessionData.user ?? null)
+
+          mixpanel.track('Auth Login', {
+            method: 'google',
+          })
+        } else {
+          throw new Error('No tokens received from OAuth')
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        throw new Error('Sign in cancelled')
+      } else {
+        throw new Error('Sign in failed')
+      }
+    })
+  }
+
+  const signInWithApple = async (signInOnly = false) => {
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In is only available on iOS')
     }
 
-    if (!data.url) {
-      throw new Error('No OAuth URL generated')
-    }
+    await runDuringAuthTransition(async () => {
+      try {
+        // Generate and hash nonce
+        const nonce = Math.random().toString(36).substring(2, 10)
+        const hashedNonce = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          nonce,
+        )
 
-    // Open OAuth in browser - works with standalone builds only
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-
-    if (result.type === 'success' && result.url) {
-      // Parse tokens from URL
-      const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
-      const queryParams = new URLSearchParams(
-        result.url.split('?')[1]?.split('#')[0] || '',
-      )
-
-      const accessToken =
-        hashParams.get('access_token') || queryParams.get('access_token')
-      const refreshToken =
-        hashParams.get('refresh_token') || queryParams.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        const { data: sessionData } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+        // Request Apple authentication
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+          nonce: hashedNonce,
         })
 
+        if (!credential.identityToken) {
+          throw new Error('No identity token received from Apple')
+        }
+
+        // Sign in to Supabase with Apple token
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: credential.identityToken,
+          nonce,
+        })
+
+        if (error) throw error
+
         // If signInOnly mode, check if this is a new account
-        if (signInOnly && sessionData.user) {
+        if (signInOnly && data.user) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('id')
-            .eq('id', sessionData.user.id)
+            .eq('id', data.user.id)
             .single()
 
           // If no profile exists, this is a new account - reject it
@@ -309,83 +395,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        await syncProviderAvatarIfMissing(sessionData.user ?? null)
+        await syncProviderAvatarIfMissing(data.user ?? null)
 
         mixpanel.track('Auth Login', {
-          method: 'google',
+          method: 'apple',
         })
-      } else {
-        throw new Error('No tokens received from OAuth')
-      }
-    } else if (result.type === 'cancel' || result.type === 'dismiss') {
-      throw new Error('Sign in cancelled')
-    }
-  }
-
-  const signInWithApple = async (signInOnly = false) => {
-    if (Platform.OS !== 'ios') {
-      throw new Error('Apple Sign-In is only available on iOS')
-    }
-
-    try {
-      // Generate and hash nonce
-      const nonce = Math.random().toString(36).substring(2, 10)
-      const hashedNonce = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        nonce,
-      )
-
-      // Request Apple authentication
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-        nonce: hashedNonce,
-      })
-
-      if (!credential.identityToken) {
-        throw new Error('No identity token received from Apple')
-      }
-
-      // Sign in to Supabase with Apple token
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'apple',
-        token: credential.identityToken,
-        nonce,
-      })
-
-      if (error) throw error
-
-      // If signInOnly mode, check if this is a new account
-      if (signInOnly && data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', data.user.id)
-          .single()
-
-        // If no profile exists, this is a new account - reject it
-        if (!profile) {
-          // Sign out the newly created user
-          await supabase.auth.signOut()
-          throw new Error(
-            "It looks like you don't have an account yet. Please sign up first.",
-          )
+      } catch (e) {
+        if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
+          throw new Error('Sign in cancelled')
         }
+        throw e
       }
-
-      await syncProviderAvatarIfMissing(data.user ?? null)
-
-      mixpanel.track('Auth Login', {
-        method: 'apple',
-      })
-    } catch (e) {
-      if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
-        throw new Error('Sign in cancelled')
-      }
-      throw e
-    }
+    })
   }
 
   // Link anonymous account with Google (upgrade to permanent)
@@ -394,63 +415,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Can only link from anonymous account')
     }
 
-    const redirectUrl = makeRedirectUri({
-      scheme: 'repai',
-      path: 'auth/callback',
-    })
+    await runDuringAuthTransition(async () => {
+      const redirectUrl = makeRedirectUri({
+        scheme: 'repai',
+        path: 'auth/callback',
+      })
 
-    const { data, error } = await supabase.auth.linkIdentity({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-      },
-    })
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      })
 
-    if (error) throw error
+      if (error) throw error
 
-    if (!data.url) {
-      throw new Error('No OAuth URL generated')
-    }
-
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-
-    if (result.type === 'success' && result.url) {
-      const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
-      const queryParams = new URLSearchParams(
-        result.url.split('?')[1]?.split('#')[0] || '',
-      )
-
-      const accessToken =
-        hashParams.get('access_token') || queryParams.get('access_token')
-      const refreshToken =
-        hashParams.get('refresh_token') || queryParams.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        const { data: sessionData } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
-
-        await syncProviderAvatarIfMissing(sessionData.user ?? null)
-
-        mixpanel.track('Auth Account Linked', {
-          method: 'google',
-        })
-
-        // Log to Facebook for ad attribution (account link = registration)
-        FacebookEvents.logCompletedRegistration('google')
-        if (sessionData.user) {
-          FacebookEvents.setUserID(sessionData.user.id)
-          if (sessionData.user.email) {
-            FacebookEvents.setUserData({ email: sessionData.user.email.toLowerCase() })
-          }
-        }
-      } else {
-        throw new Error('No tokens received from OAuth')
+      if (!data.url) {
+        throw new Error('No OAuth URL generated')
       }
-    } else if (result.type === 'cancel' || result.type === 'dismiss') {
-      throw new Error('Account linking cancelled')
-    }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
+
+      if (result.type === 'success' && result.url) {
+        const hashParams = new URLSearchParams(result.url.split('#')[1] || '')
+        const queryParams = new URLSearchParams(
+          result.url.split('?')[1]?.split('#')[0] || '',
+        )
+
+        const accessToken =
+          hashParams.get('access_token') || queryParams.get('access_token')
+        const refreshToken =
+          hashParams.get('refresh_token') || queryParams.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+          const { data: sessionData } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+
+          await syncProviderAvatarIfMissing(sessionData.user ?? null)
+
+          mixpanel.track('Auth Account Linked', {
+            method: 'google',
+          })
+
+          // Log to Facebook for ad attribution (account link = registration)
+          FacebookEvents.logCompletedRegistration('google')
+          if (sessionData.user) {
+            FacebookEvents.setUserID(sessionData.user.id)
+            if (sessionData.user.email) {
+              FacebookEvents.setUserData({ email: sessionData.user.email.toLowerCase() })
+            }
+          }
+        } else {
+          throw new Error('No tokens received from OAuth')
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        throw new Error('Account linking cancelled')
+      } else {
+        throw new Error('Account linking failed')
+      }
+    })
   }
 
   // Link anonymous account with Apple (upgrade to permanent)
@@ -463,68 +488,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Can only link from anonymous account')
     }
 
-    try {
-      const nonce = Math.random().toString(36).substring(2, 10)
-      const hashedNonce = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        nonce,
-      )
-
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-        nonce: hashedNonce,
-      })
-
-      if (!credential.identityToken) {
-        throw new Error('No identity token received from Apple')
-      }
-
-      // Use linkIdentity for Apple
-      const { error } = await supabase.auth.linkIdentity({
-        provider: 'apple',
-        options: {
-          skipBrowserRedirect: true,
-        },
-      })
-
-      // If linkIdentity doesn't work for native Apple, fall back to updating user
-      if (error) {
-        // Alternative: sign in with the Apple token to merge
-        const { error: signInError } = await supabase.auth.signInWithIdToken({
-          provider: 'apple',
-          token: credential.identityToken,
+    await runDuringAuthTransition(async () => {
+      try {
+        const nonce = Math.random().toString(36).substring(2, 10)
+        const hashedNonce = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
           nonce,
+        )
+
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+          nonce: hashedNonce,
         })
 
-        if (signInError) throw signInError
-      }
-
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser()
-      await syncProviderAvatarIfMissing(authUser ?? user ?? null)
-
-      mixpanel.track('Auth Account Linked', {
-        method: 'apple',
-      })
-
-      // Log to Facebook for ad attribution (account link = registration)
-      FacebookEvents.logCompletedRegistration('apple')
-      if (user) {
-        FacebookEvents.setUserID(user.id)
-        if (user.email) {
-          FacebookEvents.setUserData({ email: user.email.toLowerCase() })
+        if (!credential.identityToken) {
+          throw new Error('No identity token received from Apple')
         }
+
+        // Use linkIdentity for Apple
+        const { error } = await supabase.auth.linkIdentity({
+          provider: 'apple',
+          options: {
+            skipBrowserRedirect: true,
+          },
+        })
+
+        // If linkIdentity doesn't work for native Apple, fall back to updating user
+        if (error) {
+          // Alternative: sign in with the Apple token to merge
+          const { error: signInError } = await supabase.auth.signInWithIdToken({
+            provider: 'apple',
+            token: credential.identityToken,
+            nonce,
+          })
+
+          if (signInError) throw signInError
+        }
+
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        await syncProviderAvatarIfMissing(authUser ?? user ?? null)
+
+        mixpanel.track('Auth Account Linked', {
+          method: 'apple',
+        })
+
+        // Log to Facebook for ad attribution (account link = registration)
+        FacebookEvents.logCompletedRegistration('apple')
+        if (user) {
+          FacebookEvents.setUserID(user.id)
+          if (user.email) {
+            FacebookEvents.setUserData({ email: user.email.toLowerCase() })
+          }
+        }
+      } catch (e) {
+        if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
+          throw new Error('Account linking cancelled')
+        }
+        throw e
       }
-    } catch (e) {
-      if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
-        throw new Error('Account linking cancelled')
-      }
-      throw e
-    }
+    })
   }
 
   // Link anonymous account with email/password (upgrade to permanent)
@@ -533,25 +560,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Can only link from anonymous account')
     }
 
-    // Update the anonymous user with email and password
-    const { error } = await supabase.auth.updateUser({
-      email,
-      password,
+    await runDuringAuthTransition(async () => {
+      // Update the anonymous user with email and password
+      const { error } = await supabase.auth.updateUser({
+        email,
+        password,
+      })
+
+      if (error) throw error
+
+      mixpanel.track('Auth Account Linked', {
+        method: 'email',
+        email: email.toLowerCase(),
+      })
+
+      // Log to Facebook for ad attribution (account link = registration)
+      FacebookEvents.logCompletedRegistration('email')
+      if (user) {
+        FacebookEvents.setUserID(user.id)
+        FacebookEvents.setUserData({ email: email.toLowerCase() })
+      }
     })
-
-    if (error) throw error
-
-    mixpanel.track('Auth Account Linked', {
-      method: 'email',
-      email: email.toLowerCase(),
-    })
-
-    // Log to Facebook for ad attribution (account link = registration)
-    FacebookEvents.logCompletedRegistration('email')
-    if (user) {
-      FacebookEvents.setUserID(user.id)
-      FacebookEvents.setUserData({ email: email.toLowerCase() })
-    }
   }
 
   const signOut = async () => {
@@ -575,6 +604,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isLoading,
         isAnonymous,
+        isAuthTransitioning,
         signUp,
         signIn,
         signInAnonymously,

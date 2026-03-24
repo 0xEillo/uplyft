@@ -624,12 +624,12 @@ function getWelcomeMessage(coachId: string, userName?: string): string {
 
   switch (coachId) {
     case 'kino':
-      return `Hey${name}. This is your training hub — no fluff, just results. Ask me to build your workout, swap exercises, or coach your technique. Log meals and I'll track your calories and macros in real time. Tap ⚡ Generate Workout, or tell me what you're training today.`
+      return `Hey${name}. Let's plan your first workout together. Tell me what you want to train, what equipment you have, or how much time you've got, and I'll build the session with you. Tap ⚡ Generate Workout below or just type your goal.`
     case 'maya':
-      return `Hey${name}! ✨ Think of this as your personal fitness co-pilot. I can build your workouts, log your meals, track your calories and macros, and answer any training or nutrition question — just ask! Hit ⚡ Generate Workout to kick things off, or type anything to get started.`
+      return `Hey${name}! ✨ Let's plan your first workout together. Tell me what you want to focus on, how long you want to train, or what equipment you have, and I'll map it out with you. Hit ⚡ Generate Workout below or send me a quick goal to get started.`
     case 'ross':
     default:
-      return `Hey${name}. I'm here to make every session count. Ask me to generate a workout plan, log a meal, track your daily calories and macros, break down your form, or anything fitness-related. Use the quick buttons below, or just type — I'm ready when you are.`
+      return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Use ⚡ Generate Workout below or type your goal when you're ready.`
   }
 }
 

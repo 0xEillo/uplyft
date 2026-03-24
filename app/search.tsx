@@ -18,7 +18,6 @@ import {
   Alert,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -308,179 +307,173 @@ export default function SearchScreen() {
           />
         </BlurredHeader>
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View
-              style={[
-                styles.contentWrapper,
-                { paddingTop: insets.top + NAVBAR_HEIGHT },
-              ]}
-            >
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color={colors.textSecondary}
-                  style={styles.searchIcon}
-                />
-                <TextInput
-                  style={styles.searchInput}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search for friends on Rep AI"
-                  placeholderTextColor={colors.textPlaceholder}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="search"
-                  blurOnSubmit
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setSearchQuery('')}
-                    style={styles.clearButton}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Results */}
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.brandPrimary} />
-                </View>
-              ) : !trimmedQuery ? (
-                <View style={styles.emptyContainer}>
-                  <EmptyState
-                    icon="search-outline"
-                    title="Find athletes"
-                    description="Search for friends or other lifters to follow and stay updated on their progress."
-                  />
-                </View>
-              ) : users.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <EmptyState
-                    icon="person-remove-outline"
-                    title="No users found"
-                    description={`We couldn't find any athletes matching "${trimmedQuery}".`}
-                    buttonText="Invite Friends"
-                    onPress={handleInvite}
-                  />
-                </View>
-              ) : (
-                <ScrollView
-                  style={styles.userList}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="interactive"
-                  contentContainerStyle={styles.userListContent}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View
+            style={[
+              styles.contentWrapper,
+              { paddingTop: insets.top + NAVBAR_HEIGHT },
+            ]}
+          >
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={20}
+                color={colors.textSecondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search for friends on Rep AI"
+                placeholderTextColor={colors.textPlaceholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
                 >
-                  {/* Results Header */}
-                  <View style={styles.resultsHeader}>
-                    <Text style={styles.resultsCount}>
-                      {users.length} ATHLETE{users.length !== 1 ? 'S' : ''} TO
-                      FOLLOW
-                    </Text>
-                  </View>
-
-                  {/* User List */}
-                  {users.map((userProfile) => (
-                    <TouchableOpacity
-                      key={userProfile.id}
-                      style={styles.userItem}
-                      onPress={() => handleNavigateToProfile(userProfile.id)}
-                    >
-                      <View style={styles.userAvatar}>
-                        {userProfile.avatar_url ? (
-                          <Image
-                            source={{ uri: userProfile.avatar_url }}
-                            style={styles.avatarImage}
-                          />
-                        ) : (
-                          <View style={styles.avatarPlaceholder}>
-                            <Text style={styles.avatarText}>
-                              {userProfile.display_name[0]?.toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.userInfo}>
-                        <Text style={styles.displayName}>
-                          {userProfile.display_name}
-                        </Text>
-                        <Text style={styles.userTag}>
-                          @{userProfile.user_tag}
-                        </Text>
-                      </View>
-                      {(() => {
-                        const isBusy = followingInProgress.has(userProfile.id)
-                        const isPending = userProfile.hasPendingRequest
-                        const hasIncoming = userProfile.hasIncomingRequest
-                        const buttonLabel = hasIncoming
-                          ? 'Requested you'
-                          : isPending
-                          ? 'Pending'
-                          : userProfile.isFollowing
-                          ? 'Following'
-                          : userProfile.isPrivate
-                          ? 'Request'
-                          : 'Follow'
-
-                        const buttonStyles = [
-                          styles.followButton,
-                          userProfile.isFollowing && styles.followingButton,
-                          (isPending || hasIncoming) && styles.pendingButton,
-                        ]
-
-                        const textStyles = [
-                          styles.followButtonText,
-                          userProfile.isFollowing && styles.followingButtonText,
-                          (isPending || hasIncoming) &&
-                            styles.pendingButtonText,
-                        ]
-
-                        return (
-                          <TouchableOpacity
-                            style={buttonStyles}
-                            onPress={(e) => {
-                              e.stopPropagation()
-                              if (hasIncoming) {
-                                handleReviewRequests()
-                                return
-                              }
-                              if (isPending) {
-                                return
-                              }
-                              handleToggleFollow(userProfile)
-                            }}
-                            disabled={isBusy || isPending}
-                          >
-                            {isBusy ? (
-                              <ActivityIndicator
-                                size="small"
-                                color={colors.brandPrimary}
-                              />
-                            ) : (
-                              <Text style={textStyles}>{buttonLabel}</Text>
-                            )}
-                          </TouchableOpacity>
-                        )
-                      })()}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               )}
             </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+
+            {/* Results */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.brandPrimary} />
+              </View>
+            ) : !trimmedQuery ? (
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon="search-outline"
+                  title="Find athletes"
+                  description="Search for friends or other lifters to follow and stay updated on their progress."
+                />
+              </View>
+            ) : users.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon="person-remove-outline"
+                  title="No users found"
+                  description={`We couldn't find any athletes matching "${trimmedQuery}".`}
+                  buttonText="Invite Friends"
+                  onPress={handleInvite}
+                />
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.userList}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                contentContainerStyle={styles.userListContent}
+              >
+                {/* Results Header */}
+                <View style={styles.resultsHeader}>
+                  <Text style={styles.resultsCount}>
+                    {users.length} ATHLETE{users.length !== 1 ? 'S' : ''} TO
+                    FOLLOW
+                  </Text>
+                </View>
+
+                {/* User List */}
+                {users.map((userProfile) => (
+                  <TouchableOpacity
+                    key={userProfile.id}
+                    style={styles.userItem}
+                    onPress={() => handleNavigateToProfile(userProfile.id)}
+                  >
+                    <View style={styles.userAvatar}>
+                      {userProfile.avatar_url ? (
+                        <Image
+                          source={{ uri: userProfile.avatar_url }}
+                          style={styles.avatarImage}
+                        />
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarText}>
+                            {userProfile.display_name[0]?.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.displayName}>
+                        {userProfile.display_name}
+                      </Text>
+                      <Text style={styles.userTag}>
+                        @{userProfile.user_tag}
+                      </Text>
+                    </View>
+                    {(() => {
+                      const isBusy = followingInProgress.has(userProfile.id)
+                      const isPending = userProfile.hasPendingRequest
+                      const hasIncoming = userProfile.hasIncomingRequest
+                      const buttonLabel = hasIncoming
+                        ? 'Requested you'
+                        : isPending
+                        ? 'Pending'
+                        : userProfile.isFollowing
+                        ? 'Following'
+                        : userProfile.isPrivate
+                        ? 'Request'
+                        : 'Follow'
+
+                      const buttonStyles = [
+                        styles.followButton,
+                        userProfile.isFollowing && styles.followingButton,
+                        (isPending || hasIncoming) && styles.pendingButton,
+                      ]
+
+                      const textStyles = [
+                        styles.followButtonText,
+                        userProfile.isFollowing && styles.followingButtonText,
+                        (isPending || hasIncoming) && styles.pendingButtonText,
+                      ]
+
+                      return (
+                        <TouchableOpacity
+                          style={buttonStyles}
+                          onPress={(e) => {
+                            e.stopPropagation()
+                            if (hasIncoming) {
+                              handleReviewRequests()
+                              return
+                            }
+                            if (isPending) {
+                              return
+                            }
+                            handleToggleFollow(userProfile)
+                          }}
+                          disabled={isBusy || isPending}
+                        >
+                          {isBusy ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={colors.brandPrimary}
+                            />
+                          ) : (
+                            <Text style={textStyles}>{buttonLabel}</Text>
+                          )}
+                        </TouchableOpacity>
+                      )
+                    })()}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Bottom Invite Section */}
         <View style={styles.inviteSection}>

@@ -2,6 +2,7 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
+import { syncLinkedProfile } from '@/lib/account-linking'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
@@ -29,7 +30,7 @@ export default function PostPaywallSignupScreen() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
-  const { signInWithGoogle, signInWithApple } = useAuth()
+  const { user, linkWithGoogle, linkWithApple } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
   const isAnyLoading = isGoogleLoading || isAppleLoading
@@ -55,13 +56,17 @@ export default function PostPaywallSignupScreen() {
   const handleAppleSignUp = async () => {
     setIsAppleLoading(true)
     try {
-      await signInWithApple(true)
+      const previousUserId = user?.id
+      await linkWithApple()
+      await syncLinkedProfile(previousUserId)
       await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign Up Failed',
-        error instanceof Error ? error.message : 'Failed to sign up with Apple',
+        'Account Setup Failed',
+        error instanceof Error
+          ? error.message
+          : 'Failed to connect your Apple account',
       )
     } finally {
       setIsAppleLoading(false)
@@ -71,15 +76,17 @@ export default function PostPaywallSignupScreen() {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true)
     try {
-      await signInWithGoogle(true)
+      const previousUserId = user?.id
+      await linkWithGoogle()
+      await syncLinkedProfile(previousUserId)
       await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign Up Failed',
+        'Account Setup Failed',
         error instanceof Error
           ? error.message
-          : 'Failed to sign up with Google',
+          : 'Failed to connect your Google account',
       )
     } finally {
       setIsGoogleLoading(false)

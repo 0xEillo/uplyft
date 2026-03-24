@@ -1,6 +1,7 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { HapticButton } from '@/components/haptic-button'
 import { LevelBadge } from '@/components/LevelBadge'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -15,6 +16,7 @@ import {
     getStrengthStandard,
     type StrengthLevel,
 } from '@/lib/strength-standards'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -34,6 +36,21 @@ import ConfettiCannon from 'react-native-confetti-cannon'
 import Svg, { Circle, Defs, Ellipse, Line, Path, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+
+const LEVEL_ORDER: StrengthLevel[] = [
+  'Beginner',
+  'Novice',
+  'Intermediate',
+  'Advanced',
+  'Elite',
+  'World Class',
+]
+
+const BADGE_GRID_GAP = 12
+const BADGE_GRID_H_PADDING = 0 // handled by parent padding
+const BADGE_TILE_SIZE = Math.floor(
+  (SCREEN_WIDTH - 48 - BADGE_GRID_H_PADDING * 2 - BADGE_GRID_GAP * 2) / 3,
+)
 
 const FEATURED_EXERCISES = [
   'Bench Press (Barbell)',
@@ -586,23 +603,42 @@ export function StrengthLevelIntroStep({
   const renderResultPhase = () => {
     if (!calculatedLevel || !selectedExercise || !gender) return null
 
-    const ladder = getStandardsLadder(selectedExercise.name, gender)
-    if (!ladder) return null
+    const currentLevel = calculatedLevel.level
+    const currentLevelIndex = LEVEL_ORDER.indexOf(currentLevel)
+    const isUnranked = currentLevel === 'Untrained'
+    const unlockedCount = isUnranked ? 0 : currentLevelIndex + 1
+    const lockedCount = LEVEL_ORDER.length - unlockedCount
+    const levelColor = LEVEL_COLORS[currentLevel]
+    const estimated1RMDisplay = Math.round(
+      weightUnit === 'lb'
+        ? calculatedLevel.estimated1RM * 2.20462
+        : calculatedLevel.estimated1RM,
+    )
 
-    const currentLevelIndex = ladder.findIndex((s: any) => s.level === calculatedLevel.level)
+    // Build a level → target 1RM weight map from the standards ladder
+    const ladder = getStandardsLadder(selectedExercise.name, gender)
+    const levelWeightMap: Partial<Record<string, number>> = {}
+    if (ladder) {
+      for (const standard of ladder) {
+        const targetKg = weightKg * standard.multiplier
+        levelWeightMap[standard.level] = Math.round(
+          weightUnit === 'lb' ? targetKg * 2.20462 : targetKg,
+        )
+      }
+    }
 
     return (
       <View style={styles.phaseContainer}>
         <ConfettiCannon
           ref={confettiRef}
-          count={100}
+          count={120}
           origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
           autoStart={false}
           fadeOut
           explosionSpeed={350}
           fallSpeed={3000}
           colors={[
-            calculatedLevel.color,
+            levelColor,
             '#FFD700',
             '#FFA500',
             '#FF6B35',
@@ -611,122 +647,162 @@ export function StrengthLevelIntroStep({
           ]}
         />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.resultScrollContent}
-        >
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Congrats! You got your first rank.
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -4 }}>
-              <Text style={{ fontSize: 18, color: colors.textSecondary }}>
-                Estimated 1RM:
-              </Text>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginLeft: 6 }}>
-                {Math.round(weightUnit === 'lb' ? calculatedLevel.estimated1RM * 2.20462 : calculatedLevel.estimated1RM)} {weightUnit}
-              </Text>
+        {/* Title — pinned to top */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            You&apos;re ranked.
+          </Text>
+          <Text style={{ fontSize: 16, color: colors.textSecondary, marginTop: 2 }}>
+            {unlockedCount} unlocked · {lockedCount} locked
+          </Text>
+        </View>
+
+        {/* Content — centered in remaining space between title and footer */}
+        <View style={styles.resultCenteredContent}>
+          {/* Hero current-level card — mirrors LifterLevelsSheet */}
+          <LiquidGlassSurface
+            style={[
+              styles.resultHeroCard,
+              { borderColor: levelColor, borderWidth: 2 },
+            ]}
+            debugLabel="onboarding-rank-hero"
+          >
+            <LinearGradient
+              colors={
+                isDark
+                  ? [`${levelColor}10`, `${levelColor}03`]
+                  : [`${levelColor}15`, `${levelColor}05`]
+              }
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              pointerEvents="none"
+            />
+            <View style={styles.resultHeroRow}>
+              <View style={styles.resultHeroCopy}>
+                <Text style={styles.resultHeroLabel}>Your Rank</Text>
+                <Text style={[styles.resultHeroLevelName, { color: colors.textPrimary }]}>
+                  {isUnranked ? 'Unranked' : currentLevel}
+                </Text>
+                <Text style={[styles.resultHeroSub, { color: colors.textSecondary }]}>
+                  Est. 1RM: {estimated1RMDisplay} {weightUnit}
+                </Text>
+              </View>
+              <View style={styles.resultHeroBadgeWrap}>
+                <LevelBadge
+                  level={currentLevel as any}
+                  size="hero"
+                  showTooltipOnPress={false}
+                />
+              </View>
             </View>
+          </LiquidGlassSurface>
+
+          {/* All-levels badge grid — mirrors LifterLevelsSheet grid */}
+          <View style={styles.resultGridHeader}>
+            <Text style={[styles.resultGridTitle, { color: colors.textPrimary }]}>All levels</Text>
           </View>
 
+          <View style={styles.resultGrid}>
+            {LEVEL_ORDER.map((level, index) => {
+              const isLocked = isUnranked || index > currentLevelIndex
+              const isCurrent = !isUnranked && index === currentLevelIndex
+              const tileColor = LEVEL_COLORS[level]
+              const tileStatusLabel = isCurrent ? 'Current' : isLocked ? 'Locked' : 'Unlocked'
+              const tileStatusIcon: 'star' | 'lock-closed' | 'checkmark-circle' = isCurrent
+                ? 'star'
+                : isLocked
+                ? 'lock-closed'
+                : 'checkmark-circle'
+              const tileStatusColor = isLocked ? colors.textTertiary : tileColor
+              const tilePillBg = isLocked
+                ? isDark
+                  ? 'rgba(255,255,255,0.22)'
+                  : 'rgba(0,0,0,0.10)'
+                : `${tileColor}33`
 
+              return (
+                <LiquidGlassSurface
+                  key={level}
+                  style={[
+                    styles.resultBadgeTile,
+                    isLocked && styles.resultBadgeTileLocked,
+                    !isLocked && styles.resultBadgeTileUnlocked,
+                    !isLocked && { borderColor: tileColor, borderWidth: 2 },
+                  ]}
+                  debugLabel={`onboarding-rank-${level.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  {!isLocked && (
+                    <LinearGradient
+                      colors={[`${tileColor}36`, 'transparent']}
+                      style={StyleSheet.absoluteFill}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      pointerEvents="none"
+                    />
+                  )}
 
-          {/* Levels Ladder Section - matching ExerciseDetailScreen */}
-          <View style={styles.ladderSection}>
-
-
-            <View style={styles.levelsLadder}>
-              {[...ladder].reverse().map((standard, idx) => {
-                const actualIndex = ladder.length - 1 - idx
-                const isCurrent = currentLevelIndex === actualIndex
-                const isLocked = currentLevelIndex < actualIndex
-                const targetWeight = Math.ceil(weightKg * standard.multiplier)
-                
-                const displayWeight = isCurrent 
-                  ? calculatedLevel.estimated1RM 
-                  : targetWeight
-
-                return (
-                  <View
-                    key={standard.level}
-                    style={[
-                      styles.levelLadderItem,
-                      { backgroundColor: 'transparent' },
-                      isCurrent && [
-                        styles.levelLadderItemCurrent,
-                        { borderColor: standard.color, backgroundColor: colors.surfaceCard },
-                      ],
-                    ]}
-                  >
-                    {/* Rank badge Column */}
-                    <View style={styles.levelLadderBadgeColumn}>
-                      <LevelBadge
-                        level={standard.level as any}
-                        size="medium"
-                        style={[
-                          isLocked && { opacity: 0.3 },
-                          isCurrent && styles.levelLadderBadgeCurrent,
-                        ]}
-                      />
-                    </View>
-
-                    {/* Level info */}
-                    <View style={styles.levelLadderInfo}>
-                      <Text
-                        style={[
-                          styles.levelLadderName,
-                          { color: colors.textPrimary },
-                          isCurrent && { color: standard.color, fontWeight: '700' },
-                          isLocked && { color: colors.textSecondary },
-                        ]}
-                      >
-                        {standard.level}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.levelLadderDesc,
-                          { color: colors.textSecondary },
-                          isLocked && { opacity: 0.5 },
-                        ]}
-                      >
-                        {standard.description}
-                      </Text>
-                    </View>
-
-                    {/* Target weight */}
-                    <View style={styles.levelLadderTarget}>
-                      <Text
-                        style={[
-                          styles.levelLadderWeight,
-                          { color: colors.textPrimary },
-                          isCurrent && { color: standard.color },
-                          isLocked && { color: colors.textSecondary },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {Math.round(
-                          weightUnit === 'lb' ? displayWeight * 2.20462 : displayWeight,
-                        )}{' '}
-                        {weightUnit}
-                      </Text>
-                      {isCurrent && (
-                        <Text
-                          style={[styles.levelLadderWeightLabel, { color: colors.textSecondary }]}
-                          numberOfLines={1}
-                        >
-                          Your 1RM
-                        </Text>
-                      )}
-                    </View>
+                  <View style={styles.resultBadgeVisualWrap}>
+                    <LevelBadge
+                      level={level as any}
+                      size="large"
+                      showTooltipOnPress={false}
+                      style={isLocked ? { opacity: 0.35 } : undefined}
+                    />
+                    {isLocked && (
+                      <View style={[
+                        styles.resultLockIcon,
+                        {
+                          backgroundColor: isDark ? 'rgba(26,28,32,0.84)' : 'rgba(255,255,255,0.92)',
+                          borderColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.16)',
+                        },
+                      ]}>
+                        <Ionicons name="lock-closed" size={12} color={colors.textPrimary} />
+                      </View>
+                    )}
                   </View>
-                )
-              })}
-            </View>
-          </View>
 
-          {/* Added spacer for footer */}
-          <View style={{ height: 20 }} />
-        </ScrollView>
+                  <View style={styles.resultBadgeTextStack}>
+                    <Text
+                      style={[
+                        styles.resultBadgeName,
+                        { color: colors.textPrimary },
+                        isLocked && { color: colors.textSecondary },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {level}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.resultBadgePoints,
+                        { color: isCurrent ? tileColor : colors.textSecondary },
+                        isLocked && { color: colors.textTertiary },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {levelWeightMap[level] != null
+                        ? `${levelWeightMap[level]} ${weightUnit}`
+                        : '—'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.resultBadgeStatusPill, { backgroundColor: tilePillBg }]}>
+                    <Ionicons
+                      name={tileStatusIcon}
+                      size={12}
+                      color={tileStatusColor}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.resultBadgeStatusText, { color: tileStatusColor }]}>
+                      {tileStatusLabel}
+                    </Text>
+                  </View>
+                </LiquidGlassSurface>
+              )
+            })}
+          </View>
+        </View>
 
         <View style={[styles.resultFooter, { backgroundColor: isDark ? 'rgba(0,0,0,0.9)' : colors.bg }]}>
           <HapticButton
@@ -1258,6 +1334,140 @@ const styles = StyleSheet.create({
   // Result Phase
   resultScrollContent: {
     paddingBottom: 40,
+  },
+  resultCenteredContent: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    gap: 0,
+    paddingBottom: 100, // compensates for the absolute-positioned resultFooter (~64px button + padding)
+  },
+  resultHeroCard: {
+    borderRadius: 24,
+    padding: 18,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  resultHeroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resultHeroCopy: {
+    flex: 1,
+    marginRight: 12,
+  },
+  resultHeroLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  resultHeroLevelName: {
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+    marginBottom: 4,
+  },
+  resultHeroSub: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  resultHeroBadgeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 96,
+  },
+  resultGridHeader: {
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  resultGridTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  resultGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BADGE_GRID_GAP,
+  },
+  resultBadgeTile: {
+    width: BADGE_TILE_SIZE,
+    minHeight: 124,
+    borderRadius: 18,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  resultBadgeTileLocked: {
+    borderWidth: 1,
+  },
+  resultBadgeTileUnlocked: {
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  resultBadgeVisualWrap: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  resultLockIcon: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    zIndex: 10,
+  },
+  resultBadgeTextStack: {
+    gap: 3,
+    alignItems: 'center',
+    width: '100%',
+  },
+  resultBadgeName: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  resultBadgePoints: {
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 13,
+    includeFontPadding: false,
+  },
+  resultBadgeStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 70,
+  },
+  resultBadgeStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   resultHeader: {
     alignItems: 'center',

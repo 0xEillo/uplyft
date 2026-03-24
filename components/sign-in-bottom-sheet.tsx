@@ -2,6 +2,8 @@ import { HapticButton } from '@/components/haptic-button'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
+import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
+import { syncLinkedProfile } from '@/lib/account-linking'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -41,7 +43,14 @@ export function SignInBottomSheet({
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const styles = createStyles(colors, isDark)
-  const { signInWithGoogle, signInWithApple } = useAuth()
+  const {
+    user,
+    isAnonymous,
+    signInWithGoogle,
+    signInWithApple,
+    linkWithGoogle,
+    linkWithApple,
+  } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isAppleLoading, setIsAppleLoading] = useState(false)
 
@@ -75,13 +84,29 @@ export function SignInBottomSheet({
   const handleAppleSignIn = async () => {
     setIsAppleLoading(true)
     try {
-      await signInWithApple(true)
+      if (isAnonymous) {
+        const previousUserId = user?.id
+        await linkWithApple()
+        const linkedUserId = await syncLinkedProfile(previousUserId)
+        if (linkedUserId) {
+          schedulePushNotificationPrompt({
+            userId: linkedUserId,
+            delayMs: 600,
+          })
+        }
+      } else {
+        await signInWithApple(true)
+      }
       onClose()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign In Failed',
-        error instanceof Error ? error.message : 'Failed to sign in with Apple',
+        isAnonymous ? 'Account Setup Failed' : 'Sign In Failed',
+        error instanceof Error
+          ? error.message
+          : isAnonymous
+            ? 'Failed to connect your Apple account'
+            : 'Failed to sign in with Apple',
       )
     } finally {
       setIsAppleLoading(false)
@@ -91,15 +116,29 @@ export function SignInBottomSheet({
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
-      await signInWithGoogle(true)
+      if (isAnonymous) {
+        const previousUserId = user?.id
+        await linkWithGoogle()
+        const linkedUserId = await syncLinkedProfile(previousUserId)
+        if (linkedUserId) {
+          schedulePushNotificationPrompt({
+            userId: linkedUserId,
+            delayMs: 600,
+          })
+        }
+      } else {
+        await signInWithGoogle(true)
+      }
       onClose()
       router.replace('/(tabs)')
     } catch (error) {
       Alert.alert(
-        'Sign In Failed',
+        isAnonymous ? 'Account Setup Failed' : 'Sign In Failed',
         error instanceof Error
           ? error.message
-          : 'Failed to sign in with Google',
+          : isAnonymous
+            ? 'Failed to connect your Google account'
+            : 'Failed to sign in with Google',
       )
     } finally {
       setIsGoogleLoading(false)
@@ -108,7 +147,7 @@ export function SignInBottomSheet({
 
   const handleEmailSignIn = () => {
     onClose()
-    router.push('/(auth)/signin-email')
+    router.push(isAnonymous ? '/(auth)/signup-email' : '/(auth)/signin-email')
   }
 
   return (

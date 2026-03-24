@@ -2,7 +2,7 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { database } from '@/lib/database'
+import { syncLinkedProfile } from '@/lib/account-linking'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -42,17 +42,9 @@ export default function CreateAccountScreen() {
 
     setIsAppleLoading(true)
     try {
+      const previousUserId = user?.id
       await linkWithApple()
-
-      if (user?.id) {
-        try {
-          await database.profiles.update(user.id, {
-            is_guest: false,
-          })
-        } catch (profileError) {
-          console.error('[CreateAccount] Error updating profile:', profileError)
-        }
-      }
+      const linkedUserId = await syncLinkedProfile(previousUserId)
 
       Alert.alert(
         'Account Created!',
@@ -62,9 +54,9 @@ export default function CreateAccountScreen() {
             text: 'OK',
             onPress: () => {
               router.replace('/(tabs)')
-              if (user?.id) {
+              if (linkedUserId) {
                 schedulePushNotificationPrompt({
-                  userId: user.id,
+                  userId: linkedUserId,
                   delayMs: 600,
                 })
               }
@@ -91,17 +83,9 @@ export default function CreateAccountScreen() {
 
     setIsGoogleLoading(true)
     try {
+      const previousUserId = user?.id
       await linkWithGoogle()
-
-      if (user?.id) {
-        try {
-          await database.profiles.update(user.id, {
-            is_guest: false,
-          })
-        } catch (profileError) {
-          console.error('[CreateAccount] Error updating profile:', profileError)
-        }
-      }
+      const linkedUserId = await syncLinkedProfile(previousUserId)
 
       Alert.alert(
         'Account Created!',
@@ -111,9 +95,9 @@ export default function CreateAccountScreen() {
             text: 'OK',
             onPress: () => {
               router.replace('/(tabs)')
-              if (user?.id) {
+              if (linkedUserId) {
                 schedulePushNotificationPrompt({
-                  userId: user.id,
+                  userId: linkedUserId,
                   delayMs: 600,
                 })
               }

@@ -1644,7 +1644,7 @@ export default function OnboardingScreen() {
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 21 || step === 22) {
+    if (step === 21 || step === 22 || step === 25) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -3808,6 +3808,9 @@ export default function OnboardingScreen() {
               <Text style={styles.stepTitle}>
                 Would you like to deprioritize any specific muscles?
               </Text>
+              <Text style={[styles.stepSubtitle, { marginTop: 8 }]}>
+                e.g. if you&apos;re injured, recovering, or just want to focus elsewhere.
+              </Text>
             </View>
 
             <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
@@ -4274,6 +4277,7 @@ export default function OnboardingScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             bounces={step !== 23}
+            scrollEnabled={step !== 25}
           >
             <View
               style={[

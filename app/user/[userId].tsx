@@ -444,15 +444,6 @@ export default function UserProfileScreen() {
                 </TouchableOpacity>
               </NavbarIsland>
             }
-            centerContent={
-              userTag ? (
-                <NavbarIsland style={{ width: 'auto', paddingHorizontal: 12 }}>
-                  <Text style={styles.headerTitle} numberOfLines={1}>
-                    @{userTag}
-                  </Text>
-                </NavbarIsland>
-              ) : null
-            }
           />
         </BlurredHeader>
 

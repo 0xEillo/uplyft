@@ -36,10 +36,10 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   },
   {
     id: 'create_workout',
-    title: 'Start Workout',
-    description: 'Start building your first custom workout',
+    title: 'Plan Workout',
+    description: 'Plan your first workout with your coach',
     icon: 'add-circle-outline',
-    route: '/(tabs)/create-post',
+    route: '/(tabs)/chat',
     trialFeature: null,
   },
   {
