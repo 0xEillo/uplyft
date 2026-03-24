@@ -19,6 +19,27 @@ export const WORKOUT_JSON_SCHEMA = `{
   ]
 }`
 
+export const PROGRAM_JSON_SCHEMA = `{
+  "title": "Program Title",
+  "description": "3-5 sentence coaching brief that explains the split, how to run the week, effort/progression guidance, recovery/rest-day guidance, and why the structure fits the user's goal/request",
+  "goal": "Hypertrophy",
+  "frequency": "4 days/week",
+  "routines": [
+    {
+      "name": "Upper 1",
+      "duration": "60 min",
+      "exerciseCount": 6,
+      "exercises": [
+        {
+          "name": "Exercise Name",
+          "sets": 3,
+          "reps": "6-8"
+        }
+      ]
+    }
+  ]
+}`
+
 const CREATION_PROMPT_TEMPLATE = ({
   goal,
   muscles,
@@ -79,6 +100,15 @@ IMPORTANT: If this request involves modifying the workout plan, you MUST output 
 
 Use this structure:
 ${WORKOUT_JSON_SCHEMA}`
+}
+
+export function buildProgramModificationSuffix() {
+  return `
+
+IMPORTANT: If this request involves modifying the training program, you MUST output the COMPLETE updated program as a single JSON object. Do not just describe the changes. The response must be valid JSON to be rendered correctly.
+
+Use this structure:
+${PROGRAM_JSON_SCHEMA}`
 }
 
 export function isWorkoutRequest(text: string) {

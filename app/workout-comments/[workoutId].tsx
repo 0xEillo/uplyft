@@ -168,6 +168,7 @@ export default function WorkoutCommentsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPosting, setIsPosting] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [inputHeight, setInputHeight] = useState(0)
   const [replyTarget, setReplyTarget] = useState<CommentWithProfile | null>(
     null,
   )
@@ -504,6 +505,7 @@ export default function WorkoutCommentsScreen() {
         commentCountDelta: 1,
       })
       setCommentText('')
+      setInputHeight(0)
       setReplyTarget(null)
       Keyboard.dismiss()
     } catch (error) {
@@ -756,20 +758,27 @@ export default function WorkoutCommentsScreen() {
                 debugLabel="comments-input"
               >
                 <View style={styles.textInputContainer}>
-                  <TextInput
-                    ref={inputRef}
-                    style={styles.inputField}
-                    value={commentText}
-                    onChangeText={handleCommentTextChange}
-                    placeholder="Add a comment..."
-                    placeholderTextColor={colors.textPlaceholder}
-                    multiline
-                    maxLength={500}
-                    returnKeyType="send"
-                    onSubmitEditing={handlePostComment}
-                    blurOnSubmit={false}
-                    editable={!isPosting}
-                  />
+                  <View style={styles.inputInnerWrapper}>
+                    <TextInput
+                      ref={inputRef}
+                      style={styles.inputField}
+                      value={commentText}
+                      onChangeText={handleCommentTextChange}
+                      placeholder="Add a comment..."
+                      placeholderTextColor={colors.textPlaceholder}
+                      multiline
+                      maxLength={500}
+                      returnKeyType="send"
+                      onSubmitEditing={handlePostComment}
+                      blurOnSubmit={false}
+                      editable={!isPosting}
+                      onContentSizeChange={(event) => {
+                        const height = event.nativeEvent.contentSize.height
+                        setInputHeight(Math.min(Math.max(height, 22), 120))
+                      }}
+                      scrollEnabled={inputHeight >= 120}
+                    />
+                  </View>
                   <TouchableOpacity
                     style={[
                       styles.sendButton,
@@ -787,7 +796,7 @@ export default function WorkoutCommentsScreen() {
                     ) : (
                       <Ionicons
                         name="arrow-up"
-                        size={20}
+                        size={17}
                         color={colors.surface}
                       />
                     )}
@@ -932,47 +941,42 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     textInputGlass: {
       flex: 1,
-      borderRadius: 24,
-      minHeight: 44,
+      borderRadius: 20,
     },
     textInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      paddingLeft: 14,
+      paddingRight: 4,
+      paddingBottom: 4,
+      paddingTop: 4,
+      minHeight: 40,
+    },
+    inputInnerWrapper: {
       flex: 1,
       flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'transparent',
-      borderRadius: 24,
-      paddingRight: 4,
-      paddingLeft: 16,
-      paddingVertical: 4,
-      minHeight: 44,
-      borderWidth: 0,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      alignItems: 'flex-end',
     },
     inputField: {
       flex: 1,
-      paddingTop: Platform.OS === 'ios' ? 2 : 4,
-      paddingBottom: Platform.OS === 'ios' ? 4 : 4,
-      marginRight: 8,
-      fontSize: 17,
-      lineHeight: Platform.OS === 'ios' ? 26 : 23,
+      fontSize: 16,
+      lineHeight: 22,
       color: colors.textPrimary,
-      minHeight: Platform.OS === 'ios' ? 24 : 22,
-      maxHeight: 100,
-      textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
-      transform: [{ translateY: Platform.OS === 'ios' ? -2 : 0 }],
+      minHeight: 32,
+      maxHeight: 120,
+      textAlignVertical: 'top',
+      paddingTop: Platform.OS === 'ios' ? 5 : 0,
+      paddingBottom: Platform.OS === 'ios' ? 5 : 0,
+      marginRight: 6,
     },
     sendButton: {
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.brandPrimary,
+      backgroundColor: colors.textPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 1,
+      flexShrink: 0,
     },
     sendButtonDisabled: {
       backgroundColor: colors.textPlaceholder,

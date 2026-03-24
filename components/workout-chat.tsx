@@ -7,8 +7,10 @@ import {
   ManualFoodLogSheet,
 } from '@/components/manual-food-log-sheet'
 import { Paywall } from '@/components/paywall'
+import { ProgramCard } from '@/components/program-card'
 import { WorkoutCard } from '@/components/workout-card'
 import {
+  EQUIPMENT_PREF_KEY,
   WorkoutPlanningData,
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
@@ -30,9 +32,12 @@ import {
 } from '@/lib/ai/ai-workout-converter'
 import {
   ParsedWorkoutDisplay,
+  ParsedProgramDisplay,
+  parseProgramForDisplay,
   parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
 import {
+  buildProgramModificationSuffix,
   buildWorkoutCreationPrompt,
   buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
@@ -159,10 +164,21 @@ interface Message {
   status?: 'sending' | 'sent' | 'failed'
 }
 
+type ParsedRepTargets = {
+  repsMin: number | null
+  repsMax: number | null
+}
+
 type FoodLogAction = 'log' | 'update_last'
 type FoodLogConfidence = 'low' | 'medium' | 'high'
 type FoodLogSource = 'text' | 'photo' | 'voice' | 'manual' | 'correction'
 type StatsTrend = 'up' | 'down' | 'flat'
+type ChatEquipmentPreference =
+  | 'full_gym'
+  | 'home_minimal'
+  | 'dumbbells_only'
+  | 'bodyweight'
+  | 'barbell_only'
 
 interface FoodLogPayload {
   action: FoodLogAction
@@ -188,6 +204,29 @@ interface DailyLogSummaryState {
   goals: {
     calorie_goal: number | null
     protein_goal_g: number | null
+  }
+}
+
+const parseRepTargets = (reps: string): ParsedRepTargets => {
+  const rangeMatch = reps.match(/(\d+)\s*[-–]\s*(\d+)/)
+  if (rangeMatch) {
+    return {
+      repsMin: parseInt(rangeMatch[1], 10),
+      repsMax: parseInt(rangeMatch[2], 10),
+    }
+  }
+
+  const singleRep = parseInt(reps, 10)
+  if (!Number.isNaN(singleRep)) {
+    return {
+      repsMin: singleRep,
+      repsMax: singleRep,
+    }
+  }
+
+  return {
+    repsMin: null,
+    repsMax: null,
   }
 }
 
@@ -726,6 +765,43 @@ const getVisibleAssistantMessageText = (content: string): string =>
     .replace(/\{\s*"title".*/gs, '')
     .trim()
 
+const getFirstSentence = (text: string): string => {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+
+  const sentenceMatch = trimmed.match(/^(.+?[.!?])(?:\s|$)/)
+  return sentenceMatch?.[1]?.trim() || trimmed
+}
+
+const getStructuredPlanIntroText = ({
+  content,
+  parsedProgram,
+  parsedWorkout,
+}: {
+  content: string
+  parsedProgram: ParsedProgramDisplay | null
+  parsedWorkout: ParsedWorkoutDisplay | null
+}): string => {
+  const visibleText = getVisibleAssistantMessageText(content)
+  if (visibleText) return visibleText
+
+  if (parsedProgram) {
+    return (
+      getFirstSentence(parsedProgram.description) ||
+      `I put together a ${parsedProgram.title} for you.`
+    )
+  }
+
+  if (parsedWorkout) {
+    return (
+      getFirstSentence(parsedWorkout.description) ||
+      `I put together a ${parsedWorkout.title} for you.`
+    )
+  }
+
+  return ''
+}
+
 const toNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
@@ -915,6 +991,7 @@ export function WorkoutChat({
   const [input, setInput] = useState('')
   const [inputHeight, setInputHeight] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSavingProgram, setIsSavingProgram] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [viewerImages, setViewerImages] = useState<string[]>([])
@@ -932,6 +1009,9 @@ export function WorkoutChat({
     parsedWorkout,
     setParsedWorkout,
   ] = useState<ParsedWorkoutDisplay | null>(null)
+  const [parsedProgram, setParsedProgram] = useState<ParsedProgramDisplay | null>(
+    null,
+  )
   const [proposedWorkout, setProposedWorkout] = useState<ExerciseSuggestion[]>(
     [],
   ) // Track AI-proposed exercises
@@ -965,6 +1045,8 @@ export function WorkoutChat({
   ] = useState<ManualFoodLogData | null>(null)
   const [navGlassKey, setNavGlassKey] = useState(0)
   const [composerGlassKey, setComposerGlassKey] = useState(0)
+  const [equipmentPreference, setEquipmentPreference] =
+    useState<ChatEquipmentPreference | null>(null)
   const hasRunInitialComposerRecoveryRef = useRef(false)
   const [
     dailyLogSummary,
@@ -1409,6 +1491,36 @@ export function WorkoutChat({
     suggestionMode,
   ])
 
+  useEffect(() => {
+    let isMounted = true
+
+    const loadEquipmentPreference = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(EQUIPMENT_PREF_KEY)
+        if (!stored || !isMounted) return
+
+        const parsed = JSON.parse(stored) as unknown
+        if (
+          parsed === 'full_gym' ||
+          parsed === 'home_minimal' ||
+          parsed === 'dumbbells_only' ||
+          parsed === 'bodyweight' ||
+          parsed === 'barbell_only'
+        ) {
+          setEquipmentPreference(parsed)
+        }
+      } catch (error) {
+        console.warn('[WorkoutChat] Failed to load equipment preference', error)
+      }
+    }
+
+    void loadEquipmentPreference()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   // Auto-scroll to bottom when new messages arrive or content changes
   const scrollToBottom = () => {
     messagesListRef.current?.scrollToEnd({ animated: true })
@@ -1601,10 +1713,15 @@ export function WorkoutChat({
       )
     }
 
-    const parsed = parseWorkoutForDisplay(acc)
-    if (parsed) {
+    const parsedWorkoutPlan = parseWorkoutForDisplay(acc)
+    const parsedProgramPlan = parsedWorkoutPlan
+      ? null
+      : parseProgramForDisplay(acc)
+
+    if (parsedWorkoutPlan) {
       setGeneratedPlanContent(acc)
-      setParsedWorkout(parsed)
+      setParsedWorkout(parsedWorkoutPlan)
+      setParsedProgram(null)
 
       // Complete tutorial step for all users, but only consume trial for non-Pro
       if (!isProMember) {
@@ -1631,6 +1748,16 @@ export function WorkoutChat({
       // Let's assume standard markdown rendering for now, or maybe we can enhance the markdown renderer later to show cards.
       // But wait, step 4 says: "User sees exercise cards with '+' button".
       // This implies we need to detect these suggestions and render a specific UI for them in the chat.
+    }
+
+    if (parsedProgramPlan) {
+      setGeneratedPlanContent(acc)
+      setParsedWorkout(null)
+      setParsedProgram(parsedProgramPlan)
+
+      if (!isProMember) {
+        consumeTrial('ai_workout')
+      }
     }
 
     // Auto-update proposed workout if it's a direct instruction?
@@ -2215,7 +2342,9 @@ export function WorkoutChat({
         // Skip adding suffix for hidden prompts or if no plan generated yet
         if (generatedPlanContent && !hiddenPrompt) {
           const lastMsg = formattedMessages[formattedMessages.length - 1]
-          lastMsg.content += buildWorkoutModificationSuffix()
+          lastMsg.content += parsedProgram
+            ? buildProgramModificationSuffix()
+            : buildWorkoutModificationSuffix()
         }
       }
 
@@ -2225,6 +2354,7 @@ export function WorkoutChat({
         userId: string | undefined
         weightUnit: string
         coachSystemPrompt?: string
+        equipmentPreference?: ChatEquipmentPreference
         workoutContext?: {
           title?: string
           notes?: string
@@ -2252,6 +2382,7 @@ export function WorkoutChat({
         userId: user?.id,
         weightUnit,
         coachSystemPrompt: getCoach(coachId).systemPrompt,
+        equipmentPreference: equipmentPreference ?? undefined,
         dailyLogSummary: dailyLogSummary
           ? {
               logDate: dailyLogSummary.logDate,
@@ -2328,6 +2459,17 @@ export function WorkoutChat({
       if (!reader) {
         // Fallback: non-streaming response
         const assistantContent = await response.text()
+        const messageParsedWorkout = parseWorkoutForDisplay(assistantContent)
+        const messageParsedProgram = messageParsedWorkout
+          ? null
+          : parseProgramForDisplay(assistantContent)
+
+        if (messageParsedWorkout || messageParsedProgram) {
+          setGeneratedPlanContent(assistantContent)
+          setParsedWorkout(messageParsedWorkout)
+          setParsedProgram(messageParsedProgram)
+        }
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
@@ -2411,6 +2553,7 @@ export function WorkoutChat({
     setLoggedMealIdByMessage({})
     setGeneratedPlanContent(null)
     setParsedWorkout(null)
+    setParsedProgram(null)
     setSuggestionMode('main')
     inputRef.current?.clear()
     Keyboard.dismiss()
@@ -2613,6 +2756,7 @@ export function WorkoutChat({
           // Parse workout for structured display
           const parsed = parseWorkoutForDisplay(assistantContent)
           setParsedWorkout(parsed)
+          setParsedProgram(null)
 
           // Add the final message
           setMessages((prev) => [
@@ -2682,6 +2826,250 @@ export function WorkoutChat({
       setIsLoading(false)
     }
   }
+
+  type RoutineTemplateInput = {
+    title: string
+    description?: string
+    exercises: {
+      name: string
+      sets: {
+        reps?: string
+        repsMin?: number | null
+        repsMax?: number | null
+        restSeconds?: number | null
+      }[]
+    }[]
+  }
+
+  type SavedRoutineTemplate = {
+    id: string
+    name: string
+    exercises: {
+      id: string
+      name: string
+      orderIndex: number
+      sets: {
+        setNumber: number
+        repsMin: number | null
+        repsMax: number | null
+        restSeconds: number | null
+      }[]
+    }[]
+  }
+
+  const createRoutineFromTemplate = async (
+    userId: string,
+    routineData: RoutineTemplateInput,
+    options?: {
+      programId?: string
+      notes?: string
+    },
+  ): Promise<SavedRoutineTemplate> => {
+    let createdRoutineId: string | null = null
+
+    try {
+      const routine = await database.workoutRoutines.create(
+        userId,
+        routineData.title || 'AI Generated Routine',
+        {
+          notes:
+            options?.notes ??
+            routineData.description ??
+            'Generated from AI Chat',
+          programId: options?.programId ?? undefined,
+        },
+      )
+      createdRoutineId = routine.id
+
+      const exerciseNames = routineData.exercises.map((exercise) => exercise.name)
+      const { data: dbExercises, error: resolveError } = await supabase
+        .from('exercises')
+        .select('id, name')
+        .in('name', exerciseNames)
+        .is('created_by', null)
+
+      if (resolveError) {
+        throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
+      }
+
+      const exerciseIdMap = new Map<string, string>()
+      dbExercises?.forEach((exercise) => {
+        if (exercise.name) {
+          exerciseIdMap.set(exercise.name.toLowerCase(), exercise.id)
+        }
+      })
+
+      const routineExercisesToInsert = routineData.exercises.reduce<
+        {
+          routine_id: string
+          exercise_id: string
+          order_index: number
+          notes: null
+        }[]
+      >((acc, exercise, index) => {
+        const dbId = exerciseIdMap.get(exercise.name.toLowerCase())
+        if (!dbId) {
+          console.warn(`Could not find DB exercise for: ${exercise.name}`)
+          return acc
+        }
+
+        acc.push({
+          routine_id: routine.id,
+          exercise_id: dbId,
+          order_index: index,
+          notes: null,
+        })
+        return acc
+      }, [])
+
+      if (routineExercisesToInsert.length === 0) {
+        throw new Error('No valid exercises found in the database.')
+      }
+
+      const { data: insertedExercises, error: insertedExercisesError } =
+        await supabase
+          .from('workout_routine_exercises')
+          .insert(routineExercisesToInsert)
+          .select('id, order_index, exercise:exercises(name)')
+
+      if (insertedExercisesError || !insertedExercises) {
+        throw new Error(
+          `Failed to create routine exercises: ${
+            insertedExercisesError?.message || 'Unknown error'
+          }`,
+        )
+      }
+
+      const insertedExerciseIdByOrderIndex = new Map<number, string>()
+      insertedExercises.forEach((exercise) => {
+        insertedExerciseIdByOrderIndex.set(exercise.order_index, exercise.id)
+      })
+
+      const routineSets = routineData.exercises.reduce<
+        {
+          routine_exercise_id: string
+          set_number: number
+          reps_min: number | null
+          reps_max: number | null
+          rest_seconds: number | null
+        }[]
+      >((acc, exercise, exerciseIndex) => {
+        const routineExerciseId = insertedExerciseIdByOrderIndex.get(
+          exerciseIndex,
+        )
+        if (!routineExerciseId) {
+          return acc
+        }
+
+        exercise.sets.forEach((set, setIndex) => {
+          let repsMin =
+            set.repsMin !== undefined && set.repsMin !== null
+              ? set.repsMin
+              : null
+          let repsMax =
+            set.repsMax !== undefined && set.repsMax !== null
+              ? set.repsMax
+              : null
+
+          if (repsMin === null && repsMax === null && set.reps) {
+            const parsedTargets = parseRepTargets(set.reps)
+            repsMin = parsedTargets.repsMin
+            repsMax = parsedTargets.repsMax
+          }
+
+          acc.push({
+            routine_exercise_id: routineExerciseId,
+            set_number: setIndex + 1,
+            reps_min: repsMin,
+            reps_max: repsMax,
+            rest_seconds: set.restSeconds ?? null,
+          })
+        })
+
+        return acc
+      }, [])
+
+      if (routineSets.length > 0) {
+        const { error: setsError } = await supabase
+          .from('workout_routine_sets')
+          .insert(routineSets)
+
+        if (setsError) {
+          throw setsError
+        }
+      }
+
+      return {
+        id: routine.id,
+        name: routine.name,
+        exercises: routineData.exercises
+          .map((exercise, index) => {
+            const routineExerciseId = insertedExerciseIdByOrderIndex.get(index)
+            if (!routineExerciseId) {
+              return null
+            }
+
+            return {
+              id: routineExerciseId,
+              name: exercise.name,
+              orderIndex: index,
+              sets: exercise.sets.map((set, setIndex) => {
+                const parsedTargets =
+                  set.repsMin !== undefined || set.repsMax !== undefined
+                    ? {
+                        repsMin: set.repsMin ?? null,
+                        repsMax: set.repsMax ?? null,
+                      }
+                    : parseRepTargets(set.reps || '')
+
+                return {
+                  setNumber: setIndex + 1,
+                  repsMin: parsedTargets.repsMin,
+                  repsMax: parsedTargets.repsMax,
+                  restSeconds: set.restSeconds ?? null,
+                }
+              }),
+            }
+          })
+          .filter(
+            (
+              exercise,
+            ): exercise is SavedRoutineTemplate['exercises'][number] =>
+              Boolean(exercise),
+          ),
+      }
+    } catch (error) {
+      if (createdRoutineId) {
+        try {
+          await database.workoutRoutines.delete(createdRoutineId)
+        } catch (cleanupError) {
+          console.error('Failed to cleanup orphaned routine:', cleanupError)
+        }
+      }
+      throw error
+    }
+  }
+
+  const buildRoutineTemplateFromProgramRoutine = (
+    routine: ParsedProgramDisplay['routines'][number],
+  ): RoutineTemplateInput => ({
+    title: routine.title,
+    description: routine.duration
+      ? `${routine.title} · ${routine.duration}`
+      : routine.description || routine.title,
+    exercises: routine.exercises.map((exercise) => ({
+      name: exercise.name,
+      sets: exercise.sets.map((set) => {
+        const parsedTargets = parseRepTargets(set.reps)
+        return {
+          reps: set.reps,
+          repsMin: parsedTargets.repsMin,
+          repsMax: parsedTargets.repsMax,
+          restSeconds: set.rest > 0 ? set.rest : null,
+        }
+      }),
+    })),
+  })
 
   const handleStartWorkout = async () => {
     if (isLoading) return
@@ -2816,180 +3204,40 @@ export function WorkoutChat({
     setIsLoading(true)
     haptic('medium')
 
-    let createdRoutineId: string | null = null
-
     try {
       if (!user?.id) throw new Error('User not found')
 
-      let routineData
+      let routineData: RoutineTemplateInput
 
       if (parsedWorkout) {
-        // Use parsed JSON directly without calling AI again
         routineData = {
           title: parsedWorkout.title,
           description: parsedWorkout.description,
           exercises: parsedWorkout.exercises.map((ex) => ({
             name: ex.name,
             sets: ex.sets.map((s) => {
-              // Parse reps range string to min/max
-              let repsMin: number | undefined
-              let repsMax: number | undefined
-              const rangeMatch = s.reps.match(/(\d+)[-–](\d+)/)
-              if (rangeMatch) {
-                repsMin = parseInt(rangeMatch[1])
-                repsMax = parseInt(rangeMatch[2])
-              } else {
-                const singleRep = parseInt(s.reps)
-                if (!isNaN(singleRep)) {
-                  repsMin = singleRep
-                  repsMax = singleRep
-                }
-              }
+              const parsedTargets = parseRepTargets(s.reps)
 
               return {
                 reps: s.reps,
-                repsMin,
-                repsMax,
+                repsMin: parsedTargets.repsMin,
+                repsMax: parsedTargets.repsMax,
                 restSeconds: s.rest,
               }
             }),
           })),
         }
       } else {
-        // Fallback to text conversion
-        routineData = await convertAiPlanToRoutine({
+        const converted = await convertAiPlanToRoutine({
           text: generatedPlanContent,
           userId: user.id,
           weightUnit,
           token: session?.access_token,
         })
+        routineData = converted
       }
 
-      // Create routine
-      const routine = await database.workoutRoutines.create(
-        user.id,
-        routineData.title || 'AI Generated Routine',
-        { notes: routineData.description || 'Generated from AI Chat' },
-      )
-      createdRoutineId = routine.id
-
-      // Resolve exercise IDs from the database (to get UUIDs)
-      const exerciseNames = routineData.exercises.map((ex) => ex.name)
-      const { data: dbExercises, error: resolveError } = await supabase
-        .from('exercises')
-        .select('id, name')
-        .in('name', exerciseNames)
-        .is('created_by', null)
-
-      if (resolveError) {
-        throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
-      }
-
-      const exerciseIdMap = new Map<string, string>()
-      dbExercises?.forEach((ex) => {
-        if (ex.name) {
-          exerciseIdMap.set(ex.name.toLowerCase(), ex.id)
-        }
-      })
-
-      // Collect all routine exercises to insert
-      const routineExercisesToInsert = []
-      const exerciseIndexMap: {
-        originalIndex: number
-        exerciseId: string
-      }[] = []
-
-      for (let i = 0; i < routineData.exercises.length; i++) {
-        const ex = routineData.exercises[i]
-        const dbId = exerciseIdMap.get(ex.name.toLowerCase())
-
-        if (!dbId) {
-          console.warn(`Could not find DB exercise for: ${ex.name}`)
-          // If strict, we could throw. For now, skipping to avoid crashing if one name is off.
-          continue
-        }
-
-        routineExercisesToInsert.push({
-          routine_id: routine.id,
-          exercise_id: dbId,
-          order_index: i,
-          notes: null,
-        })
-        exerciseIndexMap.push({
-          originalIndex: i,
-          exerciseId: dbId,
-        })
-      }
-
-      if (routineExercisesToInsert.length === 0) {
-        throw new Error('No valid exercises found in the database.')
-      }
-
-      // Batch insert all routine exercises
-      const { data: insertedExercises, error: exError } = await supabase
-        .from('workout_routine_exercises')
-        .insert(routineExercisesToInsert)
-        .select()
-
-      if (exError || !insertedExercises) {
-        console.error('Error creating routine exercises:', exError)
-        console.error(
-          'Payload:',
-          JSON.stringify(routineExercisesToInsert, null, 2),
-        )
-        throw new Error(
-          `Failed to create routine exercises: ${
-            exError?.message || 'Unknown error'
-          }`,
-        )
-      }
-
-      // Prepare all sets for batch insert
-      const routineSets: {
-        routine_exercise_id: string
-        set_number: number
-        reps_min: number | null
-        reps_max: number | null
-      }[] = []
-
-      for (let idx = 0; idx < insertedExercises.length; idx++) {
-        const insertedExercise = insertedExercises[idx]
-        const originalIndex = exerciseIndexMap[idx].originalIndex
-        const ex = routineData.exercises[originalIndex]
-
-        ex.sets.forEach((s, setIndex) => {
-          // Determine reps_min and reps_max
-          // Use explicit check for undefined/null to allow 0 as valid value
-          let repsMin: number | null =
-            s.repsMin !== undefined && s.repsMin !== null ? s.repsMin : null
-          let repsMax: number | null =
-            s.repsMax !== undefined && s.repsMax !== null ? s.repsMax : null
-
-          // If min/max are both null but we have a reps string, parse it
-          if (repsMin === null && repsMax === null && s.reps) {
-            const parsed = parseInt(s.reps)
-            if (!isNaN(parsed)) {
-              repsMin = parsed
-              repsMax = parsed
-            }
-          }
-
-          routineSets.push({
-            routine_exercise_id: insertedExercise.id,
-            set_number: setIndex + 1,
-            reps_min: repsMin,
-            reps_max: repsMax,
-          })
-        })
-      }
-
-      if (routineSets.length > 0) {
-        const { error: setsError } = await supabase
-          .from('workout_routine_sets')
-          .insert(routineSets)
-
-        if (setsError) throw setsError
-      }
+      const routine = await createRoutineFromTemplate(user.id, routineData)
 
       // Consume trial or complete tutorial step
       if (!isProMember) {
@@ -3012,23 +3260,94 @@ export function WorkoutChat({
     } catch (error) {
       console.error('Error creating routine:', error)
 
-      // Clean up orphaned routine if it was created
-      if (createdRoutineId) {
-        try {
-          await supabase
-            .from('workout_routines')
-            .delete()
-            .eq('id', createdRoutineId)
-        } catch (cleanupError) {
-          console.error('Failed to cleanup orphaned routine:', cleanupError)
-        }
-      }
-
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to create routine'
       Alert.alert('Error', `${errorMessage}. Please try again.`)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleSaveProgram = async (
+    programOverride?: ParsedProgramDisplay | null,
+  ) => {
+    const programToSave = programOverride ?? parsedProgram
+    if (isSavingProgram || !programToSave) return
+
+    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
+    if (!canAccessCreateRoutine) {
+      setShowPaywall(true)
+      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
+        feature: 'create_routine_from_chat',
+      })
+      return
+    }
+
+    setIsSavingProgram(true)
+    haptic('medium')
+
+    let createdProgramId: string | null = null
+    const createdRoutineIds: string[] = []
+
+    try {
+      if (!user?.id) {
+        throw new Error('User not found')
+      }
+
+      const savedProgram = await database.userPrograms.create(
+        user.id,
+        programToSave.title,
+        {
+          description: programToSave.description || undefined,
+        },
+      )
+      createdProgramId = savedProgram.id
+
+      for (const routine of programToSave.routines) {
+        const savedRoutine = await createRoutineFromTemplate(
+          user.id,
+          buildRoutineTemplateFromProgramRoutine(routine),
+          {
+            programId: savedProgram.id,
+            notes: programToSave.description || routine.title,
+          },
+        )
+        createdRoutineIds.push(savedRoutine.id)
+      }
+
+      if (!isProMember) {
+        consumeTrial('create_routine')
+      } else {
+        completeStep('save_routine')
+      }
+
+      hapticSuccess()
+      await new Promise((resolve) => setTimeout(resolve, 450))
+      router.push('/routines')
+    } catch (error) {
+      console.error('Error saving program:', error)
+
+      for (const routineId of createdRoutineIds) {
+        try {
+          await database.workoutRoutines.delete(routineId)
+        } catch (cleanupError) {
+          console.error('Failed to cleanup saved program routine:', cleanupError)
+        }
+      }
+
+      if (createdProgramId) {
+        try {
+          await database.userPrograms.delete(createdProgramId)
+        } catch (cleanupError) {
+          console.error('Failed to cleanup saved program:', cleanupError)
+        }
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to save program'
+      Alert.alert('Error', `${errorMessage}. Please try again.`)
+    } finally {
+      setIsSavingProgram(false)
     }
   }
 
@@ -3192,31 +3511,204 @@ export function WorkoutChat({
                     </View>
                   ) : (
                     <>
-                      {/* Check if this message contains a parsed workout plan */}
+                      {/* Check if this message contains a parsed workout/program plan */}
                       {(() => {
+                        const messageParsedProgram = parseProgramForDisplay(
+                          message.content,
+                        )
                         const messageParsedWorkout = parseWorkoutForDisplay(
                           message.content,
                         )
+                        const structuredPlanIntroText = getStructuredPlanIntroText(
+                          {
+                            content: message.content,
+                            parsedProgram: messageParsedProgram,
+                            parsedWorkout: messageParsedWorkout,
+                          },
+                        )
 
-                        // Workout cards render full-width with coach branding inside the card
-                        if (messageParsedWorkout) {
+                        if (messageParsedProgram || messageParsedWorkout) {
                           return (
-                            <View style={styles.workoutCardContainer}>
-                              <WorkoutCard
-                                workout={messageParsedWorkout}
-                                coachImage={coach.image}
-                                username={profile?.display_name}
-                                onStartWorkout={() => {
-                                  setParsedWorkout(messageParsedWorkout)
-                                  setGeneratedPlanContent(message.content)
-                                  setTimeout(handleStartWorkout, 0)
-                                }}
-                                onSaveRoutine={() => {
-                                  setParsedWorkout(messageParsedWorkout)
-                                  setGeneratedPlanContent(message.content)
-                                  setTimeout(handleSaveRoutine, 0)
-                                }}
-                              />
+                            <View style={styles.assistantMessageContent}>
+                              {structuredPlanIntroText ? (
+                                <View style={styles.assistantCoachRow}>
+                                  <View style={styles.messageAvatarContainer}>
+                                    <Image
+                                      source={coach.image}
+                                      style={styles.messageAvatar}
+                                    />
+                                  </View>
+                                  <View style={styles.assistantCoachBubbleWrap}>
+                                    <TouchableOpacity
+                                      activeOpacity={1}
+                                      onLongPress={() =>
+                                        handleCopyMessage(structuredPlanIntroText)
+                                      }
+                                      delayLongPress={220}
+                                    >
+                                      <View
+                                        style={styles.assistantMessageBubble}
+                                      >
+                                        <Markdown
+                                          style={{
+                                            body: {
+                                              fontSize: 16,
+                                              lineHeight: 23,
+                                              color: colors.textPrimary,
+                                              margin: 0,
+                                            },
+                                            paragraph: {
+                                              marginTop: 0,
+                                              marginBottom: 2,
+                                            },
+                                            heading1: {
+                                              fontSize: 22,
+                                              fontWeight: '700',
+                                              color: colors.textPrimary,
+                                              marginTop: 16,
+                                              marginBottom: 8,
+                                            },
+                                            heading2: {
+                                              fontSize: 20,
+                                              fontWeight: '700',
+                                              color: colors.textPrimary,
+                                              marginTop: 14,
+                                              marginBottom: 6,
+                                            },
+                                            heading3: {
+                                              fontSize: 18,
+                                              fontWeight: '600',
+                                              color: colors.textPrimary,
+                                              marginTop: 12,
+                                              marginBottom: 6,
+                                            },
+                                            code_inline: {
+                                              backgroundColor: colors.bg,
+                                              paddingHorizontal: 4,
+                                              paddingVertical: 2,
+                                              borderRadius: 4,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                            },
+                                            code_block: {
+                                              backgroundColor: colors.bg,
+                                              padding: 12,
+                                              borderRadius: 12,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                              marginVertical: 8,
+                                              overflow: 'hidden',
+                                            },
+                                            fence: {
+                                              backgroundColor: colors.bg,
+                                              padding: 12,
+                                              borderRadius: 12,
+                                              fontSize: 15,
+                                              fontFamily:
+                                                Platform.OS === 'ios'
+                                                  ? 'Menlo'
+                                                  : 'monospace',
+                                              color: colors.textPrimary,
+                                              marginVertical: 8,
+                                            },
+                                            strong: {
+                                              fontWeight: '600',
+                                              color: colors.textPrimary,
+                                            },
+                                            em: {
+                                              fontStyle: 'italic',
+                                            },
+                                            bullet_list: {
+                                              marginTop: 0,
+                                              marginBottom: 12,
+                                            },
+                                            ordered_list: {
+                                              marginTop: 0,
+                                              marginBottom: 12,
+                                            },
+                                            list_item: {
+                                              marginTop: 4,
+                                              marginBottom: 4,
+                                            },
+                                            hr: {
+                                              backgroundColor: colors.border,
+                                              height: 1,
+                                              marginVertical: 16,
+                                            },
+                                            blockquote: {
+                                              borderLeftWidth: 3,
+                                              borderLeftColor:
+                                                colors.brandPrimary,
+                                              paddingLeft: 12,
+                                              marginVertical: 8,
+                                              backgroundColor: colors.bg,
+                                              paddingVertical: 8,
+                                              paddingRight: 8,
+                                              borderRadius: 4,
+                                            },
+                                            link: {
+                                              color: colors.brandPrimary,
+                                              textDecorationLine: 'underline',
+                                            },
+                                          }}
+                                        >
+                                          {structuredPlanIntroText}
+                                        </Markdown>
+                                      </View>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              ) : null}
+
+                              <View
+                                style={[
+                                  styles.workoutCardContainer,
+                                  structuredPlanIntroText &&
+                                    styles.structuredCardWithIntro,
+                                ]}
+                              >
+                                {messageParsedProgram ? (
+                                  <ProgramCard
+                                    program={messageParsedProgram}
+                                    coachImage={coach.image}
+                                    username={profile?.display_name}
+                                    onSaveProgram={async () => {
+                                      setParsedWorkout(null)
+                                      setParsedProgram(messageParsedProgram)
+                                      setGeneratedPlanContent(message.content)
+                                      await handleSaveProgram(
+                                        messageParsedProgram,
+                                      )
+                                    }}
+                                  />
+                                ) : messageParsedWorkout ? (
+                                  <WorkoutCard
+                                    workout={messageParsedWorkout}
+                                    coachImage={coach.image}
+                                    username={profile?.display_name}
+                                    onStartWorkout={() => {
+                                      setParsedProgram(null)
+                                      setParsedWorkout(messageParsedWorkout)
+                                      setGeneratedPlanContent(message.content)
+                                      setTimeout(handleStartWorkout, 0)
+                                    }}
+                                    onSaveRoutine={() => {
+                                      setParsedProgram(null)
+                                      setParsedWorkout(messageParsedWorkout)
+                                      setGeneratedPlanContent(message.content)
+                                      setTimeout(handleSaveRoutine, 0)
+                                    }}
+                                  />
+                                ) : null}
+                              </View>
                             </View>
                           )
                         }
@@ -5074,6 +5566,9 @@ function createStyles(
     workoutCardContainer: {
       flex: 1,
       width: '100%',
+    },
+    structuredCardWithIntro: {
+      marginTop: 12,
     },
     assistantMessageBubble: {
       backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,

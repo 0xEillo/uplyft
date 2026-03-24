@@ -105,6 +105,15 @@ const requestSchema = z.object({
   userId: z.string().optional(),
   weightUnit: z.enum(['kg', 'lb']).optional(),
   coachSystemPrompt: z.string().max(4000).optional(),
+  equipmentPreference: z
+    .enum([
+      'full_gym',
+      'home_minimal',
+      'dumbbells_only',
+      'bodyweight',
+      'barbell_only',
+    ])
+    .optional(),
   images: z.array(imageSchema).optional(),
   workoutContext: workoutContextSchema,
   dailyLogSummary: dailyLogSummarySchema,
@@ -169,6 +178,7 @@ serve(async (req) => {
       hasUserId: Boolean(payload.userId?.trim()),
       messagesCount: payload.messages.length,
       hasCoachSystemPrompt: Boolean(payload.coachSystemPrompt?.trim()),
+      equipmentPreference: payload.equipmentPreference ?? null,
       hasImages: Boolean(payload.images && payload.images.length > 0),
       hasWorkoutContext: Boolean(payload.workoutContext),
       hasDailyLogSummary: Boolean(payload.dailyLogSummary),
@@ -193,6 +203,7 @@ serve(async (req) => {
           summary,
           payload.weightUnit,
           payload.coachSystemPrompt,
+          payload.equipmentPreference,
           payload.workoutContext,
           payload.dailyLogSummary,
         )
@@ -1645,16 +1656,50 @@ const WORKOUT_JSON_SCHEMA = `{
   ]
 }`
 
+const PROGRAM_JSON_SCHEMA = `{
+  "title": "Program Title",
+  "description": "3-5 sentence coaching brief covering split structure, how to run the week, effort/progression guidance, and recovery/rest-day guidance",
+  "goal": "Hypertrophy",
+  "frequency": "4 days/week",
+  "routines": [
+    {
+      "name": "Upper 1",
+      "duration": "60 min",
+      "exerciseCount": 6,
+      "exercises": [
+        {
+          "name": "Exercise Name",
+          "sets": 3,
+          "reps": "6-8"
+        }
+      ]
+    }
+  ]
+}`
+
 function buildSystemPrompt(
   summary: Awaited<ReturnType<typeof buildUserContextSummary>>,
   weightUnit: 'kg' | 'lb' = 'kg',
   coachSystemPrompt?: string,
+  equipmentPreference?: z.infer<typeof requestSchema>['equipmentPreference'],
   workoutContext?: z.infer<typeof workoutContextSchema>,
   dailyLogSummary?: z.infer<typeof dailyLogSummarySchema>,
 ): string {
   // Build current workout context section if there's a workout in progress
   const workoutInProgressSection = buildWorkoutInProgressSection(workoutContext)
   const dailyLogSection = buildDailyLogSection(dailyLogSummary)
+  const equipmentPreferenceLabel =
+    equipmentPreference === 'full_gym'
+      ? 'Full gym'
+      : equipmentPreference === 'home_minimal'
+      ? 'Home / minimal equipment'
+      : equipmentPreference === 'dumbbells_only'
+      ? 'Dumbbells only'
+      : equipmentPreference === 'bodyweight'
+      ? 'Bodyweight only'
+      : equipmentPreference === 'barbell_only'
+      ? 'Barbell only'
+      : null
 
   return [
     `You are the Rep AI gym training copilot—a knowledgeable training coach, not a lecture bot.
@@ -1683,6 +1728,11 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     `Weight preferences: The user prefers ${
       weightUnit === 'kg' ? 'kilograms (kg)' : 'pounds (lbs)'
     }. When discussing weights, use their preferred unit. All stored weights are in kg, so convert when displaying.`,
+    ...(equipmentPreferenceLabel
+      ? [
+          `Available equipment preference: ${equipmentPreferenceLabel}. When generating workouts, routines, programs, or exercise suggestions, stay within this setup unless the user explicitly says they have access to different equipment for this request.`,
+        ]
+      : []),
     "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
     'The recent-workout context above is important. Use it to understand what the user is actually training right now: exercise selection, set counts, reps, loads, and recent patterns.',
     "Do not confuse your coaching defaults with the user's actual behavior. Never describe 6-8 / 10-12, low-volume training, or any other coach default as what the user is currently doing unless their logged data supports it.",
@@ -1735,15 +1785,25 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     '- Once you have enough information to build a solid plan, briefly confirm the setup in natural language.',
     '- Only then generate the workout plan as JSON if the user has clearly asked you to build it now, or if their intent to proceed is obvious from the conversation.',
     '- If the user says to choose for them, use reasonable defaults and then generate the JSON plan.',
-    "If (and ONLY if) you are actually generating the workout/routine, output the response as a valid JSON object matching the schema below. Do not wrap it in markdown blocks. Do not include any other text.",
+    '- If the user asks for a multi-day split, weekly plan, program, or schedule with multiple distinct sessions, generate a PROGRAM object, not a single workout object.',
+    '- If the user asks for one training session or one reusable routine template, generate a WORKOUT object.',
+    '- For program JSON, include every exercise for every routine in the `exercises` array. Do not truncate previews. `exerciseCount` must match the full number of exercises in that routine.',
+    '- For program JSON, keep the same default programming style: mostly 2 working sets, sometimes 3 for compounds, never more than 3.',
+    '- For program JSON, use clear routine names like "Upper 1", "Lower 1", "Push", "Pull", "Legs", or goal-specific session names when appropriate.',
+    '- For program JSON, the `description` must read like a real coach brief, not a tagline.',
+    '- In the program `description`, explain: 1) how the user should schedule the days across the week, 2) how hard to push working sets, 3) how to progress week to week, and 4) any useful recovery/rest-day guidance.',
+    '- Keep the program `description` practical and specific to the request. Mention frequency, rest spacing, progression, and execution cues in plain language.',
+    '- Program descriptions should usually be 3-5 sentences, dense with guidance, and still concise enough to fit in a card when collapsed.',
+    "If (and ONLY if) you are actually generating the workout/routine/program, output the response as a valid JSON object matching the correct schema below. Do not wrap it in markdown blocks. Do not include any other text.",
     "If the user is just asking a question (e.g. 'Tell me about progressive overload', 'What is a good rep range?'), answer normally with text.",
     `JSON Schema for Workout Plans:\n${WORKOUT_JSON_SCHEMA}`,
+    `JSON Schema for Programs:\n${PROGRAM_JSON_SCHEMA}`,
     'CRITICAL: EXERCISE SELECTION & NAMING:',
-    'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout OR suggesting/replacing exercises.',
+    'You DO NOT natively know which exercises exist in our database. You MUST use the `searchExercises` tool to find valid exercises before creating a workout, routine, or program OR suggesting/replacing exercises.',
     'Never use custom/user-created exercises (anything with created_by not null). Only system exercises are allowed.',
     '',
     'EXERCISE SELECTION STRATEGY:',
-    '1. When creating a workout OR suggesting/replacing exercises, call `searchExercises` with the target muscle group and limit=15-20 to get a POOL of options.',
+    '1. When creating a workout/program OR suggesting/replacing exercises, call `searchExercises` with the target muscle group and limit=15-20 to get a POOL of options.',
     '2. Review ALL returned exercises and intelligently SELECT the best ones based on:',
     "   - User's available equipment and preferences",
     "   - Exercise variety (don't pick 3 bench press variations - pick different movement patterns)",

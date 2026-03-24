@@ -232,6 +232,11 @@ export default function RoutinesScreen() {
     }
 
     const imageSource = getProgramImage()
+    const programTitleColor = imageSource ? '#FFF' : colors.textPrimary
+    const programSubtitleColor = imageSource
+      ? 'rgba(255,255,255,0.8)'
+      : colors.textSecondary
+    const programChevronColor = imageSource ? '#FFF' : colors.textPrimary
 
     return (
       <View key={`program-${program.id}`} style={{ width: '100%', marginBottom: GAP }}>
@@ -264,14 +269,21 @@ export default function RoutinesScreen() {
           <LiquidGlassSurface style={styles.programGlassOverlay}>
             <View style={styles.programHeader}>
               <View style={styles.programInfo}>
-                <Text style={styles.programTitle} numberOfLines={1}>{program.name}</Text>
-                <Text style={styles.programSubtitle}>{programRoutines.length} Routines</Text>
+                <Text
+                  style={[styles.programTitle, { color: programTitleColor }]}
+                  numberOfLines={1}
+                >
+                  {program.name}
+                </Text>
+                <Text style={[styles.programSubtitle, { color: programSubtitleColor }]}>
+                  {programRoutines.length} Routines
+                </Text>
               </View>
               <View style={styles.expandIconContainer}>
                 <Ionicons 
                   name={isExpanded ? "chevron-up" : "chevron-down"} 
                   size={24} 
-                  color="#FFF" 
+                  color={programChevronColor} 
                 />
               </View>
             </View>
