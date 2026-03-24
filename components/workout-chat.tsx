@@ -867,19 +867,9 @@ const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
       confidence,
       source,
     }
-    console.log('[FoodLog] Parsed payload from assistant response:', {
-      action: payload.action,
-      summary: payload.summary,
-      calories: payload.calories,
-      protein_g: payload.protein_g,
-      carbs_g: payload.carbs_g,
-      fat_g: payload.fat_g,
-      confidence: payload.confidence,
-      source: payload.source,
-    })
+
     return payload
   } catch {
-    console.warn('[FoodLog] Failed to parse <food_log> payload block')
     return null
   }
 }
@@ -1261,12 +1251,6 @@ export function WorkoutChat({
         database.dailyLog.getDaySummary(user.id, today),
         database.dailyLog.getLatestMeal(user.id, today),
       ])
-      console.log('[FoodLog] Refreshed daily log summary:', {
-        logDate: summary.logDate,
-        totals: summary.totals,
-        goals: summary.goals,
-        latestMealId: latestMeal?.id ?? null,
-      })
       setDailyLogSummary(summary as DailyLogSummaryState)
       setLatestLoggedMealId(latestMeal?.id ?? null)
     } catch (error) {
@@ -1963,13 +1947,6 @@ export function WorkoutChat({
     }
 
     setFoodActionState((prev) => ({ ...prev, [messageId]: 'saving' }))
-    console.log('[FoodLog] Log action started:', {
-      messageId,
-      action: payload.action,
-      summary: payload.summary,
-      source: payload.source,
-      confidence: payload.confidence,
-    })
 
     try {
       const today = getLocalDateString()
@@ -2040,12 +2017,6 @@ export function WorkoutChat({
       if (payload.action === 'update_last') {
         const mealIdToUpdate =
           loggedMealIdByMessage[messageId] || latestLoggedMealId
-        console.log('[FoodLog] Update-last resolution:', {
-          messageId,
-          mealIdFromMessage: loggedMealIdByMessage[messageId] ?? null,
-          latestLoggedMealId,
-          resolvedMealId: mealIdToUpdate ?? null,
-        })
         if (mealIdToUpdate) {
           const updated = await database.dailyLog.updateMeal(
             user.id,
@@ -2053,25 +2024,13 @@ export function WorkoutChat({
             mealPayload,
           )
           savedMealId = updated.id
-          console.log('[FoodLog] Updated existing meal:', {
-            mealId: updated.id,
-            daily_log_entry_id: updated.daily_log_entry_id,
-          })
         } else {
           const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
           savedMealId = inserted.id
-          console.log('[FoodLog] No meal to update; inserted new meal:', {
-            mealId: inserted.id,
-            daily_log_entry_id: inserted.daily_log_entry_id,
-          })
         }
       } else {
         const inserted = await database.dailyLog.logMeal(user.id, mealPayload)
         savedMealId = inserted.id
-        console.log('[FoodLog] Inserted meal:', {
-          mealId: inserted.id,
-          daily_log_entry_id: inserted.daily_log_entry_id,
-        })
       }
 
       setLoggedMealIdByMessage((prev) => ({
@@ -2088,10 +2047,6 @@ export function WorkoutChat({
         has_macros: Boolean(
           payload.protein_g || payload.carbs_g || payload.fat_g,
         ),
-      })
-      console.log('[FoodLog] Log action completed:', {
-        messageId,
-        savedMealId,
       })
       hapticSuccess()
     } catch (error) {
@@ -2314,12 +2269,6 @@ export function WorkoutChat({
           : undefined,
         ...(options?.scanMode ? { scanMode: options.scanMode } : {}),
       }
-      console.log('[FoodLog] Sending chat request context:', {
-        hasDailyLogSummary: Boolean(requestBody.dailyLogSummary),
-        dailyTotals: requestBody.dailyLogSummary?.totals,
-        hasImages: imageBase64Array.length > 0,
-        messageLength: messageContent.length,
-      })
 
       // Add images array if present
       if (imageBase64Array.length > 0) {
