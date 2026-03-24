@@ -47,6 +47,12 @@ DESCRIPTION REQUIREMENTS:
 - Briefly explain why the workout matches the user's goal, requested muscles, available equipment, or time constraint.
 - Make the rationale feel personalized to this request, but do not invent personal history or metrics.
 
+WARM-UP RULES:
+- Warm-up sets are separate from working sets and should appear first in the exercise's "sets" array.
+- If an exercise is the first movement in the workout that meaningfully trains or loads a muscle group that has not been warmed up yet, include 3 warm-up sets.
+- If that muscle group has already been warmed up earlier in the workout by a previous exercise, include just 1 warm-up set.
+- Base this on whether the movement's primary muscles have already been trained or warmed up earlier in the session.
+
 IMPORTANT: You must output ONLY a JSON object with the following structure:
 ${WORKOUT_JSON_SCHEMA}
 Do not wrap in markdown code blocks. Do not add intro/outro text. Just the JSON.`
