@@ -35,7 +35,7 @@ export default function ChatAttachmentScreen() {
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
   const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([])
-  const [selectedUris, setSelectedUris] = useState<string[]>([])
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const hasFetchedRef = useRef(false)
 
   useEffect(() => {
@@ -190,18 +190,50 @@ export default function ChatAttachmentScreen() {
     }
   }
 
-  const togglePhoto = (uri: string) => {
+  const togglePhoto = (photoId: string) => {
     haptic('light')
-    setSelectedUris((prev) => {
-      if (prev.includes(uri)) return prev.filter((u) => u !== uri)
+    setSelectedPhotoIds((prev) => {
+      if (prev.includes(photoId)) return prev.filter((id) => id !== photoId)
       if (prev.length >= MAX_SELECTABLE) return prev
-      return [...prev, uri]
+      return [...prev, photoId]
     })
   }
 
-  const confirmSelection = () => {
-    if (selectedUris.length === 0) return
-    dispatch({ action: 'photos_selected', uris: selectedUris })
+  const confirmSelection = async () => {
+    if (selectedPhotoIds.length === 0) return
+
+    try {
+      const resolvedUris = await Promise.all(
+        selectedPhotoIds.map(async (photoId) => {
+          const info = await MediaLibrary.getAssetInfoAsync(photoId)
+          return info.localUri || info.uri
+        }),
+      )
+
+      const readableUris = resolvedUris.filter(
+        (uri): uri is string => typeof uri === 'string' && uri.length > 0,
+      )
+
+      if (readableUris.length === 0) {
+        Alert.alert(
+          'Photo Error',
+          'Could not access the selected photo files. Please try again.',
+        )
+        return
+      }
+
+      await dispatch(
+        readableUris.length === 1
+          ? { action: 'photo_selected', uri: readableUris[0] }
+          : { action: 'photos_selected', uris: readableUris },
+      )
+    } catch (error) {
+      console.error('Error resolving selected photos:', error)
+      Alert.alert(
+        'Photo Error',
+        'Could not prepare the selected photos. Please try again.',
+      )
+    }
   }
 
   const PHOTO_SIZE = 88
@@ -262,7 +294,7 @@ export default function ChatAttachmentScreen() {
           </Text>
         </TouchableOpacity>
 
-        {selectedUris.length > 0 && (
+        {selectedPhotoIds.length > 0 && (
           <TouchableOpacity onPress={confirmSelection} hitSlop={8}>
             <Text
               style={{
@@ -271,8 +303,8 @@ export default function ChatAttachmentScreen() {
                 color: colors.brandPrimary,
               }}
             >
-              Add {selectedUris.length} Photo
-              {selectedUris.length > 1 ? 's' : ''}
+              Add {selectedPhotoIds.length} Photo
+              {selectedPhotoIds.length > 1 ? 's' : ''}
             </Text>
           </TouchableOpacity>
         )}
@@ -304,15 +336,15 @@ export default function ChatAttachmentScreen() {
 
         {/* Recent photos */}
         {recentPhotos.map((photo) => {
-          const isSelected = selectedUris.includes(photo.uri)
-          const selectionIndex = selectedUris.indexOf(photo.uri)
+          const isSelected = selectedPhotoIds.includes(photo.id)
+          const selectionIndex = selectedPhotoIds.indexOf(photo.id)
           const atLimit =
-            selectedUris.length >= MAX_SELECTABLE && !isSelected
+            selectedPhotoIds.length >= MAX_SELECTABLE && !isSelected
 
           return (
             <TouchableOpacity
               key={photo.id}
-              onPress={() => togglePhoto(photo.uri)}
+              onPress={() => togglePhoto(photo.id)}
               disabled={atLimit}
               style={{
                 width: PHOTO_SIZE,

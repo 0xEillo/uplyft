@@ -985,6 +985,7 @@ export function WorkoutChat({
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
+  const imageViewerListRef = useRef<FlatList<string>>(null)
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
@@ -1077,7 +1078,7 @@ export function WorkoutChat({
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const { height: windowHeight } = useWindowDimensions()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const tabBarVisibility = useTabBarVisibility()
   const isFocused = useIsFocused()
 
@@ -1944,6 +1945,23 @@ export function WorkoutChat({
     setViewerImageIndex(null)
     setViewerImages([])
   }
+
+  useEffect(() => {
+    if (
+      viewerImageIndex === null ||
+      viewerImages.length === 0 ||
+      !imageViewerListRef.current
+    ) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      imageViewerListRef.current?.scrollToIndex({
+        index: viewerImageIndex,
+        animated: false,
+      })
+    })
+  }, [viewerImageIndex, viewerImages, windowWidth])
 
   const handleAddExercise = async (suggestion: ExerciseSuggestion) => {
     const suggestionKey = getExerciseSuggestionKey(suggestion)
@@ -5151,27 +5169,51 @@ export function WorkoutChat({
             >
               <View style={styles.imageViewerContainer}>
                 <TouchableOpacity
-                  style={styles.imageViewerCloseButton}
+                  style={StyleSheet.absoluteFillObject}
+                  activeOpacity={1}
                   onPress={closeImageViewer}
-                >
-                  <Ionicons name="close" size={28} color={colors.surface} />
-                </TouchableOpacity>
+                />
 
                 {viewerImages.length > 0 && viewerImageIndex !== null && (
-                  <>
+                  <View style={styles.imageViewerContent}>
                     <FlatList
+                      ref={imageViewerListRef}
                       data={viewerImages}
                       horizontal
                       pagingEnabled
                       showsHorizontalScrollIndicator={false}
                       initialScrollIndex={viewerImageIndex}
                       getItemLayout={(_, index) => ({
-                        length: 400,
-                        offset: 400 * index,
+                        length: windowWidth,
+                        offset: windowWidth * index,
                         index,
                       })}
+                      onMomentumScrollEnd={(event) => {
+                        const nextIndex = Math.round(
+                          event.nativeEvent.contentOffset.x / windowWidth,
+                        )
+                        if (nextIndex !== viewerImageIndex) {
+                          setViewerImageIndex(nextIndex)
+                        }
+                      }}
+                      onScrollToIndexFailed={(info) => {
+                        requestAnimationFrame(() => {
+                          imageViewerListRef.current?.scrollToOffset({
+                            offset: info.index * windowWidth,
+                            animated: false,
+                          })
+                        })
+                      }}
                       renderItem={({ item }) => (
-                        <View style={styles.imageViewerSlide}>
+                        <View
+                          style={[
+                            styles.imageViewerSlide,
+                            {
+                              width: windowWidth,
+                              height: windowHeight,
+                            },
+                          ]}
+                        >
                           <Image
                             source={{ uri: item }}
                             style={styles.imageViewerImage}
@@ -5182,14 +5224,34 @@ export function WorkoutChat({
                       keyExtractor={(_, index) => index.toString()}
                     />
 
+                    <TouchableOpacity
+                      style={[
+                        styles.imageViewerCloseButton,
+                        { top: insets.top + 12 },
+                      ]}
+                      onPress={closeImageViewer}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={28}
+                        color={colors.surface}
+                      />
+                    </TouchableOpacity>
+
                     {viewerImages.length > 1 && (
-                      <View style={styles.imageViewerCounter}>
+                      <View
+                        style={[
+                          styles.imageViewerCounter,
+                          { bottom: insets.bottom + 24 },
+                        ]}
+                      >
                         <Text style={styles.imageViewerCounterText}>
                           {viewerImageIndex + 1} of {viewerImages.length}
                         </Text>
                       </View>
                     )}
-                  </>
+                  </View>
                 )}
               </View>
             </Modal>
@@ -6233,12 +6295,14 @@ function createStyles(
     imageViewerContainer: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    },
+    imageViewerContent: {
+      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
     },
     imageViewerCloseButton: {
       position: 'absolute',
-      top: 50,
       right: 20,
       width: 44,
       height: 44,
@@ -6247,20 +6311,20 @@ function createStyles(
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
+      elevation: 10,
     },
     imageViewerSlide: {
-      width: 400,
-      height: 400,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 32,
     },
     imageViewerImage: {
       width: '100%',
-      height: '100%',
+      height: '82%',
     },
     imageViewerCounter: {
       position: 'absolute',
-      bottom: 50,
       alignSelf: 'center',
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
       paddingHorizontal: 16,
