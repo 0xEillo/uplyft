@@ -39,6 +39,7 @@ export function WorkoutCard({
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [canExpandDescription, setCanExpandDescription] = useState(false)
   const [hasMeasuredDescription, setHasMeasuredDescription] = useState(false)
+  const [hasDescriptionWidth, setHasDescriptionWidth] = useState(false)
   const [expandedExerciseIndices, setExpandedExerciseIndices] = useState<
     number[]
   >([])
@@ -47,6 +48,7 @@ export function WorkoutCard({
     setIsDescriptionExpanded(false)
     setCanExpandDescription(false)
     setHasMeasuredDescription(false)
+    setHasDescriptionWidth(false)
   }, [workout.description])
 
   const visibleExercises = isWorkoutExpanded
@@ -100,15 +102,28 @@ export function WorkoutCard({
           activeOpacity={canExpandDescription ? 0.7 : 1}
           disabled={!canExpandDescription}
           style={styles.descriptionWrapper}
+          onLayout={({ nativeEvent }) => {
+            if (nativeEvent.layout.width > 0 && !hasDescriptionWidth) {
+              setHasDescriptionWidth(true)
+            }
+          }}
         >
+          {!hasMeasuredDescription && hasDescriptionWidth ? (
+            <View pointerEvents="none" style={styles.descriptionMeasureContainer}>
+              <Text
+                style={styles.description}
+                onTextLayout={({ nativeEvent }) => {
+                  setCanExpandDescription(nativeEvent.lines.length > 2)
+                  setHasMeasuredDescription(true)
+                }}
+              >
+                {workout.description}
+              </Text>
+            </View>
+          ) : null}
           <Text
             style={styles.description}
             numberOfLines={isDescriptionExpanded ? undefined : 2}
-            onTextLayout={({ nativeEvent }) => {
-              if (isDescriptionExpanded || hasMeasuredDescription) return
-              setCanExpandDescription(nativeEvent.lines.length > 2)
-              setHasMeasuredDescription(true)
-            }}
           >
             {workout.description}
           </Text>
@@ -397,6 +412,13 @@ const createStyles = (
       color: isDark ? 'rgba(255,255,255,0.45)' : colors.textSecondary,
       lineHeight: 20,
       letterSpacing: 0.1,
+    },
+    descriptionMeasureContainer: {
+      position: 'absolute',
+      left: 20,
+      right: 20,
+      opacity: 0,
+      zIndex: -1,
     },
     descriptionMoreText: {
       fontSize: 12,
