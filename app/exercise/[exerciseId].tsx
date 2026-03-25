@@ -32,6 +32,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
   getStandardsLadder,
@@ -225,12 +226,17 @@ export default function ExerciseDetailScreen() {
 
         if (loadRequestIdRef.current !== requestId) return
 
+        const isRepBased = isRepBasedExercise(exerciseData.name)
         let nextMax1RM = 0
         const nextRecordsList = records
         const nextExercisePerformance = createEmptyExercisePerformanceSummary()
 
         if (records.length > 0) {
-          nextMax1RM = Math.max(...records.map((record) => record.estimated1RM))
+          nextMax1RM = Math.max(
+            ...records.map((record) =>
+              isRepBased ? record.maxReps : record.estimated1RM,
+            ),
+          )
           nextExercisePerformance.best1RM = nextMax1RM
           nextExercisePerformance.heaviestWeight = Math.max(
             ...records.map((record) => record.weight),
@@ -599,6 +605,8 @@ export default function ExerciseDetailScreen() {
 
   const styles = createStyles(colors)
   const strengthInfo = getStrengthInfo()
+  const isRepBasedStrengthExercise =
+    !!exercise?.name && isRepBasedExercise(exercise.name)
   const exerciseLevelMilestoneLabels = useMemo(() => {
     if (!exercise?.name || !profile?.weight_kg) return undefined
     const strengthGender = getStrengthGender(profile?.gender)
@@ -610,6 +618,11 @@ export default function ExerciseDetailScreen() {
     const labels: Partial<Record<StrengthLevel, string>> = {}
     const weightKg = profile.weight_kg!
     ladder.forEach((standard) => {
+      if (isRepBasedExercise(exercise.name)) {
+        labels[standard.level] = `${Math.round(standard.multiplier)} reps`
+        return
+      }
+
       const targetWeightKg = Math.ceil(weightKg * standard.multiplier)
       const compactWeight = formatWeight(targetWeightKg, {
         maximumFractionDigits: 0,
@@ -782,11 +795,15 @@ export default function ExerciseDetailScreen() {
                 )}
 
                 <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>1RM</Text>
+                  <Text style={styles.statLabel}>
+                    {isRepBasedStrengthExercise ? 'Best Reps' : '1RM'}
+                  </Text>
                   <Text style={styles.statValue}>
-                    {formatWeight(exercisePerformance.best1RM, {
-                      maximumFractionDigits: 1,
-                    })}
+                    {isRepBasedStrengthExercise
+                      ? `${Math.round(exercisePerformance.best1RM)} reps`
+                      : formatWeight(exercisePerformance.best1RM, {
+                          maximumFractionDigits: 1,
+                        })}
                   </Text>
                 </View>
                 <View style={styles.separator} />
@@ -838,7 +855,11 @@ export default function ExerciseDetailScreen() {
                         </Text>
                         {record.estimated1RM > 0 && (
                           <Text style={styles.recordEstimate}>
-                            1RM: {formatWeight(record.estimated1RM, { maximumFractionDigits: 0 })}
+                            {isRepBasedStrengthExercise
+                              ? `Best reps: ${record.maxReps}`
+                              : `1RM: ${formatWeight(record.estimated1RM, {
+                                  maximumFractionDigits: 0,
+                                })}`}
                           </Text>
                         )}
                       </View>

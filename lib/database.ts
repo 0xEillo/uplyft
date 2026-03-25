@@ -4,6 +4,10 @@ import type {
 } from '@/lib/body-log/metadata'
 import { generateExerciseMetadata } from '@/lib/exercise-metadata'
 import {
+  getExerciseRecordWeightKey,
+  getExerciseStrengthMetric,
+} from '@/lib/exercise-strength'
+import {
   getExerciseNameMap,
   getLeaderboardExercises,
   isRepBasedExercise,
@@ -3097,12 +3101,12 @@ export const database = {
           date,
           workout_exercises!inner (
             exercise_id,
+            exercise:exercises!inner (name),
             sets!inner (reps, weight)
           )
         `,
         )
         .eq('user_id', userId)
-        .not('workout_exercises.sets.weight', 'is', null)
         .not('workout_exercises.sets.reps', 'is', null)
         .gt('workout_exercises.sets.reps', 0)
         .order('date', { ascending: true })
@@ -3116,6 +3120,13 @@ export const database = {
         date: string
         workout_exercises?: {
           exercise_id: string
+          exercise?:
+            | {
+                name: string
+              }
+            | {
+                name: string
+              }[]
           sets?: {
             reps: number | null
             weight: number | null
@@ -3138,11 +3149,14 @@ export const database = {
         const sessionMaxByExercise: Record<string, number> = {}
 
         session.workout_exercises?.forEach((workoutExercise) => {
+          const exercise = Array.isArray(workoutExercise.exercise)
+            ? workoutExercise.exercise[0]
+            : workoutExercise.exercise
+          if (!exercise) return
+
           workoutExercise.sets?.forEach((set) => {
-            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
-              return
-            }
-            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
+            const estimated1RM = getExerciseStrengthMetric(exercise.name, set)
+            if (estimated1RM === null) return
             const currentSessionMax =
               sessionMaxByExercise[workoutExercise.exercise_id] || 0
             if (estimated1RM > currentSessionMax) {
@@ -3186,13 +3200,13 @@ export const database = {
           created_at,
           workout_exercises!inner (
             exercise_id,
+            exercise:exercises!inner (name),
             sets!inner (reps, weight)
           )
         `,
         )
         .eq('user_id', userId)
         .eq('workout_exercises.exercise_id', exerciseId)
-        .not('workout_exercises.sets.weight', 'is', null)
         .not('workout_exercises.sets.reps', 'is', null)
         .gt('workout_exercises.sets.reps', 0)
         .order('created_at', { ascending: true })
@@ -3204,6 +3218,13 @@ export const database = {
         date: string
         created_at: string
         workout_exercises?: {
+          exercise?:
+            | {
+                name: string
+              }
+            | {
+                name: string
+              }[]
           sets?: {
             reps: number
             weight: number | null
@@ -3219,20 +3240,28 @@ export const database = {
 
       ;(data as RecordsByWeightRow[])?.forEach((session) => {
         session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.weight && set.reps) {
-              const weight = set.weight
-              const reps = set.reps
-              const estimated1RM = estimateOneRepMaxKg(weight, reps)
+          const exercise = Array.isArray(we.exercise)
+            ? we.exercise[0]
+            : we.exercise
+          if (!exercise) return
 
-              const existing = weightRecords.get(weight)
-              if (!existing || reps > existing.maxReps) {
-                weightRecords.set(weight, {
-                  maxReps: reps,
-                  date: session.date || session.created_at,
-                  estimated1RM: Math.round(estimated1RM),
-                })
-              }
+          we.sets?.forEach((set) => {
+            const reps = set.reps
+            if (!Number.isFinite(reps) || !reps || reps <= 0) return
+
+            const estimated1RM = getExerciseStrengthMetric(exercise.name, set)
+            if (estimated1RM === null) return
+
+            const weight = getExerciseRecordWeightKey(exercise.name, set.weight)
+            if (weight === null) return
+
+            const existing = weightRecords.get(weight)
+            if (!existing || reps > existing.maxReps) {
+              weightRecords.set(weight, {
+                maxReps: reps,
+                date: session.date || session.created_at,
+                estimated1RM: Math.round(estimated1RM),
+              })
             }
           })
         })

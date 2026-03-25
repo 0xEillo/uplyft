@@ -1159,7 +1159,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       { level: 'Intermediate', multiplier: 0.3, color: '#10B981', description: '1-2 years consistent training' },
       { level: 'Advanced', multiplier: 0.45, color: '#8B5CF6', description: '2-5 years dedicated training' },
       { level: 'Elite', multiplier: 0.65, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.78, color: '#EF4444', description: 'World record territory' },
+      { level: 'World Class', multiplier: 0.8, color: '#EF4444', description: 'World record territory' },
     ],
     female: [
       { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
@@ -1167,7 +1167,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       { level: 'Intermediate', multiplier: 0.2, color: '#10B981', description: '1-2 years consistent training' },
       { level: 'Advanced', multiplier: 0.3, color: '#8B5CF6', description: '2-5 years dedicated training' },
       { level: 'Elite', multiplier: 0.35, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.42, color: '#EF4444', description: 'World record territory' },
+      { level: 'World Class', multiplier: 0.45, color: '#EF4444', description: 'World record territory' },
     ],
   },
   {
@@ -1848,7 +1848,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       { level: 'Intermediate', multiplier: 0.4, color: '#10B981', description: '1-2 years consistent training' },
       { level: 'Advanced', multiplier: 0.7, color: '#8B5CF6', description: '2-5 years dedicated training' },
       { level: 'Elite', multiplier: 1, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.2, color: '#EF4444', description: 'World record territory' },
+      { level: 'World Class', multiplier: 1.25, color: '#EF4444', description: 'World record territory' },
     ],
   },
   {
@@ -2346,7 +2346,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
   {
     id: 'b27be848-7788-476a-ae78-19aea566977b',
     name: 'Skull Crusher (Barbell)',
-    aliases: ['Skull Crusher', 'Lying Tricep Extension', 'Barbell Lying Triceps Extension'],
+    aliases: ['Skullcrusher', 'Skull Crushers', 'Lying Tricep Extension', 'Barbell Lying Triceps Extension'],
     tier: 2,
     gifUrl: 'h8LFzo9.gif',
     male: [
@@ -2355,7 +2355,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
       { level: 'Advanced', multiplier: 0.8, color: '#8B5CF6', description: '2-5 years dedicated training' },
       { level: 'Elite', multiplier: 1.1, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.32, color: '#EF4444', description: 'World record territory' },
+      { level: 'World Class', multiplier: 1.35, color: '#EF4444', description: 'World record territory' },
     ],
     female: [
       { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
@@ -2363,7 +2363,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       { level: 'Intermediate', multiplier: 0.35, color: '#10B981', description: '1-2 years consistent training' },
       { level: 'Advanced', multiplier: 0.55, color: '#8B5CF6', description: '2-5 years dedicated training' },
       { level: 'Elite', multiplier: 0.75, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.9, color: '#EF4444', description: 'World record territory' },
+      { level: 'World Class', multiplier: 0.95, color: '#EF4444', description: 'World record territory' },
     ],
   },
   {
