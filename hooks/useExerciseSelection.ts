@@ -1,31 +1,36 @@
 import { Exercise } from '@/types/database.types'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 
-// Global callback ref to persist across navigation
-let globalSelectionCallback: ((exercise: Exercise | Exercise[]) => void) | null = null
+type ExerciseSelectionCallback = (exercise: Exercise | Exercise[]) => void
+
+// Shared one-shot callback store to persist across navigation.
+const selectionCallbackStore: {
+  current: ExerciseSelectionCallback | null
+} = {
+  current: null,
+}
 
 export function useExerciseSelection() {
-  const callbackRef = useRef<((exercise: Exercise | Exercise[]) => void) | null>(null)
-
-  const registerCallback = useCallback((callback: (exercise: Exercise | Exercise[]) => void) => {
-    callbackRef.current = callback
-    globalSelectionCallback = callback
+  const registerCallback = useCallback((callback: ExerciseSelectionCallback) => {
+    selectionCallbackStore.current = callback
   }, [])
 
   const clearCallback = useCallback(() => {
-    callbackRef.current = null
-    globalSelectionCallback = null
+    selectionCallbackStore.current = null
   }, [])
 
   const callCallback = useCallback((exercise: Exercise | Exercise[]) => {
-    const callback = globalSelectionCallback
-    if (!callback) return
+    const callback = selectionCallbackStore.current
 
-    // Clear first so the callback can only be consumed once, even if the
-    // caller double-taps or the callback triggers more navigation.
-    clearCallback()
+    if (typeof callback !== 'function') {
+      selectionCallbackStore.current = null
+      return
+    }
+
+    // Clear before invoke so repeated taps cannot deliver the selection twice.
+    selectionCallbackStore.current = null
     callback(exercise)
-  }, [clearCallback])
+  }, [])
 
   return {
     registerCallback,

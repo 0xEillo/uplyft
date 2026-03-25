@@ -92,6 +92,7 @@ interface WorkoutSetRowProps {
   isRepsFocused: boolean
   isWeightSuspicious: boolean
   compactPreview: boolean
+  inputsEnabled: boolean
   unitDisplay: string
   colors: ReturnType<typeof useThemedColors>
   styles: ReturnType<typeof createStyles>
@@ -122,6 +123,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   isRepsFocused,
   isWeightSuspicious,
   compactPreview,
+  inputsEnabled,
   unitDisplay,
   colors,
   styles,
@@ -216,77 +218,81 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
         {isBodyWeight ? (
           <View style={styles.boxInputPlaceholder} />
         ) : (
+          <View pointerEvents={inputsEnabled ? 'auto' : 'none'}>
+            <TextInput
+              ref={registerWeightRef}
+              style={[
+                styles.boxInput,
+                isWeightFocused && styles.boxInputFocused,
+                isWeightSuspicious && styles.boxInputWarning,
+              ]}
+              placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
+              placeholderTextColor={colors.textPlaceholder}
+              showSoftInputOnFocus={false}
+              keyboardType="number-pad"
+              contextMenuHidden
+              caretHidden={false}
+              editable={inputsEnabled}
+              value={set.weight}
+              selection={
+                isWeightFocused
+                  ? { start: set.weight.length, end: set.weight.length }
+                  : undefined
+              }
+              onChangeText={(value) =>
+                onWeightChange(exerciseIndex, setIndex, value)
+              }
+              cursorColor={colors.brandPrimary}
+              selectionColor={colors.brandPrimary}
+              onSelectionChange={(event) => {
+                if (onSelectionWeightChange) {
+                  const { start, end } = event.nativeEvent.selection
+                  onSelectionWeightChange(start, end, set.weight.length)
+                }
+              }}
+              onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
+              onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
+              onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
+            />
+          </View>
+        )}
+      </View>
+
+      <View style={styles.setColInput}>
+        <View pointerEvents={inputsEnabled ? 'auto' : 'none'}>
           <TextInput
-            ref={registerWeightRef}
+            ref={registerRepsRef}
             style={[
               styles.boxInput,
-              isWeightFocused && styles.boxInputFocused,
-              isWeightSuspicious && styles.boxInputWarning,
+              isRepsFocused && styles.boxInputFocused,
             ]}
-            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-            placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
+            placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '-'}
             placeholderTextColor={colors.textPlaceholder}
             showSoftInputOnFocus={false}
             keyboardType="number-pad"
             contextMenuHidden
             caretHidden={false}
-            value={set.weight}
+            editable={inputsEnabled}
+            value={set.reps}
             selection={
-              isWeightFocused
-                ? { start: set.weight.length, end: set.weight.length }
+              isRepsFocused
+                ? { start: set.reps.length, end: set.reps.length }
                 : undefined
             }
-            onChangeText={(value) =>
-              onWeightChange(exerciseIndex, setIndex, value)
-            }
+            onChangeText={(value) => onRepsChange(exerciseIndex, setIndex, value)}
             cursorColor={colors.brandPrimary}
             selectionColor={colors.brandPrimary}
             onSelectionChange={(event) => {
-              if (onSelectionWeightChange) {
+              if (onSelectionRepsChange) {
                 const { start, end } = event.nativeEvent.selection
-                onSelectionWeightChange(start, end, set.weight.length)
+                onSelectionRepsChange(start, end, set.reps.length)
               }
             }}
-            onPressIn={() => onPressIn(exerciseIndex, setIndex, 'weight')}
-            onFocus={() => onFocus(exerciseIndex, setIndex, 'weight')}
-            onBlur={() => onBlur(exerciseIndex, setIndex, 'weight')}
+            onPressIn={() => onPressIn(exerciseIndex, setIndex, 'reps')}
+            onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
+            onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
           />
-        )}
-      </View>
-
-      <View style={styles.setColInput}>
-        <TextInput
-          ref={registerRepsRef}
-          style={[
-            styles.boxInput,
-            isRepsFocused && styles.boxInputFocused,
-          ]}
-          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-          placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '-'}
-          placeholderTextColor={colors.textPlaceholder}
-          showSoftInputOnFocus={false}
-          keyboardType="number-pad"
-          contextMenuHidden
-          caretHidden={false}
-          value={set.reps}
-          selection={
-            isRepsFocused
-              ? { start: set.reps.length, end: set.reps.length }
-              : undefined
-          }
-          onChangeText={(value) => onRepsChange(exerciseIndex, setIndex, value)}
-          cursorColor={colors.brandPrimary}
-          selectionColor={colors.brandPrimary}
-          onSelectionChange={(event) => {
-            if (onSelectionRepsChange) {
-              const { start, end } = event.nativeEvent.selection
-              onSelectionRepsChange(start, end, set.reps.length)
-            }
-          }}
-          onPressIn={() => onPressIn(exerciseIndex, setIndex, 'reps')}
-          onFocus={() => onFocus(exerciseIndex, setIndex, 'reps')}
-          onBlur={() => onBlur(exerciseIndex, setIndex, 'reps')}
-        />
+        </View>
       </View>
 
       <View style={styles.setColCheckmark}>
@@ -437,6 +443,7 @@ interface StructuredWorkoutInputProps {
   lastWorkout?: WorkoutSessionWithDetails | null
   initialExercises?: ExerciseData[]
   compactPreview?: boolean
+  inputsEnabled?: boolean
   onDataChange: (exercises: ExerciseData[]) => void
   onRestTimerStart?: (seconds: number) => void
   autoRestEnabled?: boolean
@@ -472,6 +479,7 @@ export function StructuredWorkoutInput({
   lastWorkout,
   initialExercises,
   compactPreview = false,
+  inputsEnabled = true,
   onDataChange,
   onRestTimerStart,
   autoRestEnabled,
@@ -1837,6 +1845,7 @@ export function StructuredWorkoutInput({
                         isRepsFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'reps'}
                         isWeightSuspicious={isWeightSuspicious(set.weight)}
                         compactPreview={compactPreview ?? false}
+                        inputsEnabled={inputsEnabled}
                         unitDisplay={unitDisplay}
                         colors={colors}
                         styles={styles}

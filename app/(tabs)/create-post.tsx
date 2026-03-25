@@ -101,6 +101,7 @@ const IS_DEV_RUNTIME =
     ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
     : process.env.NODE_ENV !== 'production'
 const DEBUG_LOGS = false
+const STRUCTURED_INPUT_SCROLL_TAP_GUARD_MS = 180
 
 type ExerciseResolutionCandidate = {
   name: string
@@ -373,6 +374,8 @@ export default function CreatePostScreen() {
   const [isStructuredInputFocused, setIsStructuredInputFocused] = useState(
     false,
   )
+  const [areStructuredSetInputsEnabled, setAreStructuredSetInputsEnabled] =
+    useState(true)
   const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
   const [keypadTapShield, setKeypadTapShield] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -578,10 +581,35 @@ export default function CreatePostScreen() {
     [],
   )
 
+  const lockStructuredSetInputs = useCallback(() => {
+    if (structuredInputScrollUnlockTimeoutRef.current) {
+      clearTimeout(structuredInputScrollUnlockTimeoutRef.current)
+      structuredInputScrollUnlockTimeoutRef.current = null
+    }
+    setAreStructuredSetInputsEnabled(false)
+  }, [])
+
+  const releaseStructuredSetInputs = useCallback(
+    (delayMs = STRUCTURED_INPUT_SCROLL_TAP_GUARD_MS) => {
+      if (structuredInputScrollUnlockTimeoutRef.current) {
+        clearTimeout(structuredInputScrollUnlockTimeoutRef.current)
+      }
+      structuredInputScrollUnlockTimeoutRef.current = setTimeout(() => {
+        structuredInputScrollUnlockTimeoutRef.current = null
+        setAreStructuredSetInputsEnabled(true)
+      }, delayMs)
+    },
+    [],
+  )
+
   useEffect(() => {
     return () => {
       if (keypadTapShieldTimeoutRef.current) {
         clearTimeout(keypadTapShieldTimeoutRef.current)
+      }
+      if (structuredInputScrollUnlockTimeoutRef.current) {
+        clearTimeout(structuredInputScrollUnlockTimeoutRef.current)
+        structuredInputScrollUnlockTimeoutRef.current = null
       }
       if (keyboardSettleTimeoutRef.current) {
         clearTimeout(keyboardSettleTimeoutRef.current)
@@ -694,6 +722,8 @@ export default function CreatePostScreen() {
   const scrollYRef = useRef(0)
   const nativeKeyboardHeightRef = useRef(0)
   const keypadVisibleRef = useRef(false)
+  const structuredInputScrollUnlockTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null)
   const toolbarMeasuredHeightRef = useRef(0)
   const toolbarBlockingHeightRef = useRef(0)
   const toolbarVisibleRef = useRef(false)
@@ -2728,6 +2758,14 @@ export default function CreatePostScreen() {
             onScroll={(event) => {
               scrollYRef.current = event.nativeEvent.contentOffset.y
             }}
+            onScrollBeginDrag={lockStructuredSetInputs}
+            onMomentumScrollBegin={lockStructuredSetInputs}
+            onScrollEndDrag={() => {
+              releaseStructuredSetInputs()
+            }}
+            onMomentumScrollEnd={() => {
+              releaseStructuredSetInputs()
+            }}
             bounces={true}
             automaticallyAdjustContentInsets={false}
           >
@@ -2819,6 +2857,7 @@ export default function CreatePostScreen() {
                   initialExercises={
                     structuredData.length > 0 ? structuredData : undefined
                   }
+                  inputsEnabled={areStructuredSetInputsEnabled}
                   onDataChange={handleStructuredDataChange}
                   onRestTimerStart={handleRestTimerStart}
                   autoRestEnabled={autoRestEnabled}
