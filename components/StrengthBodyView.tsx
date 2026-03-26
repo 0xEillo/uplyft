@@ -691,7 +691,7 @@ export function StrengthBodyView({
         }
         return b.progress - a.progress;
       })
-      .slice(0, 10);
+      .slice(0, 20);
 
     // Deduplicate by exerciseId — guards against duplicate exerciseData entries
     const seen = new Set<string>();
