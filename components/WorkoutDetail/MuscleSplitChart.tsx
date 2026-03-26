@@ -9,18 +9,6 @@ interface MuscleSplitChartProps {
   workout: WorkoutSessionWithDetails
 }
 
-// Color mapping for muscle groups
-const MUSCLE_COLORS: { [key: string]: string } = {
-  Chest: '#FF6B6B',
-  Back: '#4ECDC4',
-  Shoulders: '#FFE66D',
-  Arms: '#95E1D3',
-  Legs: '#A8E6CF',
-  Core: '#C7CEEA',
-  Glutes: '#FFDAB9',
-  'Full Body': '#B8B8B8',
-}
-
 export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
   const { isDark } = useTheme()
   const colors = getColors(isDark)
@@ -47,7 +35,6 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
 
       <View style={styles.chartContainer}>
         {muscleSplit.map((item, index) => {
-          const barColor = MUSCLE_COLORS[item.muscleGroup] || colors.brandPrimary
           const percentage = Math.round(item.percentage)
 
           return (
@@ -73,7 +60,7 @@ export function MuscleSplitChart({ workout }: MuscleSplitChartProps) {
                     styles.bar,
                     {
                       width: `${percentage}%`,
-                      backgroundColor: barColor,
+                      backgroundColor: colors.brandPrimary,
                     },
                   ]}
                 />
