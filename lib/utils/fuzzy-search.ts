@@ -8,7 +8,7 @@
  */
 import Fuse, { IFuseOptions } from 'fuse.js'
 
-import { Exercise } from '@/types/database.types'
+import { Exercise, ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 
 // Fuse.js options tuned for exercise names
 const FUSE_OPTIONS: IFuseOptions<Exercise> = {
@@ -28,6 +28,13 @@ const FUSE_OPTIONS: IFuseOptions<Exercise> = {
 // Cache for Fuse instances to avoid recreating on every search
 let fuseInstance: Fuse<Exercise> | null = null
 let cachedExercises: Exercise[] | null = null
+let programFuseInstance: Fuse<ExploreProgramWithRoutines & { routine_count: number }> | null =
+  null
+let cachedPrograms:
+  | (ExploreProgramWithRoutines & { routine_count: number })[]
+  | null = null
+let routineFuseInstance: Fuse<ExploreRoutine> | null = null
+let cachedExploreRoutines: ExploreRoutine[] | null = null
 
 /**
  * Create or get cached Fuse instance
@@ -41,6 +48,34 @@ function getFuseInstance(exercises: Exercise[]): Fuse<Exercise> {
   fuseInstance = new Fuse(exercises, FUSE_OPTIONS)
   cachedExercises = exercises
   return fuseInstance
+}
+
+function getProgramFuseInstance(
+  programs: (ExploreProgramWithRoutines & { routine_count: number })[],
+) {
+  if (programFuseInstance && cachedPrograms === programs) {
+    return programFuseInstance
+  }
+
+  programFuseInstance = new Fuse(programs, {
+    keys: ['name', 'description'],
+    threshold: 0.4,
+  })
+  cachedPrograms = programs
+  return programFuseInstance
+}
+
+function getExploreRoutineFuseInstance(routines: ExploreRoutine[]) {
+  if (routineFuseInstance && cachedExploreRoutines === routines) {
+    return routineFuseInstance
+  }
+
+  routineFuseInstance = new Fuse(routines, {
+    keys: ['name', 'description'],
+    threshold: 0.4,
+  })
+  cachedExploreRoutines = routines
+  return routineFuseInstance
 }
 
 /**
@@ -130,9 +165,43 @@ export function hasExactOrFuzzyMatch(
 }
 
 /**
+ * Specialized fuzzy search for Programs in Explore
+ */
+export function fuzzySearchPrograms(
+  programs: (ExploreProgramWithRoutines & { routine_count: number })[],
+  query: string,
+): (ExploreProgramWithRoutines & { routine_count: number })[] {
+  const trimmedQuery = query.trim()
+  if (!trimmedQuery) return programs
+
+  const fuse = getProgramFuseInstance(programs)
+
+  return fuse.search(trimmedQuery).map((r) => r.item)
+}
+
+/**
+ * Specialized fuzzy search for Routines in Explore
+ */
+export function fuzzySearchExploreRoutines(
+  routines: ExploreRoutine[],
+  query: string,
+): ExploreRoutine[] {
+  const trimmedQuery = query.trim()
+  if (!trimmedQuery) return routines
+
+  const fuse = getExploreRoutineFuseInstance(routines)
+
+  return fuse.search(trimmedQuery).map((r) => r.item)
+}
+
+/**
  * Clear the Fuse cache (call when exercises list is updated)
  */
 export function clearFuseCache(): void {
   fuseInstance = null
   cachedExercises = null
+  programFuseInstance = null
+  cachedPrograms = null
+  routineFuseInstance = null
+  cachedExploreRoutines = null
 }

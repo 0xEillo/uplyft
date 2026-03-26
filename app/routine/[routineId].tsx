@@ -362,12 +362,6 @@ export default function RoutineDetailScreen() {
     })
   }
 
-  const getImageUrl = () => {
-    if (!routine?.imagePath) return null
-    if (routine.imagePath.startsWith('http')) return routine.imagePath
-    return getRoutineImageUrl(routine.imagePath)
-  }
-
   // Calculate stats
   const exerciseCount = routine?.exercises?.length || 0
   const setCount =
@@ -395,7 +389,7 @@ export default function RoutineDetailScreen() {
 
   if (!routine) return null
 
-  const imageUrl = getImageUrl()
+  const imageUrl = getRoutineImageUrl(routine.imagePath)
 
   return (
     <SlideInView
@@ -712,18 +706,23 @@ const createStyles = (
       marginBottom: 24,
     },
     routineName: {
-      fontSize: 24,
-      fontWeight: '700',
-      marginBottom: 4,
+      fontSize: 32,
+      fontWeight: '900',
+      marginBottom: 6,
+      letterSpacing: -1,
     },
     creatorLabel: {
       fontSize: 14,
-      marginBottom: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 16,
     },
     descriptionText: {
-      fontSize: 14,
-      lineHeight: 20,
-      marginBottom: 20,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 24,
+      fontWeight: '400',
     },
     statsRow: {
       flexDirection: 'row',

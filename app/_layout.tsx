@@ -253,10 +253,8 @@ function RootLayoutNav() {
             name="strength-stats"
             options={{ presentation: 'card', animation: 'default' }}
           />
-          <Stack.Screen
-            name="volume-stats"
-            options={{ presentation: 'card', animation: 'default' }}
-          />
+
+
           <Stack.Screen
             name="workout-calendar"
             options={{ presentation: 'card', animation: 'default' }}

@@ -12,7 +12,6 @@ import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { BodyPartSlug } from '@/lib/body-mapping'
 import { haptic } from '@/lib/haptics'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
@@ -46,64 +45,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-// Mapping from database muscle group names to body part slugs for highlighting
-// Simplified: just show upper half or lower half of body
-interface MuscleBodyMapping {
-  slug: BodyPartSlug
-  side: 'front' | 'back'
-  bodyHalf: 'upper' | 'lower'
-}
-
-// Consistent values for upper and lower body views
-const BODY_HALF_CONFIG = {
-  upper: { scale: 0.52, offsetY: 42 },
-  lower: { scale: 0.36, offsetY: -26 },
-}
-
-const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
-  // Upper body muscles
-  Chest: { slug: 'chest', side: 'front', bodyHalf: 'upper' },
-  Shoulders: { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
-  Triceps: { slug: 'triceps', side: 'back', bodyHalf: 'upper' },
-  Biceps: { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
-  Back: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
-  Lats: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
-  Traps: { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
-  Abs: { slug: 'abs', side: 'front', bodyHalf: 'upper' },
-  Core: { slug: 'abs', side: 'front', bodyHalf: 'upper' },
-  'Lower Back': { slug: 'lower-back', side: 'back', bodyHalf: 'upper' },
-  Forearms: { slug: 'forearm', side: 'front', bodyHalf: 'upper' },
-  // Lower body muscles
-  Glutes: { slug: 'gluteal', side: 'back', bodyHalf: 'lower' },
-  Quads: { slug: 'quadriceps', side: 'front', bodyHalf: 'lower' },
-  Hamstrings: { slug: 'hamstring', side: 'back', bodyHalf: 'lower' },
-  Calves: { slug: 'calves', side: 'back', bodyHalf: 'lower' },
-}
-
-// Display order for muscle groups - most popular first, similar groups together
-const MUSCLE_GROUP_ORDER = [
-  // Push muscles (most popular)
-  'Chest',
-  'Shoulders',
-  // Pull muscles
-  'Back',
-  'Lats',
-  // Arms
-  'Biceps',
-  'Triceps',
-  'Forearms',
-  // Core
-  'Abs',
-  'Core',
-  // Upper back
-  'Traps',
-  'Lower Back',
-  // Legs
-  'Quads',
-  'Hamstrings',
-  'Glutes',
-  'Calves',
-]
+import { MUSCLE_CHIP_RENDER_DATA, MuscleChipRenderData } from '@/lib/muscle-mapping'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const HORIZONTAL_PADDING = 8
@@ -114,29 +56,6 @@ const GRID_ITEM_WIDTH =
 const MUSCLE_HIGHLIGHT_COLORS = ['#EF4444']
 const MUSCLE_BORDER_COLOR = '#D1D5DB'
 
-interface MuscleChipRenderData {
-  group: string
-  bodyData: { slug: BodyPartSlug; intensity: number }[]
-  side: 'front' | 'back'
-  scale: number
-  offsetY: number
-}
-
-const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = MUSCLE_GROUP_ORDER.map(
-  (group) => {
-    const mapping = MUSCLE_TO_BODY_PARTS[group]
-    if (!mapping) return null
-
-    return {
-      group,
-      bodyData: [{ slug: mapping.slug, intensity: 1 }],
-      side: mapping.side,
-      scale: BODY_HALF_CONFIG[mapping.bodyHalf].scale,
-      offsetY: BODY_HALF_CONFIG[mapping.bodyHalf].offsetY,
-    }
-  },
-).filter((chip): chip is MuscleChipRenderData => chip !== null)
-
 // Memoized exercise card for grid layout
 const ExerciseGridItem = memo(function ExerciseGridItem({
   exercise,
@@ -146,6 +65,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
   onSelect,
   onToggleFavorite,
   colors,
+  isExploreMode,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
@@ -154,6 +74,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
   onSelect: () => void
   onToggleFavorite: () => void
   colors: ReturnType<typeof useThemedColors>
+  isExploreMode?: boolean
 }) {
   const { isDark } = useTheme()
 
@@ -165,11 +86,11 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           backgroundColor: isDark ? colors.rowTint : colors.surfaceCard,
           borderColor: colors.border,
         },
-        isCurrentExercise && {
+        isCurrentExercise && !isExploreMode && {
           borderColor: colors.brandPrimary,
           borderWidth: 2,
         },
-        isSelected && {
+        isSelected && !isExploreMode && {
           borderColor: colors.brandPrimary,
           borderWidth: 2,
           backgroundColor: colors.brandPrimary + '10',
@@ -202,33 +123,35 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
               color={isFavorited ? colors.brandPrimary : '#FFFFFF'}
             />
           </TouchableOpacity>
-          <View style={styles.cardOverlayRight}>
-            <Link
-              asChild
-              href={{
-                pathname: '/exercise/[exerciseId]',
-                params: { exerciseId: exercise.id },
-              }}
-            >
-              <TouchableOpacity
-                style={styles.infoButton}
-                onPress={(e) => {
-                  e.stopPropagation()
+          {!isExploreMode && (
+            <View style={styles.cardOverlayRight}>
+              <Link
+                asChild
+                href={{
+                  pathname: '/exercise/[exerciseId]',
+                  params: { exerciseId: exercise.id },
                 }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons
-                  name="information-circle"
-                  size={22}
-                  color={
-                    exercise.created_by || !exercise.gif_url
-                      ? '#FFFFFF'
-                      : 'rgba(0,0,0,0.6)'
-                  }
-                />
-              </TouchableOpacity>
-            </Link>
-          </View>
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={(e) => {
+                    e.stopPropagation()
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name="information-circle"
+                    size={22}
+                    color={
+                      exercise.created_by || !exercise.gif_url
+                        ? '#FFFFFF'
+                        : 'rgba(0,0,0,0.6)'
+                    }
+                  />
+                </TouchableOpacity>
+              </Link>
+            </View>
+          )}
         </View>
       </View>
 
@@ -237,7 +160,7 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           style={[
             styles.cardTitle,
             { color: colors.textPrimary },
-            (isCurrentExercise || isSelected) && { color: colors.brandPrimary },
+            (isCurrentExercise || isSelected) && !isExploreMode && { color: colors.brandPrimary },
           ]}
           numberOfLines={1}
         >
@@ -277,6 +200,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
   onSelect,
   onToggleFavorite,
   colors,
+  isExploreMode,
 }: {
   exercise: Exercise
   isCurrentExercise: boolean
@@ -285,6 +209,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
   onSelect: () => void
   onToggleFavorite: () => void
   colors: ReturnType<typeof useThemedColors>
+  isExploreMode?: boolean
 }) {
   const { isDark } = useTheme()
   const router = useRouter()
@@ -296,7 +221,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
         isDark && { backgroundColor: colors.rowTint },
       ]}
       onPress={onSelect}
-      disabled={isCurrentExercise}
+      disabled={isCurrentExercise && !isExploreMode}
     >
       <ExerciseMediaThumbnail
         gifUrl={exercise.gif_url}
@@ -308,7 +233,7 @@ const ExerciseListItem = memo(function ExerciseListItem({
           style={[
             styles.exerciseListItemText,
             { color: colors.textPrimary },
-            (isCurrentExercise || isSelected) && {
+            (isCurrentExercise || isSelected) && !isExploreMode && {
               fontWeight: '600',
               color: colors.brandPrimary,
             },
@@ -350,44 +275,53 @@ const ExerciseListItem = memo(function ExerciseListItem({
             color={isFavorited ? colors.brandPrimary : colors.textTertiary}
           />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.listItemInfoButton}
-          onPress={(e) => {
-            e.stopPropagation()
-            router.push({
-              pathname: '/exercise/[exerciseId]',
-              params: { exerciseId: exercise.id },
-            })
-          }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons
-            name="information-circle-outline"
-            size={22}
-            color={colors.textTertiary}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.listItemCheckbox}
-          onPress={(e) => {
-            e.stopPropagation()
-            onSelect()
-          }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          disabled={isCurrentExercise}
-        >
-          <Ionicons
-            name={
-              isCurrentExercise || isSelected ? 'checkmark-circle' : 'add'
-            }
-            size={22}
-            color={
-              isCurrentExercise || isSelected
-                ? colors.brandPrimary
-                : colors.textTertiary
-            }
-          />
-        </TouchableOpacity>
+        {!isExploreMode && (
+          <>
+            <TouchableOpacity
+              style={styles.listItemInfoButton}
+              onPress={(e) => {
+                e.stopPropagation()
+                router.push({
+                  pathname: '/exercise/[exerciseId]',
+                  params: { exerciseId: exercise.id },
+                })
+              }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={22}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.listItemCheckbox}
+              onPress={(e) => {
+                e.stopPropagation()
+                onSelect()
+              }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              disabled={isCurrentExercise}
+            >
+              <Ionicons
+                name={
+                  isCurrentExercise || isSelected ? 'checkmark-circle' : 'add'
+                }
+                size={22}
+                color={
+                  isCurrentExercise || isSelected
+                    ? colors.brandPrimary
+                    : colors.textTertiary
+                }
+              />
+            </TouchableOpacity>
+          </>
+        )}
+        {isExploreMode && (
+          <View style={[styles.listItemInfoButton, { paddingRight: 8 }]}>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   )
@@ -447,21 +381,26 @@ const MuscleFilterChip = memo(function MuscleFilterChip({
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
   const router = useRouter()
-  const { currentExerciseName } = useLocalSearchParams<{
+  const { currentExerciseName, initialSearchQuery, initialMuscleGroup, exploreMode } = useLocalSearchParams<{
     currentExerciseName?: string
+    initialSearchQuery?: string
+    initialMuscleGroup?: string
+    exploreMode?: string
   }>()
   const { callCallback, clearCallback } = useExerciseSelection()
   const { isProMember } = useSubscription()
   const { user } = useAuth()
 
+  const isExploreMode = exploreMode === 'true'
+
   // If currentExerciseName is present, we are selecting ONE exercise (e.g. replacing).
   // '__replace__' is used when we don't have a specific name to highlight, just want single-select mode.
   // Otherwise, we are adding exercises (Multi-select allowed).
-  const isMultiSelect = !currentExerciseName
+  const isMultiSelect = !currentExerciseName && !isExploreMode
   const isReplaceMode = !!currentExerciseName
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSearchVisible, setIsSearchVisible] = useState(false)
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '')
+  const [isSearchVisible, setIsSearchVisible] = useState(!!initialSearchQuery || isExploreMode)
   const [isFilterVisible, setIsFilterVisible] = useState(false)
 
   // View mode state: 'grid' or 'list'
@@ -474,7 +413,7 @@ export default function SelectExerciseScreen() {
 
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef<FlashListRef<Exercise>>(null)
-  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
+  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>(initialMuscleGroup ? [initialMuscleGroup] : [])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [showOnlyMine, setShowOnlyMine] = useState(false)
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
@@ -500,10 +439,13 @@ export default function SelectExerciseScreen() {
   )
 
   // Refresh exercises when screen is focused (to pick up new creations)
+  // Skip in explore mode - user is browsing, not adding to a workout, no need to re-fetch
   useFocusEffect(
     useCallback(() => {
-      loadExercises()
-    }, [loadExercises]),
+      if (!isExploreMode) {
+        loadExercises()
+      }
+    }, [loadExercises, isExploreMode]),
   )
 
   const trimmedQuery = searchQuery.trim()
@@ -537,7 +479,6 @@ export default function SelectExerciseScreen() {
       availableMuscleGroups.has(chip.group),
     )
   }, [muscleGroups])
-
   // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
     let result = exercises
@@ -639,6 +580,15 @@ export default function SelectExerciseScreen() {
 
   const handleSelectExercise = useCallback(
     (exercise: Exercise) => {
+      if (isExploreMode) {
+        haptic('light')
+        router.push({
+          pathname: '/exercise/[exerciseId]',
+          params: { exerciseId: exercise.id },
+        })
+        return
+      }
+
       if (isMultiSelect) {
         haptic('light')
         setSelectedIds((prev) => {
@@ -658,7 +608,7 @@ export default function SelectExerciseScreen() {
         router.back()
       }
     },
-    [callCallback, router, isMultiSelect],
+    [callCallback, router, isMultiSelect, isExploreMode],
   )
 
   const handleConfirmSelection = useCallback(() => {
@@ -692,11 +642,11 @@ export default function SelectExerciseScreen() {
 
   const handleBack = useCallback(() => {
     haptic('light')
-    if (!selectionCommittedRef.current) {
+    if (!selectionCommittedRef.current && !isExploreMode) {
       clearCallback()
     }
     setShouldExit(true)
-  }, [clearCallback])
+  }, [clearCallback, isExploreMode])
 
   const handleExitComplete = useCallback(() => {
     router.back()
@@ -761,6 +711,7 @@ export default function SelectExerciseScreen() {
             onSelect={() => handleSelectExercise(item)}
             onToggleFavorite={() => handleToggleFavorite(item.id)}
             colors={colors}
+            isExploreMode={isExploreMode}
           />
         )
       }
@@ -782,6 +733,7 @@ export default function SelectExerciseScreen() {
             onSelect={() => handleSelectExercise(item)}
             onToggleFavorite={() => handleToggleFavorite(item.id)}
             colors={colors}
+            isExploreMode={isExploreMode}
           />
         </View>
       )
@@ -794,6 +746,7 @@ export default function SelectExerciseScreen() {
       colors,
       viewMode,
       selectedIds,
+      isExploreMode,
     ],
   )
 
@@ -909,6 +862,7 @@ export default function SelectExerciseScreen() {
                   onSelect={() => handleSelectExercise(exercise)}
                   onToggleFavorite={() => handleToggleFavorite(exercise.id)}
                   colors={colors}
+                  isExploreMode={isExploreMode}
                 />
               </View>
             )
@@ -953,6 +907,7 @@ export default function SelectExerciseScreen() {
     viewMode,
     toggleViewMode,
     colors,
+    isExploreMode,
   ])
 
   // Empty state component
@@ -992,12 +947,12 @@ export default function SelectExerciseScreen() {
         <View style={styles.header}>
           <LiquidGlassSurface style={styles.headerButtonGlass}>
             <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-              <Ionicons name="close" size={28} color={colors.textPrimary} />
+              <Ionicons name={isExploreMode ? "chevron-back" : "close"} size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </LiquidGlassSurface>
 
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-            {isReplaceMode ? 'Replace exercise' : 'Add exercises'}
+            {isExploreMode ? 'Exercises' : isReplaceMode ? 'Replace exercise' : 'Add exercises'}
           </Text>
 
           <View style={styles.headerRightButtons}>
@@ -1072,7 +1027,7 @@ export default function SelectExerciseScreen() {
           </View>
         )}
 
-        {/* Muscle Filter with Body Diagrams - Always visible */}
+        {/* Muscle Filter with Body Diagrams */}
         {visibleMuscleChips.length > 0 && (
           <ScrollView
             horizontal
@@ -1346,7 +1301,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   filterScrollView: {
-    maxHeight: 36,
+    maxHeight: 44,
     marginBottom: 8,
   },
   filterContainer: {

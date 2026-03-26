@@ -129,7 +129,7 @@ export const ProfileDashboard = memo(
           {isTrialActive && <TrialButton />}
           <View style={styles.tabsRow}>
             <DashboardButton
-              title="Routines"
+              title="Library"
               icon="albums-outline"
               onPress={() => router.push('/routines')}
               compact

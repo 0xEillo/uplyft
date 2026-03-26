@@ -18,6 +18,20 @@ interface ExerciseCache {
 let globalCache: ExerciseCache | null = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
+function haveSameExerciseIdsAndOrder(a: Exercise[], b: Exercise[]) {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+
+  return a.every((exercise, index) => exercise.id === b[index]?.id)
+}
+
+function haveSameStringValues(a: string[], b: string[]) {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+
+  return a.every((value, index) => value === b[index])
+}
+
 export function useExercises(options: UseExercisesOptions = {}) {
   const { userId, initialLoad = true } = options
 
@@ -47,13 +61,23 @@ export function useExercises(options: UseExercisesOptions = {}) {
       )
     }
 
-    // Check cache validity
+    // Check cache validity and keep stable references when the visible data did not change.
     const now = Date.now()
     if (!force && globalCache && now - globalCache.lastFetched < CACHE_TTL) {
       const filtered = filterVisibleExercises(globalCache.exercises, userId)
-      setExercises(filtered)
-      setMuscleGroups(globalCache.muscleGroups)
-      setEquipmentTypes(globalCache.equipmentTypes)
+      setExercises((prev) =>
+        haveSameExerciseIdsAndOrder(prev, filtered) ? prev : filtered,
+      )
+      setMuscleGroups((prev) =>
+        haveSameStringValues(prev, globalCache!.muscleGroups)
+          ? prev
+          : globalCache!.muscleGroups,
+      )
+      setEquipmentTypes((prev) =>
+        haveSameStringValues(prev, globalCache!.equipmentTypes)
+          ? prev
+          : globalCache!.equipmentTypes,
+      )
       setIsLoading(false)
       return filtered
     }

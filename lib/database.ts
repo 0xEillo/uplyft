@@ -46,7 +46,12 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 type ExploreProgramQueryResult = ExploreProgram & {
-  explore_program_routines?: { routine_id: string }[]
+  explore_program_routines?: ({
+    routine_id: string
+    display_order: number
+  } & {
+    routine: ExploreRoutine | null
+  })[]
 }
 
 type ExploreProgramRoutineQueryResult = ExploreProgramRoutine & {
@@ -4721,6 +4726,18 @@ export const database = {
       return data as UserProgram[]
     },
 
+    async getById(programId: string, userId: string): Promise<UserProgram | null> {
+      const { data, error } = await supabase
+        .from('user_programs')
+        .select('*')
+        .eq('id', programId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+      return data as UserProgram | null
+    },
+
     async update(
       programId: string,
       updates: {
@@ -5157,7 +5174,21 @@ export const database = {
           `
           *,
           explore_program_routines (
-            routine_id
+            routine_id,
+            display_order,
+            routine:explore_routines (
+              id,
+              name,
+              description,
+              image_url,
+              level,
+              duration_minutes,
+              equipment,
+              is_published,
+              display_order,
+              created_at,
+              updated_at
+            )
           )
         `,
         )
@@ -5166,11 +5197,22 @@ export const database = {
 
       if (error) throw error
 
-      return (data || []).map((program: ExploreProgramQueryResult) => ({
-        ...program,
-        routine_count: program.explore_program_routines?.length || 0,
-        routines: [],
-      }))
+      return (data || []).map((program: ExploreProgramQueryResult) => {
+        const routines = (program.explore_program_routines || [])
+          .sort((a, b) => a.display_order - b.display_order)
+          .map((programRoutine) => programRoutine.routine)
+          .filter((routine): routine is ExploreRoutine => routine !== null)
+          .map((routine) => ({
+            ...routine,
+            exercises: [],
+          }))
+
+        return {
+          ...program,
+          routine_count: routines.length,
+          routines,
+        }
+      })
     },
 
     /**
@@ -5305,6 +5347,7 @@ export const database = {
           user_id: userId,
           name: exploreRoutine.name,
           notes: exploreRoutine.description,
+          image_path: exploreRoutine.image_url ?? null,
           program_id: programId ?? null,
         })
         .select()

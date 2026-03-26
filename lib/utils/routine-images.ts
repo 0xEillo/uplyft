@@ -133,14 +133,16 @@ export async function listSelectableRoutineImages(): Promise<RoutineImage[]> {
 }
 
 /**
- * Get the public URL for a routine image by its path
+ * Get the public URL for a routine image by its path, or return absolute URLs unchanged.
  */
 export function getRoutineImageUrl(imagePath: string | null | undefined): string | null {
   if (!imagePath) return null
+  const trimmed = imagePath.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
 
   const { data } = supabase.storage
     .from(BUCKET_NAME)
-    .getPublicUrl(imagePath)
+    .getPublicUrl(trimmed)
 
   return data.publicUrl
 }
