@@ -204,6 +204,10 @@ const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
   if (!updates) return updates
   const sanitized = { ...updates }
 
+  if ('weight_kg' in sanitized) {
+    delete sanitized.weight_kg
+  }
+
   if ('profile_description' in sanitized) {
     const raw = sanitized.profile_description
     if (raw === undefined) {
@@ -217,6 +221,58 @@ const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
   }
 
   return sanitized
+}
+
+const hydrateProfileWeightFromDailyLog = async <T extends Profile | null>(
+  profile: T,
+): Promise<T> => {
+  if (!profile) return profile
+
+  const latestWeightEntry = await database.dailyLog
+    .getLatestWeightEntry(profile.id)
+    .catch(() => null)
+
+  return {
+    ...profile,
+    weight_kg: latestWeightEntry?.weight_kg ?? null,
+  } as T
+}
+
+const getDailyWeightsByDate = async (
+  userId: string,
+  rawDates: string[],
+): Promise<Map<string, number | null>> => {
+  const logDates = Array.from(
+    new Set(
+      rawDates
+        .map((value) => {
+          try {
+            return normalizeDailyLogDate(value)
+          } catch {
+            return null
+          }
+        })
+        .filter((value): value is string => Boolean(value)),
+    ),
+  )
+
+  if (logDates.length === 0) {
+    return new Map()
+  }
+
+  const { data, error } = await supabase
+    .from('daily_log_entries')
+    .select('log_date, weight_kg')
+    .eq('user_id', userId)
+    .in('log_date', logDates)
+
+  if (error) throw error
+
+  return new Map(
+    ((data as { log_date: string; weight_kg: number | null }[] | null) ?? []).map(
+      (entry) => [entry.log_date, entry.weight_kg],
+    ),
+  )
 }
 
 type RetentionPushPreferenceUpdates = Partial<
@@ -257,7 +313,10 @@ const normalizeDailyLogDate = (value?: string): string => {
   if (value) {
     const parsed = new Date(value)
     if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().slice(0, 10)
+      const year = parsed.getFullYear()
+      const month = `${parsed.getMonth() + 1}`.padStart(2, '0')
+      const day = `${parsed.getDate()}`.padStart(2, '0')
+      return `${year}-${month}-${day}`
     }
     throw new Error('Invalid daily log date. Expected YYYY-MM-DD format.')
   }
@@ -440,7 +499,7 @@ export const database = {
       if (!data) {
         throw new Error(`Profile not found for user ${userId}`)
       }
-      return data as Profile
+      return hydrateProfileWeightFromDailyLog(data as Profile)
     },
 
     async getByIdOrNull(userId: string) {
@@ -451,7 +510,7 @@ export const database = {
         .maybeSingle()
 
       if (error) throw error
-      return data as Profile | null
+      return hydrateProfileWeightFromDailyLog(data as Profile | null)
     },
 
     async getOrCreate(userId: string, email: string) {
@@ -463,7 +522,7 @@ export const database = {
         .single()
 
       if (existing && !fetchError) {
-        return existing as Profile
+        return hydrateProfileWeightFromDailyLog(existing as Profile)
       }
 
       // Profile doesn't exist, create it
@@ -496,7 +555,7 @@ export const database = {
           .single()
 
         if (!createError && created) {
-          return created as Profile
+          return hydrateProfileWeightFromDailyLog(created as Profile)
         }
 
         // If unique constraint violation, try next number
@@ -521,7 +580,7 @@ export const database = {
         .single()
 
       if (error) throw error
-      return data as Profile
+      return hydrateProfileWeightFromDailyLog(data as Profile)
     },
 
     async upsert(profile: Partial<Profile> & Pick<Profile, 'id'>) {
@@ -533,7 +592,7 @@ export const database = {
         .single()
 
       if (error) throw error
-      return data as Profile
+      return hydrateProfileWeightFromDailyLog(data as Profile)
     },
 
     async searchByUserTag(userTag: string) {
@@ -3648,19 +3707,9 @@ export const database = {
     ) {
       const payload: {
         user_id: string
-        weight_kg?: number
         created_at?: string
       } = {
         user_id: userId,
-      }
-
-      if (
-        options &&
-        options.weightKg !== undefined &&
-        options.weightKg !== null &&
-        !Number.isNaN(options.weightKg)
-      ) {
-        payload.weight_kg = options.weightKg
       }
 
       if (options?.createdAt) {
@@ -3680,12 +3729,15 @@ export const database = {
         throw error
       }
 
-      // Sync weight to user profile if provided
-      if (payload.weight_kg !== undefined) {
-        await supabase
-          .from('profiles')
-          .update({ weight_kg: payload.weight_kg })
-          .eq('id', userId)
+      if (
+        options?.weightKg !== undefined &&
+        options.weightKg !== null &&
+        !Number.isNaN(options.weightKg)
+      ) {
+        await database.dailyLog.updateDay(userId, {
+          logDate: data.created_at,
+          weightKg: options.weightKg,
+        })
       }
 
       return data
@@ -3722,23 +3774,11 @@ export const database = {
      * Get weight history for a user
      */
     async getWeightHistory(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('body_log_entries')
-        .select('created_at, weight_kg')
-        .eq('user_id', userId)
-        .not('weight_kg', 'is', null)
-        .order('created_at', { ascending: true })
-
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      return data as { created_at: string; weight_kg: number }[]
+      const history = await database.dailyLog.getWeightHistory(userId, daysBack)
+      return history.map((entry) => ({
+        created_at: `${entry.log_date}T12:00:00`,
+        weight_kg: entry.weight_kg,
+      }))
     },
 
     /**
@@ -3772,9 +3812,13 @@ export const database = {
 
       if (error) throw error
 
+      const weightByDate = await getDailyWeightsByDate(data.user_id, [data.created_at])
+      const logDate = normalizeDailyLogDate(data.created_at)
+
       // Transform body_log_images to images for consistency
       return {
         ...data,
+        weight_kg: weightByDate.get(logDate) ?? data.weight_kg,
         images: data?.body_log_images || [],
       }
     },
@@ -3810,13 +3854,20 @@ export const database = {
 
       if (error) throw error
 
+      const weightByDate = await getDailyWeightsByDate(
+        userId,
+        (data ?? []).map((entry) => entry.created_at),
+      )
+
       // Transform body_log_images to images for consistency
       const transformedData = data?.map(
         (entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
           id: entry.id,
           user_id: entry.user_id,
           created_at: entry.created_at,
-          weight_kg: entry.weight_kg,
+          weight_kg:
+            weightByDate.get(normalizeDailyLogDate(entry.created_at)) ??
+            entry.weight_kg,
           body_fat_percentage: entry.body_fat_percentage,
           bmi: entry.bmi,
           muscle_mass_kg: entry.muscle_mass_kg,
@@ -3872,13 +3923,20 @@ export const database = {
 
       if (error) throw error
 
+      const weightByDate = await getDailyWeightsByDate(
+        userId,
+        (data ?? []).map((entry) => entry.created_at),
+      )
+
       // Transform body_log_images to images for consistency
       const transformedData = (data ?? []).map(
         (entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
           id: entry.id,
           user_id: entry.user_id,
           created_at: entry.created_at,
-          weight_kg: entry.weight_kg,
+          weight_kg:
+            weightByDate.get(normalizeDailyLogDate(entry.created_at)) ??
+            entry.weight_kg,
           body_fat_percentage: entry.body_fat_percentage,
           bmi: entry.bmi,
           muscle_mass_kg: entry.muscle_mass_kg,
@@ -3905,23 +3963,71 @@ export const database = {
         muscle_mass_kg?: number | null
       },
     ) {
-      const { data, error } = await supabase
-        .from('body_log_entries')
-        .update(metrics)
-        .eq('id', entryId)
-        .select()
-        .single()
+      const {
+        weight_kg,
+        body_fat_percentage,
+        bmi,
+        muscle_mass_kg,
+      } = metrics
 
-      if (error) {
-        throw error
+      let entryMeta: { user_id: string; created_at: string } | null = null
+      if (weight_kg !== undefined) {
+        const { data: entryData, error: entryError } = await supabase
+          .from('body_log_entries')
+          .select('user_id, created_at')
+          .eq('id', entryId)
+          .single()
+
+        if (entryError) {
+          throw entryError
+        }
+
+        entryMeta = entryData
       }
 
-      // Sync weight to user profile if provided
-      if (metrics.weight_kg !== undefined && data?.user_id) {
-        await supabase
-          .from('profiles')
-          .update({ weight_kg: metrics.weight_kg })
-          .eq('id', data.user_id)
+      const bodyMetrics = {
+        body_fat_percentage,
+        bmi,
+        muscle_mass_kg,
+      }
+
+      const shouldUpdateBodyEntry = Object.values(bodyMetrics).some(
+        (value) => value !== undefined,
+      )
+
+      let data: any = null
+      if (shouldUpdateBodyEntry) {
+        const { data: updatedData, error } = await supabase
+          .from('body_log_entries')
+          .update(bodyMetrics)
+          .eq('id', entryId)
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        data = updatedData
+      } else if (entryMeta) {
+        const { data: existingData, error } = await supabase
+          .from('body_log_entries')
+          .select('*')
+          .eq('id', entryId)
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        data = existingData
+      }
+
+      if (weight_kg !== undefined && entryMeta) {
+        await database.dailyLog.updateDay(entryMeta.user_id, {
+          logDate: entryMeta.created_at,
+          weightKg: weight_kg,
+        })
       }
 
       return data
@@ -4067,6 +4173,56 @@ export const database = {
 
       if (error) throw error
       return data as DailyLogEntry
+    },
+
+    async getDayEntry(
+      userId: string,
+      logDate?: string,
+    ): Promise<DailyLogEntry | null> {
+      const normalizedDate = normalizeDailyLogDate(logDate)
+      const { data, error } = await supabase
+        .from('daily_log_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('log_date', normalizedDate)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data as DailyLogEntry | null) ?? null
+    },
+
+    async getLatestWeightEntry(userId: string): Promise<DailyLogEntry | null> {
+      const { data, error } = await supabase
+        .from('daily_log_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .not('weight_kg', 'is', null)
+        .order('log_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data as DailyLogEntry | null) ?? null
+    },
+
+    async getWeightHistory(userId: string, daysBack?: number) {
+      let query = supabase
+        .from('daily_log_entries')
+        .select('log_date, weight_kg')
+        .eq('user_id', userId)
+        .not('weight_kg', 'is', null)
+        .order('log_date', { ascending: true })
+
+      if (daysBack) {
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+        query = query.gte('log_date', normalizeDailyLogDate(cutoffDate.toISOString()))
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return (data || []) as { log_date: string; weight_kg: number }[]
     },
 
     /**

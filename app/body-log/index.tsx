@@ -737,11 +737,16 @@ export default function BodyLogScreen() {
         user && allDateKeys.length > 0
           ? await database.dailyLog.getSummariesForDates(user.id, allDateKeys)
           : {}
+      const dailyEntryByDate = new Map(
+        rawDailyEntries.map((dailyEntry) => [dailyEntry.log_date, dailyEntry]),
+      )
 
       const bodyRows: EntryWithSignedUrl[] = bodyWithThumbnails.map((entry) => {
         const logDate = getLocalDateKey(entry.created_at)
+        const dailyEntry = dailyEntryByDate.get(logDate)
         return {
           ...entry,
+          weight_kg: dailyEntry?.weight_kg ?? entry.weight_kg,
           logDate,
           dailySummary: summaryByDate[logDate] ?? null,
           isNutritionOnly: false,
@@ -997,7 +1002,7 @@ export default function BodyLogScreen() {
   const handleSaveWeight = useCallback(async (weightKg: number) => {
     if (!user) return
     try {
-      await database.bodyLog.createEntry(user.id, { weightKg })
+      await database.dailyLog.updateDay(user.id, { weightKg })
       haptic('medium')
       loadEntries(true)
     } catch (e) {

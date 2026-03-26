@@ -1,6 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
 import { formatCommitmentSummary } from '../_shared/commitment.ts'
+import {
+  getDailyWeightsByLogDate,
+  getLatestDailyWeightKg,
+  normalizeLogDate,
+} from '../_shared/daily-weight.ts'
 import type {
   AdherenceSummary,
   RecoverySummary,
@@ -299,11 +304,15 @@ export async function buildUserContextSummary(
   userId: string,
   supabase: SupabaseClient,
 ): Promise<UserContextSummary> {
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  const [{ data: profile, error: profileError }, latestWeightKg] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single(),
+      getLatestDailyWeightKg(supabase, userId),
+    ])
 
   if (profileError || !profile) {
     throw profileError || new Error('Profile not found')
@@ -481,7 +490,19 @@ export async function buildUserContextSummary(
 
   if (bodyLogError) throw bodyLogError
 
-  const bodyLogSummary = summarizeBodyLogContext(bodyLogData || [])
+  const weightByDate = await getDailyWeightsByLogDate(
+    supabase,
+    userId,
+    (bodyLogData || []).map((record: any) => record.created_at),
+  )
+
+  const bodyLogRecords = (bodyLogData || []).map((record: any) => ({
+    ...record,
+    weight_kg:
+      weightByDate.get(normalizeLogDate(record.created_at)) ?? record.weight_kg,
+  }))
+
+  const bodyLogSummary = summarizeBodyLogContext(bodyLogRecords)
 
   const [
     topEst1RMSeries,
@@ -576,7 +597,7 @@ export async function buildUserContextSummary(
       displayName: profile.display_name,
       gender: profile.gender,
       heightCm: profile.height_cm,
-      weightKg: profile.weight_kg,
+      weightKg: latestWeightKg,
       age: profile.age,
       goals: profile.goals,
       commitment: profile.commitment,

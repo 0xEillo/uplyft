@@ -335,9 +335,16 @@ export function BodyScanModal({ visible, onClose, onScanSaved }: BodyScanModalPr
     setIsSaving(true)
 
     try {
-      const entry = await database.bodyLog.createEntry(user.id, {
-        weightKg: scanMetrics.weight_kg ?? (hasValidWeight ? weightKg : undefined) ?? undefined,
-      })
+      const entry = await database.bodyLog.createEntry(user.id)
+      const resolvedWeightKg =
+        scanMetrics.weight_kg ?? (hasValidWeight ? weightKg : undefined) ?? undefined
+
+      if (resolvedWeightKg !== undefined) {
+        await database.dailyLog.updateDay(user.id, {
+          logDate: entry.created_at,
+          weightKg: resolvedWeightKg,
+        })
+      }
 
       const { error } = await supabase
         .from('body_log_entries')

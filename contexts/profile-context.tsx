@@ -37,8 +37,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true)
-      const data = await database.profiles.getByIdOrNull(user.id)
-      setProfile(data)
+      const profileData = await database.profiles.getByIdOrNull(user.id)
+      setProfile(profileData)
     } catch (error) {
       console.error('[ProfileContext] Error loading profile:', error)
       setProfile(null)

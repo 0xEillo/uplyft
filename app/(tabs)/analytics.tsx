@@ -44,6 +44,7 @@ export default function AnalyticsScreen() {
   const [bodyTab, setBodyTab] = useState<BodyTab>('strength')
   const [glassInstanceKey, setGlassInstanceKey] = useState(0)
   const [showStrengthTutorial, setShowStrengthTutorial] = useState(false)
+  const [strengthScrollLocked, setStrengthScrollLocked] = useState(false)
   
   // Constants for perfect centering
   const CONTROL_WIDTH = 210
@@ -191,11 +192,15 @@ export default function AnalyticsScreen() {
           automaticallyAdjustsScrollIndicatorInsets={false}
           showsVerticalScrollIndicator={false}
           scrollIndicatorInsets={{ top: contentTopPadding }}
+          scrollEnabled={viewMode !== 'strength' || !strengthScrollLocked}
         >
           {viewMode === 'recovery' ? (
             <RecoveryBodyView embedded />
           ) : (
-            <StrengthBodyView embedded />
+            <StrengthBodyView
+              embedded
+              onWeightGateActiveChange={setStrengthScrollLocked}
+            />
           )}
         </ScrollView>
       )}

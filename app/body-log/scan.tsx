@@ -285,9 +285,7 @@ export default function BodyScanFlowScreen() {
       if (!token) throw new Error('Not authenticated')
 
       // Create entry first, then upload images to it (single upload)
-      const entry = await database.bodyLog.createEntry(user.id, {
-        weightKg: hasValidWeight ? weightKg : undefined,
-      })
+      const entry = await database.bodyLog.createEntry(user.id)
       createdEntryId = entry.id
 
       const { uploadBodyLogImages } = await import('@/lib/utils/body-log-storage')
@@ -314,11 +312,19 @@ export default function BodyScanFlowScreen() {
       }
 
       const { metrics } = await response.json()
+      const resolvedWeightKg =
+        metrics.weight_kg ?? (hasValidWeight ? weightKg : undefined)
+
+      if (resolvedWeightKg !== undefined) {
+        await database.dailyLog.updateDay(user.id, {
+          logDate: entry.created_at,
+          weightKg: resolvedWeightKg,
+        })
+      }
 
       await supabase
         .from('body_log_entries')
         .update({
-          weight_kg: metrics.weight_kg ?? (hasValidWeight ? weightKg : entry.weight_kg),
           body_fat_percentage: metrics.body_fat_percentage,
           bmi: metrics.bmi,
           lean_mass_kg: metrics.lean_mass_kg,

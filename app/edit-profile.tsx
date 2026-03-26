@@ -86,13 +86,14 @@ export default function EditProfileScreen() {
       const profile = user.email
         ? await database.profiles.getOrCreate(user.id, user.email)
         : await database.profiles.getByIdOrNull(user.id)
+      const resolvedWeightKg = profile?.weight_kg ?? null
       setEditedDisplayName(profile?.display_name || '')
       setEditedAvatarUrl(profile?.avatar_url || null)
       setEditedGender(profile?.gender || null)
       setEditedHeight(profile?.height_cm?.toString() || '')
       setEditedWeight(
-        profile?.weight_kg !== null && profile?.weight_kg !== undefined
-          ? convertToPreferred(profile.weight_kg)?.toFixed(
+        resolvedWeightKg !== null && resolvedWeightKg !== undefined
+          ? convertToPreferred(resolvedWeightKg)?.toFixed(
               weightUnit === 'kg' ? 1 : 0,
             ) || ''
           : '',
@@ -258,9 +259,6 @@ export default function EditProfileScreen() {
         user_tag: editedUserTag.trim().toLowerCase() || undefined,
         gender: editedGender,
         height_cm: editedHeight ? parseFloat(editedHeight) : null,
-        weight_kg: editedWeight
-          ? convertInputToKg(parseFloat(editedWeight))
-          : null,
         age: editedAge ? parseInt(editedAge) : null,
         goals: editedGoals.length > 0 ? editedGoals : null,
         commitment:
@@ -274,6 +272,11 @@ export default function EditProfileScreen() {
         experience_level: editedExperienceLevel,
         bio: editedBio.trim() || null,
         profile_description: editedProfileDescription.trim() || null,
+      })
+      await database.dailyLog.updateDay(user.id, {
+        weightKg: editedWeight
+          ? convertInputToKg(parseFloat(editedWeight))
+          : null,
       })
       router.back()
     } catch (error) {

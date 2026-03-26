@@ -53,7 +53,6 @@ export async function syncLinkedProfile(sourceUserId: string | null | undefined)
       previousProfile?.display_name ?? currentProfile?.display_name ?? 'Guest',
     gender: previousProfile?.gender ?? currentProfile?.gender ?? null,
     height_cm: previousProfile?.height_cm ?? currentProfile?.height_cm ?? null,
-    weight_kg: previousProfile?.weight_kg ?? currentProfile?.weight_kg ?? null,
     age: previousProfile?.age ?? currentProfile?.age ?? null,
     goals: previousProfile?.goals ?? currentProfile?.goals ?? null,
     commitment: previousProfile?.commitment ?? currentProfile?.commitment ?? null,

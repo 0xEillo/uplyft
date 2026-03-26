@@ -1969,7 +1969,6 @@ export default function OnboardingScreen() {
               display_name: data.name || 'Guest',
               gender: data.gender,
               height_cm: heightCm,
-              weight_kg: weightKg,
               age: age,
               goals: data.goal.length > 0 ? data.goal : null,
               commitment:

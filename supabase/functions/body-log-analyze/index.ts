@@ -12,6 +12,10 @@ import {
   buildBodyLogPrompt,
   parseBodyLogMetrics,
 } from '../_shared/body-log-analysis.ts'
+import {
+  getLatestDailyWeightKg,
+  normalizeLogDate,
+} from '../_shared/daily-weight.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
@@ -187,11 +191,15 @@ serve(async (req: Request) => {
     const userId = userData.user.id
 
     // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('display_name, age, height_cm, weight_kg')
-      .eq('id', userId)
-      .single()
+    const [{ data: profile, error: profileError }, latestDailyWeightKg] =
+      await Promise.all([
+        supabase
+          .from('profiles')
+          .select('display_name, age, height_cm')
+          .eq('id', userId)
+          .single(),
+        getLatestDailyWeightKg(supabase, userId),
+      ])
 
     if (profileError || !profile) {
       return errorResponse(404, 'Profile not found')
@@ -222,12 +230,7 @@ serve(async (req: Request) => {
       }
 
       entryCreatedAt = entry.created_at
-      scanWeightKg =
-        typeof entry.weight_kg === 'number'
-          ? entry.weight_kg
-          : typeof profile.weight_kg === 'number'
-          ? profile.weight_kg
-          : null
+      scanWeightKg = latestDailyWeightKg
 
       const { data: images, error: imagesError } = await supabase
         .from('body_log_images')
@@ -263,8 +266,8 @@ serve(async (req: Request) => {
       scanWeightKg =
         typeof weightKg === 'number'
           ? weightKg
-          : typeof profile.weight_kg === 'number'
-          ? profile.weight_kg
+          : typeof latestDailyWeightKg === 'number'
+          ? latestDailyWeightKg
           : null
 
       for (const filePath of imagePaths) {
@@ -279,7 +282,7 @@ serve(async (req: Request) => {
       display_name: profile.display_name,
       age: profile.age,
       height_cm: profile.height_cm,
-      weight_kg: scanWeightKg ?? profile.weight_kg,
+      weight_kg: scanWeightKg ?? latestDailyWeightKg,
       createdAt: entryCreatedAt,
     })
 
@@ -350,9 +353,62 @@ serve(async (req: Request) => {
 
     // Entry-based: update the entry with the computed metrics
     const { entryId } = payload as { entryId: string }
+
+    if (scanWeightKg !== null) {
+      const logDate = normalizeLogDate(entryCreatedAt)
+      const { data: existingDailyEntry, error: dailyEntryError } = await supabase
+        .from('daily_log_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('log_date', logDate)
+        .maybeSingle()
+
+      if (dailyEntryError) {
+        throw dailyEntryError
+      }
+
+      if (existingDailyEntry?.id) {
+        const { error: updateDailyWeightError } = await supabase
+          .from('daily_log_entries')
+          .update({ weight_kg: scanWeightKg })
+          .eq('id', existingDailyEntry.id)
+          .eq('user_id', userId)
+
+        if (updateDailyWeightError) {
+          throw updateDailyWeightError
+        }
+      } else {
+        const { error: insertDailyWeightError } = await supabase
+          .from('daily_log_entries')
+          .insert({
+            user_id: userId,
+            log_date: logDate,
+            weight_kg: scanWeightKg,
+          })
+
+        if (insertDailyWeightError) {
+          throw insertDailyWeightError
+        }
+      }
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('body_log_entries')
-      .update(computedMetrics)
+      .update({
+        body_fat_percentage: computedMetrics.body_fat_percentage,
+        bmi: computedMetrics.bmi,
+        muscle_mass_kg: computedMetrics.muscle_mass_kg,
+        lean_mass_kg: computedMetrics.lean_mass_kg,
+        fat_mass_kg: computedMetrics.fat_mass_kg,
+        score_v_taper: computedMetrics.score_v_taper,
+        score_chest: computedMetrics.score_chest,
+        score_shoulders: computedMetrics.score_shoulders,
+        score_abs: computedMetrics.score_abs,
+        score_arms: computedMetrics.score_arms,
+        score_back: computedMetrics.score_back,
+        score_legs: computedMetrics.score_legs,
+        analysis_summary: computedMetrics.analysis_summary,
+      })
       .eq('id', entryId)
       .select(
         'id, weight_kg, body_fat_percentage, bmi, muscle_mass_kg, lean_mass_kg, fat_mass_kg, score_v_taper, score_chest, score_shoulders, score_abs, score_arms, score_back, score_legs, analysis_summary',
@@ -364,7 +420,12 @@ serve(async (req: Request) => {
       throw updateError || new Error('Failed to update body log entry metrics')
     }
 
-    return jsonResponse({ metrics: updated })
+    return jsonResponse({
+      metrics: {
+        ...updated,
+        weight_kg: scanWeightKg,
+      },
+    })
   } catch (error) {
     console.error('Error analyzing body log image:', error)
 

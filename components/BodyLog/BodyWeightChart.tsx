@@ -171,9 +171,9 @@ export const BodyWeightChart = memo(({ userId }: BodyWeightChartProps) => {
 
   const fetchData = useCallback(async () => {
     try {
-      const history = await database.bodyLog.getWeightHistory(userId)
+      const history = await database.dailyLog.getWeightHistory(userId)
       const points: WeightDataPoint[] = (history ?? []).map((entry) => ({
-        date: new Date(entry.created_at),
+        date: new Date(`${entry.log_date}T12:00:00`),
         weightKg: entry.weight_kg,
       }))
       setRawData(points)

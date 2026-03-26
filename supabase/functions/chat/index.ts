@@ -8,6 +8,10 @@ import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
 import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
 import {
+  getDailyWeightsByLogDate,
+  normalizeLogDate,
+} from '../_shared/daily-weight.ts'
+import {
   buildAdherenceSummary,
   buildRecoverySummary,
 } from '../_shared/readiness.ts'
@@ -899,7 +903,7 @@ async function buildUserContext(
 
         const records = (data as BodyLogRecord[]) ?? []
 
-        const filtered = records.filter((record) => {
+	        const filtered = records.filter((record) => {
           if (before?.trim()) {
             const beforeDate = new Date(before.trim())
             if (
@@ -920,16 +924,24 @@ async function buildUserContext(
             }
           }
 
-          return true
-        })
+	          return true
+	        })
 
-        return filtered.map((record) => ({
-          id: record.id,
-          capturedAt: record.created_at,
-          metrics: {
-            weightKg: record.weight_kg,
-            bodyFatPercentage: record.body_fat_percentage,
-            bmi: record.bmi,
+	        const weightByDate = await getDailyWeightsByLogDate(
+	          supabase,
+	          userId,
+	          filtered.map((record) => record.created_at),
+	        )
+
+	        return filtered.map((record) => ({
+	          id: record.id,
+	          capturedAt: record.created_at,
+	          metrics: {
+	            weightKg:
+	              weightByDate.get(normalizeLogDate(record.created_at)) ??
+	              record.weight_kg,
+	            bodyFatPercentage: record.body_fat_percentage,
+	            bmi: record.bmi,
           },
           image:
             includeUrls && record.file_path
@@ -1006,7 +1018,7 @@ async function buildUserContext(
         if (error) throw error
 
         const records = (data as BodyLogRecord[]) ?? []
-        const filtered = records.filter((record) => {
+	        const filtered = records.filter((record) => {
           if (before?.trim()) {
             const beforeDate = new Date(before.trim())
             if (
@@ -1027,15 +1039,23 @@ async function buildUserContext(
             }
           }
 
-          return true
-        })
+	          return true
+	        })
 
-        const entries = filtered.slice(0, resolvedLimit).map((record) => ({
-          id: record.id,
-          capturedAt: record.created_at,
-          metrics: {
-            weightKg: record.weight_kg,
-            bodyFatPercentage: record.body_fat_percentage,
+	        const weightByDate = await getDailyWeightsByLogDate(
+	          supabase,
+	          userId,
+	          filtered.map((record) => record.created_at),
+	        )
+
+	        const entries = filtered.slice(0, resolvedLimit).map((record) => ({
+	          id: record.id,
+	          capturedAt: record.created_at,
+	          metrics: {
+	            weightKg:
+	              weightByDate.get(normalizeLogDate(record.created_at)) ??
+	              record.weight_kg,
+	            bodyFatPercentage: record.body_fat_percentage,
             bmi: record.bmi,
             muscleMassKg: record.muscle_mass_kg ?? null,
             leanMassKg: record.lean_mass_kg ?? null,

@@ -122,21 +122,14 @@ export default function ProfileScreen() {
       startOfWeek.setHours(0, 0, 0, 0)
 
       // Load stats
-      const [
-        counts,
-        totalWorkouts,
-        weekCount,
-        streakResult,
-        bodyLogResult,
-        routinesData,
-      ] = await Promise.all([
+      const [counts, totalWorkouts, weekCount, streakResult, routinesData] =
+        await Promise.all([
         database.follows.getCounts(user.id),
         database.workoutSessions.getTotalCount(user.id),
         database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
         database.stats.calculateStreak(user.id),
-        database.bodyLog.getEntriesPage(user.id, 0, 1),
         database.workoutRoutines.getAll(user.id),
-      ])
+        ])
 
       setFollowerCount(counts.followers)
       setFollowingCount(counts.following)
@@ -145,9 +138,7 @@ export default function ProfileScreen() {
       setCurrentStreak(streakResult.currentStreak)
 
       // Set latest weight
-      if (bodyLogResult.entries && bodyLogResult.entries.length > 0) {
-        setLatestWeight(bodyLogResult.entries[0].weight_kg)
-      }
+      setLatestWeight(profileData.weight_kg ?? null)
 
       // Set active routine
       const activeRoutines = routinesData.filter((r) => !r.is_archived)

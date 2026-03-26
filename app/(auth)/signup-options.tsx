@@ -92,7 +92,6 @@ export default function SignupOptionsScreen() {
       display_name: string
       gender: Gender | null
       height_cm: number | null
-      weight_kg: number | null
       age: number | null
       goals: Goal[] | null
       commitment: CommitmentDay[] | null
@@ -104,7 +103,6 @@ export default function SignupOptionsScreen() {
       display_name: displayName,
       gender: onboardingData.gender,
       height_cm: onboardingData.height_cm,
-      weight_kg: onboardingData.weight_kg,
       age: onboardingData.age,
       goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
       commitment:

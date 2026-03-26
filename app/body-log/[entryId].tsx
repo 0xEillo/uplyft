@@ -352,20 +352,33 @@ export default function BodyLogDetailScreen() {
     if (entryId === 'new') {
       const fallbackDate = getLocalDateKey(new Date().toISOString())
       const resolvedLogDate = normalizeLogDateParam(logDate) || fallbackDate
-      const emptyEntry: BodyLogEntryWithImages = {
-        id: 'new',
-        user_id: user.id,
-        created_at: dateKeyToMiddayIso(resolvedLogDate),
-        weight_kg: null,
-        body_fat_percentage: null,
-        bmi: null,
-        analysis_summary: null,
-        muscle_mass_kg: null,
-        images: [],
-      }
-      setEntry(emptyEntry)
-      setActiveLogDate(resolvedLogDate)
-      setLoading(false)
+      void (async () => {
+        try {
+          const dailyEntry = await database.dailyLog.getDayEntry(
+            user.id,
+            resolvedLogDate,
+          )
+          const resolvedWeightKg = dailyEntry?.weight_kg ?? null
+          const emptyEntry: BodyLogEntryWithImages = {
+            id: 'new',
+            user_id: user.id,
+            created_at: dateKeyToMiddayIso(resolvedLogDate),
+            weight_kg: resolvedWeightKg,
+            body_fat_percentage: null,
+            bmi: null,
+            analysis_summary: null,
+            muscle_mass_kg: null,
+            images: [],
+          }
+          setEntry(emptyEntry)
+          setMetrics((prev) => ({ ...prev, weight_kg: resolvedWeightKg }))
+          setActiveLogDate(resolvedLogDate)
+        } catch (error) {
+          console.error('Error loading daily weight:', error)
+        } finally {
+          setLoading(false)
+        }
+      })()
       return
     }
 
@@ -423,11 +436,18 @@ export default function BodyLogDetailScreen() {
         }
 
         // Transform the data to match our type
+        const resolvedLogDate = getLocalDateKey(entryData.created_at)
+        const dailyEntry = await database.dailyLog.getDayEntry(
+          user.id,
+          resolvedLogDate,
+        )
+        const resolvedWeightKg = dailyEntry?.weight_kg ?? entryData.weight_kg
+
         const transformedEntry: BodyLogEntryWithImages = {
           id: entryData.id,
           user_id: entryData.user_id,
           created_at: entryData.created_at,
-          weight_kg: entryData.weight_kg,
+          weight_kg: resolvedWeightKg,
           body_fat_percentage: entryData.body_fat_percentage,
           bmi: entryData.bmi,
           analysis_summary: entryData.analysis_summary,
@@ -447,11 +467,11 @@ export default function BodyLogDetailScreen() {
         }
 
         setEntry(transformedEntry)
-        setActiveLogDate(getLocalDateKey(entryData.created_at))
+        setActiveLogDate(resolvedLogDate)
 
         // Update metrics from entry data
         setMetrics({
-          weight_kg: entryData.weight_kg,
+          weight_kg: resolvedWeightKg,
           body_fat_percentage: entryData.body_fat_percentage,
           bmi: entryData.bmi,
           lean_mass_kg: entryData.lean_mass_kg,
@@ -569,98 +589,22 @@ export default function BodyLogDetailScreen() {
         return
       }
 
-      let actualEntryId = entryId
+      const targetLogDate =
+        activeLogDate ||
+        (entry?.created_at ? getLocalDateKey(entry.created_at) : null)
 
-      // Create entry if this is a new entry
-      if (entryId === 'new') {
-        const newEntry = await database.bodyLog.createEntry(user.id, {
-          weightKg: weightKg,
-          createdAt: activeLogDate ? dateKeyToMiddayIso(activeLogDate) : undefined,
-        })
-        actualEntryId = newEntry.id
-
-        // Fetch the full entry to ensure we have all the data
-        const { data: fullEntry } = await supabase
-          .from('body_log_entries')
-          .select(`
-            *,
-            body_log_images (
-              id,
-              entry_id,
-              user_id,
-              file_path,
-              sequence,
-              created_at
-            )
-          `)
-          .eq('id', actualEntryId)
-          .single()
-
-        if (fullEntry) {
-          const images = (fullEntry.body_log_images || []).sort(
-            (a: BodyLogImage, b: BodyLogImage) => a.sequence - b.sequence
-          )
-
-          // Update entry with full data
-          setEntry({
-            id: fullEntry.id,
-            user_id: fullEntry.user_id,
-            created_at: fullEntry.created_at,
-            weight_kg: fullEntry.weight_kg,
-            body_fat_percentage: fullEntry.body_fat_percentage,
-            bmi: fullEntry.bmi,
-            analysis_summary: fullEntry.analysis_summary,
-            muscle_mass_kg: fullEntry.muscle_mass_kg,
-            images,
-          })
-
-          setMetrics({
-            weight_kg: fullEntry.weight_kg,
-            body_fat_percentage: fullEntry.body_fat_percentage,
-            bmi: fullEntry.bmi,
-            lean_mass_kg: fullEntry.lean_mass_kg,
-            fat_mass_kg: fullEntry.fat_mass_kg,
-            score_v_taper: fullEntry.score_v_taper,
-            score_chest: fullEntry.score_chest,
-            score_shoulders: fullEntry.score_shoulders,
-            score_abs: fullEntry.score_abs,
-            score_arms: fullEntry.score_arms,
-            score_back: fullEntry.score_back,
-            score_legs: fullEntry.score_legs,
-          })
-        }
-
-        // Update URL with real entry ID
-        router.setParams({ entryId: actualEntryId })
-
-        // Complete tutorial step for body log handled elsewhere or removed
-
-        hapticSuccess()
+      if (!targetLogDate) {
         return
       }
 
-      if (!actualEntryId) {
-        return
-      }
-
-      // Update entry with weight
-      await database.bodyLog.updateEntryMetrics(actualEntryId, { weight_kg: weightKg })
+      await database.dailyLog.updateDay(user.id, {
+        logDate: targetLogDate,
+        weightKg,
+      })
 
       // Update local state
       setMetrics((prev) => ({ ...prev, weight_kg: weightKg }))
-
-      // Refresh entry data
-      if (user) {
-        const { data: updatedEntry } = await supabase
-          .from('body_log_entries')
-          .select('*')
-          .eq('id', actualEntryId)
-          .single()
-
-        if (updatedEntry) {
-          setEntry((prev) => prev ? { ...prev, weight_kg: updatedEntry.weight_kg } : null)
-        }
-      }
+      setEntry((prev) => (prev ? { ...prev, weight_kg: weightKg } : prev))
 
       hapticSuccess()
     } catch (error) {
@@ -1099,10 +1043,25 @@ export default function BodyLogDetailScreen() {
       }
 
       const { metrics: analysisMetrics } = await response.json()
+      const resolvedWeightKg = analysisMetrics.weight_kg ?? entry.weight_kg
+      const currentUserId = user?.id
+
+      if (analysisMetrics.weight_kg !== undefined && currentUserId) {
+        const targetLogDate =
+          activeLogDate ||
+          (entry?.created_at ? getLocalDateKey(entry.created_at) : null)
+
+        if (targetLogDate) {
+          await database.dailyLog.updateDay(currentUserId, {
+            logDate: targetLogDate,
+            weightKg: analysisMetrics.weight_kg,
+          })
+        }
+      }
 
       // Update local state with analysis results
       setMetrics({
-        weight_kg: analysisMetrics.weight_kg ?? entry.weight_kg,
+        weight_kg: resolvedWeightKg,
         body_fat_percentage: analysisMetrics.body_fat_percentage,
         bmi: analysisMetrics.bmi,
         lean_mass_kg: analysisMetrics.lean_mass_kg,
@@ -1124,7 +1083,9 @@ export default function BodyLogDetailScreen() {
         .single()
 
       if (updatedEntry) {
-        setEntry((prev) => (prev ? { ...prev, ...updatedEntry } : null))
+        setEntry((prev) =>
+          prev ? { ...prev, ...updatedEntry, weight_kg: resolvedWeightKg } : null,
+        )
       }
 
       setProcessingComplete(true)

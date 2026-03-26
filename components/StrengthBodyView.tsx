@@ -3,6 +3,7 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
+import { useAuth } from "@/contexts/auth-context";
 import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -14,18 +15,21 @@ import {
 } from "@/hooks/useStrengthData";
 import { useBodyDiagramGender } from "@/hooks/useBodyDiagramGender";
 import { useThemedColors } from "@/hooks/useThemedColors";
+import { useWeightUnits } from "@/hooks/useWeightUnits";
 import {
   BODY_PART_TO_DATABASE_MUSCLE,
   getBodyPartDisplayName,
   getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
 } from "@/lib/body-mapping";
+import { database } from "@/lib/database";
 import {
   EXERCISE_TIER_WEIGHTS,
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
   isRepBasedExercise,
 } from "@/lib/exercise-standards-config";
+import { haptic } from "@/lib/haptics";
 import {
   calculateExerciseStrengthPoints,
   LEVEL_POINT_ANCHORS,
@@ -48,14 +52,20 @@ import {
 } from "@/lib/strength-standards";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Keyboard,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -143,12 +153,18 @@ function mapMuscleToFocusGroup(
 
 export function StrengthBodyView({
   embedded = false,
-}: { embedded?: boolean } = {}) {
+  onWeightGateActiveChange,
+}: {
+  embedded?: boolean;
+  onWeightGateActiveChange?: (active: boolean) => void;
+} = {}) {
   const colors = useThemedColors();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const router = useRouter();
   const { isDark } = useTheme();
+  const { user } = useAuth();
+  const { weightUnit, convertInputToKg } = useWeightUnits();
   const {
     profile,
     isLoading,
@@ -160,6 +176,53 @@ export function StrengthBodyView({
     getStrengthInfo,
     best1RMSnapshotByExerciseId,
   } = useStrengthData();
+
+  const [weightGateDraft, setWeightGateDraft] = useState("");
+  const [savingWeightGate, setSavingWeightGate] = useState(false);
+
+  const needsBodyweightForStrength = Boolean(
+    profile &&
+      user?.id &&
+      (typeof profile.weight_kg !== "number" ||
+        !Number.isFinite(profile.weight_kg) ||
+        profile.weight_kg <= 0),
+  );
+
+  const showWeightGate = !isLoading && needsBodyweightForStrength;
+
+  useEffect(() => {
+    onWeightGateActiveChange?.(showWeightGate);
+  }, [showWeightGate, onWeightGateActiveChange]);
+
+  const handleSaveBodyweightGate = useCallback(async () => {
+    if (!user?.id) return;
+    const raw = parseFloat(weightGateDraft.replace(",", "."));
+    if (Number.isNaN(raw) || raw <= 0) {
+      Alert.alert(
+        "Invalid weight",
+        `Enter a positive number in ${weightUnit === "kg" ? "kilograms" : "pounds"}.`,
+      );
+      return;
+    }
+    const kg = convertInputToKg(raw);
+    if (kg === null || kg < 20 || kg > 400) {
+      Alert.alert("Invalid weight", "Please enter a realistic body weight.");
+      return;
+    }
+    Keyboard.dismiss();
+    setSavingWeightGate(true);
+    try {
+      await database.dailyLog.updateDay(user.id, { weightKg: kg });
+      haptic("medium");
+      setWeightGateDraft("");
+      await onRefresh();
+    } catch (e) {
+      console.error("[StrengthBodyView] save bodyweight:", e);
+      Alert.alert("Could not save", "Try again in a moment.");
+    } finally {
+      setSavingWeightGate(false);
+    }
+  }, [convertInputToKg, onRefresh, user?.id, weightGateDraft, weightUnit]);
 
   const [showLevelsSheet, setShowLevelsSheet] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
@@ -818,6 +881,8 @@ export function StrengthBodyView({
   // Determine gender for body display
   const bodyGender = useBodyDiagramGender();
 
+  const blurTint = isDark ? "dark" : "light";
+
   // When embedded, render content without ScrollView wrapper
   const content = (
     <View style={styles.contentOverlayContainer}>
@@ -1304,6 +1369,96 @@ export function StrengthBodyView({
 
   const modals = (
     <>
+      <Modal
+        visible={showWeightGate}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        presentationStyle="overFullScreen"
+        onRequestClose={() => undefined}
+      >
+        <View style={styles.weightGateModalRoot}>
+          <BlurView
+            tint={blurTint}
+            intensity={Platform.OS === "ios" ? 48 : 72}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            style={[
+              styles.weightGateModalContent,
+              {
+                paddingTop: insets.top + 8,
+                paddingBottom: Math.max(insets.bottom, 16),
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.weightGateCard,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(28,28,36,0.92)"
+                    : "rgba(255,255,255,0.96)",
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(0,0,0,0.06)",
+                },
+              ]}
+            >
+              <Text style={styles.weightGateTitle}>Add your body weight</Text>
+              <Text style={styles.weightGateSubtitle}>
+                Strength ranks compare lifts to your weight. Log once to unlock
+                your levels.
+              </Text>
+              <TextInput
+                style={[
+                  styles.weightGateInput,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : colors.bg,
+                    borderColor: isDark
+                      ? "rgba(255,255,255,0.12)"
+                      : colors.border,
+                    color: colors.textPrimary,
+                  },
+                ]}
+                placeholder={
+                  weightUnit === "kg" ? "e.g. 75" : "e.g. 165"
+                }
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="decimal-pad"
+                value={weightGateDraft}
+                onChangeText={setWeightGateDraft}
+                editable={!savingWeightGate}
+                returnKeyType="done"
+                onSubmitEditing={handleSaveBodyweightGate}
+              />
+              <Text style={styles.weightGateUnitHint}>
+                {weightUnit === "kg" ? "Kilograms" : "Pounds"}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.weightGateButton,
+                  { backgroundColor: colors.brandPrimary },
+                  savingWeightGate && styles.weightGateButtonDisabled,
+                ]}
+                onPress={handleSaveBodyweightGate}
+                disabled={savingWeightGate}
+                activeOpacity={0.85}
+              >
+                {savingWeightGate ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.weightGateButtonText}>
+                    Save & unlock ranks
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       {/* Lifter Levels Sheet */}
       <LifterLevelsSheet
         isVisible={showLevelsSheet}
@@ -1411,6 +1566,72 @@ const createStyles = (
     },
     contentUnderlay: {
       flex: 1,
+    },
+    weightGateModalRoot: {
+      flex: 1,
+    },
+    weightGateModalContent: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 20,
+    },
+    weightGateCard: {
+      borderRadius: 20,
+      borderWidth: 1,
+      paddingHorizontal: 22,
+      paddingVertical: 22,
+      maxWidth: 400,
+      width: "100%",
+      alignSelf: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: isDark ? 0.45 : 0.1,
+      shadowRadius: 24,
+      elevation: 12,
+    },
+    weightGateTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      letterSpacing: -0.5,
+      color: colors.textPrimary,
+      marginBottom: 8,
+    },
+    weightGateSubtitle: {
+      fontSize: 15,
+      lineHeight: 21,
+      color: colors.textSecondary,
+      marginBottom: 18,
+    },
+    weightGateInput: {
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: Platform.OS === "ios" ? 14 : 12,
+      fontSize: 20,
+      fontWeight: "700",
+      fontVariant: ["tabular-nums"] as any,
+    },
+    weightGateUnitHint: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textTertiary,
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    weightGateButton: {
+      borderRadius: 999,
+      paddingVertical: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 52,
+    },
+    weightGateButtonDisabled: {
+      opacity: 0.65,
+    },
+    weightGateButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "800",
     },
 
     // ── Hero Card (Gamified top section) ──

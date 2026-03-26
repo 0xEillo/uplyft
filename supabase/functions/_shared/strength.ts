@@ -3,6 +3,7 @@ import {
   GENERATED_EXERCISE_MUSCLE_MAPPING,
   GENERATED_EXERCISE_TIER_WEIGHTS,
 } from './generated-strength-standards.ts'
+import { getLatestDailyWeightKg } from './daily-weight.ts'
 import type { SupabaseClient } from './supabase.ts'
 
 export type StrengthLevel =
@@ -863,21 +864,22 @@ export async function buildUserStrengthProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserStrengthProfile> {
-  const [{ data: profile, error: profileError }, supportedExercises] =
+  const [{ data: profile, error: profileError }, supportedExercises, latestWeightKg] =
     await Promise.all([
       supabase
         .from('profiles')
-        .select('gender, weight_kg')
+        .select('gender')
         .eq('id', userId)
         .single(),
       loadSupportedExercises(supabase, userId),
+      getLatestDailyWeightKg(supabase, userId),
     ])
 
   if (profileError) throw profileError
 
-  const typedProfile = profile as ProfileStrengthRow
+  const typedProfile = profile as Omit<ProfileStrengthRow, 'weight_kg'>
   const gender = getStrengthGender(typedProfile?.gender ?? null)
-  const bodyweightKg = typedProfile?.weight_kg ?? null
+  const bodyweightKg = latestWeightKg
   const missingRequirements = getMissingRequirements({
     gender,
     bodyweightKg,
