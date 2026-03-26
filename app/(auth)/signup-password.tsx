@@ -5,6 +5,7 @@ import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import {
   CommitmentDay,
@@ -119,6 +120,7 @@ export default function SignupPasswordScreen() {
     profileUpdates.user_tag = userTag
 
     await database.profiles.upsert(profileUpdates)
+    await persistOnboardingWeight(userId, onboardingData.weight_kg)
   }
 
   const handleSignup = async () => {

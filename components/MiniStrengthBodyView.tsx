@@ -5,8 +5,9 @@ import type { ExerciseData, MuscleGroupData } from '@/hooks/useStrengthData'
 import { getLevelIntensity } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
-  BODY_PART_DISPLAY_NAMES,
   BODY_PART_TO_DATABASE_MUSCLE,
+  getBodyPartDisplayName,
+  getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
 } from '@/lib/body-mapping'
 import {
@@ -125,6 +126,7 @@ export function MiniStrengthBodyCard({
 
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
+        if (!dbMuscleName) return
         const mgData = muscleMap.get(dbMuscleName)
         if (mgData) {
           data.push({
@@ -143,11 +145,11 @@ export function MiniStrengthBodyCard({
       if (!bodyPart.slug) return
 
       const slug = bodyPart.slug as BodyPartSlug
-      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
+      const dbMuscleName = getPrimaryMuscleForBodyPart(slug)
       if (!dbMuscleName) return
 
       const mgData = muscleGroups.find((mg) => mg.name === dbMuscleName)
-      const displayName = BODY_PART_DISPLAY_NAMES[slug] ?? slug
+      const displayName = getBodyPartDisplayName(slug) ?? slug
 
       const groupData: MuscleGroupData = mgData || {
         name: dbMuscleName,

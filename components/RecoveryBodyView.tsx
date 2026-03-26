@@ -10,8 +10,9 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 
 import {
     ALL_BODY_PART_SLUGS,
-    BODY_PART_DISPLAY_NAMES,
-    BODY_PART_TO_DATABASE_MUSCLE,
+    findBodyPartSlugForMuscle,
+    getBodyPartDisplayName,
+    getPrimaryMuscleForBodyPart,
     type BodyPartSlug,
 } from '@/lib/body-mapping'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -76,7 +77,7 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
       // Skip non-muscular/non-target parts for a cleaner aesthetic
       if (['head', 'hands', 'feet', 'hair', 'ankles', 'neck'].includes(slug)) return
       
-      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
+      const dbMuscleName = getPrimaryMuscleForBodyPart(slug)
       const recoveryData = dbMuscleName ? muscleRecoveryData.get(dbMuscleName) : null
       
       // Only add muscles that are still recovering (not at 100%)
@@ -100,14 +101,14 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
       if (!bodyPart.slug) return
 
       const slug = bodyPart.slug as BodyPartSlug
-      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug]
+      const dbMuscleName = getPrimaryMuscleForBodyPart(slug)
 
       if (!dbMuscleName) {
         return
       }
 
       const recoveryData = muscleRecoveryData.get(dbMuscleName)
-      const displayName = BODY_PART_DISPLAY_NAMES[slug] || slug
+      const displayName = getBodyPartDisplayName(slug) || slug
 
       // Navigate to native formSheet with params
       router.push({
@@ -193,12 +194,9 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
                               backgroundColor: recoveryColor + '12',
                             },
                           ]}
-                          onPress={() => {
-                            const entries = Object.entries(BODY_PART_TO_DATABASE_MUSCLE)
-                            const entry = entries.find(
-                              ([_, val]) => val === m.muscleGroup,
-                            )
-                            if (entry) handleBodyPartPress({ slug: entry[0] })
+                        onPress={() => {
+                            const slug = findBodyPartSlugForMuscle(m.muscleGroup)
+                            if (slug) handleBodyPartPress({ slug })
                           }}
                         >
                           <Text style={[styles.unifiedChipText, { color: recoveryColor }]}>
@@ -229,11 +227,8 @@ export function RecoveryBodyView({ embedded = false }: { embedded?: boolean } = 
                           },
                         ]}
                         onPress={() => {
-                          const entries = Object.entries(BODY_PART_TO_DATABASE_MUSCLE)
-                          const entry = entries.find(
-                            ([_, val]) => val === m.muscleGroup,
-                          )
-                          if (entry) handleBodyPartPress({ slug: entry[0] })
+                          const slug = findBodyPartSlugForMuscle(m.muscleGroup)
+                          if (slug) handleBodyPartPress({ slug })
                         }}
                       >
                         <Text style={[styles.unifiedChipText, { color: READY_GREEN }]}>

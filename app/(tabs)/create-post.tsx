@@ -2109,8 +2109,11 @@ export default function CreatePostScreen() {
     isSubmittingRef.current = false
     setIsLoading(false)
 
-    // Stop the workout timer before showing the finalize overlay
+    // End the workout immediately so the Live Activity does not keep running
+    // while we transition into the finalize/post flow.
     pauseWorkoutTimer()
+    stopWorkoutActivity()
+    hasStartedActivityRef.current = false
 
     // Force draft persistence so the finalize screen can read it
     persistDraft('blur')

@@ -13,12 +13,11 @@ import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { type MuscleGroupData } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
-import { getTrackableExercisesForMuscle } from '@/lib/exercise-standards-config'
+import { type BodyPartSlug } from '@/lib/body-mapping'
 import {
-  getTrackableExercisesForDisplayGroup,
-  isDisplayStrengthGroup,
-} from '@/lib/strength-display-groups'
+  exerciseMatchesBodyPart,
+  getTrackableExercisesForBodyPart,
+} from '@/lib/body-part-strength'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
@@ -66,21 +65,15 @@ export default function MuscleGroupDetailScreen() {
 
   const filteredExercises = useMemo(() => {
     if (!groupData) return []
-    // The payload already contains exercises for the selected display group.
-    // Avoid re-filtering on the raw database muscle value because it can differ
-    // from the canonical display group mapping.
-    return groupData.exercises
-  }, [groupData])
+    if (!bodyPartSlug) return groupData.exercises
+
+    return groupData.exercises.filter((exercise) =>
+      exerciseMatchesBodyPart(exercise, bodyPartSlug),
+    )
+  }, [bodyPartSlug, groupData])
 
   const allMuscleExercises = useMemo(() => {
-    if (!bodyPartSlug) return []
-    const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
-    if (!dbMuscle) return []
-
-    const trackableConfigs =
-      groupData?.name && isDisplayStrengthGroup(groupData.name)
-        ? getTrackableExercisesForDisplayGroup(groupData.name)
-        : getTrackableExercisesForMuscle(dbMuscle)
+    const trackableConfigs = getTrackableExercisesForBodyPart(bodyPartSlug)
 
     return trackableConfigs
       .map((config) => {
@@ -103,7 +96,7 @@ export default function MuscleGroupDetailScreen() {
         if (!a.isDone && b.isDone) return 1
         return a.exerciseName.localeCompare(b.exerciseName)
       })
-  }, [bodyPartSlug, filteredExercises, groupData?.name])
+  }, [bodyPartSlug, filteredExercises])
 
   const navigateToExercise = (exerciseId: string) => {
     if (!exerciseId) return

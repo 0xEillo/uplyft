@@ -6,6 +6,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
 import { supabase } from '@/lib/supabase'
@@ -127,6 +128,8 @@ export default function TrialOfferScreen() {
           throw error
         }
       }
+
+      await persistOnboardingWeight(userId, onboardingData.weight_kg)
     } catch (error) {
       console.error('[TrialOffer] Error setting up guest profile:', error)
     }

@@ -127,9 +127,9 @@ export function useStrengthData() {
     }, [loadData]),
   )
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    loadData()
+    await loadData()
   }, [loadData])
 
   const getStrengthInfo = useCallback(

@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import {
   resolveOnboardingDisplayName,
   resolveUserTagBase,
@@ -121,6 +122,7 @@ export default function SignupOptionsScreen() {
     profileUpdates.user_tag = userTag
 
     await database.profiles.upsert(profileUpdates)
+    await persistOnboardingWeight(userId, onboardingData.weight_kg)
   }
 
   const handleAppleSignup = async () => {

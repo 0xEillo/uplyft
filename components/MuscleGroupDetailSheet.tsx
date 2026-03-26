@@ -5,8 +5,12 @@ import { useTheme } from '@/contexts/theme-context'
 import { type MuscleGroupData, getLevelColor } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { BODY_PART_TO_DATABASE_MUSCLE, BodyPartSlug } from '@/lib/body-mapping'
-import { getTrackableExercisesForMuscle, isRepBasedExercise } from '@/lib/exercise-standards-config'
+import { type BodyPartSlug } from '@/lib/body-mapping'
+import {
+  exerciseMatchesBodyPart,
+  getTrackableExercisesForBodyPart,
+} from '@/lib/body-part-strength'
+import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
     getStrengthStandard,
@@ -51,17 +55,13 @@ export function MuscleGroupDetailSheet({
   const { formatWeight, weightUnit } = useWeightUnits()
 
   const filteredExercises = useMemo(() => {
-    if (!groupData) return [];
-    if (!bodyPartSlug) return groupData.exercises;
+    if (!groupData) return []
+    if (!bodyPartSlug) return groupData.exercises
 
-    const targetMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug];
-    if (!targetMuscle) return groupData.exercises;
-
-    return groupData.exercises.filter((exercise) => {
-      // Direct match between exercise muscle group and tap target
-      return exercise.muscleGroup === targetMuscle;
-    });
-  }, [groupData, bodyPartSlug]);
+    return groupData.exercises.filter((exercise) =>
+      exerciseMatchesBodyPart(exercise, bodyPartSlug),
+    )
+  }, [bodyPartSlug, groupData])
 
   const allMuscleExercises = useMemo(() => {
     const getStrengthInfo = (exerciseName: string, max1RM: number) => {
@@ -82,11 +82,7 @@ export function MuscleGroupDetailSheet({
       )
     }
 
-    if (!bodyPartSlug) return []
-    const dbMuscle = BODY_PART_TO_DATABASE_MUSCLE[bodyPartSlug]
-    if (!dbMuscle) return []
-    
-    const trackableConfigs = getTrackableExercisesForMuscle(dbMuscle)
+    const trackableConfigs = getTrackableExercisesForBodyPart(bodyPartSlug)
     
     return trackableConfigs.map(config => {
       const userExercise = filteredExercises.find(ex => ex.exerciseName === config.name)

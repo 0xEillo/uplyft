@@ -22,6 +22,7 @@ import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { supabase } from '@/lib/supabase'
 import {
   CommitmentDay,
@@ -1992,6 +1993,8 @@ export default function OnboardingScreen() {
             if (error) {
               console.error('Error creating profile:', error)
             } else {
+              await persistOnboardingWeight(currentUserId, weightKg)
+
               // Refresh profile context so chat has the correct coach data
               await refreshProfile()
 

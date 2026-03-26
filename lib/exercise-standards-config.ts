@@ -5626,7 +5626,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Preacher Curl (Barbell)': 'Biceps',
 
   // Triceps
-  'Weighted Dip': 'Triceps',
+  'Weighted Dip': 'Chest',
   'Close Grip Bench Press (Barbell)': 'Triceps',
   'Pushdown (Cable)': 'Triceps',
   'Rope Pushdown (Cable)': 'Triceps',

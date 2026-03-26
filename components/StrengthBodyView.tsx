@@ -3,6 +3,8 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
+import { useAuth } from "@/contexts/auth-context";
+import { useUnit, type WeightUnit } from "@/contexts/unit-context";
 import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -15,8 +17,9 @@ import {
 import { useBodyDiagramGender } from "@/hooks/useBodyDiagramGender";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import {
-  BODY_PART_DISPLAY_NAMES,
   BODY_PART_TO_DATABASE_MUSCLE,
+  getBodyPartDisplayName,
+  getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
 } from "@/lib/body-mapping";
 import {
@@ -48,13 +51,18 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { database } from "@/lib/database";
+import { haptic } from "@/lib/haptics";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Keyboard,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -65,6 +73,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const STRENGTH_MUSCLE_TAP_DISCOVERED_KEY = "@strength_muscle_tap_discovered";
 const PROGRESS_DELTA_VISIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXERCISE_CONFIG_BY_NAME = getExerciseNameMap();
+const WEIGHT_UNITS: WeightUnit[] = ["kg", "lb"];
 
 const DISPLAY_GROUP_BODY_MAPPING: Record<
   DisplayGroup,
@@ -144,11 +153,13 @@ function mapMuscleToFocusGroup(
 export function StrengthBodyView({
   embedded = false,
 }: { embedded?: boolean } = {}) {
+  const { user } = useAuth();
   const colors = useThemedColors();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const router = useRouter();
   const { isDark } = useTheme();
+  const { weightUnit, setWeightUnit, convertInputToKg } = useUnit();
   const {
     profile,
     isLoading,
@@ -167,17 +178,73 @@ export function StrengthBodyView({
   const [expandedMuscleGroups, setExpandedMuscleGroups] = useState<Set<string>>(
     new Set(),
   );
+  const [weightInput, setWeightInput] = useState("");
+  const [isSavingWeight, setIsSavingWeight] = useState(false);
   const strengthGender = getStrengthGender(profile?.gender);
+
+  const normalizedWeightInput = weightInput.replace(",", ".");
+  const parsedWeight =
+    normalizedWeightInput.trim().length > 0
+      ? parseFloat(normalizedWeightInput)
+      : null;
+  const inputWeightKg =
+    parsedWeight !== null && !Number.isNaN(parsedWeight)
+      ? convertInputToKg(parsedWeight)
+      : null;
+  const hasValidInputWeight =
+    inputWeightKg !== null && inputWeightKg >= 20 && inputWeightKg <= 500;
+  const shouldShowWeightError =
+    weightInput.trim().length > 0 && !hasValidInputWeight;
+  const hasProfileWeight =
+    typeof profile?.weight_kg === "number" &&
+    Number.isFinite(profile.weight_kg) &&
+    profile.weight_kg > 0;
+  const shouldShowWeightOverlay =
+    !!user?.id && !isLoading && !hasProfileWeight;
 
   useEffect(() => {
     AsyncStorage.getItem(STRENGTH_MUSCLE_TAP_DISCOVERED_KEY).then((v) => {
       if (v === "true") setHasDiscoveredMuscleTap(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!shouldShowWeightOverlay) {
+      setWeightInput("");
+      setIsSavingWeight(false);
+    }
+  }, [shouldShowWeightOverlay]);
+
   const recommendationCardWidth = useMemo(
     () => Math.max(264, Math.min(348, viewportWidth - 68)),
     [viewportWidth],
   );
+
+  const handleWeightInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^0-9.,]/g, "");
+    setWeightInput(sanitized.replace(/,/g, "."));
+  }, []);
+
+  const handleSaveWeight = useCallback(async () => {
+    if (!user?.id || !hasValidInputWeight || inputWeightKg === null) {
+      return;
+    }
+
+    Keyboard.dismiss();
+    haptic("medium");
+    setIsSavingWeight(true);
+
+    try {
+      await database.bodyLog.createEntry(user.id, { weightKg: inputWeightKg });
+      setWeightInput("");
+      await onRefresh();
+    } catch (error) {
+      console.error("Error saving weight for strength view:", error);
+      Alert.alert("Error", "Failed to save weight. Please try again.");
+    } finally {
+      setIsSavingWeight(false);
+    }
+  }, [hasValidInputWeight, inputWeightKg, onRefresh, user?.id]);
 
   // Compute tracked exercises with their level-up progression info
   const trackedExercisesWithProgress = useMemo<
@@ -755,6 +822,7 @@ export function StrengthBodyView({
     // Iterate over all supported body part slugs
     Object.entries(BODY_PART_TO_DATABASE_MUSCLE).forEach(
       ([slug, dbMuscleName]) => {
+        if (!dbMuscleName) return
         const mgData = muscleGroupMap.get(dbMuscleName.toLowerCase());
 
         if (mgData) {
@@ -780,14 +848,14 @@ export function StrengthBodyView({
       );
 
       const slug = bodyPart.slug as BodyPartSlug;
-      const dbMuscleName = BODY_PART_TO_DATABASE_MUSCLE[slug];
+      const dbMuscleName = getPrimaryMuscleForBodyPart(slug);
 
       if (!dbMuscleName) {
         return;
       }
 
       const mgData = muscleGroupMap.get(dbMuscleName.toLowerCase());
-      const displayName = BODY_PART_DISPLAY_NAMES[slug] ?? slug;
+      const displayName = getBodyPartDisplayName(slug) ?? slug;
 
       // Build group data (with fallback for empty state)
       const groupData: MuscleGroupData = mgData || {
@@ -818,7 +886,14 @@ export function StrengthBodyView({
 
   // When embedded, render content without ScrollView wrapper
   const content = (
-    <>
+    <View style={styles.contentOverlayContainer}>
+      <View
+        style={[
+          styles.contentUnderlay,
+          shouldShowWeightOverlay && styles.contentUnderlayLocked,
+        ]}
+        pointerEvents={shouldShowWeightOverlay ? "none" : "auto"}
+      >
       {/* Body Section */}
       <View style={styles.bodySection}>
         {/* ── SECTION 1: Gamified Hero Card ── */}
@@ -1295,7 +1370,153 @@ export function StrengthBodyView({
           </TouchableOpacity>
         </View>
       </View>
-    </>
+      </View>
+
+      {shouldShowWeightOverlay && (
+        <View style={styles.weightOverlay} pointerEvents="box-none">
+          <View
+            style={[
+              styles.weightOverlayScrim,
+              {
+                backgroundColor: isDark
+                  ? "rgba(5, 8, 14, 0.56)"
+                  : "rgba(245, 247, 250, 0.78)",
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.weightOverlayCard,
+              {
+                backgroundColor: colors.surfaceSheet,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.weightOverlayHeader}>
+              <View style={styles.weightOverlayIcon}>
+                <Ionicons
+                  name="scale-outline"
+                  size={18}
+                  color={colors.brandPrimary}
+                />
+              </View>
+              <View style={styles.weightOverlayCopy}>
+                <Text style={styles.weightOverlayTitle}>
+                  Log a weight for this to work
+                </Text>
+                <Text style={styles.weightOverlaySubtitle}>
+                  Lifter level and muscle ranks use your bodyweight. Save it
+                  once and {"we'll"} unlock the full view.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.weightUnitToggle}>
+              {WEIGHT_UNITS.map((unit) => {
+                const isSelected = weightUnit === unit;
+                return (
+                  <TouchableOpacity
+                    key={unit}
+                    style={[
+                      styles.weightUnitButton,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.textPrimary
+                          : colors.surfaceSubtle,
+                        borderColor: isSelected
+                          ? colors.textPrimary
+                          : colors.border,
+                      },
+                    ]}
+                    onPress={() => setWeightUnit(unit)}
+                    disabled={isSavingWeight}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={[
+                        styles.weightUnitButtonText,
+                        {
+                          color: isSelected ? colors.bg : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {unit.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View
+              style={[
+                styles.weightInputRow,
+                {
+                  backgroundColor: colors.surfaceSubtle,
+                  borderColor: shouldShowWeightError
+                    ? colors.statusError
+                    : colors.border,
+                },
+              ]}
+            >
+              <TextInput
+                style={styles.weightInput}
+                value={weightInput}
+                onChangeText={handleWeightInputChange}
+                placeholder={weightUnit === "kg" ? "72.5" : "160"}
+                placeholderTextColor={colors.textPlaceholder}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  void handleSaveWeight();
+                }}
+                editable={!isSavingWeight}
+              />
+              <Text style={styles.weightInputUnit}>{weightUnit}</Text>
+            </View>
+
+            {shouldShowWeightError && (
+              <Text
+                style={[
+                  styles.weightOverlayError,
+                  { color: colors.statusError },
+                ]}
+              >
+                Enter a realistic weight between 20 and 500 kg equivalent.
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.weightSaveButton,
+                {
+                  backgroundColor: hasValidInputWeight
+                    ? colors.textPrimary
+                    : colors.surfaceSubtle,
+                },
+                isSavingWeight && styles.weightSaveButtonDisabled,
+              ]}
+              onPress={() => {
+                void handleSaveWeight();
+              }}
+              disabled={!hasValidInputWeight || isSavingWeight}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.weightSaveButtonText,
+                  {
+                    color: hasValidInputWeight ? colors.bg : colors.textTertiary,
+                  },
+                ]}
+              >
+                {isSavingWeight ? "Saving..." : "Log weight"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
   );
 
   const modals = (
@@ -1401,6 +1622,123 @@ const createStyles = (
       marginTop: 12,
       fontSize: 15,
       color: colors.textSecondary,
+    },
+    contentOverlayContainer: {
+      position: "relative",
+    },
+    contentUnderlay: {
+      flex: 1,
+    },
+    contentUnderlayLocked: {
+      opacity: 0.24,
+    },
+    weightOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      paddingHorizontal: 18,
+      paddingTop: 112,
+      paddingBottom: 24,
+      justifyContent: "flex-start",
+    },
+    weightOverlayScrim: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    weightOverlayCard: {
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 18,
+      gap: 14,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: isDark ? 0.28 : 0.1,
+      shadowRadius: 24,
+      elevation: 8,
+    },
+    weightOverlayHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    weightOverlayIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.brandPrimarySoft,
+    },
+    weightOverlayCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    weightOverlayTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      letterSpacing: -0.3,
+    },
+    weightOverlaySubtitle: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+    },
+    weightUnitToggle: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    weightUnitButton: {
+      minWidth: 62,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    weightUnitButtonText: {
+      fontSize: 13,
+      fontWeight: "700",
+      letterSpacing: 0.2,
+    },
+    weightInputRow: {
+      minHeight: 54,
+      borderRadius: 14,
+      borderWidth: 1,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    weightInput: {
+      flex: 1,
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      paddingVertical: 0,
+    },
+    weightInputUnit: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      textTransform: "uppercase",
+    },
+    weightOverlayError: {
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: -4,
+    },
+    weightSaveButton: {
+      minHeight: 50,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    weightSaveButtonDisabled: {
+      opacity: 0.7,
+    },
+    weightSaveButtonText: {
+      fontSize: 15,
+      fontWeight: "700",
+      letterSpacing: -0.1,
     },
 
     // ── Hero Card (Gamified top section) ──

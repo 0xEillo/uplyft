@@ -5084,7 +5084,7 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Rope Hammer Curl (Cable)': 'Biceps',
   'Preacher Curl (Barbell)': 'Biceps',
   'Bicep Curl (Cable)': 'Biceps',
-  'Weighted Dip': 'Triceps',
+  'Weighted Dip': 'Chest',
   'Close Grip Bench Press (Barbell)': 'Triceps',
   'Skull Crusher (Barbell)': 'Triceps',
   'Pushdown (Cable)': 'Triceps',

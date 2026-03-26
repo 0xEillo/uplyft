@@ -207,7 +207,7 @@
   {
     "id": "c2482ee5-ab08-4812-8a6b-bca5a2c8ec8d",
     "name": "Alternate Triceps Extension (Cable)",
-    "muscle_group": "Triceps",
+    "muscle_group": "Chest",
     "type": "isolation",
     "equipment": "Cable",
     "created_by": null,
@@ -19444,32 +19444,39 @@
   {
     "id": "f18faaa7-0cb5-4d5f-9474-a1f822c4ed84",
     "name": "Weighted Dip",
-    "muscle_group": "Triceps",
+    "muscle_group": "Chest",
     "type": null,
     "equipment": null,
     "created_by": null,
     "created_at": "2025-12-12T16:21:46.69848+00:00",
     "aliases": [
-      "Weighted Bench Dip",
-      "Weighted Triceps Dip On High Parallel Bars",
       "Weighted Dips",
       "Weighted Dip",
-      "Weighted Dip (Bodyweight)"
+      "Weighted Dip (Bodyweight)",
+      "Weighted Chest Dip",
+      "Chest Dip (Weighted)"
     ],
     "exercise_id": "MU9HnE7",
     "gif_url": "MU9HnE7.gif",
     "target_muscles": [
-      "Triceps"
+      "Chest"
     ],
     "body_parts": [
-      "Upper Arms"
+      "Chest"
     ],
     "equipments": [
       "Bodyweight"
     ],
     "secondary_muscles": [
-      "chest",
-      "shoulders"
+      "shoulders",
+      "triceps"
+    ],
+    "instructions": [
+      "Step:1 Secure the weight with a dip belt or hold it safely, then support yourself on parallel bars with arms locked out.",
+      "Step:2 Lean your torso slightly forward and keep your chest up to bias the pecs.",
+      "Step:3 Lower under control by bending your elbows until your shoulders dip just below elbow height.",
+      "Step:4 Drive back up by pressing through the bars until your elbows are extended.",
+      "Step:5 Repeat for the desired number of repetitions while maintaining a forward torso angle."
     ]
   },
   {
