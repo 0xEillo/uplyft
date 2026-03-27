@@ -246,6 +246,23 @@ const hydrateProfileWeightFromDailyLog = async <T extends Profile | null>(
   } as T
 }
 
+const syncProfileWeightCacheFromDailyLog = async (userId: string) => {
+  const latestWeightEntry = await database.dailyLog
+    .getLatestWeightEntry(userId)
+    .catch(() => null)
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      weight_kg: latestWeightEntry?.weight_kg ?? null,
+    })
+    .eq('id', userId)
+
+  if (error) {
+    throw error
+  }
+}
+
 const getDailyWeightsByDate = async (
   userId: string,
   rawDates: string[],
@@ -4180,6 +4197,16 @@ export const database = {
         .single()
 
       if (error) throw error
+
+      if (payload.weightKg !== undefined) {
+        syncProfileWeightCacheFromDailyLog(userId).catch((syncError) => {
+          console.warn(
+            '[DailyLog] Failed to sync profile weight cache from daily log:',
+            syncError,
+          )
+        })
+      }
+
       return data as DailyLogEntry
     },
 
