@@ -55,7 +55,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     title: 'Get First Exercise Rank',
     description: 'Earn a rank by logging your top sets',
     icon: 'trophy-outline',
-    route: '/strength-stats',
+    route: '/(tabs)/analytics',
     trialFeature: null,
   },
   {

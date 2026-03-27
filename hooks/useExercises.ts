@@ -1,4 +1,9 @@
 import { database } from '@/lib/database'
+import {
+  type ExerciseEquipment,
+  getAvailableExerciseEquipment,
+  matchesExerciseEquipmentFilter,
+} from '@/lib/utils/exercise-equipment'
 import { Exercise } from '@/types/database.types'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -10,7 +15,7 @@ interface UseExercisesOptions {
 interface ExerciseCache {
   exercises: Exercise[]
   muscleGroups: string[]
-  equipmentTypes: string[]
+  equipmentTypes: ExerciseEquipment[]
   lastFetched: number
 }
 
@@ -42,7 +47,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
   const [muscleGroups, setMuscleGroups] = useState<string[]>(
     globalCache?.muscleGroups ?? [],
   )
-  const [equipmentTypes, setEquipmentTypes] = useState<string[]>(
+  const [equipmentTypes, setEquipmentTypes] = useState<ExerciseEquipment[]>(
     globalCache?.equipmentTypes ?? [],
   )
   const [isLoading, setIsLoading] = useState(!globalCache)
@@ -99,36 +104,8 @@ export function useExercises(options: UseExercisesOptions = {}) {
       })
       const muscles = Array.from(muscleSet).sort()
 
-      // Derive equipment types with custom order
-      const equipmentSet = new Set<string>()
-      allExercises.forEach((e) => {
-        if (e.equipment) equipmentSet.add(e.equipment)
-        if (e.equipments && Array.isArray(e.equipments)) {
-          e.equipments.forEach((eq) => equipmentSet.add(eq) as unknown)
-        }
-      })
-      // Custom order: most common equipment first
-      const equipmentOrder = [
-        'Barbell',
-        'Dumbbell',
-        'Machine',
-        'Cable',
-        'Bodyweight',
-        'Kettlebell',
-        'Resistance Band',
-        'Other',
-      ]
-      const equipment = Array.from(equipmentSet).sort((a, b) => {
-        const aIndex = equipmentOrder.indexOf(a)
-        const bIndex = equipmentOrder.indexOf(b)
-        // If both in order list, sort by order
-        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
-        // If only one in order list, it comes first
-        if (aIndex !== -1) return -1
-        if (bIndex !== -1) return 1
-        // Neither in list, sort alphabetically
-        return a.localeCompare(b)
-      })
+      // Derive equipment types from a normalized canonical set.
+      const equipment = getAvailableExerciseEquipment(allExercises)
 
       // Update global cache
       globalCache = {
@@ -201,23 +178,10 @@ export function useExercises(options: UseExercisesOptions = {}) {
 
         // Equipment filter
         if (equipmentFilter.length > 0) {
-          let matches = false
-          if (
-            exercise.equipment &&
-            equipmentFilter.includes(exercise.equipment)
-          ) {
-            matches = true
+          const selectedEquipment = new Set(equipmentFilter)
+          if (!matchesExerciseEquipmentFilter(exercise, selectedEquipment)) {
+            return false
           }
-          if (
-            !matches &&
-            exercise.equipments &&
-            Array.isArray(exercise.equipments)
-          ) {
-            matches = exercise.equipments.some((eq) =>
-              equipmentFilter.includes(eq),
-            )
-          }
-          if (!matches) return false
         }
 
         return true

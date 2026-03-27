@@ -10,7 +10,9 @@ import { Paywall } from '@/components/paywall'
 import { ProgramCard } from '@/components/program-card'
 import { WorkoutCard } from '@/components/workout-card'
 import {
+  DEFAULT_WORKOUT_DURATION,
   EQUIPMENT_PREF_KEY,
+  WORKOUT_PLANNING_PREFS_KEY,
   WorkoutPlanningData,
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
@@ -51,6 +53,7 @@ import {
   calculateMaintenanceCalories,
   resolveCalorieGoal,
 } from '@/lib/nutrition'
+import { getWeeklyCommitmentTarget } from '@/lib/commitment'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { supabase } from '@/lib/supabase'
 import { withDailyLogMealImagePath } from '@/lib/utils/daily-log-meals'
@@ -316,6 +319,89 @@ function parseRepRangeFromSuggestion(
   }
 
   return { targetRepsMin: null, targetRepsMax: null }
+}
+
+function normalizeWizardGoal(goal?: string | null): string | undefined {
+  if (!goal) return undefined
+
+  switch (goal) {
+    case 'Strength':
+    case 'Bodybuilding':
+    case 'Powerlifting':
+    case 'CrossFit':
+    case 'Calisthenics':
+      return goal
+    case 'Hypertrophy':
+      return 'Bodybuilding'
+    case 'Fat Loss / HIIT':
+    case 'Endurance':
+      return 'CrossFit'
+    case 'General Fitness':
+      return 'Calisthenics'
+    default:
+      return undefined
+  }
+}
+
+function getDefaultWizardGoalFromProfileGoals(
+  goals?: string[] | null,
+): string {
+  switch (goals?.[0]) {
+    case 'build_muscle':
+      return 'Bodybuilding'
+    case 'gain_strength':
+      return 'Strength'
+    case 'lose_fat':
+    case 'improve_cardio':
+      return 'CrossFit'
+    case 'become_flexible':
+      return 'Calisthenics'
+    case 'general_fitness':
+      return 'Strength'
+    default:
+      return 'Strength'
+  }
+}
+
+function getDefaultWizardIntensity(experienceLevel?: string | null): string {
+  switch (experienceLevel) {
+    case 'advanced':
+      return 'High'
+    case 'intermediate':
+      return 'Moderate'
+    default:
+      return 'Basic'
+  }
+}
+
+function normalizeWizardEquipment(
+  equipment?: string | null,
+): WorkoutPlanningData['equipment'] | undefined {
+  if (
+    equipment === 'full_gym' ||
+    equipment === 'home_minimal' ||
+    equipment === 'dumbbells_only' ||
+    equipment === 'bodyweight'
+  ) {
+    return equipment
+  }
+
+  if (equipment === 'barbell_only') {
+    return 'full_gym'
+  }
+
+  return undefined
+}
+
+function getDefaultWizardMuscles(
+  commitmentTarget: number,
+  experienceLevel?: string | null,
+): string {
+  if (experienceLevel === 'beginner' || commitmentTarget <= 3) {
+    return 'Full'
+  }
+
+  return 'Upper, Lower'
 }
 
 // Internal component for animated suggestion buttons
@@ -1092,6 +1178,75 @@ export function WorkoutChat({
     })
   }, [tabBarVisibility])
 
+  const openWorkoutPlanningWizard = useCallback(async () => {
+    let storedPlanningPrefs: Partial<WorkoutPlanningData> = {}
+    let storedEquipmentPreference: string | null = null
+
+    try {
+      const [planningPrefsRaw, equipmentPrefRaw] = await Promise.all([
+        AsyncStorage.getItem(WORKOUT_PLANNING_PREFS_KEY),
+        AsyncStorage.getItem(EQUIPMENT_PREF_KEY),
+      ])
+
+      if (planningPrefsRaw) {
+        storedPlanningPrefs = JSON.parse(
+          planningPrefsRaw,
+        ) as Partial<WorkoutPlanningData>
+      }
+
+      if (equipmentPrefRaw) {
+        storedEquipmentPreference = JSON.parse(equipmentPrefRaw) as string
+      }
+    } catch (error) {
+      console.warn(
+        '[WorkoutChat] Failed to load workout planning defaults',
+        error,
+      )
+    }
+
+    const commitmentTarget = getWeeklyCommitmentTarget({
+      commitment: profile?.commitment,
+      commitment_frequency: profile?.commitment_frequency,
+    })
+
+    const profileDefaults: Partial<WorkoutPlanningData> = {
+      goal: getDefaultWizardGoalFromProfileGoals(profile?.goals),
+      muscles: getDefaultWizardMuscles(
+        commitmentTarget,
+        profile?.experience_level,
+      ),
+      duration: DEFAULT_WORKOUT_DURATION,
+      equipment:
+        normalizeWizardEquipment(storedEquipmentPreference) ?? 'full_gym',
+      specifics: `Intensity: ${getDefaultWizardIntensity(
+        profile?.experience_level,
+      )}`,
+    }
+
+    const initialWizardData: Partial<WorkoutPlanningData> = {
+      goal:
+        normalizeWizardGoal(storedPlanningPrefs.goal) ?? profileDefaults.goal,
+      muscles: storedPlanningPrefs.muscles || profileDefaults.muscles,
+      duration: storedPlanningPrefs.duration || profileDefaults.duration,
+      equipment:
+        normalizeWizardEquipment(storedPlanningPrefs.equipment) ??
+        profileDefaults.equipment,
+      specifics: storedPlanningPrefs.specifics || profileDefaults.specifics,
+    }
+
+    setPlanningState((prev) => ({
+      ...prev,
+      isActive: true,
+      step: 'wizard',
+      data: initialWizardData,
+    }))
+  }, [
+    profile?.commitment,
+    profile?.commitment_frequency,
+    profile?.experience_level,
+    profile?.goals,
+  ])
+
   useEffect(() => {
     const wizardVisible =
       planningState.isActive && planningState.step === 'wizard'
@@ -1393,11 +1548,7 @@ export function WorkoutChat({
           } else if (pending.action === 'scan_food') {
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
-            setPlanningState((prev) => ({
-              ...prev,
-              isActive: true,
-              step: 'wizard',
-            }))
+            void openWorkoutPlanningWizard()
           }
         } catch (error) {
           console.error(
@@ -1412,7 +1563,7 @@ export function WorkoutChat({
       return () => {
         cancelled = true
       }
-    }, [refreshDailyLogSummary, selectedImages.length]),
+    }, [openWorkoutPlanningWizard, refreshDailyLogSummary, selectedImages.length]),
   )
 
   // Combined context: prefer passed prop, fall back to loaded draft
@@ -2593,11 +2744,7 @@ export function WorkoutChat({
 
       if (item.id === 'plan_workout') {
         haptic('light')
-        setPlanningState((prev) => ({
-          ...prev,
-          isActive: true,
-          step: 'wizard',
-        }))
+        void openWorkoutPlanningWizard()
         return
       }
 
@@ -2690,6 +2837,18 @@ export function WorkoutChat({
 
     // Otherwise, this is the final completion, so generate the workout
     closeWizardAndRestoreTabBar()
+
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(WORKOUT_PLANNING_PREFS_KEY, JSON.stringify(data)),
+        AsyncStorage.setItem(EQUIPMENT_PREF_KEY, JSON.stringify(data.equipment)),
+      ])
+    } catch (error) {
+      console.warn(
+        '[WorkoutChat] Failed to persist workout planning defaults',
+        error,
+      )
+    }
 
     // Build the equipment label for display
     const equipmentLabels: Record<string, string> = {

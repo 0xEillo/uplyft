@@ -13,6 +13,7 @@ import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
     getBodyLogImageUrls,
+    prefetchBodyLogImages,
     getThumbnailUrlsWithPrefetch,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
@@ -125,6 +126,16 @@ type TabEmptyStateCopy = {
   title: string
   description: string
   buttonText: string
+}
+
+function getViewerPrefetchPaths(
+  photos: ProgressPhotoItem[],
+  index: number,
+): string[] {
+  const clampedIndex = Math.max(0, Math.min(index, photos.length - 1))
+  return [-1, 0, 1]
+    .map((offset) => photos[clampedIndex + offset]?.filePath ?? null)
+    .filter((path): path is string => Boolean(path))
 }
 
 // ── Stats Row ─────────────────────────────────────────────────────────────────
@@ -434,11 +445,10 @@ const TAB_EMPTY_STATE_COPY: Record<ActiveTab, TabEmptyStateCopy> = {
 const TabEmptyState = memo(
   ({
     activeTab,
-    onPress,
     showOverview = false,
   }: {
     activeTab: ActiveTab
-    onPress: () => void
+    onPress?: () => void
     showOverview?: boolean
   }) => {
     const colors = useThemedColors()
@@ -446,22 +456,17 @@ const TabEmptyState = memo(
 
     return (
       <View style={emptyTabStyles.container}>
-        <View
-          style={[
-            emptyTabStyles.iconWrapper,
-            {
-              backgroundColor: colors.brandPrimarySoft,
-              shadowColor: colors.brandPrimary,
-            },
-          ]}
-        >
-          <Ionicons name={copy.icon} size={34} color={colors.brandPrimary} />
-        </View>
+        <Ionicons
+          name={copy.icon}
+          size={26}
+          color={colors.textTertiary}
+          style={emptyTabStyles.icon}
+        />
 
-        <Text style={[emptyTabStyles.title, { color: colors.textPrimary }]}>
+        <Text style={[emptyTabStyles.title, { color: colors.textTertiary }]}>
           {copy.title}
         </Text>
-        <Text style={[emptyTabStyles.description, { color: colors.textSecondary }]}>
+        <Text style={[emptyTabStyles.description, { color: colors.textTertiary }]}>
           {copy.description}
         </Text>
 
@@ -508,19 +513,6 @@ const TabEmptyState = memo(
           </View>
         )}
 
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onPress}
-          style={[
-            emptyTabStyles.button,
-            {
-              backgroundColor: colors.brandPrimary,
-              shadowColor: colors.brandPrimary,
-            },
-          ]}
-        >
-          <Text style={emptyTabStyles.buttonText}>{copy.buttonText}</Text>
-        </TouchableOpacity>
       </View>
     )
   },
@@ -534,32 +526,22 @@ const emptyTabStyles = StyleSheet.create({
     paddingTop: 28,
     paddingBottom: 80,
   },
-  iconWrapper: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 6,
+  icon: {
+    marginBottom: 14,
   },
   title: {
-    fontSize: 31,
-    lineHeight: 36,
-    fontWeight: '800',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
     textAlign: 'center',
-    letterSpacing: -1.1,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   description: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
-    maxWidth: 320,
-    marginBottom: 26,
+    maxWidth: 280,
+    opacity: 0.7,
   },
   overviewCard: {
     width: '100%',
@@ -592,23 +574,6 @@ const emptyTabStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.2,
-  },
-  button: {
-    minWidth: 220,
-    borderRadius: 18,
-    paddingHorizontal: 26,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.3,
   },
 })
 
@@ -924,6 +889,7 @@ export default function BodyLogScreen() {
 
       try {
         const urls = await getBodyLogImageUrls(missingPaths, 'hero')
+        const resolvedUrls = urls.filter((url): url is string => Boolean(url))
         setPhotoHeroUrls((prev) => {
           const next = { ...prev }
           missingPaths.forEach((path, index) => {
@@ -932,6 +898,7 @@ export default function BodyLogScreen() {
           })
           return next
         })
+        prefetchBodyLogImages(resolvedUrls)
       } catch (error) {
         console.error('Error loading progress photo full-size URLs:', error)
       }
@@ -942,10 +909,11 @@ export default function BodyLogScreen() {
   const handleOpenPhotoViewer = useCallback(
     (photoIndex: number) => {
       if (progressPhotos.length === 0) return
+      const safeIndex = Math.max(0, Math.min(photoIndex, progressPhotos.length - 1))
       haptic('light')
-      setPhotoViewerIndex(photoIndex)
+      setPhotoViewerIndex(safeIndex)
       setPhotoViewerVisible(true)
-      ensureHeroUrls(progressPhotos.map((photo) => photo.filePath))
+      ensureHeroUrls(getViewerPrefetchPaths(progressPhotos, safeIndex))
     },
     [ensureHeroUrls, progressPhotos],
   )
@@ -1466,38 +1434,10 @@ export default function BodyLogScreen() {
                       fontSize: 12,
                       fontWeight: '600',
                     }}
-                  >
-                    {progressPhotos.length} {progressPhotos.length === 1 ? 'photo' : 'photos'}
+                >
+                  {progressPhotos.length} {progressPhotos.length === 1 ? 'photo' : 'photos'}
                   </Text>
                 </View>
-                {progressPhotos.length === 0 && (
-                  <View
-                    style={{
-                      marginHorizontal: 6,
-                      marginBottom: 12,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      backgroundColor: colors.surfaceSubtle,
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: '600',
-                        marginBottom: 2,
-                      }}
-                    >
-                      Start your progress photo timeline
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 16 }}>
-                      Tap the + tile or the header add button to take a photo or import from your library.
-                    </Text>
-                  </View>
-                )}
               </View>
             }
             ListFooterComponent={footer}
@@ -1586,9 +1526,8 @@ export default function BodyLogScreen() {
             <View style={{ width: 40, height: 40 }} />
           </View>
 
-          {progressPhotos.length > 0 && (
+          {photoViewerVisible && progressPhotos.length > 0 && (
             <FlatList
-              key={`photo-viewer-${progressPhotos.length}-${photoViewerIndex}`}
               data={progressPhotos}
               keyExtractor={(item) => item.id}
               horizontal
@@ -1600,13 +1539,14 @@ export default function BodyLogScreen() {
                 index,
               })}
               showsHorizontalScrollIndicator={false}
+              initialNumToRender={1}
+              maxToRenderPerBatch={2}
+              windowSize={3}
+              removeClippedSubviews
               onMomentumScrollEnd={(event) => {
                 const nextIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH)
                 setPhotoViewerIndex(nextIndex)
-                const current = progressPhotos[nextIndex]
-                if (current?.filePath) {
-                  ensureHeroUrls([current.filePath])
-                }
+                ensureHeroUrls(getViewerPrefetchPaths(progressPhotos, nextIndex))
               }}
               renderItem={({ item }) => {
                 const uri = photoHeroUrls[item.filePath] ?? photoThumbUrls[item.filePath] ?? null

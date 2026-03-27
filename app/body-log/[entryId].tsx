@@ -787,19 +787,25 @@ export default function BodyLogDetailScreen() {
       // Import uploadBodyLogImage once for all uploads
       const { uploadBodyLogImage } = await import('@/lib/utils/body-log-storage')
 
-      // Upload each image sequentially
-      let currentPosition = (entry?.images.length ?? 0) + 1
-      for (const photoUri of toUpload) {
-        const filePath = await uploadBodyLogImage(photoUri, user.id, actualEntryId, currentPosition)
+      const startingSequence = (entry?.images.length ?? 0) + 1
+      const uploadResults = await Promise.all(
+        toUpload.map((photoUri, index) => {
+          const sequence = startingSequence + index
+          return uploadBodyLogImage(photoUri, user.id, actualEntryId, sequence)
+        }),
+      )
 
-        await database.bodyLog.addImage(
-          actualEntryId,
-          user.id,
-          filePath,
-          currentPosition,
-        )
-        currentPosition++
-      }
+      await Promise.all(
+        uploadResults.map((filePath, index) => {
+          const sequence = startingSequence + index
+          return database.bodyLog.addImage(
+            actualEntryId,
+            user.id,
+            filePath,
+            sequence,
+          )
+        }),
+      )
 
       // Refresh entry data with images
       const { data: updatedEntry } = await supabase
@@ -1688,6 +1694,10 @@ export default function BodyLogDetailScreen() {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 initialScrollIndex={currentImageIndex}
+                initialNumToRender={1}
+                maxToRenderPerBatch={2}
+                windowSize={3}
+                removeClippedSubviews
                 getItemLayout={(data, index) => ({
                     length: SCREEN_WIDTH,
                     offset: SCREEN_WIDTH * index,

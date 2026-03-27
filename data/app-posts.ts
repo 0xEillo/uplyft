@@ -120,7 +120,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'pr_tooltip',
     badge: 'INSIGHT',
     ctaText: 'View strength stats',
-    ctaRoute: '/strength-stats',
+    ctaRoute: '/(tabs)/analytics',
   },
   {
     id: 'share-cards',

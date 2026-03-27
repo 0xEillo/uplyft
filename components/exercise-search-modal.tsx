@@ -3,6 +3,12 @@ import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic, hapticAsync, hapticSuccess } from '@/lib/haptics'
+import {
+  type ExerciseEquipment,
+  formatExerciseEquipmentLabel,
+  getExerciseEquipmentLabel,
+  matchesExerciseEquipmentFilter,
+} from '@/lib/utils/exercise-equipment'
 import { fuzzySearchExercises, hasExactOrFuzzyMatch } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -102,7 +108,7 @@ const ExerciseRow = memo(function ExerciseRow({
                 <Text
                   style={[styles.rowSubtitle, { color: colors.textTertiary }]}
                 >
-                  {exercise.equipment}
+                  {formatExerciseEquipmentLabel(exercise.equipment)}
                 </Text>
               )}
             </View>
@@ -155,7 +161,9 @@ export function ExerciseSearchModal({
     new Set(),
   )
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
+  const [selectedEquipment, setSelectedEquipment] = useState<ExerciseEquipment[]>(
+    [],
+  )
 
   // Use the cached exercises hook
   const {
@@ -198,20 +206,10 @@ export function ExerciseSearchModal({
 
     // Apply equipment filter
     if (selectedEquipment.length > 0) {
-      result = result.filter((exercise) => {
-        if (
-          exercise.equipment &&
-          selectedEquipment.includes(exercise.equipment)
-        ) {
-          return true
-        }
-        if (exercise.equipments && Array.isArray(exercise.equipments)) {
-          return exercise.equipments.some((eq) =>
-            selectedEquipment.includes(eq),
-          )
-        }
-        return false
-      })
+      const selectedEquipmentSet = new Set<string>(selectedEquipment)
+      result = result.filter((exercise) =>
+        matchesExerciseEquipmentFilter(exercise, selectedEquipmentSet),
+      )
     }
 
     return result
@@ -397,7 +395,7 @@ export function ExerciseSearchModal({
     )
   }, [])
 
-  const toggleEquipment = useCallback((type: string) => {
+  const toggleEquipment = useCallback((type: ExerciseEquipment) => {
     Keyboard.dismiss()
     haptic('light')
     setSelectedEquipment((prev) =>
@@ -722,7 +720,7 @@ export function ExerciseSearchModal({
                           },
                         ]}
                       >
-                        {type}
+                        {getExerciseEquipmentLabel(type)}
                       </Text>
                     </TouchableOpacity>
                   )

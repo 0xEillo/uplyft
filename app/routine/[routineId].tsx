@@ -86,11 +86,6 @@ export default function RoutineDetailScreen() {
   const [shouldExit, setShouldExit] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
 
-  // Tint color based on routine index for visual variety
-  const tintColors = ['#A3E635', '#22D3EE', '#94A3B8', '#F0ABFC', '#FB923C']
-  const routineIndex = routineId ? String(routineId).length : 0
-  const defaultTintColor = tintColors[routineIndex % tintColors.length]
-
   useEffect(() => {
     loadRoutine()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRoutine changes don't need to trigger refetch
@@ -251,10 +246,7 @@ export default function RoutineDetailScreen() {
         })
       } catch (e) {
         console.error('Failed to pre-seed draft', e)
-        Alert.alert(
-          'Error',
-          'Failed to start routine. Please try again.',
-        )
+        Alert.alert('Error', 'Failed to start routine. Please try again.')
       } finally {
         setIsStartingRoutine(false)
       }
@@ -374,7 +366,6 @@ export default function RoutineDetailScreen() {
       ? `${Math.floor(estDurationMinutes / 60)}h ${estDurationMinutes % 60}min`
       : `${estDurationMinutes}min`
 
-  const tintColor = routine?.tintColor || defaultTintColor
   const styles = createStyles(colors, isDark)
 
   if (isLoading) {
@@ -463,16 +454,10 @@ export default function RoutineDetailScreen() {
                   colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
                   style={styles.coverOverlay}
                 />
-                <View
-                  style={[
-                    styles.coverTint,
-                    { backgroundColor: tintColor, opacity: 0.25 },
-                  ]}
-                />
               </>
             ) : (
               <LinearGradient
-                colors={[`${tintColor}60`, `${tintColor}30`]}
+                colors={[colors.surfaceSubtle, colors.bg]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.coverGradientOnly}
@@ -692,9 +677,6 @@ const createStyles = (
       height: '100%',
     },
     coverOverlay: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    coverTint: {
       ...StyleSheet.absoluteFillObject,
     },
     coverGradientOnly: {

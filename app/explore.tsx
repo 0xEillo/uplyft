@@ -1,24 +1,17 @@
 import { BlurredHeader } from '@/components/blurred-header'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { EQUIPMENT_PREF_KEY } from '@/components/workout-planning-wizard'
 import { SlideInView } from '@/components/slide-in-view'
+import { getColors } from '@/constants/colors'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useProfile } from '@/contexts/profile-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
-import {
-  parseStoredEquipmentPreference,
-  sortProgramsByPopularity,
-  sortProgramsForUser,
-} from '@/lib/utils/explore-recommendations'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import type { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
 import { fuzzySearchPrograms, fuzzySearchExploreRoutines } from '@/lib/utils/fuzzy-search'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
@@ -45,8 +38,23 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { getBrandedProgramImageSource } from '@/constants/program-images'
 import { MUSCLE_CHIP_RENDER_DATA } from '@/lib/muscle-mapping'
 import Body from '@/components/PatchedBodyHighlighter'
+
+/** Branded program art is designed for light surfaces; keep it light in dark mode too. */
+const LIGHT_COLORS = getColors(false)
+
+const EQUIPMENT_DATA = [
+  { id: 'barbell', label: 'Barbell', image: require('../assets/images/equipment/barbell.png') },
+  { id: 'dumbbell', label: 'Dumbbell', image: require('../assets/images/equipment/dumbbell.png') },
+  { id: 'machine', label: 'Machine', image: require('../assets/images/equipment/machine.png') },
+  { id: 'cable', label: 'Cable', image: require('../assets/images/equipment/cable.png') },
+  { id: 'bodyweight', label: 'Bodyweight', image: require('../assets/images/equipment/bodyweight.png') },
+  { id: 'kettlebell', label: 'Kettlebell', image: require('../assets/images/equipment/kettlebell.png') },
+  { id: 'resistance band', label: 'Resistance Band', image: require('../assets/images/equipment/resistance_band.png') },
+  { id: 'other', label: 'Other', image: null, icon: 'ellipsis-horizontal' },
+]
 
 const { width } = Dimensions.get('window')
 type ExploreTab = 'Programs' | 'Routines' | 'Exercises'
@@ -124,6 +132,10 @@ const ExploreProgramCard = memo(function ExploreProgramCard({
   const gradient =
     PROGRAM_GRADIENTS[(item.display_order - 1) % PROGRAM_GRADIENTS.length] ??
     PROGRAM_GRADIENTS[0]
+  const brandedImage = getBrandedProgramImageSource(item.name)
+  const cardGradient = brandedImage
+    ? ([LIGHT_COLORS.surfaceSubtle, LIGHT_COLORS.bg] as const)
+    : gradient
 
   return (
     <Pressable
@@ -131,8 +143,16 @@ const ExploreProgramCard = memo(function ExploreProgramCard({
       onPress={onPress}
     >
       <View style={styles.programCardImageContainer}>
-        <LinearGradient colors={[...gradient]} style={styles.programGradient}>
-          <Text style={styles.programIconText}>{item.name}</Text>
+        <LinearGradient colors={[...cardGradient]} style={styles.programGradient}>
+          {brandedImage ? (
+            <Image
+              source={brandedImage}
+              style={styles.programCardBrandedImage}
+              contentFit="contain"
+            />
+          ) : (
+            <Text style={styles.programIconText}>{item.name}</Text>
+          )}
         </LinearGradient>
       </View>
 
@@ -171,19 +191,18 @@ const ExploreRoutineCard = memo(function ExploreRoutineCard({
             contentFit="cover"
           />
         ) : (
-          <View
-            style={[
-              styles.programImage,
-              styles.routineFallback,
-              { backgroundColor: colors.surfaceSubtle },
-            ]}
+          <LinearGradient
+            colors={[colors.surfaceSubtle, colors.bg]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.programImage, styles.routineFallback]}
           >
             <Ionicons
               name="albums-outline"
               size={32}
               color={colors.textTertiary}
             />
-          </View>
+          </LinearGradient>
         )}
       </View>
       <View style={styles.programContent}>
@@ -252,19 +271,62 @@ const ExploreMuscleCard = memo(function ExploreMuscleCard({
   )
 })
 
+const ExploreEquipmentCard = memo(function ExploreEquipmentCard({
+  item,
+  colors,
+  onPress,
+  styles,
+}: {
+  item: typeof EQUIPMENT_DATA[number]
+  colors: ReturnType<typeof useThemedColors>
+  onPress: () => void
+  styles: any
+}) {
+  return (
+    <Pressable
+      style={styles.muscleGridItem}
+      hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.label} exercises`}
+      onPress={onPress}
+    >
+      <View
+        style={[styles.muscleBodyContainer, { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }]}
+      >
+        {item.image ? (
+          <Image
+            source={item.image}
+            style={styles.equipmentImage}
+            contentFit="cover"
+          />
+        ) : (
+          <Ionicons
+            name={item.icon as any}
+            size={40}
+            color={colors.textSecondary}
+          />
+        )}
+      </View>
+      <Text
+        style={[styles.muscleGridItemText, { color: colors.textPrimary }]}
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  )
+})
+
 export default function ExploreScreen() {
   const router = useRouter()
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const insets = useSafeAreaInsets()
-  const { profile } = useProfile()
 
   const [isLoading, setIsLoading] = useState(true)
   const [programs, setPrograms] = useState<(ExploreProgramWithRoutines & { routine_count: number })[]>([])
   const [routines, setRoutines] = useState<ExploreRoutine[]>([])
   const [shouldExit, setShouldExit] = useState(false)
-  const [equipmentPreference, setEquipmentPreference] = useState<ReturnType<typeof parseStoredEquipmentPreference>>(null)
   
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
   const [activeTab, setActiveTab] = useState<ExploreTab>('Programs')
@@ -297,23 +359,6 @@ export default function ExploreScreen() {
     trackEvent(AnalyticsEvents.EXPLORE_VIEWED)
     loadData()
   }, [loadData, trackEvent])
-
-  useEffect(() => {
-    let isMounted = true
-
-    AsyncStorage.getItem(EQUIPMENT_PREF_KEY)
-      .then((storedPreference) => {
-        if (!isMounted) return
-        setEquipmentPreference(parseStoredEquipmentPreference(storedPreference))
-      })
-      .catch((error) => {
-        console.warn('[Explore] Failed to load equipment preference', error)
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
 
   const handleExitComplete = useCallback(() => {
     router.back()
@@ -369,6 +414,20 @@ export default function ExploreScreen() {
     [router],
   )
 
+  const handleOpenEquipmentGroup = useCallback(
+    (equipment: string) => {
+      router.push({
+        pathname: '/select-exercise',
+        params: {
+          exploreMode: 'true',
+          initialEquipment: equipment,
+          initialSearchQuery: searchQueryRef.current,
+        },
+      })
+    },
+    [router],
+  )
+
   const handleExerciseSearchSubmit = useCallback(() => {
     const trimmedQuery = searchQueryRef.current.trim()
     if (activeTab !== 'Exercises' || !trimmedQuery) return
@@ -391,7 +450,7 @@ export default function ExploreScreen() {
         onPress={() => handleOpenProgram(item.id)}
       />
     ),
-    [colors, handleOpenProgram],
+    [colors, handleOpenProgram, styles],
   )
 
   const renderRoutineCard = useCallback(
@@ -403,31 +462,12 @@ export default function ExploreScreen() {
         onPress={() => handleOpenRoutine(item.id)}
       />
     ),
-    [colors, handleOpenRoutine],
+    [colors, handleOpenRoutine, styles],
   )
 
   const filteredPrograms = useMemo(() => {
     return fuzzySearchPrograms(programs, deferredSearchQuery)
   }, [programs, deferredSearchQuery])
-
-  const popularPrograms = useMemo(() => {
-    return sortProgramsByPopularity(filteredPrograms)
-  }, [filteredPrograms])
-
-  const recommendedPrograms = useMemo(() => {
-    const sorted = sortProgramsForUser(filteredPrograms, {
-      profile,
-      equipmentPreference,
-    })
-    const topPopularIds = new Set(
-      popularPrograms
-        .slice(0, Math.min(2, Math.max(0, popularPrograms.length - 1)))
-        .map((program) => program.id),
-    )
-    const deduped = sorted.filter((program) => !topPopularIds.has(program.id))
-
-    return deduped.length > 0 ? deduped : sorted
-  }, [equipmentPreference, filteredPrograms, popularPrograms, profile])
 
   const filteredRoutines = useMemo(() => {
     return fuzzySearchExploreRoutines(routines, deferredSearchQuery)
@@ -453,6 +493,21 @@ export default function ExploreScreen() {
                />
              ))}
            </View>
+
+            <View style={[styles.sectionHeader, { paddingHorizontal: 16, marginTop: 20 }]}>
+               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Equipment</Text>
+            </View>
+            <View style={styles.muscleGrid}>
+              {EQUIPMENT_DATA.map((item) => (
+                <ExploreEquipmentCard
+                  key={item.id}
+                  item={item}
+                  colors={colors}
+                  styles={styles}
+                  onPress={() => handleOpenEquipmentGroup(item.id)}
+                />
+              ))}
+            </View>
         </View>
       )
     }
@@ -478,35 +533,19 @@ export default function ExploreScreen() {
     }
 
     return (
-      <View>
-         <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Popular Programs</Text>
+      <View style={{ paddingHorizontal: 16 }}>
+         <View style={[styles.sectionHeader, { paddingHorizontal: 0 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>All Programs</Text>
          </View>
          <FlatList
-           key="popular_programs_horizontal"
-           horizontal
-           data={popularPrograms.length > 0 ? popularPrograms : filteredPrograms}
+           key="programs_grid"
+           data={filteredPrograms}
            renderItem={renderProgramCard}
            keyExtractor={(item) => item.id}
-           showsHorizontalScrollIndicator={false}
-           contentContainerStyle={styles.programsList}
-           snapToInterval={width * 0.45 + 16}
-           decelerationRate="fast"
-         />
-
-         <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recommended For You</Text>
-         </View>
-         <FlatList
-           key="recommended_programs_horizontal"
-           horizontal
-           data={recommendedPrograms.length > 0 ? recommendedPrograms : filteredPrograms}
-           renderItem={renderProgramCard}
-           keyExtractor={(item) => item.id}
-           showsHorizontalScrollIndicator={false}
-           contentContainerStyle={styles.programsList}
-           snapToInterval={width * 0.45 + 16}
-           decelerationRate="fast"
+           numColumns={2}
+           columnWrapperStyle={{ gap: 16 }}
+           scrollEnabled={false}
+           contentContainerStyle={{ paddingBottom: 20 }}
          />
       </View>
     )
@@ -517,10 +556,10 @@ export default function ExploreScreen() {
     filteredRoutines,
     handleOpenExerciseGroup,
     isDark,
-    popularPrograms,
-    recommendedPrograms,
     renderProgramCard,
     renderRoutineCard,
+    handleOpenEquipmentGroup,
+    styles,
   ])
 
   return (
@@ -548,9 +587,9 @@ export default function ExploreScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ 
+          contentContainerStyle={{
             paddingBottom: insets.bottom + 100,
-            paddingTop: insets.top + 76
+            paddingTop: insets.top + 68,
           }}
         >
           {/* Search Bar */}
@@ -627,7 +666,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   searchBarContainer: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 0,
     paddingBottom: 20,
   },
   searchBarBg: {
@@ -686,7 +725,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     gap: 16,
   },
   programCardWrapper: {
-    width: width * 0.45,
+    flex: 1,
     marginBottom: 8,
   },
   routineCardWrapper: {
@@ -720,6 +759,10 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+  },
+  programCardBrandedImage: {
+    width: '100%',
+    height: '100%',
   },
   programIconText: {
     color: '#FFF',
@@ -779,5 +822,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 4,
+  },
+  equipmentImage: {
+    width: '100%',
+    height: '100%',
   },
 })

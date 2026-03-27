@@ -113,7 +113,7 @@ export default function PostPaywallSignupScreen() {
           intensity={isDark ? 40 : 34}
           tint={isDark ? 'dark' : 'light'}
           style={StyleSheet.absoluteFill}
-          experimentalBlurMethod="dimezisBlurView"
+          blurMethod="dimezisBlurView"
         />
         <View style={styles.backdropTint} />
       </Pressable>

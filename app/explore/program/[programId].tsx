@@ -7,10 +7,18 @@ import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
+import { getColors } from '@/constants/colors'
+import { getBrandedProgramImageSource } from '@/constants/program-images'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
+import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
+import {
+  clearDraft as clearWorkoutDraft,
+  hasStoredDraft,
+  saveDraft as saveWorkoutDraft,
+} from '@/lib/utils/workout-draft'
 import {
   ExploreProgramWithRoutines,
   WorkoutRoutineWithDetails,
@@ -28,8 +36,15 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+/** Branded program cover art is designed for light surfaces. */
+const LIGHT_COLORS = getColors(false)
+
+/** Horizontal inset per side for the square branded cover. */
+const BRANDED_COVER_SIDE_INSET = 26
 
 type ProgramSource = 'user' | 'explore'
 
@@ -173,6 +188,10 @@ export default function ProgramDetailScreen() {
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const { width: windowWidth } = useWindowDimensions()
+  const brandedCoverWidth = Math.round(
+    windowWidth - BRANDED_COVER_SIDE_INSET * 2,
+  )
   const { user } = useAuth()
   const { isProMember } = useSubscription()
 
@@ -182,6 +201,7 @@ export default function ProgramDetailScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [isSavingProgram, setIsSavingProgram] = useState(false)
   const [savedProgramId, setSavedProgramId] = useState<string | null>(null)
+  const [startingRoutineId, setStartingRoutineId] = useState<string | null>(null)
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
 
@@ -259,6 +279,69 @@ export default function ProgramDetailScreen() {
     }
   }, [isProMember, program, user])
 
+  const handleStartRoutine = useCallback(async (routine: NormalizedRoutine) => {
+    const applyRoutine = async () => {
+      setStartingRoutineId(routine.id)
+      try {
+        const structuredData = buildStructuredDraftFromRoutineTemplate(
+          routine.exercises.map((exercise) => ({
+            id: exercise.id,
+            name: exercise.name,
+            orderIndex: exercise.orderIndex,
+            sets: exercise.sets.map((set) => ({
+              setNumber: set.setNumber,
+              repsMin: set.repsMin,
+              repsMax: set.repsMax,
+              restSeconds: set.restSeconds,
+            })),
+          })),
+        )
+
+        await clearWorkoutDraft('start-routine')
+        await saveWorkoutDraft({
+          notes: '',
+          title: routine.name,
+          structuredData,
+          isStructuredMode: true,
+          selectedRoutineId: program?.source === 'user' ? routine.id : null,
+          updatedAt: Date.now(),
+        })
+
+        router.replace({
+          pathname: '/(tabs)/create-post',
+          params: {
+            refresh: Date.now().toString(),
+            ...(program?.source === 'user' ? { selectedRoutineId: routine.id } : {}),
+          },
+        })
+      } catch (e) {
+        console.error('Failed to start routine', e)
+        Alert.alert('Error', 'Failed to start routine. Please try again.')
+      } finally {
+        setStartingRoutineId(null)
+      }
+    }
+
+    try {
+      const hasDraft = await hasStoredDraft()
+      if (hasDraft) {
+        Alert.alert(
+          'Existing Workout',
+          'Starting this routine will clear your current workout in progress. Do you want to continue?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', style: 'destructive', onPress: () => { void applyRoutine() } },
+          ],
+        )
+      } else {
+        await applyRoutine()
+      }
+    } catch (e) {
+      console.error('Error checking draft status', e)
+      await applyRoutine()
+    }
+  }, [program, router])
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -277,6 +360,8 @@ export default function ProgramDetailScreen() {
       : [levelLabel, goalLabel].filter(Boolean).join(' • ') || 'Training Program'
 
   const coverImageUrl = program.imagePath ? getRoutineImageUrl(program.imagePath) : null
+  const brandedCoverImage = getBrandedProgramImageSource(program.name)
+  const isSaved = program.source === 'user' || !!savedProgramId
 
   const uniqueEquipment = Array.from(
     new Set(
@@ -316,8 +401,36 @@ export default function ProgramDetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Cover Image */}
-          <View style={styles.coverContainer}>
-            {coverImageUrl ? (
+          <View
+            style={[
+              styles.coverContainerBase,
+              brandedCoverImage
+                ? styles.coverContainerSquare
+                : styles.coverContainerBanner,
+              brandedCoverImage
+                ? { width: brandedCoverWidth, alignSelf: 'center' }
+                : styles.coverContainerInset,
+            ]}
+          >
+            {brandedCoverImage ? (
+              <>
+                <LinearGradient
+                  colors={[LIGHT_COLORS.surfaceSubtle, LIGHT_COLORS.bg]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <Image
+                  source={brandedCoverImage}
+                  style={styles.coverImage}
+                  contentFit="contain"
+                  contentPosition="center"
+                  cachePolicy="memory-disk"
+                  priority="high"
+                  transition={200}
+                />
+              </>
+            ) : coverImageUrl ? (
               <>
                 <Image
                   source={{ uri: coverImageUrl as string }}
@@ -431,6 +544,19 @@ export default function ProgramDetailScreen() {
                     )}
                   </View>
                   <Text style={styles.activeRoutineTitle}>{routine.name}</Text>
+                  {isSaved && (
+                    <TouchableOpacity
+                      style={[styles.playButton, { backgroundColor: colors.brandPrimary }]}
+                      onPress={() => handleStartRoutine(routine)}
+                      disabled={startingRoutineId === routine.id}
+                    >
+                      {startingRoutineId === routine.id ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Ionicons name="play" size={16} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 <View style={styles.exercisesSection}>
@@ -498,14 +624,26 @@ const createStyles = (
       textAlign: 'center',
       color: colors.textPrimary,
     },
-    scrollContent: {},
-    coverContainer: {
-      height: 180,
-      marginHorizontal: 16,
+    scrollContent: {
+      width: '100%',
+    },
+    coverContainerBase: {
       marginTop: 12,
       marginBottom: 8,
       borderRadius: 16,
       overflow: 'hidden',
+    },
+    /** Side inset for banner / remote covers (branded square uses explicit width + alignSelf). */
+    coverContainerInset: {
+      marginHorizontal: 16,
+    },
+    /** Remote routine photos: short landscape hero. */
+    coverContainerBanner: {
+      height: 180,
+    },
+    /** Branded program PNGs are square — match aspect so nothing is cropped. */
+    coverContainerSquare: {
+      aspectRatio: 1,
     },
     coverImage: {
       width: '100%',
@@ -597,7 +735,7 @@ const createStyles = (
     activeRoutineHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 12,
     },
     activeRoutineImageContainer: {
       width: 64,
@@ -609,6 +747,18 @@ const createStyles = (
       fontSize: 20,
       fontWeight: '800',
       color: colors.textPrimary,
+    },
+    playButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.brandPrimary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.4,
+      shadowRadius: 6,
+      elevation: 4,
     },
     exercisesSection: {
       paddingHorizontal: 0,

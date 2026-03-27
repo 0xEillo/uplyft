@@ -1841,24 +1841,26 @@ export default function OnboardingScreen() {
     // This pre-fills the "Goal" in the workout generation wizard
     if (step === 6 && data.goal.length > 0) {
       const primaryGoal = data.goal[0]
-      let wizardGoal = 'Hypertrophy'
+      let wizardGoal = 'Bodybuilding'
 
       switch (primaryGoal) {
         case 'gain_strength':
           wizardGoal = 'Strength'
           break
         case 'build_muscle':
-          wizardGoal = 'Hypertrophy'
+          wizardGoal = 'Bodybuilding'
           break
         case 'lose_fat':
-          wizardGoal = 'Fat Loss / HIIT'
+          wizardGoal = 'CrossFit'
           break
         case 'improve_cardio':
-          wizardGoal = 'Endurance'
+          wizardGoal = 'CrossFit'
           break
         case 'become_flexible':
+          wizardGoal = 'Calisthenics'
+          break
         case 'general_fitness':
-          wizardGoal = 'General Fitness'
+          wizardGoal = 'Strength'
           break
       }
 

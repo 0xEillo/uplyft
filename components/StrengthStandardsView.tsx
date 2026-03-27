@@ -401,24 +401,17 @@ export function StrengthStandardsView() {
           {/* Muscle Groups */}
           {rankedDisplayMuscleGroups.length === 0 ? (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={48}
-                  color={colors.textPlaceholder}
-                />
-              </View>
+              <Ionicons
+                name="barbell-outline"
+                size={26}
+                color={colors.textPlaceholder}
+                style={styles.emptyIcon}
+              />
               <Text style={styles.emptyTitle}>No compound lifts yet</Text>
               <Text style={styles.emptySubtitle}>
                 Start tracking exercises like bench press, squat, and deadlift
                 to see your strength standards
               </Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={() => setShowSupportedSheet(true)}
-              >
-                <Text style={styles.emptyButtonText}>View all supported exercises</Text>
-              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.muscleGroupsContainer}>
@@ -698,38 +691,22 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: 60,
       paddingHorizontal: 40,
     },
-    emptyIconContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.surfaceSubtle,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 16,
+    emptyIcon: {
+      marginBottom: 12,
     },
     emptyTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginBottom: 8,
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      marginBottom: 6,
+      textAlign: 'center',
     },
     emptySubtitle: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: colors.textTertiary,
       textAlign: 'center',
       lineHeight: 20,
-      marginBottom: 20,
-    },
-    emptyButton: {
-      backgroundColor: colors.brandPrimary,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-    },
-    emptyButtonText: {
-      color: '#FFFFFF',
-      fontSize: 14,
-      fontWeight: '700',
+      opacity: 0.7,
     },
 
     // Muscle Groups

@@ -13,6 +13,12 @@ import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
+import {
+  type ExerciseEquipment,
+  getExerciseEquipmentLabel,
+  matchesExerciseEquipmentFilter,
+  normalizeExerciseEquipment,
+} from '@/lib/utils/exercise-equipment'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -381,10 +387,11 @@ const MuscleFilterChip = memo(function MuscleFilterChip({
 export default function SelectExerciseScreen() {
   const colors = useThemedColors()
   const router = useRouter()
-  const { currentExerciseName, initialSearchQuery, initialMuscleGroup, exploreMode } = useLocalSearchParams<{
+  const { currentExerciseName, initialSearchQuery, initialMuscleGroup, initialEquipment, exploreMode } = useLocalSearchParams<{
     currentExerciseName?: string
     initialSearchQuery?: string
     initialMuscleGroup?: string
+    initialEquipment?: string
     exploreMode?: string
   }>()
   const { callCallback, clearCallback } = useExerciseSelection()
@@ -398,6 +405,7 @@ export default function SelectExerciseScreen() {
   // Otherwise, we are adding exercises (Multi-select allowed).
   const isMultiSelect = !currentExerciseName && !isExploreMode
   const isReplaceMode = !!currentExerciseName
+  const normalizedInitialEquipment = normalizeExerciseEquipment(initialEquipment)
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '')
   const [isSearchVisible, setIsSearchVisible] = useState(!!initialSearchQuery || isExploreMode)
@@ -414,7 +422,9 @@ export default function SelectExerciseScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef<FlashListRef<Exercise>>(null)
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>(initialMuscleGroup ? [initialMuscleGroup] : [])
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
+  const [selectedEquipment, setSelectedEquipment] = useState<ExerciseEquipment[]>(
+    normalizedInitialEquipment ? [normalizedInitialEquipment] : [],
+  )
   const [showOnlyMine, setShowOnlyMine] = useState(false)
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -497,15 +507,9 @@ export default function SelectExerciseScreen() {
 
     // Apply equipment filter
     if (hasDeferredEquipmentFilter) {
-      result = result.filter((e) => {
-        if (e.equipment && deferredSelectedEquipmentSet.has(e.equipment)) {
-          return true
-        }
-        if (e.equipments && Array.isArray(e.equipments)) {
-          return e.equipments.some((eq) => deferredSelectedEquipmentSet.has(eq))
-        }
-        return false
-      })
+      result = result.filter((e) =>
+        matchesExerciseEquipmentFilter(e, deferredSelectedEquipmentSet),
+      )
     }
 
     // Apply "Yours" filter - show only exercises created by current user
@@ -660,7 +664,7 @@ export default function SelectExerciseScreen() {
     )
   }, [])
 
-  const toggleEquipment = useCallback((type: string) => {
+  const toggleEquipment = useCallback((type: ExerciseEquipment) => {
     setSelectedEquipment((prev) =>
       prev.includes(type)
         ? prev.filter((item) => item !== type)
@@ -770,15 +774,9 @@ export default function SelectExerciseScreen() {
 
     // Apply equipment filter
     if (hasDeferredEquipmentFilter) {
-      result = result.filter((e) => {
-        if (e.equipment && deferredSelectedEquipmentSet.has(e.equipment)) {
-          return true
-        }
-        if (e.equipments && Array.isArray(e.equipments)) {
-          return e.equipments.some((eq) => deferredSelectedEquipmentSet.has(eq))
-        }
-        return false
-      })
+      result = result.filter((e) =>
+        matchesExerciseEquipmentFilter(e, deferredSelectedEquipmentSet),
+      )
     }
 
     // Apply "Yours" filter
@@ -1150,7 +1148,7 @@ export default function SelectExerciseScreen() {
                           isSelected && { color: colors.brandPrimary },
                         ]}
                       >
-                        {type}
+                        {getExerciseEquipmentLabel(type)}
                       </Text>
                     </TouchableOpacity>
                   )

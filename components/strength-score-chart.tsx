@@ -313,7 +313,7 @@ export const StrengthScoreChart = memo(function StrengthScoreChart({
   const styles = createStyles(colors)
 
   const handleCardPress = useCallback(() => {
-    router.push('/strength-stats')
+    router.push('/(tabs)/analytics')
   }, [])
 
   return (

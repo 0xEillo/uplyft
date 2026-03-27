@@ -1,12 +1,14 @@
 import { supabase } from '@/lib/supabase'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image as ExpoImage } from 'expo-image'
+import * as ImageManipulator from 'expo-image-manipulator'
 
 // Constants
 const BODY_LOG_BUCKET = 'body-log' as const
 const SIGNED_URL_EXPIRY = 60 * 60 * 24 * 7 // 7 days (shorter for cache efficiency)
 const CACHE_PREFIX = 'body_log_url_'
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 6 // 6 days (refresh before expiry)
+const BODY_LOG_UPLOAD_COMPRESS = 0.82
 
 // Image transform sizes
 export const IMAGE_SIZES = {
@@ -61,7 +63,7 @@ async function getCachedUrl(
       // Expired, clean up
       await AsyncStorage.removeItem(key)
     }
-  } catch (e) {
+  } catch {
     // Ignore cache read errors
   }
 
@@ -88,7 +90,7 @@ async function setCachedUrl(
   // AsyncStorage (fire and forget)
   try {
     await AsyncStorage.setItem(key, JSON.stringify(entry))
-  } catch (e) {
+  } catch {
     // Ignore cache write errors
   }
 }
@@ -104,7 +106,7 @@ export async function invalidateCachedUrls(filePath: string): Promise<void> {
     memoryCache.delete(key)
     try {
       await AsyncStorage.removeItem(key)
-    } catch (e) {
+    } catch {
       // Ignore
     }
   }
@@ -122,7 +124,7 @@ export async function clearAllBodyLogCache(): Promise<void> {
     if (bodyLogKeys.length > 0) {
       await AsyncStorage.multiRemove(bodyLogKeys)
     }
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
@@ -271,13 +273,19 @@ export async function uploadBodyLogImage(
   sequence?: number,
 ): Promise<string> {
   try {
+    // Normalize to JPEG before upload to avoid large HEIC payloads and speed up transfer.
+    const processedImage = await ImageManipulator.manipulateAsync(uri, [], {
+      format: ImageManipulator.SaveFormat.JPEG,
+      compress: BODY_LOG_UPLOAD_COMPRESS,
+    })
+
     // Fetch the image as array buffer
-    const response = await fetch(uri)
+    const response = await fetch(processedImage.uri)
     const arrayBuffer = await response.arrayBuffer()
     const fileData = new Uint8Array(arrayBuffer)
 
     // Create unique file name
-    const fileExt = uri.split('.').pop()?.split('?')[0] || 'jpg'
+    const fileExt = 'jpg'
 
     // If we have entry ID and sequence, use that naming convention with a unique identifier
     // Otherwise, use timestamp-based naming for legacy compatibility
@@ -293,7 +301,7 @@ export async function uploadBodyLogImage(
     const { error: uploadError } = await supabase.storage
       .from(BODY_LOG_BUCKET)
       .upload(filePath, fileData, {
-        contentType: `image/${fileExt}`,
+        contentType: 'image/jpeg',
         upsert: false,
       })
 

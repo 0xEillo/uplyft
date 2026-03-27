@@ -2,7 +2,7 @@ import type { BodyPartSlug } from '@/lib/body-mapping'
 import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export const WORKOUT_PLANNING_PREFS_KEY = '@workout_planning_preferences'
 export const EQUIPMENT_PREF_KEY = '@equipment_preference'
+export const DEFAULT_WORKOUT_DURATION = '60 min'
 
 export type EquipmentType =
   | 'full_gym'
@@ -199,6 +200,49 @@ const SPECIFIC_MUSCLE_CHIP_DATA: SpecificMuscleChipData[] = SPECIFIC_MUSCLES.map
 ).filter((c): c is SpecificMuscleChipData => c !== null)
 const INTENSITY_OPTS = ['Basic', 'Moderate', 'High']
 
+const DEFAULT_SELECTED_MUSCLES = ['Full', ...SPECIFIC_MUSCLES]
+
+const LEGACY_MUSCLE_LABELS: Record<string, string> = {
+  'full body': 'Full',
+  full: 'Full',
+  'upper body': 'Upper',
+  upper: 'Upper',
+  'lower body': 'Lower',
+  lower: 'Lower',
+}
+
+function getLocationFromEquipment(equipment?: EquipmentType) {
+  return equipment === 'home_minimal' || equipment === 'bodyweight'
+    ? 'Home'
+    : 'Gym'
+}
+
+function parseInitialSelectedMuscles(muscles?: string) {
+  if (!muscles) return DEFAULT_SELECTED_MUSCLES
+
+  const parsed = muscles
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      const normalizedValue = LEGACY_MUSCLE_LABELS[value.toLowerCase()]
+      return normalizedValue ?? value
+    })
+    .filter(
+      (value, index, array) =>
+        (MAIN_MUSCLES.includes(value) || SPECIFIC_MUSCLES.includes(value)) &&
+        array.indexOf(value) === index,
+    )
+
+  return parsed.length > 0 ? parsed : DEFAULT_SELECTED_MUSCLES
+}
+
+function parseInitialIntensity(specifics?: string) {
+  if (specifics?.includes('Intensity: High')) return 'High'
+  if (specifics?.includes('Intensity: Moderate')) return 'Moderate'
+  return 'Basic'
+}
+
 export function WorkoutPlanningWizard({
   colors,
   onComplete,
@@ -208,16 +252,41 @@ export function WorkoutPlanningWizard({
   const bodyGender = useBodyDiagramGender()
   const insets = useSafeAreaInsets()
 
-  const [location, setLocation] = useState('Gym')
-  const [workoutType, setWorkoutType] = useState('Strength')
-  const [time, setTime] = useState('50 min')
+  const [location, setLocation] = useState(() =>
+    getLocationFromEquipment(initialData?.equipment),
+  )
+  const [workoutType, setWorkoutType] = useState(() =>
+    initialData?.goal && WORKOUT_TYPES.includes(initialData.goal)
+      ? initialData.goal
+      : 'Strength',
+  )
+  const [time, setTime] = useState(() =>
+    initialData?.duration && TIMES.includes(initialData.duration)
+      ? initialData.duration
+      : DEFAULT_WORKOUT_DURATION,
+  )
+  const [selectedMuscles, setSelectedMuscles] = useState<string[]>(() =>
+    parseInitialSelectedMuscles(initialData?.muscles),
+  )
+  const [intensity, setIntensity] = useState(() =>
+    parseInitialIntensity(initialData?.specifics),
+  )
 
-  const [selectedMuscles, setSelectedMuscles] = useState<string[]>(() => [
-    'Full',
-    ...SPECIFIC_MUSCLES,
-  ])
-
-  const [intensity, setIntensity] = useState('Basic')
+  useEffect(() => {
+    setLocation(getLocationFromEquipment(initialData?.equipment))
+    setWorkoutType(
+      initialData?.goal && WORKOUT_TYPES.includes(initialData.goal)
+        ? initialData.goal
+        : 'Strength',
+    )
+    setTime(
+      initialData?.duration && TIMES.includes(initialData.duration)
+        ? initialData.duration
+        : DEFAULT_WORKOUT_DURATION,
+    )
+    setSelectedMuscles(parseInitialSelectedMuscles(initialData?.muscles))
+    setIntensity(parseInitialIntensity(initialData?.specifics))
+  }, [initialData])
 
   const toggleMainMuscle = (main: string) => {
     haptic('light')
