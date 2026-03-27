@@ -239,7 +239,10 @@ const hydrateProfileWeightFromDailyLog = async <T extends Profile | null>(
 
   return {
     ...profile,
-    weight_kg: latestWeightEntry?.weight_kg ?? null,
+    // Preserve the profile value when no daily-log weight is readable.
+    // This matters for other users' public views because daily_log_entries
+    // are private, while profiles can still be queried for public strength UI.
+    weight_kg: latestWeightEntry?.weight_kg ?? profile.weight_kg ?? null,
   } as T
 }
 
