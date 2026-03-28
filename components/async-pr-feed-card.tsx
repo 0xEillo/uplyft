@@ -1,9 +1,16 @@
 import { FeedCard } from '@/components/feed-card'
+import type { WorkoutContext } from '@/components/workout-chat'
+import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useUserLevel } from '@/hooks/useUserLevel'
+import { buildWorkoutAnalysisPrompt } from '@/lib/ai/workoutPrompt'
+import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
+import { getCoach } from '@/lib/coaches'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, OwnershipError } from '@/lib/database'
+import { haptic } from '@/lib/haptics'
 import { PrService } from '@/lib/pr'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -60,7 +67,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
-  const { profile } = useProfile()
+  const { coachId, profile } = useProfile()
+  const { trackEvent } = useAnalytics()
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
@@ -94,6 +102,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     ? 'You'
     : workout.profile?.display_name || 'User'
   const avatarUrl = workout.profile?.avatar_url || null
+  const coach = getCoach(coachId)
 
   // Social interaction states
   const [likeCount, setLikeCount] = useState(0)
@@ -366,6 +375,85 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     }
   }, [workout.routine, router])
 
+  const handleCoachPress = useCallback(async () => {
+    if (!isOwnWorkout || workout.isPending) return
+
+    const totalSetCount = (workout.workout_exercises || []).reduce(
+      (sum, exercise) => sum + (exercise.sets?.length || 0),
+      0,
+    )
+    const workingSetCount = (workout.workout_exercises || []).reduce(
+      (sum, exercise) =>
+        sum +
+        (exercise.sets?.filter((set) => !set.is_warmup).length ||
+          exercise.sets?.length ||
+          0),
+      0,
+    )
+
+    const workoutContext: WorkoutContext = {
+      sessionId: workout.id,
+      mode: 'analysis',
+      title: workout.type || workout.notes?.split('\n')[0] || 'Workout Session',
+      notes: workout.notes || '',
+      exercises: (workout.workout_exercises || []).map((exercise) => ({
+        name: exercise.exercise?.name || exercise.exercise_name || 'Exercise',
+        setsCount: exercise.sets?.length || 0,
+        sets:
+          exercise.sets?.map((set) => {
+            const weight =
+              typeof set.weight === 'number' ? `${set.weight} kg` : undefined
+            const reps =
+              typeof set.reps === 'number' ? `${set.reps}` : undefined
+
+            return {
+              ...(weight ? { weight } : {}),
+              ...(reps ? { reps } : {}),
+            }
+          }) || [],
+      })),
+      stats: {
+        exerciseCount: (workout.workout_exercises || []).length,
+        totalSetCount,
+        workingSetCount,
+        durationSeconds: workout.duration ?? null,
+        volumeKg: calculateTotalVolume(workout, 'kg'),
+        completedAt: workout.created_at ?? null,
+      },
+      prs: prInfo.flatMap((exercisePr) =>
+        exercisePr.prDetails.map((detail) => ({
+          exerciseName: exercisePr.exerciseName,
+          kind: detail.kind,
+          label: detail.label,
+          value: detail.value,
+          previousValue: detail.previousValue,
+          weight: detail.weight,
+          currentReps: detail.currentReps,
+          isCurrent: detail.isCurrent,
+        })),
+      ),
+    }
+
+    await setPendingChatAttachment({
+      action: 'analyze_workout',
+      prompt: buildWorkoutAnalysisPrompt({
+        workoutTitle: workoutContext.title,
+        exerciseCount: workoutContext.stats?.exerciseCount,
+        totalSetCount: workoutContext.stats?.totalSetCount,
+        workingSetCount: workoutContext.stats?.workingSetCount,
+        durationSeconds: workoutContext.stats?.durationSeconds,
+      }),
+      workoutContext,
+    })
+
+    haptic('medium')
+    trackEvent(AnalyticsEvents.AI_CHAT_OPENED, {
+      source: 'feed_workout_analysis',
+      workout_id: workout.id,
+    })
+    router.push('/(tabs)/chat' as any)
+  }, [isOwnWorkout, prInfo, router, trackEvent, workout])
+
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
 
@@ -373,6 +461,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     <FeedCard
       userName={userName}
       userAvatar={avatarUrl || ''}
+      coachAvatarSource={coach.image}
       userLevel={isLevelLoading ? null : userLevel}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
@@ -414,6 +503,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       isLiked={isLiked}
       onLike={handleLike}
       onComment={handleComment}
+      onCoachPress={isPending || !isOwnWorkout ? undefined : handleCoachPress}
       isFirst={isFirst}
       recentLikers={recentLikers}
     />

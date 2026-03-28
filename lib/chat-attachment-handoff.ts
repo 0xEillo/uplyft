@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { WorkoutContext } from '@/components/workout-chat'
 
 const KEY = 'chat_attachment_handoff_v1'
 
@@ -9,6 +10,11 @@ export type ChatAttachmentAction =
   | { action: 'photos_selected'; uris: string[] }
   | { action: 'scan_food' }
   | { action: 'generate_workout' }
+  | {
+      action: 'analyze_workout'
+      prompt: string
+      workoutContext: WorkoutContext
+    }
 
 export async function setPendingChatAttachment(
   payload: ChatAttachmentAction,

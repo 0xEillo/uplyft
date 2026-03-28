@@ -59,8 +59,38 @@ type ChatImagePart =
 
 const workoutContextSchema = z
   .object({
+    sessionId: z.string().uuid().optional(),
+    mode: z.enum(['planning', 'analysis']).optional(),
     title: z.string().optional(),
     notes: z.string().optional(),
+    stats: z
+      .object({
+        exerciseCount: z.number().optional(),
+        totalSetCount: z.number().optional(),
+        workingSetCount: z.number().optional(),
+        durationSeconds: z.number().nullable().optional(),
+        volumeKg: z.number().nullable().optional(),
+        completedAt: z.string().nullable().optional(),
+      })
+      .optional(),
+    prs: z
+      .array(
+        z.object({
+          exerciseName: z.string(),
+          kind: z.enum([
+            'heaviest-weight',
+            'best-1rm',
+            'best-set-volume',
+          ]),
+          label: z.string(),
+          value: z.number(),
+          previousValue: z.number().optional(),
+          weight: z.number(),
+          currentReps: z.number(),
+          isCurrent: z.boolean(),
+        }),
+      )
+      .optional(),
     exercises: z
       .array(
         z.object({
@@ -398,7 +428,403 @@ async function buildUserContext(
     return adherenceSummaryPromise
   }
 
+  const roundTo = (value: number, decimals = 1) => {
+    const factor = 10 ** decimals
+    return Math.round(value * factor) / factor
+  }
+
+  const estimateOneRepMax = (weight: number, reps: number) =>
+    weight * (1 + reps / 30)
+
+  const calculateExerciseVolumeKg = (
+    sets:
+      | {
+          reps?: number | null
+          weight?: number | null
+          is_warmup?: boolean | null
+          isWarmup?: boolean
+        }[]
+      | null
+      | undefined,
+  ) =>
+    (sets || []).reduce((sum, set) => {
+      const isWarmup = set.isWarmup === true || set.is_warmup === true
+      if (isWarmup) return sum
+      if (typeof set.reps !== 'number' || set.reps <= 0) return sum
+      if (typeof set.weight !== 'number' || set.weight <= 0) return sum
+      return sum + set.weight * set.reps
+    }, 0)
+
+  const calculateSessionVolumeKg = (
+    exercises:
+      | {
+          sets?:
+            | {
+                reps?: number | null
+                weight?: number | null
+                is_warmup?: boolean | null
+                isWarmup?: boolean
+              }[]
+            | null
+        }[]
+      | null
+      | undefined,
+  ) =>
+    (exercises || []).reduce(
+      (sum, exercise) => sum + calculateExerciseVolumeKg(exercise.sets),
+      0,
+    )
+
+  const countWorkingSets = (
+    exercises:
+      | {
+          sets?:
+            | {
+                reps?: number | null
+                is_warmup?: boolean | null
+                isWarmup?: boolean
+              }[]
+            | null
+        }[]
+      | null
+      | undefined,
+  ) =>
+    (exercises || []).reduce(
+      (sum, exercise) =>
+        sum +
+        (exercise.sets || []).filter((set) => {
+          const isWarmup = set.isWarmup === true || set.is_warmup === true
+          if (isWarmup) return false
+          return typeof set.reps === 'number' && set.reps > 0
+        }).length,
+      0,
+    )
+
+  const buildExerciseComparisonRows = (
+    session: WorkoutSessionWithDetails,
+    previousSessions: WorkoutSessionWithDetails[],
+  ) => {
+    const comparisons: Array<Record<string, unknown>> = []
+
+    for (const exercise of session.workout_exercises || []) {
+      const exerciseName = exercise.exercise?.name
+      const exerciseId = exercise.exercise_id
+      if (!exerciseName || !exerciseId) continue
+
+      const currentWorkingSets = (exercise.sets || []).filter(
+        (set) => set.is_warmup !== true,
+      )
+      const currentBestWeight = currentWorkingSets.reduce<number | null>(
+        (best, set) =>
+          typeof set.weight === 'number' && (best == null || set.weight > best)
+            ? set.weight
+            : best,
+        null,
+      )
+      const currentBest1RM = currentWorkingSets.reduce<number | null>(
+        (best, set) => {
+          if (
+            typeof set.weight !== 'number' ||
+            set.weight <= 0 ||
+            typeof set.reps !== 'number' ||
+            set.reps <= 0
+          ) {
+            return best
+          }
+          const value = estimateOneRepMax(set.weight, set.reps)
+          return best == null || value > best ? value : best
+        },
+        null,
+      )
+
+      let lastPerformedAt: string | null = null
+      let previousBestWeight: number | null = null
+      let previousBest1RM: number | null = null
+
+      outer: for (const prevSession of previousSessions) {
+        for (const prevExercise of prevSession.workout_exercises || []) {
+          if (prevExercise.exercise_id !== exerciseId) continue
+          if (!lastPerformedAt) {
+            lastPerformedAt = prevSession.created_at ?? prevSession.date ?? null
+          }
+          for (const set of prevExercise.sets || []) {
+            if (set.is_warmup === true) continue
+            if (
+              typeof set.weight === 'number' &&
+              (previousBestWeight == null || set.weight > previousBestWeight)
+            ) {
+              previousBestWeight = set.weight
+            }
+            if (
+              typeof set.weight === 'number' &&
+              set.weight > 0 &&
+              typeof set.reps === 'number' &&
+              set.reps > 0
+            ) {
+              const est1RM = estimateOneRepMax(set.weight, set.reps)
+              if (previousBest1RM == null || est1RM > previousBest1RM) {
+                previousBest1RM = est1RM
+              }
+            }
+          }
+          continue outer
+        }
+      }
+
+      comparisons.push({
+        exerciseName,
+        currentBestWeight,
+        previousBestWeight,
+        currentBestEstimated1RM:
+          currentBest1RM == null ? null : roundTo(currentBest1RM),
+        previousBestEstimated1RM:
+          previousBest1RM == null ? null : roundTo(previousBest1RM),
+        lastPerformedAt,
+      })
+    }
+
+    return comparisons
+  }
+
   const tools: Record<string, ReturnType<typeof tool>> = {
+    getWorkoutAnalysisSnapshot: tool({
+      description:
+        'Build a coach-grade snapshot for one completed workout: exact session details, PR highlights, recent baseline comparisons, recovery, consistency, and exercise-by-exercise context.',
+      inputSchema: z.object({
+        sessionId: z.string().uuid(),
+      }),
+      execute: async ({ sessionId }) => {
+        const { data, error } = await supabase
+          .from('workout_sessions')
+          .select(
+            `
+            *,
+            workout_exercises (
+              *,
+              exercise:exercises (*),
+              sets (*)
+            )
+          `,
+          )
+          .eq('id', sessionId)
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        if (error) throw error
+        if (!data) {
+          return { found: false, snapshot: null }
+        }
+
+        const session = data as WorkoutSessionWithDetails
+        const createdAt = session.created_at ?? session.date ?? null
+
+        let previousQuery = supabase
+          .from('workout_sessions')
+          .select(
+            `
+            *,
+            workout_exercises (
+              *,
+              exercise:exercises (*),
+              sets (*)
+            )
+          `,
+          )
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(12)
+
+        if (createdAt) {
+          previousQuery = previousQuery.lt('created_at', createdAt)
+        }
+
+        const { data: previousData, error: previousError } = await previousQuery
+        if (previousError) throw previousError
+
+        const previousSessions = (previousData as WorkoutSessionWithDetails[]) || []
+        const previousPatterns =
+          summarizeTrainingPatterns(previousSessions as any[], { maxSessions: 8 }) ??
+          null
+
+        const exactSessionVolumeKg = calculateSessionVolumeKg(
+          session.workout_exercises,
+        )
+        const recentVolumes = previousSessions
+          .map((prev) => calculateSessionVolumeKg(prev.workout_exercises))
+          .filter((volume) => volume > 0)
+        const averageRecentVolumeKg =
+          recentVolumes.length > 0
+            ? roundTo(
+                recentVolumes.reduce((sum, volume) => sum + volume, 0) /
+                  recentVolumes.length,
+              )
+            : null
+
+        const sessionMuscleGroups = Array.from(
+          new Set(
+            (session.workout_exercises || [])
+              .map((exercise) => exercise.exercise?.muscle_group)
+              .filter(
+                (muscleGroup): muscleGroup is string =>
+                  typeof muscleGroup === 'string' && muscleGroup.length > 0,
+              ),
+          ),
+        )
+
+        const [recoverySummary, adherenceSummary, muscleBalance] =
+          await Promise.all([
+            getRecoverySummary(),
+            getAdherenceSummary(),
+            getMuscleGroupDistribution(supabase, userId, { daysBack: 60 }),
+          ])
+
+        return {
+          found: true,
+          snapshot: {
+            session: {
+              id: session.id,
+              date: session.date,
+              createdAt,
+              type: session.type,
+              notes: session.notes,
+              durationSeconds: (session as any).duration ?? null,
+              exerciseCount: (session.workout_exercises || []).length,
+              totalSetCount: (session.workout_exercises || []).reduce(
+                (sum, exercise) => sum + (exercise.sets?.length || 0),
+                0,
+              ),
+              workingSetCount: countWorkingSets(session.workout_exercises),
+              volumeKg: roundTo(exactSessionVolumeKg),
+              muscleGroups: sessionMuscleGroups,
+              exercises: (session.workout_exercises || []).map((exercise) => ({
+                name: exercise.exercise?.name,
+                muscleGroup: exercise.exercise?.muscle_group ?? null,
+                setCount: exercise.sets?.length || 0,
+                workingSetCount: (exercise.sets || []).filter(
+                  (set) => set.is_warmup !== true,
+                ).length,
+                volumeKg: roundTo(calculateExerciseVolumeKg(exercise.sets)),
+                sets: (exercise.sets || []).map((set) => ({
+                  setNumber: set.set_number,
+                  reps: set.reps,
+                  weight: set.weight,
+                  rpe: set.rpe,
+                  isWarmup: set.is_warmup === true,
+                })),
+              })),
+            },
+            recentBaseline: previousPatterns
+              ? {
+                  sessionsAnalyzed: previousPatterns.sessionsAnalyzed,
+                  averageExercisesPerSession:
+                    previousPatterns.averageExercisesPerSession,
+                  averageWorkingSetsPerSession:
+                    previousPatterns.averageWorkingSetsPerSession,
+                  averageWorkingSetsPerExercise:
+                    previousPatterns.averageWorkingSetsPerExercise,
+                  averageRepsPerSet: previousPatterns.averageRepsPerSet,
+                  averageVolumeKg: averageRecentVolumeKg,
+                }
+              : null,
+            exerciseComparisons: buildExerciseComparisonRows(
+              session,
+              previousSessions,
+            ),
+            relevantRecovery: recoverySummary.muscleRecovery.filter((entry) =>
+              sessionMuscleGroups.includes(entry.muscleGroup),
+            ),
+            adherence: {
+              weeklyTarget: adherenceSummary.weeklyTarget,
+              workoutsThisWeek: adherenceSummary.workoutsThisWeek,
+              expectedWorkoutsByNow: adherenceSummary.expectedWorkoutsByNow,
+              currentStreakWeeks: adherenceSummary.currentStreakWeeks,
+              recentAverageWorkoutsPerWeek:
+                adherenceSummary.recentAverageWorkoutsPerWeek,
+              daysSinceLastWorkout: adherenceSummary.daysSinceLastWorkout,
+              adherenceStatus: adherenceSummary.adherenceStatus,
+            },
+            muscleBalance: {
+              distribution: muscleBalance.distribution,
+              totalVolume: muscleBalance.totalVolume,
+            },
+          },
+        }
+      },
+    }),
+    getWorkoutSessionById: tool({
+      description:
+        "Fetch one exact workout session by its ID, including exercise and set details. Use this for post-workout analysis of a specific logged session.",
+      inputSchema: z.object({
+        sessionId: z.string().uuid(),
+      }),
+      execute: async ({ sessionId }) => {
+        const { data, error } = await supabase
+          .from('workout_sessions')
+          .select(
+            `
+            *,
+            workout_exercises (
+              *,
+              exercise:exercises (*),
+              sets (*)
+            )
+          `,
+          )
+          .eq('id', sessionId)
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        if (error) throw error
+
+        if (!data) {
+          return {
+            session: null,
+            found: false,
+          }
+        }
+
+        const session = data as WorkoutSessionWithDetails
+        const exercises = (session.workout_exercises || []).map((we) => ({
+          name: we.exercise?.name,
+          order: we.order_index,
+          notes: we.notes,
+          sets: (we.sets || []).map((set) => ({
+            setNumber: set.set_number,
+            reps: set.reps,
+            weight: set.weight,
+            rpe: set.rpe,
+            isWarmup: (set as any).is_warmup ?? false,
+          })),
+        }))
+
+        const totalSetCount = exercises.reduce(
+          (sum, exercise) => sum + exercise.sets.length,
+          0,
+        )
+        const workingSetCount = exercises.reduce(
+          (sum, exercise) =>
+            sum + exercise.sets.filter((set) => !set.isWarmup).length,
+          0,
+        )
+
+        return {
+          found: true,
+          session: {
+            id: session.id,
+            date: session.date,
+            createdAt: session.created_at ?? null,
+            type: session.type,
+            notes: session.notes,
+            durationSeconds: (session as any).duration ?? null,
+            routineId: session.routine_id ?? null,
+            exerciseCount: exercises.length,
+            totalSetCount,
+            workingSetCount,
+            exercises,
+          },
+        }
+      },
+    }),
     getWorkoutSlice: tool({
       description:
         "Fetch a concise slice of the user's workout history. Provide filters instead of asking for everything.",
@@ -1755,6 +2181,12 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
       : []),
     "Ground answers in the user's actual data when relevant. If the data is missing, say so. Keep suggestions actionable and tied to their metrics. If asked about 1 rep max, calculate it using epley's formula (do not show the calculation).",
     'The recent-workout context above is important. Use it to understand what the user is actually training right now: exercise selection, set counts, reps, loads, and recent patterns.',
+    'When the current workout context is an analysis request for a completed workout, judge the session based on the actual amount of work performed. Do not describe a one-set or one-exercise log as a solid full workout unless the data clearly supports that interpretation.',
+    'For post-workout analysis, anchor your judgment in session completeness, exercise quality, progression versus prior history, and relevance to the user’s goals.',
+    'If the workout context includes explicit PR highlights, treat them as trusted app-level signals and use them in your analysis.',
+    'For post-workout analysis, keep the first reply compact and conversational. Give the key takeaway first, not a long report.',
+    'For post-workout analysis, prefer a short overview plus 2-3 high-value points. Save deeper breakdowns for follow-up questions.',
+    'End post-workout analysis replies with a natural invitation for the user to ask for more detail on one specific area if they want it.',
     "Do not confuse your coaching defaults with the user's actual behavior. Never describe 6-8 / 10-12, low-volume training, or any other coach default as what the user is currently doing unless their logged data supports it.",
     'When discussing rep ranges, set counts, volume, or training style, first interpret the user’s actual logged training pattern. If you then give a recommendation, clearly frame it as your advice or preferred training method, not as their current approach.',
     'If the user asks whether their rep ranges are good, whether they should change reps, or how they currently train, use the training-pattern data first. Prefer wording like "your recent training is mostly..." or "my recommendation would be..."',
@@ -1764,6 +2196,9 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     'When data is available, make recommendations concrete: name the lift, muscle group, nutrition target, recovery issue, or cadence issue that matters most, and say what to do next.',
     'Use the recent training-pattern context to judge how the user actually trains: exercise count, working sets, rep ranges, and per-muscle session volume. This is especially important for advice about too much volume, too little volume, poor exercise selection, or inappropriate rep ranges.',
     'If the user asks about their current training, recent workouts, recent exercise choices, whether their split/program makes sense, why a lift is or is not moving, or wants feedback on what they have been doing lately, use getWorkoutSlice.',
+    'If the current workout context includes a sessionId and the user is asking for workout analysis or feedback on the workout they just logged, call getWorkoutAnalysisSnapshot first.',
+    'Use getWorkoutSessionById only as a fallback or if you specifically need the raw session after inspecting the workout-analysis snapshot.',
+    'For post-workout analysis of the just-finished session, combine getWorkoutAnalysisSnapshot with getPersonalRecords or getStrengthProgress only when that adds meaningful exercise-specific detail.',
     'If the user asks how to train better, whether they are doing too many exercises or sets, whether their rep ranges make sense, whether they are overdoing a muscle group like chest, or how their programming structure looks, call getTrainingPatterns.',
     'If the user asks about lifter level, points, exercise ranks, full standards ladders, target weights or reps for Beginner/Novice/Intermediate/Advanced/Elite/World Class, next level targets, or which lift is closest to leveling up, call getLifterLevel, getExerciseRanks, and/or getExerciseStandards.',
     'If the user asks for their exact current points, score, or lifter level, always call getLifterLevel first and report the exact returned points value. Do not infer it from the level name or round it to the level threshold.',
@@ -1871,13 +2306,26 @@ function buildWorkoutInProgressSection(
   const hasNotes = workoutContext.notes?.trim()
   const hasExercises =
     workoutContext.exercises && workoutContext.exercises.length > 0
+  const hasStats = Boolean(workoutContext.stats)
 
-  if (!hasTitle && !hasNotes && !hasExercises) return ''
+  if (!hasTitle && !hasNotes && !hasExercises && !hasStats) return ''
 
   const lines: string[] = [
-    'CURRENT WORKOUT IN PROGRESS:',
-    'The user is currently creating/logging a workout. Use this context to provide relevant suggestions, modifications, or exercise recommendations.',
+    'CURRENT WORKOUT CONTEXT:',
+    'The user is actively discussing this workout. Use this context to provide relevant analysis, suggestions, modifications, or exercise recommendations.',
   ]
+
+  if (workoutContext.mode === 'analysis') {
+    lines.push(
+      'Context Mode: Post-workout analysis of a completed logged session.',
+    )
+  } else if (workoutContext.mode === 'planning') {
+    lines.push('Context Mode: Workout planning or in-progress editing.')
+  }
+
+  if (workoutContext.sessionId) {
+    lines.push(`Session ID: ${workoutContext.sessionId}`)
+  }
 
   if (hasTitle) {
     lines.push(`Workout Title: "${workoutContext.title}"`)
@@ -1885,6 +2333,50 @@ function buildWorkoutInProgressSection(
 
   if (hasNotes) {
     lines.push(`Notes/Description: "${workoutContext.notes}"`)
+  }
+
+  if (hasStats) {
+    const statsLines: string[] = []
+    if (typeof workoutContext.stats?.exerciseCount === 'number') {
+      statsLines.push(`Exercises: ${workoutContext.stats.exerciseCount}`)
+    }
+    if (typeof workoutContext.stats?.totalSetCount === 'number') {
+      statsLines.push(`Total Sets: ${workoutContext.stats.totalSetCount}`)
+    }
+    if (typeof workoutContext.stats?.workingSetCount === 'number') {
+      statsLines.push(`Working Sets: ${workoutContext.stats.workingSetCount}`)
+    }
+    if (typeof workoutContext.stats?.durationSeconds === 'number') {
+      statsLines.push(
+        `Duration Minutes: ${Math.max(
+          0,
+          Math.round(workoutContext.stats.durationSeconds / 60),
+        )}`,
+      )
+    }
+    if (typeof workoutContext.stats?.volumeKg === 'number') {
+      statsLines.push(`Volume (kg): ${Math.round(workoutContext.stats.volumeKg)}`)
+    }
+
+    if (statsLines.length > 0) {
+      lines.push(`Workout Stats:\n${statsLines.join('\n')}`)
+    }
+  }
+
+  if (workoutContext.prs?.length) {
+    lines.push(
+      'Session PR Highlights:\n' +
+        workoutContext.prs
+          .slice(0, 8)
+          .map((pr) => {
+            const previous =
+              typeof pr.previousValue === 'number'
+                ? ` (previous ${Math.round(pr.previousValue)})`
+                : ''
+            return `- ${pr.exerciseName}: ${pr.label} = ${Math.round(pr.value)}${previous}`
+          })
+          .join('\n'),
+    )
   }
 
   if (hasExercises) {
@@ -1931,7 +2423,8 @@ function buildWorkoutInProgressSection(
   }
 
   lines.push(
-    'When the user asks for suggestions, exercise replacements, or modifications, consider this context.',
+    'When the user asks for analysis, suggestions, exercise replacements, or modifications, consider this context.',
+    'If this is a post-workout analysis request, judge the workout by what was actually logged, not by what a typical full session should have contained.',
     'If they ask to add exercises, suggest ones that complement their current workout.',
     'If they ask to replace an exercise, suggest alternatives based on the exercise being replaced.',
   )

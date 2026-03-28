@@ -50,7 +50,6 @@ import { appFetch } from '@/lib/fetch'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import {
-  calculateMaintenanceCalories,
   resolveCalorieGoal,
 } from '@/lib/nutrition'
 import { getWeeklyCommitmentTarget } from '@/lib/commitment'
@@ -530,10 +529,34 @@ export interface WorkoutContextExercise {
   sets?: WorkoutContextSet[]
 }
 
+export interface WorkoutContextStats {
+  exerciseCount?: number
+  totalSetCount?: number
+  workingSetCount?: number
+  durationSeconds?: number | null
+  volumeKg?: number | null
+  completedAt?: string | null
+}
+
+export interface WorkoutContextPr {
+  exerciseName: string
+  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
+  label: string
+  value: number
+  previousValue?: number
+  weight: number
+  currentReps: number
+  isCurrent: boolean
+}
+
 export interface WorkoutContext {
+  sessionId?: string
+  mode?: 'planning' | 'analysis'
   title: string
   notes?: string
   exercises: WorkoutContextExercise[]
+  stats?: WorkoutContextStats
+  prs?: WorkoutContextPr[]
 }
 
 // Custom suggestions config
@@ -851,6 +874,185 @@ const getVisibleAssistantMessageText = (content: string): string =>
     .replace(/\{\s*"title".*/gs, '')
     .trim()
 
+const WORKOUT_ANALYSIS_LABELS = [
+  'Workout Score',
+  'Overview',
+  'Top Win',
+  'Main Fix',
+  'Next Step',
+  'Summary',
+  'What Went Well',
+  'Needs Work',
+  'Exercise Notes',
+  'Next Session Focus',
+] as const
+
+function formatWorkoutAnalysisForDisplay(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return trimmed
+
+  const hasWorkoutAnalysisLabel = WORKOUT_ANALYSIS_LABELS.some((label) =>
+    trimmed.includes(`${label}:`),
+  )
+
+  if (!hasWorkoutAnalysisLabel) return trimmed
+
+  const lines = trimmed
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const formatted: string[] = []
+
+  for (const line of lines) {
+    const scoreMatch = line.match(/^Workout Score:\s*(.+)$/i)
+    if (scoreMatch) {
+      formatted.push(`## Workout Score\n\n**${scoreMatch[1].trim()}**`)
+      continue
+    }
+
+    const overviewMatch = line.match(/^(Overview|Summary):\s*(.+)$/i)
+    if (overviewMatch) {
+      formatted.push(`### ${overviewMatch[1]}\n\n${overviewMatch[2].trim()}`)
+      continue
+    }
+
+    const singleBulletSectionMatch = line.match(
+      /^(Top Win|Main Fix|Next Step):\s*(.+)$/i,
+    )
+    if (singleBulletSectionMatch) {
+      formatted.push(
+        `### ${singleBulletSectionMatch[1]}\n\n- ${singleBulletSectionMatch[2].trim()}`,
+      )
+      continue
+    }
+
+    const sectionHeaderMatch = line.match(
+      /^(What Went Well|Needs Work|Exercise Notes|Next Session Focus):$/i,
+    )
+    if (sectionHeaderMatch) {
+      formatted.push(`### ${sectionHeaderMatch[1]}`)
+      continue
+    }
+
+    if (/^[•·⋅]/.test(line)) {
+      formatted.push(`- ${line.replace(/^[•·⋅]\s*/, '').trim()}`)
+      continue
+    }
+
+    formatted.push(line)
+  }
+
+  return formatted.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+const formatAssistantMessageForDisplay = (content: string): string =>
+  formatWorkoutAnalysisForDisplay(getVisibleAssistantMessageText(content))
+
+function createCoachMarkdownStyle(
+  colors: ReturnType<typeof useThemedColors>,
+): any {
+  return {
+    body: {
+      fontSize: 16,
+      lineHeight: 23,
+      color: colors.textPrimary,
+      margin: 0,
+    },
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 10,
+    },
+    heading1: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 18,
+      marginBottom: 10,
+    },
+    heading2: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    heading3: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 14,
+      marginBottom: 8,
+    },
+    code_inline: {
+      backgroundColor: colors.bg,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 4,
+      fontSize: 15,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      color: colors.textPrimary,
+    },
+    code_block: {
+      backgroundColor: colors.bg,
+      padding: 12,
+      borderRadius: 12,
+      fontSize: 15,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      color: colors.textPrimary,
+      marginVertical: 8,
+      overflow: 'hidden',
+    },
+    fence: {
+      backgroundColor: colors.bg,
+      padding: 12,
+      borderRadius: 12,
+      fontSize: 15,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      color: colors.textPrimary,
+      marginVertical: 8,
+    },
+    strong: {
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    em: {
+      fontStyle: 'italic',
+    },
+    bullet_list: {
+      marginTop: 2,
+      marginBottom: 14,
+    },
+    ordered_list: {
+      marginTop: 2,
+      marginBottom: 14,
+    },
+    list_item: {
+      marginTop: 6,
+      marginBottom: 6,
+    },
+    hr: {
+      backgroundColor: colors.border,
+      height: 1,
+      marginVertical: 16,
+    },
+    blockquote: {
+      borderLeftWidth: 3,
+      borderLeftColor: colors.brandPrimary,
+      paddingLeft: 12,
+      marginVertical: 8,
+      backgroundColor: colors.bg,
+      paddingVertical: 8,
+      paddingRight: 8,
+      borderRadius: 4,
+    },
+    link: {
+      color: colors.brandPrimary,
+      textDecorationLine: 'underline',
+    },
+  }
+}
+
 const getFirstSentence = (text: string): string => {
   const trimmed = text.trim()
   if (!trimmed) return ''
@@ -1072,6 +1274,7 @@ export function WorkoutChat({
   const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   const imageViewerListRef = useRef<FlatList<string>>(null)
+  const autoSendMessageRef = useRef<(message: string) => void>(() => {})
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
@@ -1109,10 +1312,6 @@ export function WorkoutChat({
     Record<string, 'idle' | 'saving' | 'saved' | 'error'>
   >({})
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
-  const maintenanceCalories = useMemo(
-    () => calculateMaintenanceCalories(profile ?? null),
-    [profile],
-  )
   const coach = getCoach(coachId)
   const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [hasChatStarted, setHasChatStarted] = useState(false)
@@ -1121,9 +1320,16 @@ export function WorkoutChat({
     loadedDraftContext,
     setLoadedDraftContext,
   ] = useState<WorkoutContext | null>(null)
+  const [
+    handoffWorkoutContext,
+    setHandoffWorkoutContext,
+  ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
+  const [pendingAutoSendMessage, setPendingAutoSendMessage] = useState<
+    string | null
+  >(null)
 
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [
@@ -1160,6 +1366,10 @@ export function WorkoutChat({
         bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg,
       } as any),
     [themedColors, mode],
+  )
+  const coachMarkdownStyle = useMemo(
+    () => createCoachMarkdownStyle(colors),
+    [colors],
   )
   const { isDark } = useTheme()
   const { weightUnit } = useWeightUnits()
@@ -1549,6 +1759,9 @@ export function WorkoutChat({
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
             void openWorkoutPlanningWizard()
+          } else if (pending.action === 'analyze_workout') {
+            setHandoffWorkoutContext(pending.workoutContext)
+            setPendingAutoSendMessage(pending.prompt)
           }
         } catch (error) {
           console.error(
@@ -1566,9 +1779,10 @@ export function WorkoutChat({
     }, [openWorkoutPlanningWizard, refreshDailyLogSummary, selectedImages.length]),
   )
 
-  // Combined context: prefer passed prop, fall back to loaded draft
+  // Combined context: prefer an explicitly provided workout, then handoff context,
+  // then fall back to the current draft.
   const effectiveWorkoutContext =
-    workoutContext || loadedDraftContext || undefined
+    workoutContext || handoffWorkoutContext || loadedDraftContext || undefined
 
   // Combine initial context exercises with any proposed exercises for the "current workout" state
   const currentWorkoutExercises = useMemo(
@@ -2525,9 +2739,29 @@ export function WorkoutChat({
         coachSystemPrompt?: string
         equipmentPreference?: ChatEquipmentPreference
         workoutContext?: {
+          sessionId?: string
+          mode?: 'planning' | 'analysis'
           title?: string
           notes?: string
           exercises?: unknown
+          stats?: {
+            exerciseCount?: number
+            totalSetCount?: number
+            workingSetCount?: number
+            durationSeconds?: number | null
+            volumeKg?: number | null
+            completedAt?: string | null
+          }
+          prs?: {
+            exerciseName?: string
+            kind?: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
+            label?: string
+            value?: number
+            previousValue?: number
+            weight?: number
+            currentReps?: number
+            isCurrent?: boolean
+          }[]
         }
         dailyLogSummary?: {
           logDate?: string
@@ -2562,9 +2796,13 @@ export function WorkoutChat({
         // Include current workout context so AI knows what workout is in progress
         workoutContext: effectiveWorkoutContext
           ? {
+              sessionId: effectiveWorkoutContext.sessionId,
+              mode: effectiveWorkoutContext.mode,
               title: effectiveWorkoutContext.title,
               notes: effectiveWorkoutContext.notes,
               exercises: effectiveWorkoutContext.exercises,
+              stats: effectiveWorkoutContext.stats,
+              prs: effectiveWorkoutContext.prs,
             }
           : undefined,
         ...(options?.scanMode ? { scanMode: options.scanMode } : {}),
@@ -2690,6 +2928,17 @@ export function WorkoutChat({
     }
   }
 
+  autoSendMessageRef.current = (message: string) => {
+    void handleSendMessage(message)
+  }
+
+  useEffect(() => {
+    if (!pendingAutoSendMessage || !effectiveWorkoutContext || isLoading) return
+
+    setPendingAutoSendMessage(null)
+    autoSendMessageRef.current(pendingAutoSendMessage)
+  }, [effectiveWorkoutContext, isLoading, pendingAutoSendMessage])
+
   const handleResendMessage = (messageId: string) => {
     if (isLoading) return
 
@@ -2723,6 +2972,8 @@ export function WorkoutChat({
     setGeneratedPlanContent(null)
     setParsedWorkout(null)
     setParsedProgram(null)
+    setHandoffWorkoutContext(null)
+    setPendingAutoSendMessage(null)
     setSuggestionMode('main')
     inputRef.current?.clear()
     Keyboard.dismiss()
@@ -3726,117 +3977,7 @@ export function WorkoutChat({
                                       <View
                                         style={styles.assistantMessageBubble}
                                       >
-                                        <Markdown
-                                          style={{
-                                            body: {
-                                              fontSize: 16,
-                                              lineHeight: 23,
-                                              color: colors.textPrimary,
-                                              margin: 0,
-                                            },
-                                            paragraph: {
-                                              marginTop: 0,
-                                              marginBottom: 2,
-                                            },
-                                            heading1: {
-                                              fontSize: 22,
-                                              fontWeight: '700',
-                                              color: colors.textPrimary,
-                                              marginTop: 16,
-                                              marginBottom: 8,
-                                            },
-                                            heading2: {
-                                              fontSize: 20,
-                                              fontWeight: '700',
-                                              color: colors.textPrimary,
-                                              marginTop: 14,
-                                              marginBottom: 6,
-                                            },
-                                            heading3: {
-                                              fontSize: 18,
-                                              fontWeight: '600',
-                                              color: colors.textPrimary,
-                                              marginTop: 12,
-                                              marginBottom: 6,
-                                            },
-                                            code_inline: {
-                                              backgroundColor: colors.bg,
-                                              paddingHorizontal: 4,
-                                              paddingVertical: 2,
-                                              borderRadius: 4,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                            },
-                                            code_block: {
-                                              backgroundColor: colors.bg,
-                                              padding: 12,
-                                              borderRadius: 12,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                              marginVertical: 8,
-                                              overflow: 'hidden',
-                                            },
-                                            fence: {
-                                              backgroundColor: colors.bg,
-                                              padding: 12,
-                                              borderRadius: 12,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                              marginVertical: 8,
-                                            },
-                                            strong: {
-                                              fontWeight: '600',
-                                              color: colors.textPrimary,
-                                            },
-                                            em: {
-                                              fontStyle: 'italic',
-                                            },
-                                            bullet_list: {
-                                              marginTop: 0,
-                                              marginBottom: 12,
-                                            },
-                                            ordered_list: {
-                                              marginTop: 0,
-                                              marginBottom: 12,
-                                            },
-                                            list_item: {
-                                              marginTop: 4,
-                                              marginBottom: 4,
-                                            },
-                                            hr: {
-                                              backgroundColor: colors.border,
-                                              height: 1,
-                                              marginVertical: 16,
-                                            },
-                                            blockquote: {
-                                              borderLeftWidth: 3,
-                                              borderLeftColor:
-                                                colors.brandPrimary,
-                                              paddingLeft: 12,
-                                              marginVertical: 8,
-                                              backgroundColor: colors.bg,
-                                              paddingVertical: 8,
-                                              paddingRight: 8,
-                                              borderRadius: 4,
-                                            },
-                                            link: {
-                                              color: colors.brandPrimary,
-                                              textDecorationLine: 'underline',
-                                            },
-                                          }}
-                                        >
+                                        <Markdown style={coachMarkdownStyle}>
                                           {structuredPlanIntroText}
                                         </Markdown>
                                       </View>
@@ -3971,7 +4112,7 @@ export function WorkoutChat({
 
                         const calCircumference = 28 * 2 * Math.PI
                         const smallCircumference = 16 * 2 * Math.PI
-                        const displayContent = getVisibleAssistantMessageText(
+                        const displayContent = formatAssistantMessageForDisplay(
                           message.content,
                         )
 
@@ -4023,117 +4164,7 @@ export function WorkoutChat({
                                       <View
                                         style={styles.assistantMessageBubble}
                                       >
-                                        <Markdown
-                                          style={{
-                                            body: {
-                                              fontSize: 16,
-                                              lineHeight: 23,
-                                              color: colors.textPrimary,
-                                              margin: 0,
-                                            },
-                                            paragraph: {
-                                              marginTop: 0,
-                                              marginBottom: 2,
-                                            },
-                                            heading1: {
-                                              fontSize: 22,
-                                              fontWeight: '700',
-                                              color: colors.textPrimary,
-                                              marginTop: 16,
-                                              marginBottom: 8,
-                                            },
-                                            heading2: {
-                                              fontSize: 20,
-                                              fontWeight: '700',
-                                              color: colors.textPrimary,
-                                              marginTop: 14,
-                                              marginBottom: 6,
-                                            },
-                                            heading3: {
-                                              fontSize: 18,
-                                              fontWeight: '600',
-                                              color: colors.textPrimary,
-                                              marginTop: 12,
-                                              marginBottom: 6,
-                                            },
-                                            code_inline: {
-                                              backgroundColor: colors.bg,
-                                              paddingHorizontal: 4,
-                                              paddingVertical: 2,
-                                              borderRadius: 4,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                            },
-                                            code_block: {
-                                              backgroundColor: colors.bg,
-                                              padding: 12,
-                                              borderRadius: 12,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                              marginVertical: 8,
-                                              overflow: 'hidden',
-                                            },
-                                            fence: {
-                                              backgroundColor: colors.bg,
-                                              padding: 12,
-                                              borderRadius: 12,
-                                              fontSize: 15,
-                                              fontFamily:
-                                                Platform.OS === 'ios'
-                                                  ? 'Menlo'
-                                                  : 'monospace',
-                                              color: colors.textPrimary,
-                                              marginVertical: 8,
-                                            },
-                                            strong: {
-                                              fontWeight: '600',
-                                              color: colors.textPrimary,
-                                            },
-                                            em: {
-                                              fontStyle: 'italic',
-                                            },
-                                            bullet_list: {
-                                              marginTop: 0,
-                                              marginBottom: 12,
-                                            },
-                                            ordered_list: {
-                                              marginTop: 0,
-                                              marginBottom: 12,
-                                            },
-                                            list_item: {
-                                              marginTop: 4,
-                                              marginBottom: 4,
-                                            },
-                                            hr: {
-                                              backgroundColor: colors.border,
-                                              height: 1,
-                                              marginVertical: 16,
-                                            },
-                                            blockquote: {
-                                              borderLeftWidth: 3,
-                                              borderLeftColor:
-                                                colors.brandPrimary,
-                                              paddingLeft: 12,
-                                              marginVertical: 8,
-                                              backgroundColor: colors.bg,
-                                              paddingVertical: 8,
-                                              paddingRight: 8,
-                                              borderRadius: 4,
-                                            },
-                                            link: {
-                                              color: colors.brandPrimary,
-                                              textDecorationLine: 'underline',
-                                            },
-                                          }}
-                                        >
+                                        <Markdown style={coachMarkdownStyle}>
                                           {coachText}
                                         </Markdown>
                                       </View>

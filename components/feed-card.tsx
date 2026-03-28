@@ -123,6 +123,7 @@ export interface CommentPreview {
 export interface FeedCardProps {
   userName: string
   userAvatar: string
+  coachAvatarSource?: number
   userLevel?: StrengthLevel | null
   timeAgo: string
   workoutTitle: string
@@ -146,6 +147,7 @@ export interface FeedCardProps {
   isLiked?: boolean
   onLike?: () => void
   onComment?: () => void
+  onCoachPress?: () => void
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
@@ -162,6 +164,7 @@ export interface FeedCardProps {
 export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
+  coachAvatarSource,
   userLevel,
   timeAgo,
   workoutTitle,
@@ -184,6 +187,7 @@ export const FeedCard = memo(function FeedCard({
   isLiked = false,
   onLike,
   onComment,
+  onCoachPress,
   onEdit,
   onDelete,
   onCreateRoutine,
@@ -758,19 +762,38 @@ export const FeedCard = memo(function FeedCard({
             </Text>
           </Animated.View>
         ) : (
-          (onEdit || onDelete || onCreateRoutine) && (
-            <View style={{ zIndex: 10 }}>
-              <TouchableOpacity
-                onPress={handleOptionsPress}
-                style={styles.menuButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
+          (onCoachPress || onEdit || onDelete || onCreateRoutine) && (
+            <View style={styles.headerActions}>
+              {onCoachPress && coachAvatarSource ? (
+                <TouchableOpacity
+                  onPress={onCoachPress}
+                  style={styles.coachButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={coachAvatarSource}
+                    style={styles.coachAvatar}
+                    contentFit="cover"
+                    transition={100}
+                  />
+                </TouchableOpacity>
+              ) : null}
+              {(onEdit || onDelete || onCreateRoutine) && (
+                <View style={{ zIndex: 10 }}>
+                  <TouchableOpacity
+                    onPress={handleOptionsPress}
+                    style={styles.menuButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )
         )}
@@ -1726,6 +1749,25 @@ function createStyles(
     },
     likedByBold: {
       fontWeight: '600',
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginLeft: 12,
+    },
+    coachButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    coachAvatar: {
+      width: '100%',
+      height: '100%',
     },
     menuButton: {
       padding: 4,
