@@ -1,4 +1,5 @@
 import { BodyPartSlug } from '@/lib/body-mapping'
+import { EXERCISE_MUSCLE_FILTER_GROUPS } from '@/lib/utils/muscle-filters'
 
 export interface MuscleBodyMapping {
   slug: BodyPartSlug
@@ -31,28 +32,6 @@ export const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
   Calves: { slug: 'calves', side: 'back', bodyHalf: 'lower' },
 }
 
-export const MUSCLE_GROUP_ORDER = [
-  // Push muscles (most popular)
-  'Chest',
-  'Biceps',
-  'Triceps',
-  // Pull muscles
-  'Back',
-  'Shoulders',
-  'Abs',
-  // Legs
-  'Quads',
-  'Hamstrings',
-  'Glutes',
-  // Other
-  'Lats',
-  'Forearms',
-  'Core',
-  'Traps',
-  'Lower Back',
-  'Calves',
-]
-
 export interface MuscleChipRenderData {
   group: string
   bodyData: { slug: BodyPartSlug; intensity: number }[]
@@ -61,7 +40,7 @@ export interface MuscleChipRenderData {
   offsetY: number
 }
 
-export const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = MUSCLE_GROUP_ORDER.map(
+export const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = EXERCISE_MUSCLE_FILTER_GROUPS.map(
   (group) => {
     const mapping = MUSCLE_TO_BODY_PARTS[group]
     if (!mapping) return null

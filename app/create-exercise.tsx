@@ -7,6 +7,7 @@ import { useExercises } from '@/hooks/useExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import { EXERCISE_MUSCLE_GROUPS } from '@/lib/utils/muscle-filters'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -26,22 +27,6 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const MUSCLE_GROUPS = [
-  'Chest',
-  'Back',
-  'Shoulders',
-  'Biceps',
-  'Triceps',
-  'Forearms',
-  'Core',
-  'Glutes',
-  'Quads',
-  'Hamstrings',
-  'Calves',
-  'Cardio',
-  'Full Body',
-] as const
 
 const EXERCISE_TYPES = ['compound', 'isolation'] as const
 
@@ -84,12 +69,12 @@ export default function CreateExerciseScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', ...MUSCLE_GROUPS],
+          options: ['Cancel', ...EXERCISE_MUSCLE_GROUPS],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex > 0) {
-            setMuscleGroup(MUSCLE_GROUPS[buttonIndex - 1])
+            setMuscleGroup(EXERCISE_MUSCLE_GROUPS[buttonIndex - 1])
           }
         },
       )
@@ -375,7 +360,7 @@ export default function CreateExerciseScreen() {
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Select Muscle Group</Text>
                   <ScrollView style={styles.modalScroll}>
-                    {MUSCLE_GROUPS.map((group) => (
+                        {EXERCISE_MUSCLE_GROUPS.map((group) => (
                       <TouchableOpacity
                         key={group}
                         style={styles.modalOption}

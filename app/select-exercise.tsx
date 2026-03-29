@@ -20,6 +20,11 @@ import {
   normalizeExerciseEquipment,
 } from '@/lib/utils/exercise-equipment'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
+import {
+  isMuscleFilterAvailable,
+  matchesMuscleGroupFilter,
+  normalizeMuscleFilterGroup,
+} from '@/lib/utils/muscle-filters'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
@@ -421,7 +426,13 @@ export default function SelectExerciseScreen() {
 
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef<FlashListRef<Exercise>>(null)
-  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>(initialMuscleGroup ? [initialMuscleGroup] : [])
+  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>(
+    () => {
+      const normalizedInitialMuscleGroup =
+        normalizeMuscleFilterGroup(initialMuscleGroup)
+      return normalizedInitialMuscleGroup ? [normalizedInitialMuscleGroup] : []
+    },
+  )
   const [selectedEquipment, setSelectedEquipment] = useState<ExerciseEquipment[]>(
     normalizedInitialEquipment ? [normalizedInitialEquipment] : [],
   )
@@ -475,10 +486,6 @@ export default function SelectExerciseScreen() {
   const selectedMuscleGroupSet = useMemo(() => new Set(selectedMuscleGroups), [
     selectedMuscleGroups,
   ])
-  const deferredSelectedMuscleSet = useMemo(
-    () => new Set(deferredSelectedMuscleGroups),
-    [deferredSelectedMuscleGroups],
-  )
   const deferredSelectedEquipmentSet = useMemo(
     () => new Set(deferredSelectedEquipment),
     [deferredSelectedEquipment],
@@ -486,9 +493,10 @@ export default function SelectExerciseScreen() {
   const visibleMuscleChips = useMemo(() => {
     const availableMuscleGroups = new Set(muscleGroups)
     return MUSCLE_CHIP_RENDER_DATA.filter((chip) =>
-      availableMuscleGroups.has(chip.group),
+      selectedMuscleGroupSet.has(chip.group) ||
+      isMuscleFilterAvailable(chip.group, availableMuscleGroups),
     )
-  }, [muscleGroups])
+  }, [muscleGroups, selectedMuscleGroupSet])
   // Debounced filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
     let result = exercises
@@ -501,7 +509,11 @@ export default function SelectExerciseScreen() {
     // Apply muscle group filter
     if (hasDeferredMuscleFilter) {
       result = result.filter(
-        (e) => e.muscle_group && deferredSelectedMuscleSet.has(e.muscle_group),
+        (e) =>
+          matchesMuscleGroupFilter(
+            e.muscle_group,
+            deferredSelectedMuscleGroups,
+          ),
       )
     }
 
@@ -526,7 +538,7 @@ export default function SelectExerciseScreen() {
     exercises,
     deferredTrimmedQuery,
     hasDeferredMuscleFilter,
-    deferredSelectedMuscleSet,
+    deferredSelectedMuscleGroups,
     hasDeferredEquipmentFilter,
     deferredSelectedEquipmentSet,
     deferredShowOnlyMine,
@@ -768,7 +780,11 @@ export default function SelectExerciseScreen() {
     // Apply muscle group filter
     if (hasDeferredMuscleFilter) {
       result = result.filter(
-        (e) => e.muscle_group && deferredSelectedMuscleSet.has(e.muscle_group),
+        (e) =>
+          matchesMuscleGroupFilter(
+            e.muscle_group,
+            deferredSelectedMuscleGroups,
+          ),
       )
     }
 
@@ -793,7 +809,7 @@ export default function SelectExerciseScreen() {
     recentExercises,
     deferredTrimmedQuery,
     hasDeferredMuscleFilter,
-    deferredSelectedMuscleSet,
+    deferredSelectedMuscleGroups,
     hasDeferredEquipmentFilter,
     deferredSelectedEquipmentSet,
     deferredShowOnlyMine,
