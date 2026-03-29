@@ -21,6 +21,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
+import { countWorkoutRecords } from '@/lib/utils/pr-count'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo } from '@/lib/utils/formatters'
 import { getWorkoutMuscleGroups } from '@/lib/utils/muscle-split'
@@ -136,7 +137,7 @@ export function WorkoutDetailView({
     [workout?.workout_exercises],
   )
   const prCount = useMemo(
-    () => prInfo.reduce((total, ex) => total + ex.prSetIndices.size, 0),
+    () => countWorkoutRecords(prInfo),
     [prInfo],
   )
   const prInfoByExerciseId = useMemo(() => {

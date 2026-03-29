@@ -12,6 +12,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, OwnershipError } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { PrService } from '@/lib/pr'
+import { countWorkoutRecords } from '@/lib/utils/pr-count'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
@@ -283,8 +284,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
         const result = await PrService.computePrsForSession(computeContext)
         if (!isMounted) return
 
-        setPrs(result.totalPrs)
-
         const prData = result.perExercise.map((exPr) => ({
           exerciseId: exPr.exerciseId,
           exerciseName: exPr.exerciseName,
@@ -303,6 +302,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           })),
           hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
         }))
+        setPrs(countWorkoutRecords(prData))
         setPrInfo(prData)
       } catch (error) {
         console.error('Error computing PRs:', error)
