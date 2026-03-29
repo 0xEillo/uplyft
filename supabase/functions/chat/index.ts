@@ -521,6 +521,41 @@ async function buildUserContext(
             : best,
         null,
       )
+      const currentBestSet =
+        currentWorkingSets.reduce<{
+          weight: number
+          reps: number | null
+          estimated1RM: number | null
+        } | null>((best, set) => {
+          if (typeof set.weight !== 'number' || set.weight <= 0) return best
+          const estimated1RM =
+            typeof set.reps === 'number' && set.reps > 0
+              ? estimateOneRepMax(set.weight, set.reps)
+              : null
+          if (!best) {
+            return {
+              weight: set.weight,
+              reps: set.reps ?? null,
+              estimated1RM:
+                estimated1RM == null ? null : roundTo(estimated1RM),
+            }
+          }
+
+          const bestScore =
+            best.estimated1RM ?? (best.reps != null ? best.weight : 0)
+          const currentScore =
+            estimated1RM ?? (set.reps != null ? set.weight : 0)
+
+          if (currentScore > bestScore) {
+            return {
+              weight: set.weight,
+              reps: set.reps ?? null,
+              estimated1RM:
+                estimated1RM == null ? null : roundTo(estimated1RM),
+            }
+          }
+          return best
+        }, null) ?? null
       const currentBest1RM = currentWorkingSets.reduce<number | null>(
         (best, set) => {
           if (
@@ -540,6 +575,8 @@ async function buildUserContext(
       let lastPerformedAt: string | null = null
       let previousBestWeight: number | null = null
       let previousBest1RM: number | null = null
+      let previousBestRepsAtCurrentWeight: number | null = null
+      const recentHistory: Array<Record<string, unknown>> = []
 
       outer: for (const prevSession of previousSessions) {
         for (const prevExercise of prevSession.workout_exercises || []) {
@@ -547,6 +584,8 @@ async function buildUserContext(
           if (!lastPerformedAt) {
             lastPerformedAt = prevSession.created_at ?? prevSession.date ?? null
           }
+          let sessionBestWeight: number | null = null
+          let sessionBest1RM: number | null = null
           for (const set of prevExercise.sets || []) {
             if (set.is_warmup === true) continue
             if (
@@ -565,7 +604,35 @@ async function buildUserContext(
               if (previousBest1RM == null || est1RM > previousBest1RM) {
                 previousBest1RM = est1RM
               }
+              if (sessionBest1RM == null || est1RM > sessionBest1RM) {
+                sessionBest1RM = est1RM
+              }
             }
+            if (
+              currentBestWeight != null &&
+              typeof set.weight === 'number' &&
+              set.weight === currentBestWeight &&
+              typeof set.reps === 'number' &&
+              (previousBestRepsAtCurrentWeight == null ||
+                set.reps > previousBestRepsAtCurrentWeight)
+            ) {
+              previousBestRepsAtCurrentWeight = set.reps
+            }
+            if (
+              typeof set.weight === 'number' &&
+              (sessionBestWeight == null || set.weight > sessionBestWeight)
+            ) {
+              sessionBestWeight = set.weight
+            }
+          }
+
+          if (recentHistory.length < 3) {
+            recentHistory.push({
+              performedAt: prevSession.created_at ?? prevSession.date ?? null,
+              bestWeight: sessionBestWeight,
+              bestEstimated1RM:
+                sessionBest1RM == null ? null : roundTo(sessionBest1RM),
+            })
           }
           continue outer
         }
@@ -573,13 +640,16 @@ async function buildUserContext(
 
       comparisons.push({
         exerciseName,
+        currentBestSet,
         currentBestWeight,
+        previousBestRepsAtCurrentWeight,
         previousBestWeight,
         currentBestEstimated1RM:
           currentBest1RM == null ? null : roundTo(currentBest1RM),
         previousBestEstimated1RM:
           previousBest1RM == null ? null : roundTo(previousBest1RM),
         lastPerformedAt,
+        recentHistory,
       })
     }
 
@@ -2184,6 +2254,9 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     'When the current workout context is an analysis request for a completed workout, judge the session based on the actual amount of work performed. Do not describe a one-set or one-exercise log as a solid full workout unless the data clearly supports that interpretation.',
     'For post-workout analysis, anchor your judgment in session completeness, exercise quality, progression versus prior history, and relevance to the user’s goals.',
     'If the workout context includes explicit PR highlights, treat them as trusted app-level signals and use them in your analysis.',
+    'For post-workout analysis, do not over-fixate on volume alone. A lower-volume session is not automatically poor if the performance quality, intent, or context looks strong.',
+    'Do not frame being narrowly below an all-time best as a meaningful negative by itself. Being one rep short at the same weight can still be a strong session.',
+    'Only call out performance decline when there is a clear drop versus recent trend or repeated underperformance across multiple exposures, not a one-off result.',
     'For post-workout analysis, keep the first reply compact and conversational. Give the key takeaway first, not a long report.',
     'For post-workout analysis, prefer a short overview plus 2-3 high-value points. Save deeper breakdowns for follow-up questions.',
     'End post-workout analysis replies with a natural invitation for the user to ask for more detail on one specific area if they want it.',
