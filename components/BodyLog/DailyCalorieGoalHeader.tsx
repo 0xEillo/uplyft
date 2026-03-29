@@ -3,10 +3,11 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { calculateMaintenanceCalories } from '@/lib/nutrition'
 import { database } from '@/lib/database'
-import { Ionicons } from '@expo/vector-icons'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Animated,
+  LayoutChangeEvent,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +26,8 @@ export function DailyCalorieGoalHeader({ userId, currentGoal, onUpdate }: DailyC
   const colors = useThemedColors()
   const [calorieInput, setCalorieInput] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
+  const [segmentWidth, setSegmentWidth] = useState(0)
+  const slideAnim = useRef(new Animated.Value(0)).current
 
   const maintenanceCalories = useMemo(
     () => calculateMaintenanceCalories(profile ?? null),
@@ -44,11 +47,35 @@ export function DailyCalorieGoalHeader({ userId, currentGoal, onUpdate }: DailyC
   const recommendations = useMemo(() => {
     if (!maintenanceCalories) return null
     return [
-      { id: 'cut', label: 'Cut', calories: Math.round(maintenanceCalories * 0.85), color: '#f97316', icon: 'trending-down-outline' },
-      { id: 'maintain', label: 'Maintain', calories: maintenanceCalories, color: '#3b82f6', icon: 'remove-outline' },
-      { id: 'bulk', label: 'Bulk', calories: Math.round(maintenanceCalories * 1.1), color: '#10b981', icon: 'trending-up-outline' },
+      { id: 'cut', label: 'Cut', calories: Math.round(maintenanceCalories * 0.85) },
+      { id: 'maintain', label: 'Maintain', calories: maintenanceCalories },
+      { id: 'bulk', label: 'Bulk', calories: Math.round(maintenanceCalories * 1.1) },
     ]
   }, [maintenanceCalories])
+
+  // Determine active segment index
+  const activeIndex = useMemo(() => {
+    if (!recommendations) return 1
+    const idx = recommendations.findIndex(r => Math.abs(effectiveGoal - r.calories) < 5)
+    return idx >= 0 ? idx : 1
+  }, [effectiveGoal, recommendations])
+
+  // Animate the slider when the active index changes
+  useEffect(() => {
+    if (segmentWidth > 0) {
+      Animated.spring(slideAnim, {
+        toValue: activeIndex * segmentWidth,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 30,
+      }).start()
+    }
+  }, [activeIndex, segmentWidth, slideAnim])
+
+  const handleSegmentLayout = (e: LayoutChangeEvent) => {
+    const totalWidth = e.nativeEvent.layout.width
+    setSegmentWidth(totalWidth / 3)
+  }
 
   const handleUpdate = async (goal: number) => {
     if (goal === effectiveGoal && calorieInput === goal.toString()) return
@@ -75,56 +102,88 @@ export function DailyCalorieGoalHeader({ userId, currentGoal, onUpdate }: DailyC
 
   return (
     <View style={styles.container}>
-      <View style={[styles.card, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
-        <View style={styles.cardContent}>
-          <View style={styles.topRow}>
-            <View style={styles.labelSection}>
-              <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>Daily Calorie Goal</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={[styles.input, { color: colors.textPrimary }]}
-                  value={calorieInput}
-                  onChangeText={setCalorieInput}
-                  onBlur={handleBlur}
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  placeholder={effectiveGoal.toString()}
-                  placeholderTextColor={colors.textTertiary}
-                />
-                <Text style={[styles.unit, { color: colors.textSecondary }]}>kcal</Text>
-                {isUpdating && <ActivityIndicator size="small" color={colors.brandPrimary} style={styles.loader} />}
-              </View>
+      <View style={[styles.card, { backgroundColor: colors.surfaceCard }]}>
+        {/* Header section */}
+        <View style={styles.headerSection}>
+          <Text style={[styles.eyebrow, { color: colors.textTertiary }]}>Daily Calorie Goal</Text>
+          <View style={styles.goalRow}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={[styles.goalNumber, { color: colors.textPrimary }]}
+                value={calorieInput}
+                onChangeText={setCalorieInput}
+                onBlur={handleBlur}
+                keyboardType="numeric"
+                returnKeyType="done"
+                placeholder={effectiveGoal.toString()}
+                placeholderTextColor={colors.textTertiary}
+              />
+              <Text style={[styles.unitLabel, { color: colors.textTertiary }]}>kcal</Text>
+              {isUpdating && <ActivityIndicator size="small" color={colors.textSecondary} style={styles.loader} />}
             </View>
           </View>
-          
-          <View style={styles.recommendationsRow}>
-             {recommendations ? recommendations.map((rec) => {
-               const isSelected = Math.abs(effectiveGoal - rec.calories) < 5
-               return (
-                 <TouchableOpacity
-                   key={rec.id}
-                   style={[
-                     styles.recPill,
-                     { backgroundColor: colors.surfaceSubtle },
-                     isSelected && { backgroundColor: rec.color + '15', borderColor: rec.color }
-                   ]}
-                   onPress={() => {
+        </View>
+
+        {/* Segmented Control */}
+        {recommendations ? (
+          <View style={styles.segmentWrapper}>
+            <View
+              style={[styles.segmentTrack, { backgroundColor: colors.surfaceSubtle }]}
+              onLayout={handleSegmentLayout}
+            >
+              {/* Animated sliding pill */}
+              {segmentWidth > 0 && (
+                <Animated.View
+                  style={[
+                    styles.segmentPill,
+                    {
+                      width: segmentWidth - 4,
+                      backgroundColor: colors.surfaceCard,
+                      transform: [{ translateX: Animated.add(slideAnim, 2) }],
+                    }
+                  ]}
+                />
+              )}
+
+              {/* Segment buttons */}
+              {recommendations.map((rec, index) => {
+                const isActive = index === activeIndex
+                return (
+                  <TouchableOpacity
+                    key={rec.id}
+                    style={styles.segmentButton}
+                    onPress={() => {
                       setCalorieInput(rec.calories.toString())
                       handleUpdate(rec.calories)
-                   }}
-                   activeOpacity={0.7}
-                 >
-                   <Text style={[styles.recLabel, { color: isSelected ? rec.color : colors.textSecondary }]}>{rec.label}</Text>
-                   <Text style={[styles.recValue, { color: colors.textPrimary }]}>{rec.calories}</Text>
-                 </TouchableOpacity>
-               )
-             }) : (
-               <Text style={[styles.missingText, { color: colors.textTertiary }]}>
-                 Complete profile for personalized goals
-               </Text>
-             )}
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.segmentLabel,
+                      { color: isActive ? colors.textPrimary : colors.textTertiary },
+                      isActive && styles.segmentLabelActive,
+                    ]}>
+                      {rec.label}
+                    </Text>
+                    <Text style={[
+                      styles.segmentValue,
+                      { color: isActive ? colors.textPrimary : colors.textTertiary },
+                      isActive && styles.segmentValueActive,
+                    ]}>
+                      {rec.calories.toLocaleString()}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.missingWrapper}>
+            <Text style={[styles.missingText, { color: colors.textTertiary }]}>
+              Complete profile for personalized goals
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -137,75 +196,99 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
+    borderRadius: 16,
+    paddingTop: 20,
+    paddingBottom: 14,
+    paddingHorizontal: 20,
+    gap: 18,
   },
-  cardContent: {
-    padding: 16,
-    gap: 16,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  labelSection: {
+  headerSection: {
     gap: 2,
   },
   eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+  },
+  goalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 5,
+    gap: 4,
   },
-  input: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+  goalNumber: {
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -1,
     padding: 0,
-    minWidth: 70,
+    minWidth: 80,
   },
-  unit: {
-    fontSize: 15,
-    fontWeight: '600',
+  unitLabel: {
+    fontSize: 17,
+    fontWeight: '500',
+    marginBottom: 2,
   },
   loader: {
-    marginLeft: 10,
+    marginLeft: 8,
   },
-  recommendationsRow: {
+
+  // Segmented control — Apple-style
+  segmentWrapper: {
+    // empty - spacing handled by card gap
+  },
+  segmentTrack: {
     flexDirection: 'row',
-    gap: 8,
+    borderRadius: 10,
+    padding: 2,
+    position: 'relative',
   },
-  recPill: {
+  segmentPill: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    borderRadius: 8,
+    // Shadow for the sliding pill
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  segmentButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    gap: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    paddingVertical: 8,
+    zIndex: 1,
+    gap: 1,
   },
-  recLabel: {
-    fontSize: 10,
-    fontWeight: '700',
+  segmentLabel: {
+    fontSize: 11,
+    fontWeight: '500',
     textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  recValue: {
-    fontSize: 13,
+  segmentLabelActive: {
+    fontWeight: '600',
+  },
+  segmentValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  segmentValueActive: {
     fontWeight: '700',
+  },
+
+  missingWrapper: {
+    paddingVertical: 8,
   },
   missingText: {
-    fontSize: 12,
-    fontStyle: 'italic',
+    fontSize: 13,
     textAlign: 'center',
-    flex: 1,
-  }
+  },
 })
