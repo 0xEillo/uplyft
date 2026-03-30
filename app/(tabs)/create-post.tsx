@@ -985,6 +985,25 @@ export default function CreatePostScreen() {
     }
   }, [])
 
+  const getCurrentWorkoutElapsedSeconds = useCallback(() => {
+    const baseSeconds = Math.max(
+      0,
+      Math.floor(workoutTimerStateRef.current.timerElapsedSeconds ?? 0),
+    )
+    const startedAt = workoutTimerStateRef.current.timerStartedAt
+
+    if (!startedAt) {
+      return baseSeconds
+    }
+
+    const startedAtMs = Date.parse(startedAt)
+    if (Number.isNaN(startedAtMs)) {
+      return baseSeconds
+    }
+
+    return baseSeconds + Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
+  }, [])
+
   const persistDraft = useCallback(
     (source: 'unmount' | 'background' | 'blur') => {
       // Never persist while hydration is in progress; this can overwrite a valid
@@ -2111,7 +2130,13 @@ export default function CreatePostScreen() {
 
     // End the workout immediately so the Live Activity does not keep running
     // while we transition into the finalize/post flow.
+    const finalizedDurationSeconds = getCurrentWorkoutElapsedSeconds()
+
     pauseWorkoutTimer()
+    workoutTimerStateRef.current = {
+      timerStartedAt: null,
+      timerElapsedSeconds: finalizedDurationSeconds,
+    }
     stopWorkoutActivity()
     hasStartedActivityRef.current = false
 
@@ -2125,7 +2150,7 @@ export default function CreatePostScreen() {
         volumeValue: draftStats.volumeDisplay.value.toString(),
         volumeUnit: draftStats.volumeDisplay.unit,
         setsCount: draftStats.setsCount.toString(),
-        durationSeconds: workoutElapsedSeconds.toString(),
+        durationSeconds: finalizedDurationSeconds.toString(),
       },
     })
 

@@ -1,4 +1,9 @@
-import { startActivity, stopActivity, updateActivity } from 'expo-live-activity'
+import {
+  addActivityUpdatesListener,
+  startActivity,
+  stopActivity,
+  updateActivity,
+} from 'expo-live-activity'
 import React, {
     createContext,
     useCallback,
@@ -18,6 +23,7 @@ interface LiveActivityContextType {
 const LiveActivityContext = createContext<LiveActivityContextType | undefined>(
   undefined,
 )
+const DEBUG_LOGS = false
 
 export function LiveActivityProvider({
   children,
@@ -29,11 +35,15 @@ export function LiveActivityProvider({
   const lastUpdateAtRef = useRef<number>(0)
   const updateCountRef = useRef<number>(0)
 
-  // Live Activities only work on iOS 16.2+
-  const isActivitySupported = Platform.OS === 'ios'
-  const DEBUG_LOGS = false
+  const iosVersion =
+    Platform.OS === 'ios'
+      ? Number.parseFloat(String(Platform.Version))
+      : Number.NaN
+  // ActivityKit support in this library starts at iOS 16.2+.
+  const isActivitySupported =
+    Platform.OS === 'ios' && !Number.isNaN(iosVersion) && iosVersion >= 16.2
 
-  const formatElapsed = (totalSeconds: number) => {
+  const formatElapsed = useCallback((totalSeconds: number) => {
     const safeSeconds = Math.max(0, Math.floor(totalSeconds))
     const hours = Math.floor(safeSeconds / 3600)
     const minutes = Math.floor((safeSeconds % 3600) / 60)
@@ -44,16 +54,16 @@ export function LiveActivityProvider({
       ).padStart(2, '0')}`
     }
     return `${minutes}:${String(seconds).padStart(2, '0')}`
-  }
+  }, [])
 
-  const logState = (label: string, state: any, config?: any) => {
+  const logState = useCallback((label: string, state: any, config?: any) => {
     if (!DEBUG_LOGS) return
     console.log(`[LiveActivity] ${label}`)
     console.log(`[LiveActivity]   State:`, JSON.stringify(state, null, 2))
     if (config) {
       console.log(`[LiveActivity]   Config:`, JSON.stringify(config, null, 2))
     }
-  }
+  }, [])
 
   const startWorkoutActivity = useCallback(() => {
     if (DEBUG_LOGS) {
@@ -150,6 +160,37 @@ export function LiveActivityProvider({
       }
     }
     if (DEBUG_LOGS) console.log('[LiveActivity] ===== END startWorkoutActivity =====')
+  }, [isActivitySupported, logState])
+
+  useEffect(() => {
+    if (!isActivitySupported) {
+      return
+    }
+
+    const subscription = addActivityUpdatesListener?.((event) => {
+      if (!event) {
+        return
+      }
+
+      if (DEBUG_LOGS) {
+        console.log('[LiveActivity] Native state change:', event)
+      }
+
+      if (
+        activityIdRef.current &&
+        event.activityID === activityIdRef.current &&
+        (event.activityState === 'ended' || event.activityState === 'dismissed')
+      ) {
+        activityIdRef.current = null
+        startTimeRef.current = 0
+        lastUpdateAtRef.current = 0
+        updateCountRef.current = 0
+      }
+    })
+
+    return () => {
+      subscription?.remove?.()
+    }
   }, [isActivitySupported])
 
   const updateWorkoutActivity = useCallback(
@@ -238,7 +279,7 @@ export function LiveActivityProvider({
         }
       }
     },
-    [isActivitySupported],
+    [formatElapsed, isActivitySupported, logState],
   )
 
   const stopWorkoutActivity = useCallback(() => {
@@ -281,7 +322,7 @@ export function LiveActivityProvider({
       }
     }
     if (DEBUG_LOGS) console.log('[LiveActivity] ===== END stopWorkoutActivity =====')
-  }, [isActivitySupported])
+  }, [isActivitySupported, logState])
 
   // Cleanup on unmount
   useEffect(() => {
