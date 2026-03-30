@@ -8,6 +8,7 @@ import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { callSupabaseFunction } from '@/lib/supabase-functions-client'
 import { deleteBodyLogImage, uploadBodyLogImage } from '@/lib/utils/body-log-storage'
+import { normalizeImageUris } from '@/lib/utils/image-normalization'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { Image } from 'expo-image'
@@ -200,7 +201,10 @@ export function BodyScanModal({ visible, onClose, onScanSaved }: BodyScanModalPr
       quality: 0.8,
     })
     if (!result.canceled && result.assets.length > 0) {
-      addPhotoUris([result.assets[0].uri])
+      const normalizedUris = await normalizeImageUris([
+        result.assets[0].uri,
+      ])
+      addPhotoUris(normalizedUris)
     }
   }
 
@@ -217,7 +221,10 @@ export function BodyScanModal({ visible, onClose, onScanSaved }: BodyScanModalPr
       allowsMultipleSelection: true,
     })
     if (!result.canceled && result.assets.length > 0) {
-      addPhotoUris(result.assets.map((a) => a.uri))
+      const normalizedUris = await normalizeImageUris(
+        result.assets.map((a) => a.uri),
+      )
+      addPhotoUris(normalizedUris)
     }
   }
 

@@ -57,6 +57,7 @@ import {
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
+import { normalizeImageUris } from '@/lib/utils/image-normalization'
 import {
     getBodyLogImageUrls,
     prefetchBodyLogImages,
@@ -682,7 +683,10 @@ export default function BodyLogDetailScreen() {
       })
 
       if (!result.canceled && result.assets.length > 0) {
-        await handleImageSelected(result.assets[0].uri)
+        const [normalizedUri] = await normalizeImageUris([
+          result.assets[0].uri,
+        ])
+        await handleImageSelected(normalizedUri)
       }
     } catch (error) {
       console.error('Error accessing camera:', error)
@@ -718,8 +722,9 @@ export default function BodyLogDetailScreen() {
       })
 
       if (!result.canceled && result.assets.length > 0) {
-        // Upload all selected images
-        const imageUris = result.assets.map(asset => asset.uri)
+        const imageUris = await normalizeImageUris(
+          result.assets.map((asset) => asset.uri),
+        )
         await handleImagesSelected(imageUris)
       }
     } catch (error) {

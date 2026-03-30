@@ -11,6 +11,7 @@ import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metad
 import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { normalizeImageUris } from '@/lib/utils/image-normalization'
 import {
     getBodyLogImageUrls,
     prefetchBodyLogImages,
@@ -1031,7 +1032,10 @@ export default function BodyLogScreen() {
         quality: 0.8,
       })
       if (!result.canceled && result.assets.length > 0) {
-        await handleImportProgressPhotos(result.assets.map((asset) => asset.uri))
+        const normalizedUris = await normalizeImageUris(
+          result.assets.map((asset) => asset.uri),
+        )
+        await handleImportProgressPhotos(normalizedUris)
       }
     }
 
@@ -1048,7 +1052,10 @@ export default function BodyLogScreen() {
         allowsMultipleSelection: true,
       })
       if (!result.canceled && result.assets.length > 0) {
-        await handleImportProgressPhotos(result.assets.map((asset) => asset.uri))
+        const normalizedUris = await normalizeImageUris(
+          result.assets.map((asset) => asset.uri),
+        )
+        await handleImportProgressPhotos(normalizedUris)
       }
     }
 

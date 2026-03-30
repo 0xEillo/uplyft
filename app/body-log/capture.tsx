@@ -1,5 +1,6 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import { normalizeImageUris } from '@/lib/utils/image-normalization'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -101,7 +102,7 @@ export default function BodyLogCaptureScreen() {
       })
 
       if (!result.canceled && result.assets?.[0]) {
-        const localUri = result.assets[0].uri
+        const [localUri] = await normalizeImageUris([result.assets[0].uri])
         const newPhotos = [...photos]
         newPhotos[slotIndex] = {
           uri: localUri,

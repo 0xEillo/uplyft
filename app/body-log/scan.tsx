@@ -8,6 +8,7 @@ import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { callSupabaseFunction } from '@/lib/supabase-functions-client'
+import { normalizeImageUris } from '@/lib/utils/image-normalization'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -160,9 +161,12 @@ export default function BodyScanFlowScreen() {
         quality: 0.8,
       })
       if (!result.canceled && result.assets[0]) {
+        const [normalizedUri] = await normalizeImageUris([
+          result.assets[0].uri,
+        ])
         setPhotos((prev) => {
           const next = [...prev]
-          next[slotIndex] = result.assets[0].uri
+          next[slotIndex] = normalizedUri
           return next
         })
         hapticSuccess()
@@ -193,9 +197,12 @@ export default function BodyScanFlowScreen() {
       allowsMultipleSelection: false,
     })
     if (!result.canceled && result.assets[0]) {
+      const [normalizedUri] = await normalizeImageUris([
+        result.assets[0].uri,
+      ])
       setPhotos((prev) => {
         const next = [...prev]
-        next[slotIndex] = result.assets[0].uri
+        next[slotIndex] = normalizedUri
         return next
       })
       hapticSuccess()
