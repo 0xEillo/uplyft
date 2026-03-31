@@ -11,6 +11,7 @@ import {
   clearDraft as clearWorkoutDraft,
   loadDraft as loadWorkoutDraft,
 } from '@/lib/utils/workout-draft'
+import { emitWorkoutDraftSubmitted } from '@/lib/utils/workout-draft-events'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
@@ -254,6 +255,7 @@ export default function FinalizeWorkoutScreen() {
 
       // Clear draft after successful queue
       await clearWorkoutDraft('finalize-workout-submit')
+      emitWorkoutDraftSubmitted()
 
       router.replace('/(tabs)')
     } catch (error) {

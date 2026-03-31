@@ -47,6 +47,11 @@ import {
   saveDraft as saveWorkoutDraft,
   saveDraftPatch as saveWorkoutDraftPatch,
 } from '@/lib/utils/workout-draft'
+import {
+  getLiveActivitySyncAction,
+  shouldAutoStartWorkoutTimer,
+} from '@/lib/utils/workout-create-post-lifecycle'
+import { subscribeToWorkoutDraftSubmitted } from '@/lib/utils/workout-draft-events'
 import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import { formatVolume } from '@/lib/utils/workout-stats'
 import {
@@ -390,6 +395,7 @@ export default function CreatePostScreen() {
   const [toolbarVisibleButtons, setToolbarVisibleButtons] = useState<
     ToolbarButtonId[]
   >(() => getToolbarButtons())
+  const isFinalizingWorkoutRef = useRef(false)
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
   // =============================================================================
@@ -1156,7 +1162,15 @@ export default function CreatePostScreen() {
     hadWorkoutDraftContentRef.current = hasWorkoutDraftContent
 
     if (hasWorkoutDraftContent) {
-      if (!isWorkoutTimerRunning) {
+      if (
+        shouldAutoStartWorkoutTimer({
+          hasWorkoutDraftContent,
+          isWorkoutTimerRunning,
+          isHydrating: isHydratingRef.current,
+          isScreenFocused: isScreenFocusedRef.current,
+          isFinalizingWorkout: isFinalizingWorkoutRef.current,
+        })
+      ) {
         startWorkoutTimer()
       }
       return
@@ -1178,17 +1192,25 @@ export default function CreatePostScreen() {
   // Sync Live Activity with workout timer for Dynamic Island display
   const hasStartedActivityRef = useRef(false)
   useEffect(() => {
-    if (isWorkoutTimerRunning && workoutElapsedSeconds > 0) {
-      if (!hasStartedActivityRef.current) {
-        // First time seeing a running timer in this session - start the activity
-        startWorkoutActivity()
-        hasStartedActivityRef.current = true
-      } else {
-        // Already started - just update
-        updateWorkoutActivity(workoutElapsedSeconds)
-      }
-    } else if (hasStartedActivityRef.current) {
-      // Timer stopped or cleared - stop the activity
+    const action = getLiveActivitySyncAction({
+      hasStartedActivity: hasStartedActivityRef.current,
+      isWorkoutTimerRunning,
+      workoutElapsedSeconds,
+      isFinalizingWorkout: isFinalizingWorkoutRef.current,
+    })
+
+    if (action === 'start') {
+      startWorkoutActivity()
+      hasStartedActivityRef.current = true
+      return
+    }
+
+    if (action === 'update') {
+      updateWorkoutActivity(workoutElapsedSeconds)
+      return
+    }
+
+    if (action === 'stop') {
       stopWorkoutActivity()
       hasStartedActivityRef.current = false
     }
@@ -1245,6 +1267,15 @@ export default function CreatePostScreen() {
     lastDraftSavedAtRef.current = 0
     lastLocalEditAtRef.current = 0
   }, [resetWorkoutTimer])
+
+  useEffect(() => {
+    return subscribeToWorkoutDraftSubmitted(() => {
+      isFinalizingWorkoutRef.current = false
+      stopWorkoutActivity()
+      hasStartedActivityRef.current = false
+      resetLocalWorkoutDraftState()
+    })
+  }, [resetLocalWorkoutDraftState, stopWorkoutActivity])
 
   // Use audio transcription hook
   const {
@@ -1690,6 +1721,7 @@ export default function CreatePostScreen() {
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
       isScreenFocusedRef.current = true
+      isFinalizingWorkoutRef.current = false
       setWarmupCalculatorEnabled(getWarmupCalculatorEnabled())
       setToolbarVisibleButtons(getToolbarButtons())
 
@@ -2131,6 +2163,7 @@ export default function CreatePostScreen() {
     // End the workout immediately so the Live Activity does not keep running
     // while we transition into the finalize/post flow.
     const finalizedDurationSeconds = getCurrentWorkoutElapsedSeconds()
+    isFinalizingWorkoutRef.current = true
 
     pauseWorkoutTimer()
     workoutTimerStateRef.current = {
