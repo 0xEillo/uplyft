@@ -2,11 +2,21 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
-import { streamText, tool } from 'npm:ai'
-import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
+import { generateText, streamText, tool } from 'npm:ai'
+import { trimChatMessagesForRequest } from '../../../lib/ai/chat-history.ts'
+import {
+  GEMINI_FALLBACK_MODEL,
+  GEMINI_MODEL,
+  openrouter,
+} from '../_shared/openrouter.ts'
 
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
-import { corsHeaders, errorResponse, handleCors } from '../_shared/cors.ts'
+import {
+  corsHeaders,
+  errorResponse,
+  handleCors,
+  jsonResponse,
+} from '../_shared/cors.ts'
 import {
   getDailyWeightsByLogDate,
   normalizeLogDate,
@@ -198,7 +208,49 @@ type BodyLogRecord = {
   file_path?: string | null
 }
 
+const STABLE_TEXT_CHAT_MODEL = GEMINI_FALLBACK_MODEL
+const TEXT_CHAT_FALLBACK_LABEL = 'openai:gpt-4o'
+
+function createCorrelationId(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  }
+}
+
+function getChatExecutionConfig(options: {
+  hasImages: boolean
+  isFoodLabelScan: boolean
+}) {
+  const { hasImages, isFoodLabelScan } = options
+
+  if (isFoodLabelScan) {
+    return {
+      model: openrouter.chat(GEMINI_MODEL),
+      modelLabel: `openrouter:${GEMINI_MODEL} (food_label OCR)`,
+      fallbackModel: openai('gpt-4o'),
+      fallbackLabel: TEXT_CHAT_FALLBACK_LABEL,
+    }
+  }
+
+  if (hasImages) {
+    return {
+      model: openai('gpt-4o'),
+      modelLabel: 'openai:gpt-4o',
+    }
+  }
+
+  return {
+    model: openrouter.chat(STABLE_TEXT_CHAT_MODEL),
+    modelLabel: `openrouter:${STABLE_TEXT_CHAT_MODEL}`,
+    fallbackModel: openai('gpt-4o'),
+    fallbackLabel: TEXT_CHAT_FALLBACK_LABEL,
+  }
+}
+
 serve(async (req) => {
+  const correlationId = createCorrelationId()
   const cors = handleCors(req)
   if (cors) return cors
 
@@ -208,7 +260,7 @@ serve(async (req) => {
 
   try {
     const payload = requestSchema.parse(await req.json())
-    console.log('[chat-edge] Request received:', {
+    console.log(`[chat-edge][${correlationId}] Request received:`, {
       hasUserId: Boolean(payload.userId?.trim()),
       messagesCount: payload.messages.length,
       hasCoachSystemPrompt: Boolean(payload.coachSystemPrompt?.trim()),
@@ -242,12 +294,15 @@ serve(async (req) => {
           payload.dailyLogSummary,
         )
         tools = chatTools
-        console.log('[chat-edge] User context built successfully', {
+        console.log(`[chat-edge][${correlationId}] User context built successfully`, {
           userId: payload.userId,
           toolsCount: Object.keys(chatTools || {}).length,
         })
       } catch (contextError) {
-        console.warn('Failed to build user context summary:', contextError)
+        console.warn(
+          `[chat-edge][${correlationId}] Failed to build user context summary:`,
+          contextError,
+        )
       }
     }
 
@@ -255,13 +310,14 @@ serve(async (req) => {
     const filteredMessages = payload.messages.filter(
       (msg) => msg.role !== 'system',
     )
+    const trimmedMessages = trimChatMessagesForRequest(filteredMessages)
 
     // Transform messages to include images in AI SDK format
-    const transformedMessages: any[] = filteredMessages.map((msg, index) => {
+    const transformedMessages: any[] = trimmedMessages.map((msg, index) => {
       // Only add images to the last user message
       if (
         msg.role === 'user' &&
-        index === filteredMessages.length - 1 &&
+        index === trimmedMessages.length - 1 &&
         payload.images &&
         payload.images.length > 0
       ) {
@@ -280,65 +336,146 @@ serve(async (req) => {
         content: msg.content,
       }
     })
-    console.log('[chat-edge] Messages transformed:', {
+    console.log(`[chat-edge][${correlationId}] Messages transformed:`, {
       filteredCount: filteredMessages.length,
+      trimmedCount: trimmedMessages.length,
+      trimmedAwayCount: filteredMessages.length - trimmedMessages.length,
       transformedCount: transformedMessages.length,
       includesImageParts: Boolean(payload.images && payload.images.length > 0),
     })
 
     // Route to Gemini for food label scans (better OCR for dense printed text),
-    // GPT-4o for other image messages, Gemini for text-only
+    // GPT-4o for other image messages, stable Gemini for text-only.
     const isFoodLabelScan = payload.scanMode === 'food_label'
     const hasImages = Boolean(payload.images && payload.images.length > 0)
-    const modelToUse = isFoodLabelScan
-      ? openrouter.chat(GEMINI_MODEL) // Gemini: superior OCR on nutrition label text
-      : hasImages
-      ? openai('gpt-4o') // GPT-4o: general food photo understanding
-      : openrouter.chat(GEMINI_MODEL) // Gemini: text-only chat
-    console.log('[chat-edge] Model selected:', {
-      model: isFoodLabelScan
-        ? `openrouter:${GEMINI_MODEL} (food_label OCR)`
-        : hasImages
-        ? 'openai:gpt-4o'
-        : `openrouter:${GEMINI_MODEL}`,
+    const prefersNoStream = req.headers.get('x-no-stream') === '1'
+    const chatExecution = getChatExecutionConfig({
+      hasImages,
+      isFoodLabelScan,
+    })
+    console.log(`[chat-edge][${correlationId}] Model selected:`, {
+      model: chatExecution.modelLabel,
+      fallbackModel: chatExecution.fallbackLabel ?? null,
+      prefersNoStream,
     })
 
-    const latestUserMessage = [...filteredMessages]
+    const latestUserMessage = [...trimmedMessages]
       .reverse()
       .find((msg) => msg.role === 'user')
-    console.log('[chat-edge] Latest user message snapshot:', {
+    console.log(`[chat-edge][${correlationId}] Latest user message snapshot:`, {
       textPreview: latestUserMessage?.content?.slice(0, 120) ?? '',
       hasDailyTotals: Boolean(payload.dailyLogSummary?.totals),
       dailyTotals: payload.dailyLogSummary?.totals,
     })
 
-    const result = streamText({
-      model: modelToUse,
+    const generationOptions = {
       messages: transformedMessages as any,
       ...(systemPrompt ? { system: systemPrompt } : {}),
       ...(tools ? { tools } : {}),
+      maxRetries: 1,
+      timeout: {
+        totalMs: 45000,
+        chunkMs: 15000,
+      },
       stopWhen: ({ steps }) =>
         steps[steps.length - 1]?.finishReason !== 'tool-calls',
+    }
+
+    if (prefersNoStream) {
+      try {
+        const result = await generateText({
+          model: chatExecution.model,
+          ...generationOptions,
+        })
+        console.log(`[chat-edge][${correlationId}] generateText finished`, {
+          model: chatExecution.modelLabel,
+        })
+
+        return new Response(result.text, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache',
+            'x-correlation-id': correlationId,
+            'x-chat-model': chatExecution.modelLabel,
+            'x-chat-response-mode': 'text',
+          },
+        })
+      } catch (primaryError) {
+        console.error(
+          `[chat-edge][${correlationId}] Primary generateText failed:`,
+          primaryError,
+        )
+
+        if (!chatExecution.fallbackModel || !chatExecution.fallbackLabel) {
+          throw primaryError
+        }
+
+        const fallbackResult = await generateText({
+          model: chatExecution.fallbackModel,
+          ...generationOptions,
+        })
+        console.log(`[chat-edge][${correlationId}] Fallback generateText finished`, {
+          model: chatExecution.fallbackLabel,
+        })
+
+        return new Response(fallbackResult.text, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache',
+            'x-correlation-id': correlationId,
+            'x-chat-model': chatExecution.fallbackLabel,
+            'x-chat-fallback-used': '1',
+            'x-chat-response-mode': 'text',
+          },
+        })
+      }
+    }
+
+    const result = streamText({
+      model: chatExecution.model,
+      ...generationOptions,
       onError: (error) => {
-        console.error('❌ [streamText] response error:', error)
+        console.error(
+          `❌ [chat-edge][${correlationId}] streamText response error:`,
+          error,
+        )
       },
     })
-    console.log('[chat-edge] streamText started')
+    console.log(`[chat-edge][${correlationId}] streamText started`)
 
     return result.toTextStreamResponse({
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'none',
         'Cache-Control': 'no-cache',
+        'x-correlation-id': correlationId,
+        'x-chat-response-mode': 'stream',
       },
     })
   } catch (error) {
-    console.error('Error in chat function:', error)
+    console.error(`[chat-edge][${correlationId}] Error in chat function:`, error)
     if (error instanceof z.ZodError) {
-      return errorResponse(400, 'Invalid request', error.errors)
+      return jsonResponse(
+        {
+          error: 'Invalid request',
+          code: 'ZOD_INVALID',
+          correlationId,
+          details: error.errors,
+        },
+        { status: 400 },
+      )
     }
-    return errorResponse(500, 'Failed to process chat request')
+    return jsonResponse(
+      {
+        error: 'Failed to process chat request',
+        code: 'UNKNOWN',
+        correlationId,
+      },
+      { status: 500 },
+    )
   }
 })
 

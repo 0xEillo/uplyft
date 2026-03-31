@@ -2,6 +2,8 @@ export const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Expose-Headers':
+    'x-correlation-id, x-chat-model, x-chat-fallback-used, x-chat-response-mode',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 

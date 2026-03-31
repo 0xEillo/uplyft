@@ -7,6 +7,8 @@
   "include": [
     "__tests__/**/*.ts",
     "__mocks__/**/*.ts",
+    "lib/ai/chat-history.ts",
+    "lib/api/chat.ts",
     "lib/utils/workout-draft.ts",
     "lib/utils/workout-draft-hydration.ts"
   ]

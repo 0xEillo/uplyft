@@ -32,12 +32,14 @@ import {
   convertAiPlanToRoutine,
   convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
+import { trimChatMessagesForRequest } from '@/lib/ai/chat-history'
 import {
   ParsedWorkoutDisplay,
   ParsedProgramDisplay,
   parseProgramForDisplay,
   parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
+import { callChatFunction, mapChatApiErrorToMessage } from '@/lib/api/chat'
 import {
   buildProgramModificationSuffix,
   buildWorkoutCreationPrompt,
@@ -46,7 +48,6 @@ import {
 import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
-import { appFetch } from '@/lib/fetch'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import {
@@ -164,6 +165,11 @@ interface Message {
   linkedUserMessageId?: string
   createdAt?: string
   status?: 'sending' | 'sent' | 'failed'
+}
+
+type StreamingResponseResult = {
+  content: string
+  interrupted: boolean
 }
 
 type ParsedRepTargets = {
@@ -1942,130 +1948,157 @@ export function WorkoutChat({
     reader: ReadableStreamDefaultReader<Uint8Array>,
     assistantMessageId: string | null,
     options?: { silent?: boolean },
-  ) => {
+  ): Promise<StreamingResponseResult> => {
     const decoder = new TextDecoder()
     let buffer = ''
     let acc = ''
     let ndjsonMode: boolean | null = null
     let hasDisabledLoading = false
 
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      const chunk = decoder.decode(value, { stream: true })
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
 
-      if (ndjsonMode === null) {
-        const firstNonWs = chunk.trimStart()[0]
-        ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
-      }
-
-      if (!ndjsonMode) {
-        acc += chunk
-        // Check if content looks like a raw JSON or code block (likely a workout plan)
-        // If it starts with typical JSON/code block markers, hide it
-        const isHiddenStream =
-          /^\s*(\[|\{|```)/.test(acc) ||
-          acc.includes('```') ||
-          acc.includes('\n[') ||
-          acc.includes('\n{') ||
-          acc.includes(': [') ||
-          acc.includes(': {') ||
-          acc.includes('<food_log>') ||
-          acc.includes('<stats_report>')
-
-        if (!options?.silent && assistantMessageId && !isHiddenStream) {
-          if (!hasDisabledLoading) {
-            setIsLoading(false)
-            hasDisabledLoading = true
-          }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId ? { ...m, content: acc } : m,
-            ),
-          )
-        }
-        continue
-      }
-
-      buffer += chunk
-      let newlineIndex: number
-      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-        let line = buffer.slice(0, newlineIndex).trim()
-        buffer = buffer.slice(newlineIndex + 1)
-
-        if (!line) continue
-        if (line.startsWith('data:')) line = line.slice(5).trim()
-        if (!line || line === '[DONE]') continue
-
-        try {
-          const evt = JSON.parse(line)
-          if (evt.type === 'text-delta' && typeof evt.textDelta === 'string') {
-            acc += evt.textDelta
-          } else if (evt.type === 'message' && typeof evt.text === 'string') {
-            acc += evt.text
-          }
-        } catch {
-          acc += line
+        if (ndjsonMode === null) {
+          const firstNonWs = chunk.trimStart()[0]
+          ndjsonMode = firstNonWs === '{' || chunk.startsWith('data:')
         }
 
-        // More aggressive detection: skip update if we see typical JSON/code block markers anywhere
-        const isHiddenStream =
-          /^\s*(\[|\{|```)/.test(acc) ||
-          acc.includes('```') ||
-          acc.includes('\n[') ||
-          acc.includes('\n{') ||
-          acc.includes(': [') ||
-          acc.includes(': {') ||
-          acc.includes('<food_log>') ||
-          acc.includes('<stats_report>')
+        if (!ndjsonMode) {
+          acc += chunk
+          // Check if content looks like a raw JSON or code block (likely a workout plan)
+          // If it starts with typical JSON/code block markers, hide it
+          const isHiddenStream =
+            /^\s*(\[|\{|```)/.test(acc) ||
+            acc.includes('```') ||
+            acc.includes('\n[') ||
+            acc.includes('\n{') ||
+            acc.includes(': [') ||
+            acc.includes(': {') ||
+            acc.includes('<food_log>') ||
+            acc.includes('<stats_report>')
 
-        if (!options?.silent && assistantMessageId && !isHiddenStream) {
-          if (!hasDisabledLoading) {
-            setIsLoading(false)
-            hasDisabledLoading = true
+          if (!options?.silent && assistantMessageId && !isHiddenStream) {
+            if (!hasDisabledLoading) {
+              setIsLoading(false)
+              hasDisabledLoading = true
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
           }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId ? { ...m, content: acc } : m,
-            ),
-          )
+          continue
         }
-      }
-    }
 
-    if (buffer && ndjsonMode) {
-      let line = buffer.trim()
-      if (line.startsWith('data:')) line = line.slice(5).trim()
-      if (line && line !== '[DONE]') {
-        try {
-          const evt = JSON.parse(line)
-          if (evt.type === 'text-delta' && typeof evt.textDelta === 'string') {
-            acc += evt.textDelta
-          } else if (evt.type === 'message' && typeof evt.text === 'string') {
-            acc += evt.text
-          } else if (typeof line === 'string') {
+        buffer += chunk
+        let newlineIndex: number
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex).trim()
+          buffer = buffer.slice(newlineIndex + 1)
+
+          if (!line) continue
+          if (line.startsWith('data:')) line = line.slice(5).trim()
+          if (!line || line === '[DONE]') continue
+
+          try {
+            const evt = JSON.parse(line)
+            if (evt.type === 'text-delta' && typeof evt.textDelta === 'string') {
+              acc += evt.textDelta
+            } else if (evt.type === 'message' && typeof evt.text === 'string') {
+              acc += evt.text
+            }
+          } catch {
             acc += line
           }
-        } catch {
-          acc += line
-        }
-        const isHiddenStream =
-          /^\s*(\[|```)/.test(acc) ||
-          acc.includes('```json') ||
-          acc.includes('\n[') ||
-          acc.includes('<food_log>') ||
-          acc.includes('<stats_report>')
-        if (!options?.silent && assistantMessageId && !isHiddenStream) {
-          if (!hasDisabledLoading) {
-            setIsLoading(false)
-            hasDisabledLoading = true
+
+          // More aggressive detection: skip update if we see typical JSON/code block markers anywhere
+          const isHiddenStream =
+            /^\s*(\[|\{|```)/.test(acc) ||
+            acc.includes('```') ||
+            acc.includes('\n[') ||
+            acc.includes('\n{') ||
+            acc.includes(': [') ||
+            acc.includes(': {') ||
+            acc.includes('<food_log>') ||
+            acc.includes('<stats_report>')
+
+          if (!options?.silent && assistantMessageId && !isHiddenStream) {
+            if (!hasDisabledLoading) {
+              setIsLoading(false)
+              hasDisabledLoading = true
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
           }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId ? { ...m, content: acc } : m,
-            ),
-          )
         }
+      }
+
+      if (buffer && ndjsonMode) {
+        let line = buffer.trim()
+        if (line.startsWith('data:')) line = line.slice(5).trim()
+        if (line && line !== '[DONE]') {
+          try {
+            const evt = JSON.parse(line)
+            if (evt.type === 'text-delta' && typeof evt.textDelta === 'string') {
+              acc += evt.textDelta
+            } else if (evt.type === 'message' && typeof evt.text === 'string') {
+              acc += evt.text
+            } else if (typeof line === 'string') {
+              acc += line
+            }
+          } catch {
+            acc += line
+          }
+          const isHiddenStream =
+            /^\s*(\[|```)/.test(acc) ||
+            acc.includes('```json') ||
+            acc.includes('\n[') ||
+            acc.includes('<food_log>') ||
+            acc.includes('<stats_report>')
+          if (!options?.silent && assistantMessageId && !isHiddenStream) {
+            if (!hasDisabledLoading) {
+              setIsLoading(false)
+              hasDisabledLoading = true
+            }
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: acc } : m,
+              ),
+            )
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat stream error:', error)
+
+      if (!options?.silent && assistantMessageId) {
+        if (!hasDisabledLoading) {
+          setIsLoading(false)
+        }
+
+        const interruptionMessage = acc.trim()
+          ? `${acc}\n\nThe response was interrupted. You can resend your message.`
+          : 'The response was interrupted. Please resend your message.'
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: interruptionMessage }
+              : m,
+          ),
+        )
+      }
+
+      return {
+        content: acc,
+        interrupted: true,
       }
     }
 
@@ -2129,7 +2162,10 @@ export function WorkoutChat({
     // Auto-update proposed workout if it's a direct instruction?
     // No, the requirement says "Clicking '+' adds to proposedWorkout state".
 
-    return acc
+    return {
+      content: acc,
+      interrupted: false,
+    }
   }
 
   // Convert image URI to base64
@@ -2670,10 +2706,6 @@ export function WorkoutChat({
     setIsLoading(true)
 
     try {
-      const { getSupabaseFunctionBaseUrl } = await import(
-        '@/lib/supabase-functions-client'
-      )
-
       // Convert images to base64 if any
       const imageBase64Array: string[] = []
       if (imagesToSend.length > 0) {
@@ -2706,7 +2738,14 @@ export function WorkoutChat({
           )
         : [...messages, userMessage]
 
-      const formattedMessages = [systemMessage, ...requestMessages].map(
+      const trimmedRequestMessages = trimChatMessagesForRequest(
+        requestMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      )
+
+      const formattedMessages = [systemMessage, ...trimmedRequestMessages].map(
         (m) => ({
           role: m.role,
           content: m.content,
@@ -2818,29 +2857,10 @@ export function WorkoutChat({
         }))
       }
 
-      const response = await appFetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-no-stream': '1',
-          ...(session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {}),
-        },
-        body: JSON.stringify(requestBody),
+      const response = await callChatFunction(requestBody, {
+        accessToken: session?.access_token,
+        retryCount: 1,
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Chat API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        })
-        throw new Error(
-          `Failed to get response: ${response.status} ${response.statusText}`,
-        )
-      }
 
       if (!hiddenPrompt) {
         setMessages((prev) =>
@@ -2862,9 +2882,11 @@ export function WorkoutChat({
         },
       ])
 
-      const reader = response.body?.getReader()
+      const responseMode = response.headers.get('x-chat-response-mode')
+      const reader =
+        responseMode === 'text' ? null : response.body?.getReader() ?? null
       if (!reader) {
-        // Fallback: non-streaming response
+        // Boring and reliable path: plain text, non-streaming response.
         const assistantContent = await response.text()
         const messageParsedWorkout = parseWorkoutForDisplay(assistantContent)
         const messageParsedProgram = messageParsedWorkout
@@ -2890,10 +2912,27 @@ export function WorkoutChat({
           ),
         )
       } else {
-        await processStreamingResponse(reader, assistantMessageId)
+        const streamResult = await processStreamingResponse(
+          reader,
+          assistantMessageId,
+        )
+        if (!streamResult.interrupted && !streamResult.content.trim()) {
+          throw new Error('Chat response stream completed without any text')
+        }
+        if (streamResult.interrupted && !streamResult.content.trim()) {
+          if (!hiddenPrompt) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === userMessage.id ? { ...m, status: 'failed' } : m,
+              ),
+            )
+          }
+          return
+        }
       }
     } catch (error) {
       console.error('Chat error:', error)
+      const errorMessage = mapChatApiErrorToMessage(error)
       setMessages((prev) => {
         const withUserStatus: Message[] = hiddenPrompt
           ? prev
@@ -2901,13 +2940,21 @@ export function WorkoutChat({
               m.id === userMessage.id ? { ...m, status: 'failed' } : m,
             )
 
+        const lastMsg = withUserStatus[withUserStatus.length - 1]
+        if (lastMsg?.role === 'assistant' && lastMsg.content === '') {
+          return withUserStatus.map((message, index) =>
+            index === withUserStatus.length - 1
+              ? { ...message, content: errorMessage }
+              : message,
+          )
+        }
+
         return [
           ...withUserStatus,
           {
             id: Date.now().toString(),
             role: 'assistant',
-            content:
-              "Sorry, I couldn't process that request. Please try again.",
+            content: errorMessage,
           },
         ]
       })
@@ -3125,20 +3172,20 @@ export function WorkoutChat({
     setIsLoading(true)
 
     try {
-      const { getSupabaseFunctionBaseUrl } = await import(
-        '@/lib/supabase-functions-client'
-      )
-
       const systemMessage = {
         role: 'system',
         content: getCoach(coachId).systemPrompt,
       }
 
-      const formattedMessages = [
-        systemMessage,
-        ...messages,
-        { role: 'user', content: finalPrompt },
-      ]
+      const trimmedRequestMessages = trimChatMessagesForRequest([
+        ...messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+        { role: 'user' as const, content: finalPrompt },
+      ])
+
+      const formattedMessages = [systemMessage, ...trimmedRequestMessages]
 
       const requestBody = {
         messages: formattedMessages,
@@ -3147,33 +3194,16 @@ export function WorkoutChat({
         coachSystemPrompt: getCoach(coachId).systemPrompt,
       }
 
-      const response = await appFetch(`${getSupabaseFunctionBaseUrl()}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-no-stream': '1',
-          ...(session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {}),
-        },
-        body: JSON.stringify(requestBody),
+      const response = await callChatFunction(requestBody, {
+        accessToken: session?.access_token,
+        retryCount: 1,
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Chat API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        })
-        throw new Error(
-          `Failed to get response: ${response.status} ${response.statusText}`,
-        )
-      }
 
       const assistantMessageId = (Date.now() + 1).toString()
 
-      const reader = response.body?.getReader()
+      const responseMode = response.headers.get('x-chat-response-mode')
+      const reader =
+        responseMode === 'text' ? null : response.body?.getReader() ?? null
       if (!reader) {
         const assistantContent = await response.text()
 
@@ -3205,11 +3235,15 @@ export function WorkoutChat({
         }, 0)
       } else {
         // Stream silently - no placeholder message initially
-        const fullContent = await processStreamingResponse(
+        const streamResult = await processStreamingResponse(
           reader,
           null, // No ID, so it won't update messages during stream
           { silent: true },
         )
+
+        if (streamResult.interrupted || !streamResult.content.trim()) {
+          throw new Error('Workout generation stream was interrupted')
+        }
 
         // Once complete, add the message
         setMessages((prev) => [
@@ -3217,12 +3251,13 @@ export function WorkoutChat({
           {
             id: assistantMessageId,
             role: 'assistant',
-            content: fullContent,
+            content: streamResult.content,
           },
         ])
       }
     } catch (error) {
       console.error('Chat error:', error)
+      const errorMessage = mapChatApiErrorToMessage(error)
       // Only add error message - don't create duplicate placeholder
       setMessages((prev) => {
         // Check if last message is an empty assistant placeholder we created
@@ -3233,8 +3268,7 @@ export function WorkoutChat({
             idx === prev.length - 1
               ? {
                   ...m,
-                  content:
-                    "Sorry, I couldn't process that request. Please try again.",
+                  content: errorMessage,
                 }
               : m,
           )
@@ -3245,8 +3279,7 @@ export function WorkoutChat({
           {
             id: Date.now().toString(),
             role: 'assistant',
-            content:
-              "Sorry, I couldn't process that request. Please try again.",
+            content: errorMessage,
           },
         ]
       })
