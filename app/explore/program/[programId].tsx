@@ -7,6 +7,7 @@ import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { getColors } from '@/constants/colors'
 import { getBrandedProgramImageSource } from '@/constants/program-images'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -14,11 +15,6 @@ import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
-import {
-  clearDraft as clearWorkoutDraft,
-  hasStoredDraft,
-  saveDraft as saveWorkoutDraft,
-} from '@/lib/utils/workout-draft'
 import {
   ExploreProgramWithRoutines,
   WorkoutRoutineWithDetails,
@@ -194,6 +190,7 @@ export default function ProgramDetailScreen() {
   )
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { hasActiveSession, seedRoutine } = useWorkoutComposer()
 
   const [program, setProgram] = useState<NormalizedProgram | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -297,23 +294,14 @@ export default function ProgramDetailScreen() {
           })),
         )
 
-        await clearWorkoutDraft('start-routine')
-        await saveWorkoutDraft({
-          notes: '',
+        seedRoutine({
           title: routine.name,
           structuredData,
-          isStructuredMode: true,
           selectedRoutineId: program?.source === 'user' ? routine.id : null,
-          updatedAt: Date.now(),
+          routineSource: 'route',
         })
 
-        router.replace({
-          pathname: '/(tabs)/create-post',
-          params: {
-            refresh: Date.now().toString(),
-            ...(program?.source === 'user' ? { selectedRoutineId: routine.id } : {}),
-          },
-        })
+        router.replace('/(tabs)/create-post')
       } catch (e) {
         console.error('Failed to start routine', e)
         Alert.alert('Error', 'Failed to start routine. Please try again.')
@@ -323,8 +311,7 @@ export default function ProgramDetailScreen() {
     }
 
     try {
-      const hasDraft = await hasStoredDraft()
-      if (hasDraft) {
+      if (hasActiveSession) {
         Alert.alert(
           'Existing Workout',
           'Starting this routine will clear your current workout in progress. Do you want to continue?',
@@ -340,7 +327,7 @@ export default function ProgramDetailScreen() {
       console.error('Error checking draft status', e)
       await applyRoutine()
     }
-  }, [program, router])
+  }, [hasActiveSession, program, router, seedRoutine])
 
   if (isLoading) {
     return (

@@ -1,17 +1,7 @@
 import { WorkoutSongPicker } from '@/components/workout-song-picker'
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
-import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeightUnits } from '@/hooks/useWeightUnits'
-import type {
-  StructuredExerciseDraft,
-  WorkoutDraft,
-} from '@/lib/utils/workout-draft'
-import {
-  clearDraft as clearWorkoutDraft,
-  loadDraft as loadWorkoutDraft,
-} from '@/lib/utils/workout-draft'
-import { emitWorkoutDraftSubmitted } from '@/lib/utils/workout-draft-events'
 import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker, {
@@ -19,7 +9,7 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -38,41 +28,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 
-export function convertStructuredDataToText(
-  data: StructuredExerciseDraft[],
-  unitDisplay: string = 'kg',
-): string {
-  if (!data || data.length === 0) return ''
-
-  return data
-    .map((exercise) => {
-      const lines = [exercise.name]
-
-      exercise.sets.forEach((set, index) => {
-        if (set.weight || set.reps) {
-          const weightText = set.weight || '___'
-          const repsText = set.reps || '___'
-
-          lines.push(
-            `Set ${index + 1}: ${weightText} ${unitDisplay} x ${repsText} reps`,
-          )
-        }
-      })
-
-      return lines.join('\n')
-    })
-    .join('\n\n')
-}
-
-function getDefaultWorkoutTitle(): string {
-  const hour = new Date().getHours()
-  return hour < 12
-    ? 'Morning Session'
-    : hour < 15
-    ? 'Afternoon Session'
-    : 'Evening Session'
-}
-
 export default function FinalizeWorkoutScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{
@@ -84,24 +39,31 @@ export default function FinalizeWorkoutScreen() {
   }>()
 
   const colors = useThemedColors()
-  const { weightUnit } = useWeightUnits()
+  const {
+    enqueueCurrentSession,
+    hasActiveSession,
+    hasHydrated,
+    review,
+    returnToEditing,
+    updateReview,
+  } = useWorkoutComposer()
 
   const [showPhotoMenu, setShowPhotoMenu] = useState(false)
   const [showSongPicker, setShowSongPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [workoutDate, setWorkoutDate] = useState(new Date())
-  const [imageUri, setImageUri] = useState<string | null>(null)
-  const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
-
   const [isLoading, setIsLoading] = useState(false)
-  const [draftLoaded, setDraftLoaded] = useState(false)
-  const [draft, setDraft] = useState<WorkoutDraft | null>(null)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const hasDismissedRef = useRef(false)
 
-  const { submitWorkout } = useSubmitWorkout()
+  const closeToTabs = useCallback(() => {
+    if (hasDismissedRef.current) {
+      return
+    }
+
+    hasDismissedRef.current = true
+    router.dismissTo('/(tabs)')
+  }, [router])
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -117,23 +79,25 @@ export default function FinalizeWorkoutScreen() {
   }, [])
 
   useEffect(() => {
-    async function load() {
-      const savedDraft = await loadWorkoutDraft()
-      if (savedDraft) {
-        setDraft(savedDraft)
-        setSelectedSong(savedDraft.song ?? null)
-        setTitle(
-          savedDraft.title?.trim()
-            ? savedDraft.title
-            : getDefaultWorkoutTitle(),
-        )
-      } else {
-        setTitle(getDefaultWorkoutTitle())
-      }
-      setDraftLoaded(true)
+    if (!hasHydrated) {
+      return
     }
-    load()
-  }, [])
+
+    if (!hasActiveSession) {
+      closeToTabs()
+    }
+  }, [closeToTabs, hasActiveSession, hasHydrated])
+
+  const workoutDate = useMemo(() => {
+    if (review.performedAt) {
+      const parsed = new Date(review.performedAt)
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed
+      }
+    }
+
+    return new Date()
+  }, [review.performedAt])
 
   const handleDateChange = useCallback(
     (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -141,10 +105,12 @@ export default function FinalizeWorkoutScreen() {
         setShowDatePicker(false)
       }
       if (event.type === 'set' && selectedDate) {
-        setWorkoutDate(selectedDate)
+        updateReview({
+          performedAt: selectedDate.toISOString(),
+        })
       }
     },
-    [],
+    [updateReview],
   )
 
   const formatDisplayDateTime = (date: Date) => {
@@ -180,7 +146,7 @@ export default function FinalizeWorkoutScreen() {
       })
 
       if (!result.canceled) {
-        setImageUri(result.assets[0].uri)
+        updateReview({ imageUri: result.assets[0].uri })
       }
     } catch (error) {
       console.error('Error taking photo:', error)
@@ -203,7 +169,7 @@ export default function FinalizeWorkoutScreen() {
       })
 
       if (!result.canceled) {
-        setImageUri(result.assets[0].uri)
+        updateReview({ imageUri: result.assets[0].uri })
       }
     } catch (error) {
       console.error('Error selecting photo:', error)
@@ -212,52 +178,12 @@ export default function FinalizeWorkoutScreen() {
   }
 
   const handleFinish = async () => {
-    if (!draft) return
+    if (!hasActiveSession) return
     setIsLoading(true)
 
     try {
-      // Combine structured data with free-form notes
-      let workoutNotes = draft.notes
-      let parserNotes = draft.notes
-
-      if (
-        draft.isStructuredMode &&
-        draft.structuredData &&
-        draft.structuredData.length > 0
-      ) {
-        const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
-        const structuredText = convertStructuredDataToText(
-          draft.structuredData,
-          unitDisplay,
-        )
-
-        workoutNotes =
-          structuredText + (draft.notes.trim() ? '\n\n' + draft.notes : '')
-      }
-
-      await submitWorkout({
-        notes: workoutNotes,
-        title: title,
-        imageUri: imageUri,
-        routineId: draft.selectedRoutineId ?? null,
-        durationSeconds: params.durationSeconds
-          ? parseInt(params.durationSeconds, 10)
-          : undefined,
-        description: description,
-        parserNotes: parserNotes,
-        song: selectedSong,
-        structuredData: draft.isStructuredMode
-          ? draft.structuredData
-          : undefined,
-        isStructuredMode: draft.isStructuredMode,
-        date: workoutDate,
-      })
-
-      // Clear draft after successful queue
-      await clearWorkoutDraft('finalize-workout-submit')
-      emitWorkoutDraftSubmitted()
-
-      router.replace('/(tabs)')
+      await enqueueCurrentSession()
+      closeToTabs()
     } catch (error) {
       console.error('Failed to submit workout', error)
       alert('Failed to submit workout. Please try again.')
@@ -265,7 +191,7 @@ export default function FinalizeWorkoutScreen() {
     }
   }
 
-  if (!draftLoaded) {
+  if (!hasHydrated || !hasActiveSession) {
     return (
       <View
         style={[
@@ -292,7 +218,10 @@ export default function FinalizeWorkoutScreen() {
         <LiquidGlassSurface style={styles.headerButtonGlass}>
           <TouchableOpacity
             style={styles.headerButtonTouchable}
-            onPress={() => router.back()}
+            onPress={() => {
+              returnToEditing()
+              router.back()
+            }}
             disabled={isLoading}
           >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -339,14 +268,14 @@ export default function FinalizeWorkoutScreen() {
               style={[styles.titleInput, { color: colors.textPrimary }]}
               placeholder="Workout title"
               placeholderTextColor={colors.textTertiary}
-              value={title}
-              onChangeText={setTitle}
+              value={review.title}
+              onChangeText={(value) => updateReview({ title: value })}
               maxLength={50}
               editable={!isLoading}
             />
-            {title.trim().length > 0 && (
+            {review.title.trim().length > 0 && (
               <TouchableOpacity
-                onPress={() => setTitle('')}
+                onPress={() => updateReview({ title: '' })}
                 disabled={isLoading}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 style={styles.titleClearButton}
@@ -425,12 +354,15 @@ export default function FinalizeWorkoutScreen() {
           <View style={styles.mediaButtonsRow}>
             {/* Add Photo Button or Image Preview (replaces when photo added) */}
             <View style={{ position: 'relative', zIndex: 10 }}>
-              {imageUri ? (
+              {review.imageUri ? (
                 <View style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                  <Image
+                    source={{ uri: review.imageUri }}
+                    style={styles.imagePreview}
+                  />
                   <TouchableOpacity
                     style={styles.removeImageButton}
-                    onPress={() => setImageUri(null)}
+                    onPress={() => updateReview({ imageUri: null })}
                     disabled={isLoading}
                   >
                     <Ionicons
@@ -534,10 +466,10 @@ export default function FinalizeWorkoutScreen() {
               style={[
                 styles.mediaButtonLarge,
                 {
-                  backgroundColor: selectedSong
+                  backgroundColor: review.song
                     ? colors.brandPrimarySoft
                     : colors.surface,
-                  borderColor: selectedSong
+                  borderColor: review.song
                     ? colors.brandPrimary
                     : colors.border,
                 },
@@ -546,24 +478,24 @@ export default function FinalizeWorkoutScreen() {
               disabled={isLoading}
             >
               <Ionicons
-                name={selectedSong ? 'musical-notes' : 'musical-notes-outline'}
+                name={review.song ? 'musical-notes' : 'musical-notes-outline'}
                 size={24}
-                color={selectedSong ? colors.brandPrimary : colors.textPrimary}
+                color={review.song ? colors.brandPrimary : colors.textPrimary}
                 style={{ marginBottom: 6 }}
               />
               <Text
                 style={[
                   styles.mediaButtonText,
                   {
-                    color: selectedSong
+                    color: review.song
                       ? colors.brandPrimary
                       : colors.textPrimary,
                   },
                 ]}
               >
-                {selectedSong ? 'Change song' : 'Add music'}
+                {review.song ? 'Change song' : 'Add music'}
               </Text>
-              {selectedSong && (
+              {review.song && (
                 <Text
                   style={[
                     styles.mediaButtonMeta,
@@ -571,13 +503,13 @@ export default function FinalizeWorkoutScreen() {
                   ]}
                   numberOfLines={2}
                 >
-                  {`${selectedSong.trackName} • ${selectedSong.artistName}`}
+                  {`${review.song.trackName} • ${review.song.artistName}`}
                 </Text>
               )}
             </TouchableOpacity>
           </View>
 
-          {(selectedSong || showSongPicker) && (
+          {(review.song || showSongPicker) && (
             <View
               style={[
                 styles.musicSection,
@@ -624,11 +556,11 @@ export default function FinalizeWorkoutScreen() {
                 )}
               </View>
 
-              {selectedSong && (
+              {review.song && (
                 <WorkoutSongPreview
-                  song={selectedSong}
+                  song={review.song}
                   onRemove={() => {
-                    setSelectedSong(null)
+                    updateReview({ song: null })
                     setShowSongPicker(false)
                   }}
                   showAttribution={!showSongPicker}
@@ -644,9 +576,9 @@ export default function FinalizeWorkoutScreen() {
 
               {showSongPicker && (
                 <WorkoutSongPicker
-                  selectedSong={selectedSong}
+                  selectedSong={review.song as WorkoutSong | null}
                   onSelectSong={(song) => {
-                    setSelectedSong(song)
+                    updateReview({ song })
                     setShowSongPicker(false)
                   }}
                   isDisabled={isLoading}
@@ -670,8 +602,8 @@ export default function FinalizeWorkoutScreen() {
               placeholder="How did your workout go? Leave some notes here..."
               placeholderTextColor={colors.textTertiary}
               multiline
-              value={description}
-              onChangeText={setDescription}
+              value={review.description}
+              onChangeText={(value) => updateReview({ description: value })}
               textAlignVertical="top"
               editable={!isLoading}
             />

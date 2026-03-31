@@ -7,16 +7,12 @@ import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
-import {
-  clearDraft as clearWorkoutDraft,
-  hasStoredDraft,
-  saveDraft as saveWorkoutDraft,
-} from '@/lib/utils/workout-draft'
 import {
   ExploreRoutineWithExercises,
   WorkoutRoutineWithDetails,
@@ -74,6 +70,7 @@ export default function RoutineDetailScreen() {
   const router = useRouter()
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
@@ -220,30 +217,16 @@ export default function RoutineDetailScreen() {
           })),
         )
 
-        // Clear any existing draft to ensure we start fresh
-        await clearWorkoutDraft('start-routine')
-
-        // Save the new routine to the draft before navigating
-        await saveWorkoutDraft({
-          notes: '',
+        seedRoutine({
           title: routine.name,
           structuredData,
-          isStructuredMode: true,
           // Only keep a routine id link when it is resolvable in the current user's library.
           // Shared routines from another user should still start with full exercise structure.
-          selectedRoutineId: routine.isOwner ? routine.userRoutineId : null,
-          updatedAt: Date.now(),
+          selectedRoutineId: routine.isOwner ? (routine.userRoutineId ?? null) : null,
+          routineSource: 'route',
         })
 
-        router.replace({
-          pathname: '/(tabs)/create-post',
-          params: {
-            refresh: Date.now().toString(),
-            ...(routine.isOwner
-              ? { selectedRoutineId: routine.userRoutineId }
-              : {}),
-          },
-        })
+        router.replace('/(tabs)/create-post')
       } catch (e) {
         console.error('Failed to pre-seed draft', e)
         Alert.alert('Error', 'Failed to start routine. Please try again.')
@@ -253,8 +236,7 @@ export default function RoutineDetailScreen() {
     }
 
     try {
-      const hasDraft = await hasStoredDraft()
-      if (hasDraft) {
+      if (hasActiveSession) {
         Alert.alert(
           'Existing Workout',
           'Starting this routine will clear your current workout in progress. Do you want to continue?',

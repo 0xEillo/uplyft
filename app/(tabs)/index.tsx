@@ -58,11 +58,15 @@ import type { StrengthLevel } from '@/lib/strength-standards'
 import { getStrengthStandard } from '@/lib/strength-standards'
 import { getAndClearDeletedWorkoutIds } from '@/lib/utils/deleted-workouts'
 import {
+    getPendingPlaceholderUiStatus,
     prependProcessedWorkoutToFeed,
+    resolvePostedWorkoutForFeed,
     replaceWorkoutInFeedById,
     shouldHydratePostedWorkout,
+    shouldInsertPostedWorkoutImmediately,
 } from '@/lib/utils/posted-workout-optimizations'
-import { loadPlaceholderWorkout } from '@/lib/utils/workout-draft'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
+import { peekPendingWorkoutPlaceholder } from '@/lib/utils/workout-submission-queue'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 
 // Extended type to include pending workouts (placeholders)
@@ -222,6 +226,32 @@ export default function FeedScreen() {
     },
     [scrollY],
   )
+  const scrollFeedToTop = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated })
+    })
+  }, [])
+
+  const loadHydratedPostedWorkout = useCallback(async (workoutId: string) => {
+    const retryDelaysMs = [0, 120, 260]
+
+    for (const delayMs of retryDelaysMs) {
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+
+      try {
+        const hydratedWorkout = await database.workoutSessions.getById(workoutId)
+        if (hydratedWorkout) {
+          return hydratedWorkout
+        }
+      } catch (error) {
+        console.error('Error hydrating new workout details:', error)
+      }
+    }
+
+    return null
+  }, [])
 
   // --- Navigation Header Animations ---
 
@@ -236,6 +266,8 @@ export default function FeedScreen() {
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isPendingPlaceholderProcessingLatched, setIsPendingPlaceholderProcessingLatched] =
+    useState(false)
   const [currentStreak, setCurrentStreak] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
   const [userWorkoutCount, setUserWorkoutCount] = useState(0)
@@ -262,6 +294,10 @@ export default function FeedScreen() {
   })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible = isCelebrationVisible
+  const hasPendingPlaceholder = useMemo(
+    () => workouts.some((workout: WorkoutWithPending) => workout.isPending),
+    [workouts],
+  )
   const appPosts = useMemo(() => {
     if (userWorkoutCount < FEED_APP_POST_MIN_WORKOUTS) {
       return []
@@ -280,6 +316,12 @@ export default function FeedScreen() {
       return userWorkoutCount - seenAt < APP_POST_HIDE_AFTER_WORKOUTS
     })
   }, [userWorkoutCount, appPostState])
+
+  useEffect(() => {
+    if (!hasPendingPlaceholder) {
+      setIsPendingPlaceholderProcessingLatched(false)
+    }
+  }, [hasPendingPlaceholder])
 
   const persistAppPostState = useCallback(
     (nextState: AppPostState) => {
@@ -510,7 +552,7 @@ export default function FeedScreen() {
         } else {
           // Initial load or refresh
           // Load placeholder workout if it exists
-          const placeholder = await loadPlaceholderWorkout()
+          const placeholder = await peekPendingWorkoutPlaceholder()
 
           // Use animation when updating existing list
           if (!isInitialLoad && workouts.length > 0) {
@@ -545,7 +587,7 @@ export default function FeedScreen() {
         // Even when offline, show placeholder if it exists (from AsyncStorage)
         if (isNetworkError) {
           try {
-            const placeholder = await loadPlaceholderWorkout()
+            const placeholder = await peekPendingWorkoutPlaceholder()
             if (placeholder) {
               setWorkouts([
                 (placeholder as unknown) as WorkoutSessionWithDetails,
@@ -568,6 +610,14 @@ export default function FeedScreen() {
     if (!user || isProcessingPending) return
 
     try {
+      const hasPlaceholderBeforeProcessing = Boolean(
+        await peekPendingWorkoutPlaceholder(),
+      )
+
+      if (hasPlaceholderBeforeProcessing) {
+        setIsPendingPlaceholderProcessingLatched(true)
+      }
+
       const result = await processPendingWorkout()
 
       if (
@@ -575,21 +625,59 @@ export default function FeedScreen() {
         result.status === 'skipped' ||
         result.status === 'offline'
       ) {
+        if (result.status === 'none' || result.status === 'offline') {
+          setIsPendingPlaceholderProcessingLatched(false)
+        }
         // 'offline' - pending workout kept for retry, placeholder stays showing "Queued"
         return
       }
 
       if (result.status === 'success') {
+        const pendingCelebrationData = pendingStreakData
         let { workout } = result
         let cachedProfile = workout.profile ?? null
+        const insertImmediately = shouldInsertPostedWorkoutImmediately(workout)
 
-        setNewWorkoutId(workout.id)
-        LayoutAnimation.configureNext(CustomSlideAnimation)
+        const prependPostedWorkout = (nextWorkout: WorkoutSessionWithDetails) => {
+          setNewWorkoutId(nextWorkout.id)
+          LayoutAnimation.configureNext(CustomSlideAnimation)
+          setWorkouts((prev) => prependProcessedWorkoutToFeed(prev, nextWorkout))
+          setOffset((prev) => prev + 1)
+          scrollFeedToTop(false)
+        }
 
-        // Optimistically prepend immediately so the feed updates as soon as the
-        // server confirms creation. Hydration/profile work continues afterward.
-        setWorkouts((prev) => prependProcessedWorkoutToFeed(prev, workout))
-        setOffset((prev) => prev + 1)
+        const replacePostedWorkout = (nextWorkout: WorkoutSessionWithDetails) => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+          setWorkouts((prev) => replaceWorkoutInFeedById(prev, nextWorkout))
+          scrollFeedToTop(false)
+        }
+
+        const buildCelebrationPayload = (
+          nextWorkout: WorkoutSessionWithDetails,
+          pointsData?: StrengthScoreData,
+          exerciseUpgrades?: ExerciseRankUpgrade[],
+        ) => ({
+          workout: nextWorkout,
+          workoutTitle:
+            pendingCelebrationData?.workoutTitle ||
+            nextWorkout.type ||
+            nextWorkout.notes?.split('\n')[0] ||
+            undefined,
+          workoutNumber: pendingCelebrationData?.workoutNumber || 1,
+          streakData: pendingCelebrationData
+            ? {
+                currentStreak: pendingCelebrationData.currentStreak || 0,
+                previousStreak: pendingCelebrationData.previousStreak || 0,
+                isMilestone: !!pendingCelebrationData.streakMilestone,
+              }
+            : undefined,
+          pointsData,
+          exerciseUpgrades,
+        })
+
+        if (insertImmediately) {
+          prependPostedWorkout(workout)
+        }
 
         // Hydrate full workout details if the server returned a lightweight
         // payload (workout_exercises omitted for faster parse-workout response).
@@ -598,10 +686,7 @@ export default function FeedScreen() {
 
           const [hydratedWorkout, fetchedProfile] = await Promise.all([
             needsWorkoutHydration
-              ? database.workoutSessions.getById(workout.id).catch((error) => {
-                  console.error('Error hydrating new workout details:', error)
-                  return null
-                })
+              ? loadHydratedPostedWorkout(workout.id)
               : Promise.resolve(null),
             cachedProfile
               ? Promise.resolve(cachedProfile)
@@ -615,21 +700,40 @@ export default function FeedScreen() {
             cachedProfile = fetchedProfile
           }
 
-          if (hydratedWorkout) {
-            workout = {
-              ...hydratedWorkout,
-              profile: hydratedWorkout.profile ?? cachedProfile ?? undefined,
-            }
-          } else if (cachedProfile && !workout.profile) {
-            workout = { ...workout, profile: cachedProfile }
-          }
+          workout = resolvePostedWorkoutForFeed(
+            workout,
+            hydratedWorkout as WorkoutSessionWithDetails | null,
+            cachedProfile,
+          )
 
-          if (hydratedWorkout || fetchedProfile) {
-            setWorkouts((prev) => replaceWorkoutInFeedById(prev, workout))
+          if (insertImmediately) {
+            if (hydratedWorkout || fetchedProfile) {
+              replacePostedWorkout(workout)
+            }
           }
         } catch (error) {
           console.error('Error hydrating newly posted workout:', error)
         }
+
+        if (!insertImmediately) {
+          prependPostedWorkout(workout)
+        }
+
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve())
+        })
+
+        const baseCelebrationPayload = buildCelebrationPayload(workout)
+
+        console.log('[Feed] showCelebration called with base payload:', {
+          workoutId: workout.id,
+          workoutNumber: baseCelebrationPayload.workoutNumber,
+          hasStreakData: !!baseCelebrationPayload.streakData,
+          hadPendingStreakData: !!pendingCelebrationData,
+        })
+
+        showCelebration(baseCelebrationPayload)
+        setPendingStreakData(null)
 
         // We will collect the data for the combined celebration modal
         let finalPointsData: StrengthScoreData | undefined = undefined
@@ -720,42 +824,26 @@ export default function FeedScreen() {
           console.error('[Feed] Error computing strength score delta:', err)
         }
 
-        // Show the combined celebration modal with all gathered data
-        const celebrationPayload = {
-          workout,
-          workoutTitle:
-            pendingStreakData?.workoutTitle ||
-            workout.type ||
-            workout.notes?.split('\n')[0] ||
-            undefined,
-          workoutNumber: pendingStreakData?.workoutNumber || 1, // Fallback if no pending data
-          streakData: pendingStreakData ? {
-            currentStreak: pendingStreakData.currentStreak || 0,
-            previousStreak: pendingStreakData.previousStreak || 0,
-            isMilestone: !!pendingStreakData.streakMilestone,
-          } : undefined,
-          pointsData: finalPointsData,
-          exerciseUpgrades: finalExerciseUpgrades,
-        }
-        console.log('[Feed] showCelebration called with:', {
-          workoutId: workout.id,
-          workoutNumber: celebrationPayload.workoutNumber,
-          hasStreakData: !!celebrationPayload.streakData,
-          streakIsMilestone: celebrationPayload.streakData?.isMilestone,
-          streakCurrent: celebrationPayload.streakData?.currentStreak,
-          hasPointsData: !!celebrationPayload.pointsData,
-          pointsGained: celebrationPayload.pointsData?.pointsGained,
-          exerciseUpgradesCount: celebrationPayload.exerciseUpgrades?.length ?? 0,
-          exerciseUpgradeNames: celebrationPayload.exerciseUpgrades?.map((u) => u.exerciseName),
-          hadPendingStreakData: !!pendingStreakData,
-        })
-
         if ((finalExerciseUpgrades?.length ?? 0) > 0) {
           completeStep('first_exercise_rank')
         }
 
-        showCelebration(celebrationPayload)
-        setPendingStreakData(null) // Clear pending streak data
+        if (finalPointsData || (finalExerciseUpgrades?.length ?? 0) > 0) {
+          const enrichedCelebrationPayload = buildCelebrationPayload(
+            workout,
+            finalPointsData,
+            finalExerciseUpgrades,
+          )
+          console.log('[Feed] showCelebration enriched payload:', {
+            workoutId: workout.id,
+            workoutNumber: enrichedCelebrationPayload.workoutNumber,
+            hasPointsData: !!enrichedCelebrationPayload.pointsData,
+            pointsGained: enrichedCelebrationPayload.pointsData?.pointsGained,
+            exerciseUpgradesCount:
+              enrichedCelebrationPayload.exerciseUpgrades?.length ?? 0,
+          })
+          showCelebration(enrichedCelebrationPayload)
+        }
 
         // Check if this is the first workout and prompt for push notifications
         try {
@@ -789,6 +877,7 @@ export default function FeedScreen() {
       }
 
       const { error } = result
+      setIsPendingPlaceholderProcessingLatched(false)
       setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
 
       if (error instanceof Error && error.message.includes('idempotency')) {
@@ -803,6 +892,7 @@ export default function FeedScreen() {
       )
     } catch (error) {
       console.error('Error processing pending post:', error)
+      setIsPendingPlaceholderProcessingLatched(false)
       // Also ensure placeholder is removed if an unexpected error occurs
       setWorkouts((prev) => prev.filter((w: WorkoutWithPending) => !w.isPending))
     }
@@ -811,12 +901,13 @@ export default function FeedScreen() {
     user,
     isProcessingPending,
     processPendingWorkout,
-    router,
     showCelebration,
     pendingStreakData,
     setPendingStreakData,
     maybeQueueGuestSignInPrompt,
     completeStep,
+    loadHydratedPostedWorkout,
+    scrollFeedToTop,
   ])
 
   const handleRefresh = useCallback(async () => {
@@ -860,7 +951,7 @@ export default function FeedScreen() {
 
       // Check for placeholder and load it before processing
       const checkAndLoadPlaceholder = async () => {
-        const placeholder = await loadPlaceholderWorkout()
+        const placeholder = await peekPendingWorkoutPlaceholder()
         if (placeholder) {
           // Add placeholder to top of feed immediately
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
@@ -872,6 +963,7 @@ export default function FeedScreen() {
               ...filtered,
             ]
           })
+          scrollFeedToTop(false)
         }
       }
 
@@ -889,12 +981,19 @@ export default function FeedScreen() {
 
       // Process pending post in background (non-blocking)
       // CreateButton spinner in tab bar responds via shared pending status
-      handlePendingPost()
+      const pendingPostHandle = runAfterInteractions(() => {
+        void handlePendingPost()
+      })
+
+      return () => {
+        pendingPostHandle.cancel?.()
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       handlePendingPost,
       loadWorkouts,
       isInitialLoad,
+      scrollFeedToTop,
       trackEvent,
       loadUserWorkoutCount,
     ]),
@@ -954,6 +1053,11 @@ export default function FeedScreen() {
       }
 
       const workout = item.workout
+      const pendingPlaceholderUiStatus = getPendingPlaceholderUiStatus({
+        hasPendingPlaceholder: (workout as WorkoutWithPending).isPending === true,
+        isProcessingPending,
+        isProcessingLatched: isPendingPlaceholderProcessingLatched,
+      })
       return (
         <AnimatedFeedCard
           key={workout.id}
@@ -963,7 +1067,7 @@ export default function FeedScreen() {
           isDeleting={workout.id === deletingWorkoutId}
           isFirst={index === 0}
           isProcessingPending={
-            (workout as WorkoutWithPending).isPending && isProcessingPending
+            pendingPlaceholderUiStatus === 'processing'
           }
           onDelete={() => {
             // If already marked for deletion, actually remove from state
@@ -989,7 +1093,15 @@ export default function FeedScreen() {
         />
       )
     },
-    [newWorkoutId, deletingWorkoutId, trackEvent, isProcessingPending, handleAppPostCta, handleAppPostDismiss],
+    [
+      newWorkoutId,
+      deletingWorkoutId,
+      trackEvent,
+      isProcessingPending,
+      isPendingPlaceholderProcessingLatched,
+      handleAppPostCta,
+      handleAppPostDismiss,
+    ],
   )
 
   const renderFooter = useCallback(() => {

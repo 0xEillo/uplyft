@@ -9,11 +9,11 @@ import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
-import { useLiveActivity } from '@/contexts/live-activity-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
   getExerciseSuggestion,
@@ -28,10 +28,11 @@ import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { useWorkoutTimer } from '@/hooks/useWorkoutTimer'
 import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
+import { structuredWorkoutHasLoggedSets } from '@/lib/utils/workout-composer-format'
 import {
   getToolbarButtons,
   getWarmupCalculatorEnabled,
@@ -39,40 +40,24 @@ import {
 } from '@/lib/utils/create-post-settings'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
-import {
-  clearDraft as clearWorkoutDraft,
-  compactDraft as compactWorkoutDraft,
-  loadPendingWorkout,
-  loadDraft as loadWorkoutDraft,
-  saveDraft as saveWorkoutDraft,
-  saveDraftPatch as saveWorkoutDraftPatch,
-} from '@/lib/utils/workout-draft'
-import {
-  getLiveActivitySyncAction,
-  shouldAutoStartWorkoutTimer,
-} from '@/lib/utils/workout-create-post-lifecycle'
-import { subscribeToWorkoutDraftSubmitted } from '@/lib/utils/workout-draft-events'
-import { buildHydrationPlan } from '@/lib/utils/workout-draft-hydration'
 import { formatVolume } from '@/lib/utils/workout-stats'
 import {
   Exercise,
   WorkoutRoutineWithDetails,
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
-import type { WorkoutSong } from '@/types/music'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   useFocusEffect,
 } from '@react-navigation/native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { router } from 'expo-router'
+import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
-  AppState,
   Easing,
   Image,
   Keyboard,
@@ -101,11 +86,6 @@ import Reanimated, {
 } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const IS_DEV_RUNTIME =
-  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
-    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
-    : process.env.NODE_ENV !== 'production'
-const DEBUG_LOGS = false
 const STRUCTURED_INPUT_SCROLL_TAP_GUARD_MS = 180
 
 type ExerciseResolutionCandidate = {
@@ -351,21 +331,28 @@ export default function CreatePostScreen() {
     createEmptySet,
     fetchSetHistory,
   } = useExerciseHistory()
-  const {
-    selectedRoutineId: selectedRoutineIdParam,
-    refresh: refreshParam,
-  } = useLocalSearchParams<{
-    selectedRoutineId?: string
-    refresh?: string
-  }>()
-  const selectedRoutineId = selectedRoutineIdParam ?? null
-  const refresh = refreshParam ?? null
 
   // =============================================================================
   // BASIC WORKOUT INPUT STATE
   // =============================================================================
-  const [notes, setNotes] = useState('')
-  const [workoutTitle, setWorkoutTitle] = useState('')
+  const {
+    canReview,
+    discardSession,
+    draft,
+    elapsedSeconds: workoutElapsedSeconds,
+    enterReview,
+    hasActiveSession,
+    hasHydrated,
+    isReviewing,
+    returnToEditing,
+    seedRoutine,
+    updateDraft,
+  } = useWorkoutComposer()
+  const notes = draft.notes
+  const workoutTitle = draft.title
+  const isStructuredMode = draft.isStructuredMode
+  const structuredData = draft.structuredData
+  const selectedRoutineId = draft.selectedRoutineId
   const [isLoading, setIsLoading] = useState(false)
 
   // =============================================================================
@@ -388,78 +375,76 @@ export default function CreatePostScreen() {
   const [isFirstCoachOpen, setIsFirstCoachOpen] = useState(false)
   const [isCoachSheetFirstOpen, setIsCoachSheetFirstOpen] = useState(false)
   const chatHandWave = useSharedValue(0)
-  const [selectedSong, setSelectedSong] = useState<WorkoutSong | null>(null)
   const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
     getWarmupCalculatorEnabled(),
   )
   const [toolbarVisibleButtons, setToolbarVisibleButtons] = useState<
     ToolbarButtonId[]
   >(() => getToolbarButtons())
-  const isFinalizingWorkoutRef = useRef(false)
   // =============================================================================
   // ROUTINE & STRUCTURED WORKOUT STATE
   // =============================================================================
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
-  const [isStructuredMode, setIsStructuredMode] = useState(false)
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
-  const [
-    selectedRoutine,
-    setSelectedRoutine,
-  ] = useState<WorkoutRoutineWithDetails | null>(null)
-  const {
-    elapsedSeconds: workoutElapsedSeconds,
-    isRunning: isWorkoutTimerRunning,
-    start: startWorkoutTimer,
-    pause: pauseWorkoutTimer,
-    reset: resetWorkoutTimer,
-    hydrate: hydrateWorkoutTimer,
-    serializableState: workoutTimerSerializableState,
-  } = useWorkoutTimer()
+  const [hasLoadedRoutines, setHasLoadedRoutines] = useState(false)
+  const selectedRoutine = useMemo(
+    () =>
+      routines.find((routine) => routine.id === selectedRoutineId) ?? null,
+    [routines, selectedRoutineId],
+  )
 
   const [showRestTimer, setShowRestTimer] = useState(false)
   const restTimer = useRestTimerContext()
   const [autoRestEnabled, setAutoRestEnabled] = useState(true)
   const [autoRestDuration, setAutoRestDuration] = useState(120)
-  const {
-    startWorkoutActivity,
-    updateWorkoutActivity,
-    stopWorkoutActivity,
-  } = useLiveActivity()
-
-  const [structuredData, setStructuredData] = useState<
-    StructuredExerciseDraft[]
-  >([])
-  const [pendingDraftRoutineId, setPendingDraftRoutineId] = useState<
-    string | null
-  >(null)
-  const [pendingRoutineSource, setPendingRoutineSource] = useState<
-    'route' | 'draft' | null
-  >(null)
+  const setNotes = useCallback(
+    (value: SetStateAction<string>) => {
+      updateDraft((current) => ({
+        notes: typeof value === 'function' ? value(current.notes) : value,
+      }))
+    },
+    [updateDraft],
+  )
+  const setWorkoutTitle = useCallback(
+    (value: SetStateAction<string>) => {
+      updateDraft((current) => ({
+        title: typeof value === 'function' ? value(current.title) : value,
+      }))
+    },
+    [updateDraft],
+  )
+  const setStructuredData = useCallback(
+    (value: SetStateAction<StructuredExerciseDraft[]>) => {
+      updateDraft((current) => ({
+        structuredData:
+          typeof value === 'function'
+            ? value(current.structuredData)
+            : value,
+      }))
+    },
+    [updateDraft],
+  )
+  const setIsStructuredMode = useCallback(
+    (value: SetStateAction<boolean>) => {
+      updateDraft((current) => ({
+        isStructuredMode:
+          typeof value === 'function'
+            ? value(current.isStructuredMode)
+            : value,
+      }))
+    },
+    [updateDraft],
+  )
 
   const hasStructuredEntries = useMemo(() => {
-    if (!isStructuredMode) return false
-    if (structuredData.length === 0) return false
-    return structuredData.some((exercise) =>
-      exercise.sets.some((set) => set.weight.trim() || set.reps.trim()),
-    )
+    if (!isStructuredMode || structuredData.length === 0) {
+      return false
+    }
+
+    return structuredWorkoutHasLoggedSets(structuredData)
   }, [isStructuredMode, structuredData])
 
-  const hasWorkoutDraftContent = useMemo(() => {
-    const hasStructuredSkeleton = structuredData.length > 0
-    return (
-      Boolean(notes.trim()) ||
-      Boolean(workoutTitle.trim()) ||
-      hasStructuredSkeleton ||
-      Boolean(selectedRoutine) ||
-      Boolean(pendingDraftRoutineId)
-    )
-  }, [
-    notes,
-    pendingDraftRoutineId,
-    selectedRoutine,
-    structuredData,
-    workoutTitle,
-  ])
+  const hasWorkoutDraftContent = hasActiveSession
 
   // Context for the AI coach sheet
   const workoutContext = useMemo(
@@ -521,7 +506,7 @@ export default function CreatePostScreen() {
     (newData: StructuredExerciseDraft[]) => {
       setStructuredData(newData)
     },
-    [],
+    [setStructuredData],
   )
 
   const handleRestTimerStart = useCallback(
@@ -740,25 +725,9 @@ export default function CreatePostScreen() {
   )
   const keypadTapShieldRef = useRef(false)
   const keypadTapShieldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const notesRef = useRef(notes)
-  const titleRef = useRef(workoutTitle)
-  const selectedSongRef = useRef<WorkoutSong | null>(selectedSong)
-  const structuredDataRef = useRef(structuredData)
-  const isStructuredModeRef = useRef(isStructuredMode)
-  const selectedRoutineIdRef = useRef<string | null>(null)
-  const pendingDraftRoutineIdRef = useRef<string | null>(null)
-  const workoutTimerStateRef = useRef(workoutTimerSerializableState)
-  const lastLocalEditAtRef = useRef(0)
-  const lastDraftSavedAtRef = useRef(0)
-  const lastRouteRoutineTokenRef = useRef<string | null>(null)
-  const hasHydratedRef = useRef(false)
-  const isScreenFocusedRef = useRef(false)
-  const suppressLocalEditTrackingRef = useRef(false)
-  // Skip counter - decrements each time auto-save would run, skips while > 0
-  const skipPersistCountRef = useRef(0)
-  const isHydratingRef = useRef(true)
   const isSubmittingRef = useRef(false)
-  const hadWorkoutDraftContentRef = useRef(false)
+  const notesForFocusRef = useRef(notes)
+  const workoutTitleForFocusRef = useRef(workoutTitle)
   const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
@@ -768,10 +737,15 @@ export default function CreatePostScreen() {
 
   // Complete tutorial step when user actually starts a workout (has content)
   useEffect(() => {
-    if (hasWorkoutDraftContent) {
+    notesForFocusRef.current = notes
+    workoutTitleForFocusRef.current = workoutTitle
+  }, [notes, workoutTitle])
+
+  useEffect(() => {
+    if (hasHydrated && hasWorkoutDraftContent) {
       completeStep('create_workout')
     }
-  }, [hasWorkoutDraftContent, completeStep])
+  }, [completeStep, hasHydrated, hasWorkoutDraftContent])
 
   // Check if this is the user's first time opening the coach sheet
   const COACH_SHEET_SEEN_KEY = user?.id
@@ -967,260 +941,10 @@ export default function CreatePostScreen() {
       frameSub?.remove()
     }
   }, [ensureNotesCursorVisible])
-
-  const logDraftDebug = useCallback(
-    (_event: string, _payload?: Record<string, unknown>) => {
-      if (!DEBUG_LOGS || !IS_DEV_RUNTIME) return
-    },
-    [],
+  const getCurrentWorkoutElapsedSeconds = useCallback(
+    () => Math.max(0, Math.floor(workoutElapsedSeconds)),
+    [workoutElapsedSeconds],
   )
-
-  const buildDraftMetrics = useCallback((data: StructuredExerciseDraft[]) => {
-    let setsWithData = 0
-    data.forEach((exercise) => {
-      exercise.sets.forEach((set) => {
-        if (set.weight?.trim() || set.reps?.trim()) {
-          setsWithData += 1
-        }
-      })
-    })
-
-    return {
-      structuredExercisesCount: data.length,
-      structuredSetsWithDataCount: setsWithData,
-    }
-  }, [])
-
-  const getCurrentWorkoutElapsedSeconds = useCallback(() => {
-    const baseSeconds = Math.max(
-      0,
-      Math.floor(workoutTimerStateRef.current.timerElapsedSeconds ?? 0),
-    )
-    const startedAt = workoutTimerStateRef.current.timerStartedAt
-
-    if (!startedAt) {
-      return baseSeconds
-    }
-
-    const startedAtMs = Date.parse(startedAt)
-    if (Number.isNaN(startedAtMs)) {
-      return baseSeconds
-    }
-
-    return baseSeconds + Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
-  }, [])
-
-  const persistDraft = useCallback(
-    (source: 'unmount' | 'background' | 'blur') => {
-      // Never persist while hydration is in progress; this can overwrite a valid
-      // on-disk draft with initial empty state during app lifecycle transitions.
-      if (isHydratingRef.current || !hasHydratedRef.current) {
-        logDraftDebug('persist-skipped', {
-          source,
-          isHydrating: isHydratingRef.current,
-          hasHydrated: hasHydratedRef.current,
-        })
-        return
-      }
-
-      const routineIdToSave =
-        selectedRoutineIdRef.current ?? pendingDraftRoutineIdRef.current ?? null
-      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
-      lastDraftSavedAtRef.current = updatedAt
-      const hasInMemoryDraftContent =
-        Boolean(notesRef.current.trim()) ||
-        Boolean(titleRef.current.trim()) ||
-        structuredDataRef.current.length > 0 ||
-        Boolean(routineIdToSave) ||
-        Boolean(workoutTimerStateRef.current.timerStartedAt) ||
-        (workoutTimerStateRef.current.timerElapsedSeconds ?? 0) > 0
-
-      // Do not compact empty in-memory state; this can clear a valid on-disk draft
-      // if a non-focused/preloaded instance unmounts.
-      if (!hasInMemoryDraftContent) {
-        logDraftDebug('persist-skipped-empty', {
-          source,
-          updatedAt,
-        })
-        return
-      }
-
-      logDraftDebug('persist-start', {
-        source,
-        updatedAt,
-        notesLength: notesRef.current.trim().length,
-        hasTitle: Boolean(titleRef.current.trim()),
-        structuredCount: structuredDataRef.current.length,
-        hasRoutine: Boolean(routineIdToSave),
-        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
-        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
-      })
-
-      void compactWorkoutDraft({
-        notes: notesRef.current,
-        title: titleRef.current,
-        song: selectedSongRef.current,
-        structuredData: structuredDataRef.current,
-        isStructuredMode: isStructuredModeRef.current,
-        selectedRoutineId: routineIdToSave,
-        timerStartedAt: workoutTimerStateRef.current.timerStartedAt,
-        timerElapsedSeconds: workoutTimerStateRef.current.timerElapsedSeconds,
-        updatedAt,
-      })
-        .then(() => {
-          logDraftDebug('persist-success', {
-            source,
-            updatedAt,
-          })
-          const metrics = buildDraftMetrics(structuredDataRef.current)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'compact',
-            source,
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...metrics,
-          })
-        })
-        .catch((error) => {
-          console.error(`[Draft] ${source} compact failed:`, error)
-          logDraftDebug('persist-failed', {
-            source,
-            error: error instanceof Error ? error.message : String(error),
-          })
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'fail',
-            source,
-            reason: 'compact_failed',
-            error: error instanceof Error ? error.message : String(error),
-            length: notesRef.current.trim().length,
-            hasTitle: Boolean(titleRef.current.trim()),
-            updatedAt,
-            ...buildDraftMetrics(structuredDataRef.current),
-          })
-        })
-    },
-    [buildDraftMetrics, logDraftDebug, trackEvent],
-  )
-
-  useEffect(() => {
-    notesRef.current = notes
-  }, [notes])
-
-  useEffect(() => {
-    titleRef.current = workoutTitle
-  }, [workoutTitle])
-
-  useEffect(() => {
-    selectedSongRef.current = selectedSong
-  }, [selectedSong])
-
-  useEffect(() => {
-    structuredDataRef.current = structuredData
-  }, [structuredData])
-
-  useEffect(() => {
-    isStructuredModeRef.current = isStructuredMode
-  }, [isStructuredMode])
-
-  useEffect(() => {
-    selectedRoutineIdRef.current = selectedRoutine?.id ?? null
-  }, [selectedRoutine?.id])
-
-  useEffect(() => {
-    pendingDraftRoutineIdRef.current = pendingDraftRoutineId
-  }, [pendingDraftRoutineId])
-
-  useEffect(() => {
-    workoutTimerStateRef.current = workoutTimerSerializableState
-  }, [workoutTimerSerializableState])
-
-  useEffect(() => {
-    if (isHydratingRef.current || !hasHydratedRef.current) {
-      return
-    }
-    if (suppressLocalEditTrackingRef.current) {
-      suppressLocalEditTrackingRef.current = false
-      return
-    }
-    lastLocalEditAtRef.current = Date.now()
-  }, [
-    notes,
-    workoutTitle,
-    selectedSong,
-    structuredData,
-    isStructuredMode,
-    selectedRoutine?.id,
-  ])
-
-  useEffect(() => {
-    if (isHydratingRef.current || !isScreenFocusedRef.current) {
-      return
-    }
-
-    const hadWorkoutDraftContent = hadWorkoutDraftContentRef.current
-    hadWorkoutDraftContentRef.current = hasWorkoutDraftContent
-
-    if (hasWorkoutDraftContent) {
-      if (
-        shouldAutoStartWorkoutTimer({
-          hasWorkoutDraftContent,
-          isWorkoutTimerRunning,
-          isHydrating: isHydratingRef.current,
-          isScreenFocused: isScreenFocusedRef.current,
-          isFinalizingWorkout: isFinalizingWorkoutRef.current,
-        })
-      ) {
-        startWorkoutTimer()
-      }
-      return
-    }
-
-    // If the user manually clears all draft content, treat it like a cleared draft:
-    // reset timer state and remove persisted draft data.
-    if (hadWorkoutDraftContent) {
-      resetWorkoutTimer()
-      void clearWorkoutDraft('create-post-empty-input')
-    }
-  }, [
-    hasWorkoutDraftContent,
-    isWorkoutTimerRunning,
-    resetWorkoutTimer,
-    startWorkoutTimer,
-  ])
-
-  // Sync Live Activity with workout timer for Dynamic Island display
-  const hasStartedActivityRef = useRef(false)
-  useEffect(() => {
-    const action = getLiveActivitySyncAction({
-      hasStartedActivity: hasStartedActivityRef.current,
-      isWorkoutTimerRunning,
-      workoutElapsedSeconds,
-      isFinalizingWorkout: isFinalizingWorkoutRef.current,
-    })
-
-    if (action === 'start') {
-      startWorkoutActivity()
-      hasStartedActivityRef.current = true
-      return
-    }
-
-    if (action === 'update') {
-      updateWorkoutActivity(workoutElapsedSeconds)
-      return
-    }
-
-    if (action === 'stop') {
-      stopWorkoutActivity()
-      hasStartedActivityRef.current = false
-    }
-  }, [
-    isWorkoutTimerRunning,
-    workoutElapsedSeconds,
-    startWorkoutActivity,
-    updateWorkoutActivity,
-    stopWorkoutActivity,
-  ])
 
   const blurInputs = useCallback(() => {
     const textInputState = (TextInput as any)?.State
@@ -1234,48 +958,6 @@ export default function CreatePostScreen() {
     setIsStructuredInputFocused(false)
     Keyboard.dismiss()
   }, [])
-
-  const resetLocalWorkoutDraftState = useCallback(() => {
-    suppressLocalEditTrackingRef.current = true
-    // Skip the next few autosaves while reset state propagates.
-    skipPersistCountRef.current = 3
-
-    // Update refs immediately so any lifecycle-triggered persist in the same
-    // tick sees cleared state and cannot recreate a discarded draft.
-    notesRef.current = ''
-    titleRef.current = ''
-    structuredDataRef.current = []
-    isStructuredModeRef.current = false
-    selectedRoutineIdRef.current = null
-    pendingDraftRoutineIdRef.current = null
-    workoutTimerStateRef.current = {
-      timerStartedAt: null,
-      timerElapsedSeconds: 0,
-    }
-
-    resetWorkoutTimer()
-    setNotes('')
-    setWorkoutTitle('')
-    setIsStructuredMode(false)
-    setSelectedRoutine(null)
-    setPendingDraftRoutineId(null)
-    setPendingRoutineSource(null)
-    setStructuredData([])
-    setLastRoutineWorkout(null)
-    setSelectedSong(null)
-
-    lastDraftSavedAtRef.current = 0
-    lastLocalEditAtRef.current = 0
-  }, [resetWorkoutTimer])
-
-  useEffect(() => {
-    return subscribeToWorkoutDraftSubmitted(() => {
-      isFinalizingWorkoutRef.current = false
-      stopWorkoutActivity()
-      hasStartedActivityRef.current = false
-      resetLocalWorkoutDraftState()
-    })
-  }, [resetLocalWorkoutDraftState, stopWorkoutActivity])
 
   // Use audio transcription hook
   const {
@@ -1395,6 +1077,8 @@ export default function CreatePostScreen() {
   // Load user's routines and exercises
   const loadRoutinesAndExercises = useCallback(async () => {
     try {
+      setHasLoadedRoutines(false)
+
       if (user?.id) {
         const [
           userRoutines,
@@ -1416,172 +1100,16 @@ export default function CreatePostScreen() {
         )
 
         setAllExercises([...recentExercises, ...otherExercises])
+      } else {
+        setRoutines([])
+        setAllExercises([])
       }
     } catch (error) {
       console.error('[CreatePost] Error loading data:', error)
+    } finally {
+      setHasLoadedRoutines(true)
     }
   }, [user])
-
-  // Track if we're waiting for routines to load before applying pending routine
-  const pendingRoutineWaitingForLoad = useRef(false)
-
-  useEffect(() => {
-    if (!pendingDraftRoutineId) {
-      pendingRoutineWaitingForLoad.current = false
-      return
-    }
-
-    const routine = routines.find((item) => item.id === pendingDraftRoutineId)
-
-    if (!routine) {
-      // Routines might not be loaded yet - mark that we're waiting
-      if (routines.length === 0) {
-        pendingRoutineWaitingForLoad.current = true
-      } else {
-        // Routines loaded but routine not found - routine may have been deleted
-        pendingRoutineWaitingForLoad.current = false
-        setPendingDraftRoutineId(null)
-        setPendingRoutineSource(null)
-      }
-      return
-    }
-
-    pendingRoutineWaitingForLoad.current = false
-
-    // Capture source before clearing to use in logic below
-    const source = pendingRoutineSource
-
-    // Clear pending state synchronously BEFORE other state updates to prevent re-triggers
-    setPendingDraftRoutineId(null)
-    setPendingRoutineSource(null)
-
-    setSelectedRoutine(routine)
-    setIsStructuredMode(true)
-
-    // Transform routine exercises into structured data format
-    const transformedExercises = (routine.workout_routine_exercises || [])
-      .sort((a, b) => a.order_index - b.order_index)
-      .map((we) => ({
-        id: we.id,
-        name: we.exercise?.name || 'Exercise',
-        sets: (we.sets || [])
-          .sort((a, b) => a.set_number - b.set_number)
-          .map((s) => ({
-            weight: '',
-            reps: '',
-            targetRepsMin: s.reps_min ?? null,
-            targetRepsMax: s.reps_max ?? null,
-            targetRestSeconds: s.rest_seconds ?? null,
-          })),
-      }))
-
-    // Only set if this is a fresh routine start (from route, not draft)
-    if (source === 'route') {
-      setStructuredData(transformedExercises)
-    }
-    setLastRoutineWorkout(null)
-
-    if (source === 'route' || !titleRef.current.trim()) {
-      setWorkoutTitle(routine.name)
-    }
-
-    // Persist the routine selection immediately to avoid losing it on navigation
-    // Use the transformed exercises if we just set them
-    const routineTitleToSave =
-      source === 'route' ? routine.name : titleRef.current
-    const structuredToSave =
-      source === 'route' ? transformedExercises : structuredData
-    const routineUpdatedAt = Date.now()
-    void saveWorkoutDraft({
-      notes,
-      title: routineTitleToSave,
-      song: selectedSongRef.current,
-      structuredData: structuredToSave,
-      isStructuredMode: true,
-      selectedRoutineId: routine.id,
-      timerStartedAt: workoutTimerSerializableState.timerStartedAt,
-      timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-      updatedAt: routineUpdatedAt,
-    })
-      .then(() => {
-        const metrics = buildDraftMetrics(structuredToSave)
-        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-          action: 'compact',
-          source: 'routine',
-          length: notes.trim().length,
-          hasTitle: Boolean(routineTitleToSave.trim()),
-          updatedAt: routineUpdatedAt,
-          ...metrics,
-        })
-      })
-      .catch((error) => {
-        console.error('[Routine] Immediate persist failed:', error)
-        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-          action: 'fail',
-          source: 'routine',
-          reason: 'save_failed',
-          error: error instanceof Error ? error.message : String(error),
-          length: notes.trim().length,
-          hasTitle: Boolean(routineTitleToSave.trim()),
-          updatedAt: routineUpdatedAt,
-          ...buildDraftMetrics(structuredToSave),
-        })
-      })
-
-    // Hydrate last workout data and update structured data with history if needed
-    if (user?.id) {
-      database.workoutSessions
-        .getLastForRoutine(user.id, routine.id)
-        .then((lastWorkout) => {
-          setLastRoutineWorkout(lastWorkout)
-
-          // If we just applied this from route, we should update the history in the structuredData
-          if (source === 'route' && lastWorkout) {
-            setStructuredData((current) =>
-              current.map((exercise) => {
-                const exerciseName = exercise.name
-                const lastWorkoutExercise = lastWorkout.workout_exercises?.find(
-                  (we) => we.exercise?.name === exerciseName,
-                )
-
-                return {
-                  ...exercise,
-                  sets: exercise.sets.map((set, index) => {
-                    const lastSet = lastWorkoutExercise?.sets?.find(
-                      (s) => s.set_number === index + 1,
-                    )
-                    return {
-                      ...set,
-                      lastWorkoutWeight: lastSet?.weight
-                        ? lastSet.weight.toString()
-                        : null,
-                      lastWorkoutReps: lastSet?.reps
-                        ? lastSet.reps.toString()
-                        : null,
-                    }
-                  }),
-                }
-              }),
-            )
-          }
-        })
-        .catch((error) => {
-          console.error('[Routine] Error loading last workout:', error)
-          setLastRoutineWorkout(null)
-        })
-    }
-  }, [
-    pendingDraftRoutineId,
-    pendingRoutineSource,
-    routines,
-    user,
-    notes,
-    structuredData,
-    workoutTimerSerializableState.timerElapsedSeconds,
-    workoutTimerSerializableState.timerStartedAt,
-    buildDraftMetrics,
-    trackEvent,
-  ])
 
   // Track animation state to reset on each focus
   const [slideKey, setSlideKey] = useState(0)
@@ -1593,149 +1121,29 @@ export default function CreatePostScreen() {
   // Use routine selection hook for navigation-based routine selection
   const { registerCallback: registerRoutineCallback } = useRoutineSelection()
 
-  const hydrateDraft = useCallback(async () => {
-    isHydratingRef.current = true
-    try {
-      const [draft, pending] = await Promise.all([
-        loadWorkoutDraft(),
-        loadPendingWorkout(),
-      ])
-
-      const plan = buildHydrationPlan({
-        draft,
-        pending,
-        selectedRoutineId,
-        refresh,
-        lastRouteRoutineToken: lastRouteRoutineTokenRef.current,
-        hasHydrated: hasHydratedRef.current,
-        lastLocalEditAt: lastLocalEditAtRef.current,
-      })
-
-      if (plan.shouldSkip) {
-        logDraftDebug('hydrate-skip', {
-          reason: 'local_newer_than_disk',
-          draftUpdatedAt: plan.draftUpdatedAt,
-          lastLocalEditAt: lastLocalEditAtRef.current,
-        })
-        const metrics = buildDraftMetrics(structuredDataRef.current)
-        trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-          action: 'skip',
-          source: 'hydrate',
-          reason: 'local_newer_than_disk',
-          length: notesRef.current.trim().length,
-          hasTitle: Boolean(titleRef.current.trim()),
-          updatedAt: lastLocalEditAtRef.current,
-          ...metrics,
-        })
-        return
-      }
-
-      if (plan.shouldResetToEmpty) {
-        logDraftDebug('hydrate-reset-empty-storage', {
-          draftUpdatedAt: plan.draftUpdatedAt,
-          lastLocalEditAt: lastLocalEditAtRef.current,
-        })
-        resetLocalWorkoutDraftState()
-        return
-      }
-
-      if (plan.shouldApplyHydration) {
-        suppressLocalEditTrackingRef.current = true
-      }
-
-      logDraftDebug('hydrate-plan', {
-        shouldApplyHydration: plan.shouldApplyHydration,
-        shouldHydrateTimer: plan.shouldHydrateTimer,
-        hasNewRouteRoutine: plan.hasNewRouteRoutine,
-        shouldResetToEmpty: plan.shouldResetToEmpty,
-        effectiveRoutineId: plan.effectiveRoutineId,
-        draftUpdatedAt: plan.draftUpdatedAt,
-      })
-
-      if (plan.notes !== undefined) {
-        setNotes(plan.notes)
-      }
-
-      if (plan.title !== undefined) {
-        setWorkoutTitle(plan.title)
-      }
-
-      if (plan.song !== undefined) {
-        setSelectedSong(plan.song)
-      }
-
-      if (plan.structuredData) {
-        setStructuredData(plan.structuredData)
-        if (plan.isStructuredMode !== undefined) {
-          setIsStructuredMode(plan.isStructuredMode)
-        }
-      } else if (plan.isStructuredMode !== undefined) {
-        setIsStructuredMode(plan.isStructuredMode)
-      }
-
-      if (plan.effectiveRoutineId) {
-        setPendingDraftRoutineId(plan.effectiveRoutineId)
-        setPendingRoutineSource(plan.routineSource)
-      } else {
-        setPendingDraftRoutineId(null)
-        setPendingRoutineSource(null)
-      }
-
-      if (plan.shouldHydrateTimer) {
-        hydrateWorkoutTimer(plan.timerStartedAt, plan.timerElapsedSeconds)
-      } else {
-        resetWorkoutTimer()
-      }
-
-      // Skip the next 3 auto-saves to allow all hydration state changes to settle
-      skipPersistCountRef.current = 3
-
-      lastDraftSavedAtRef.current = plan.draftUpdatedAt
-      lastLocalEditAtRef.current = plan.draftUpdatedAt
-
-      if (plan.hasNewRouteRoutine) {
-        lastRouteRoutineTokenRef.current = plan.routeRoutineToken
-      }
-    } finally {
-      isHydratingRef.current = false
-      hasHydratedRef.current = true
-      logDraftDebug('hydrate-finish', {
-        hasHydrated: hasHydratedRef.current,
-        isHydrating: isHydratingRef.current,
-      })
-    }
-  }, [
-    logDraftDebug,
-    buildDraftMetrics,
-    hydrateWorkoutTimer,
-    resetLocalWorkoutDraftState,
-    resetWorkoutTimer,
-    refresh,
-    selectedRoutineId,
-    trackEvent,
-  ])
-
   // Handle screen focus and blur keyboard
   useFocusEffect(
     useCallback(() => {
+      if (!hasHydrated) {
+        return undefined
+      }
+
       setSlideKey((prev) => prev + 1)
       setShouldExit(false)
-      isScreenFocusedRef.current = true
-      isFinalizingWorkoutRef.current = false
       setWarmupCalculatorEnabled(getWarmupCalculatorEnabled())
       setToolbarVisibleButtons(getToolbarButtons())
 
       haptic('light')
 
       blurInputs()
-
-      // Reload draft when screen is focused (handles case where draft was saved after failure)
-      hydrateDraft()
+      if (isReviewing) {
+        returnToEditing()
+      }
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'text',
-        hasDraft: Boolean(notesRef.current.trim()),
-        hasTitle: Boolean(titleRef.current.trim()),
+        hasDraft: Boolean(notesForFocusRef.current.trim()),
+        hasTitle: Boolean(workoutTitleForFocusRef.current.trim()),
       })
 
       const timeoutId = setTimeout(() => {
@@ -1768,160 +1176,17 @@ export default function CreatePostScreen() {
         if (interactionHandle) {
           interactionHandle.cancel?.()
         }
-        persistDraft('blur')
-        isScreenFocusedRef.current = false
       }
     }, [
       blurInputs,
+      hasHydrated,
+      isReviewing,
+      returnToEditing,
       trackEvent,
       user,
       loadRoutinesAndExercises,
-      hydrateDraft,
-      persistDraft,
     ]),
   )
-
-  // Blur inputs when component unmounts
-  useEffect(() => {
-    return () => {
-      blurInputs()
-      if (isScreenFocusedRef.current) {
-        persistDraft('unmount')
-      } else {
-        logDraftDebug('persist-skipped-unmount-not-focused')
-      }
-    }
-  }, [blurInputs, logDraftDebug, persistDraft])
-
-  // Load saved draft on mount or when refresh param changes
-  useEffect(() => {
-    if (!isScreenFocusedRef.current) {
-      return
-    }
-    hydrateDraft()
-  }, [hydrateDraft, refresh])
-
-  // Auto-save draft whenever inputs change
-  useEffect(() => {
-    if (!isScreenFocusedRef.current) {
-      logDraftDebug('autosave-skipped', {
-        reason: 'not-focused',
-      })
-      return
-    }
-
-    if (isHydratingRef.current) {
-      return
-    }
-
-    if (skipPersistCountRef.current > 0) {
-      logDraftDebug('autosave-skipped', {
-        reason: 'skip-persist-counter',
-        remaining: skipPersistCountRef.current,
-      })
-      skipPersistCountRef.current--
-      return
-    }
-
-    // Use selectedRoutine.id if available, fall back to pendingDraftRoutineId
-    // This ensures we persist the routine ID even while waiting for routines to load
-    const routineIdToSave = selectedRoutine?.id ?? pendingDraftRoutineId ?? null
-
-    const timeoutId = setTimeout(() => {
-      const updatedAt = Math.max(Date.now(), lastLocalEditAtRef.current)
-      lastDraftSavedAtRef.current = updatedAt
-      logDraftDebug('autosave-start', {
-        updatedAt,
-        notesLength: notes.trim().length,
-        hasTitle: Boolean(workoutTitle.trim()),
-        structuredCount: structuredData.length,
-        hasRoutine: Boolean(routineIdToSave),
-        timerStartedAt: workoutTimerSerializableState.timerStartedAt,
-        timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-      })
-      void saveWorkoutDraftPatch({
-        notes,
-        title: workoutTitle,
-        song: selectedSong,
-        structuredData,
-        isStructuredMode,
-        selectedRoutineId: routineIdToSave,
-        timerStartedAt: workoutTimerSerializableState.timerStartedAt,
-        timerElapsedSeconds: workoutTimerSerializableState.timerElapsedSeconds,
-        updatedAt,
-      })
-        .then(() => {
-          logDraftDebug('autosave-success', {
-            updatedAt,
-          })
-          const metrics = buildDraftMetrics(structuredData)
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'patch',
-            source: 'autosave',
-            length: notes.trim().length,
-            hasTitle: Boolean(workoutTitle.trim()),
-            updatedAt,
-            ...metrics,
-          })
-        })
-        .catch((error) => {
-          if (DEBUG_LOGS) console.error('[Draft] Save failed:', error)
-          logDraftDebug('autosave-failed', {
-            error: error instanceof Error ? error.message : String(error),
-          })
-          trackEvent(AnalyticsEvents.WORKOUT_DRAFT_PERSISTED, {
-            action: 'fail',
-            source: 'autosave',
-            reason: 'save_patch_failed',
-            error: error instanceof Error ? error.message : String(error),
-            length: notes.trim().length,
-            hasTitle: Boolean(workoutTitle.trim()),
-            updatedAt,
-            ...buildDraftMetrics(structuredData),
-          })
-        })
-    }, 2000)
-
-    return () => clearTimeout(timeoutId)
-  }, [
-    logDraftDebug,
-    notes,
-    workoutTitle,
-    selectedSong,
-    structuredData,
-    isStructuredMode,
-    selectedRoutine?.id,
-    pendingDraftRoutineId,
-    workoutTimerSerializableState.timerElapsedSeconds,
-    workoutTimerSerializableState.timerStartedAt,
-    buildDraftMetrics,
-    trackEvent,
-  ])
-
-  // Persist draft immediately when app backgrounds (timers may be paused)
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      logDraftDebug('appstate-change', {
-        state,
-        isHydrating: isHydratingRef.current,
-        isFocused: isScreenFocusedRef.current,
-      })
-      if (state === 'active' || isHydratingRef.current) {
-        return
-      }
-
-      if (!isScreenFocusedRef.current) {
-        logDraftDebug('persist-skipped-background-not-focused')
-        return
-      }
-
-      persistDraft('background')
-    })
-
-    return () => {
-      subscription.remove()
-    }
-  }, [logDraftDebug, persistDraft])
 
   const handleCancel = async () => {
     if (isRecording) {
@@ -1951,16 +1216,15 @@ export default function CreatePostScreen() {
         {
           text: 'Discard',
           style: 'destructive',
-          onPress: async () => {
-            await clearWorkoutDraft('create-post-discard-button')
-            resetLocalWorkoutDraftState()
-
+          onPress: () => {
+            restTimer.stop()
+            discardSession()
             haptic('light')
           },
         },
       ],
     )
-  }, [blurInputs, resetLocalWorkoutDraftState])
+  }, [blurInputs, discardSession, restTimer])
 
   const handleToggleRecording = useCallback(async () => {
     haptic('medium')
@@ -2021,40 +1285,37 @@ export default function CreatePostScreen() {
   // =============================================================================
 
   const handleSelectRoutine = useCallback(
-    async (routine: WorkoutRoutineWithDetails) => {
-      // Clear any existing routine data first to prevent stale state
+    (routine: WorkoutRoutineWithDetails) => {
       setLastRoutineWorkout(null)
-      setStructuredData([])
-
-      // Query for last workout FIRST before setting state
-      let lastWorkout: WorkoutSessionWithDetails | null = null
-      if (user?.id) {
-        try {
-          lastWorkout = await database.workoutSessions.getLastForRoutine(
-            user.id,
-            routine.id,
-          )
-        } catch (error) {
-          console.error(
-            '[handleSelectRoutine] Error loading last workout for routine:',
-            error,
-          )
-          lastWorkout = null
-        }
-      }
-
-      // Set all states together so component renders with lastWorkout data
-      setSelectedRoutine(routine)
-      setWorkoutTitle(routine.name)
-      setIsStructuredMode(true)
-      setLastRoutineWorkout(lastWorkout)
+      seedRoutine({
+        title: routine.name,
+        structuredData: buildStructuredDraftFromRoutineTemplate(
+          (routine.workout_routine_exercises ?? [])
+            .sort((a, b) => a.order_index - b.order_index)
+            .map((exercise) => ({
+              id: exercise.id,
+              name: exercise.exercise?.name ?? 'Unknown Exercise',
+              orderIndex: exercise.order_index,
+              sets: (exercise.sets ?? [])
+                .sort((a, b) => a.set_number - b.set_number)
+                .map((set) => ({
+                  setNumber: set.set_number,
+                  repsMin: set.reps_min,
+                  repsMax: set.reps_max,
+                  restSeconds: set.rest_seconds,
+                })),
+            })),
+        ),
+        selectedRoutineId: routine.id,
+        routineSource: 'selection',
+      })
 
       trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
         mode: 'routine_template',
         routineId: routine.id,
       })
     },
-    [user, trackEvent],
+    [seedRoutine, trackEvent],
   )
 
   const handleOpenRoutineSelector = useCallback(async () => {
@@ -2117,26 +1378,7 @@ export default function CreatePostScreen() {
       return
     }
 
-    if (!workoutTitle.trim()) {
-      const hour = new Date().getHours()
-      const autoTitle =
-        hour < 12
-          ? 'Morning Session'
-          : hour < 15
-          ? 'Afternoon Session'
-          : 'Evening Session'
-      setWorkoutTitle(autoTitle)
-    }
-
-    // Check if there's workout data (either notes or structured data)
-    const hasStructuredData =
-      isStructuredMode &&
-      structuredData.length > 0 &&
-      structuredData.some((exercise) =>
-        exercise.sets.some((set) => set.weight || set.reps),
-      )
-
-    if (!notes.trim() && !hasStructuredData) {
+    if (!canReview) {
       isSubmittingRef.current = false
       setIsLoading(false)
       Alert.alert(
@@ -2156,25 +1398,22 @@ export default function CreatePostScreen() {
       return
     }
 
-    // Reset loading state since we're navigating away
+    const finalizedDurationSeconds = getCurrentWorkoutElapsedSeconds()
+    const didEnterReview = enterReview()
+
+    if (!didEnterReview) {
+      isSubmittingRef.current = false
+      setIsLoading(false)
+      Alert.alert(
+        'Workout Details Missing',
+        'Add your exercises, sets, and reps to track your progress.',
+        [{ text: 'OK' }],
+      )
+      return
+    }
+
     isSubmittingRef.current = false
     setIsLoading(false)
-
-    // End the workout immediately so the Live Activity does not keep running
-    // while we transition into the finalize/post flow.
-    const finalizedDurationSeconds = getCurrentWorkoutElapsedSeconds()
-    isFinalizingWorkoutRef.current = true
-
-    pauseWorkoutTimer()
-    workoutTimerStateRef.current = {
-      timerStartedAt: null,
-      timerElapsedSeconds: finalizedDurationSeconds,
-    }
-    stopWorkoutActivity()
-    hasStartedActivityRef.current = false
-
-    // Force draft persistence so the finalize screen can read it
-    persistDraft('blur')
 
     router.push({
       pathname: '/(stand-alone)/finalize-workout',
@@ -2608,6 +1847,67 @@ export default function CreatePostScreen() {
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
 
+  useEffect(() => {
+    if (!hasLoadedRoutines || !selectedRoutineId) {
+      return
+    }
+
+    if (selectedRoutine) {
+      return
+    }
+
+    setLastRoutineWorkout(null)
+    updateDraft({
+      selectedRoutineId: null,
+      routineSource: null,
+    })
+  }, [
+    hasLoadedRoutines,
+    selectedRoutine,
+    selectedRoutineId,
+    updateDraft,
+  ])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!selectedRoutineId || !user?.id) {
+      setLastRoutineWorkout(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setLastRoutineWorkout(null)
+
+    const loadLastRoutineWorkout = async () => {
+      try {
+        const lastWorkout = await database.workoutSessions.getLastForRoutine(
+          user.id,
+          selectedRoutineId,
+        )
+
+        if (!cancelled) {
+          setLastRoutineWorkout(lastWorkout ?? null)
+        }
+      } catch (error) {
+        console.error(
+          '[CreatePost] Error loading last workout for routine:',
+          error,
+        )
+        if (!cancelled) {
+          setLastRoutineWorkout(null)
+        }
+      }
+    }
+
+    void loadLastRoutineWorkout()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedRoutineId, user?.id])
+
   // Check if all structured exercises have been deleted and clear routine if so
   useEffect(() => {
     const currentLength = structuredData.length
@@ -2615,17 +1915,17 @@ export default function CreatePostScreen() {
 
     // If we had exercises and now have zero (user deleted all)
     if (selectedRoutine && previousLength > 0 && currentLength === 0) {
-      // All exercises deleted - clear routine state
-      setSelectedRoutine(null)
       setLastRoutineWorkout(null)
-      setIsStructuredMode(false)
-      setPendingDraftRoutineId(null)
-      setPendingRoutineSource(null)
+      updateDraft({
+        isStructuredMode: false,
+        selectedRoutineId: null,
+        routineSource: null,
+      })
     }
 
     // Update previous length
     previousStructuredDataLength.current = currentLength
-  }, [structuredData, selectedRoutine])
+  }, [selectedRoutine, structuredData, updateDraft])
 
   const editorToolbarProps = useMemo(
     () => ({
@@ -2724,6 +2024,16 @@ export default function CreatePostScreen() {
     (!isStructuredInputFocused || Boolean(keypadProps))
   const toolbarBottomInsetOverride =
     keypadProps || isToolbarInsetLocked ? 8 : bottomSafeInset
+
+  if (!hasHydrated) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <>
@@ -3142,6 +2452,11 @@ const createStyles = (
     container: {
       flex: 1,
       backgroundColor: colors.bg,
+    },
+    loadingState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     keyboardView: {
       flex: 1,

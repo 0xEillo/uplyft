@@ -18,6 +18,7 @@ import { LoadingScreen } from '@/components/loading-screen'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
+import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import { NotificationProvider } from '@/contexts/notification-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
@@ -25,6 +26,7 @@ import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
+import { WorkoutComposerProvider } from '@/contexts/workout-composer-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { consumePendingInvite } from '@/lib/app-links'
 import { initializeFacebookSDK } from '@/lib/facebook-sdk'
@@ -453,7 +455,11 @@ export default function RootLayout() {
                       <AnalyticsProvider>
                         <TutorialProvider>
                           <PostsProvider>
-                            <RootLayoutNav />
+                            <LiveActivityProvider>
+                              <WorkoutComposerProvider>
+                                <RootLayoutNav />
+                              </WorkoutComposerProvider>
+                            </LiveActivityProvider>
                           </PostsProvider>
                         </TutorialProvider>
                       </AnalyticsProvider>

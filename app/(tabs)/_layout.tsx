@@ -3,10 +3,6 @@ import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 import { useAuth } from '@/contexts/auth-context'
-import {
-  LiveActivityProvider,
-  useLiveActivity,
-} from '@/contexts/live-activity-context'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
   RestTimerProvider,
@@ -26,11 +22,8 @@ import {
   useTabBarVisibility,
 } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import {
-  clearDraft as clearWorkoutDraft,
-  loadDraft as loadWorkoutDraft,
-} from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
@@ -80,13 +73,15 @@ function TabLayoutContent() {
     isActive: isRestTimerActive,
     stop: stopRestTimer,
   } = useRestTimerContext()
-  const { stopWorkoutActivity } = useLiveActivity()
+  const {
+    discardSession,
+    elapsedSeconds: workoutElapsedSeconds,
+    hasActiveSession,
+  } = useWorkoutComposer()
   const { user, isAnonymous } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
-  const [hasDraft, setHasDraft] = useState(false)
-  const [workoutElapsedSeconds, setWorkoutElapsedSeconds] = useState(0)
 
   // Check for unread welcome message
   useEffect(() => {
@@ -100,38 +95,6 @@ function TabLayoutContent() {
     const interval = setInterval(checkUnread, 2000)
     return () => clearInterval(interval)
   }, [user?.id])
-
-  // Keep create action state in sync with saved draft.
-  useEffect(() => {
-    const checkDraft = async () => {
-      const draft = await loadWorkoutDraft()
-      if (!draft) {
-        setHasDraft(false)
-        setWorkoutElapsedSeconds(0)
-        return
-      }
-
-      setHasDraft(true)
-
-      const baseSeconds =
-        typeof draft.timerElapsedSeconds === 'number'
-          ? draft.timerElapsedSeconds
-          : 0
-      const startedAtMs =
-        typeof draft.timerStartedAt === 'string'
-          ? Date.parse(draft.timerStartedAt)
-          : Number.NaN
-      const runningSeconds = Number.isNaN(startedAtMs)
-        ? 0
-        : Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
-
-      setWorkoutElapsedSeconds(Math.max(0, baseSeconds + runningSeconds))
-    }
-
-    checkDraft()
-    const interval = setInterval(checkDraft, 1000)
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     if (!isSubscriptionLoading && !isProMember) {
@@ -195,17 +158,19 @@ function TabLayoutContent() {
     isIOS26OrNewer &&
     !isTabBarHidden &&
     currentTab !== 'chat' &&
-    (isRestTimerActive || hasDraft)
+    (isRestTimerActive || hasActiveSession)
   const showCustomBottomAccessory =
     !isIOS26OrNewer &&
     !isTabBarHidden &&
     currentTab !== 'chat' &&
-    (isRestTimerActive || hasDraft)
+    (isRestTimerActive || hasActiveSession)
   const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
     workoutElapsedSeconds,
   )}`
   const createActionColor =
-    isRestTimerActive || hasDraft ? colors.statusError : colors.brandPrimary
+    isRestTimerActive || hasActiveSession
+      ? colors.statusError
+      : colors.brandPrimary
   const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
   const handleDiscardWorkoutProgress = () => {
     Alert.alert(
@@ -217,13 +182,8 @@ function TabLayoutContent() {
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
-            void (async () => {
-              await clearWorkoutDraft('bottom-accessory-discard')
-              stopRestTimer()
-              stopWorkoutActivity()
-              setHasDraft(false)
-              setWorkoutElapsedSeconds(0)
-            })()
+            stopRestTimer()
+            discardSession()
           },
         },
       ],
@@ -521,18 +481,16 @@ function BottomAccessoryAction(props: {
 
 export default function TabLayout() {
   return (
-    <LiveActivityProvider>
-      <RestTimerProvider>
-        <ScrollToTopProvider>
-          <SuccessOverlayProvider>
-            <RatingPromptProvider>
-              <TabBarVisibilityProvider>
-                <TabLayoutContent />
-              </TabBarVisibilityProvider>
-            </RatingPromptProvider>
-          </SuccessOverlayProvider>
-        </ScrollToTopProvider>
-      </RestTimerProvider>
-    </LiveActivityProvider>
+    <RestTimerProvider>
+      <ScrollToTopProvider>
+        <SuccessOverlayProvider>
+          <RatingPromptProvider>
+            <TabBarVisibilityProvider>
+              <TabLayoutContent />
+            </TabBarVisibilityProvider>
+          </RatingPromptProvider>
+        </SuccessOverlayProvider>
+      </ScrollToTopProvider>
+    </RestTimerProvider>
   )
 }
