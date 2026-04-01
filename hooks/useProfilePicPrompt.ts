@@ -17,6 +17,7 @@ interface UseProfilePicPromptArgs {
   userId?: string | null
   workoutCount: number
   hasProfilePic: boolean
+  isProfileLoading: boolean
 }
 
 interface UseProfilePicPromptResult {
@@ -30,10 +31,30 @@ const clampTimesShown = (value: number) =>
 const getStorageKey = (userId?: string | null) =>
   userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY
 
+export const shouldShowProfilePicPrompt = ({
+  hasProfilePic,
+  isProfileLoading,
+  isReady,
+  timesShown,
+  workoutCount,
+}: {
+  hasProfilePic: boolean
+  isProfileLoading: boolean
+  isReady: boolean
+  timesShown: number
+  workoutCount: number
+}) => {
+  if (!isReady || isProfileLoading) return false
+  if (hasProfilePic) return false
+  if (timesShown >= SHOW_THRESHOLDS.length) return false
+  return workoutCount >= SHOW_THRESHOLDS[timesShown]
+}
+
 export function useProfilePicPrompt({
   userId,
   workoutCount,
   hasProfilePic,
+  isProfileLoading,
 }: UseProfilePicPromptArgs): UseProfilePicPromptResult {
   const [timesShown, setTimesShown] = useState(0)
   const [isReady, setIsReady] = useState(false)
@@ -89,14 +110,14 @@ export function useProfilePicPrompt({
   }, [storageKey, userId])
 
   const isVisible = useMemo(() => {
-    if (!isReady) return false
-    // Don't show if user already has a profile pic
-    if (hasProfilePic) return false
-    // Don't show if we've exhausted all thresholds
-    if (timesShown >= SHOW_THRESHOLDS.length) return false
-    // Show only once we hit the threshold
-    return workoutCount >= SHOW_THRESHOLDS[timesShown]
-  }, [isReady, hasProfilePic, timesShown, workoutCount])
+    return shouldShowProfilePicPrompt({
+      hasProfilePic,
+      isProfileLoading,
+      isReady,
+      timesShown,
+      workoutCount,
+    })
+  }, [hasProfilePic, isProfileLoading, isReady, timesShown, workoutCount])
 
   const dismiss = useCallback(() => {
     if (!userId) return

@@ -720,13 +720,13 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Fly (Machine) / Pec Deck
+  // Seated Fly (Machine) / Pec Deck
   {
-    id: '35b6ab14-c135-4368-957e-fc2907b459d1',
-    name: 'Fly (Machine)',
-    aliases: ['Pec Deck', 'Machine Fly', 'Flies (Machine)'],
+    id: '1995abfe-57e4-4c72-a729-3a574cb1378d',
+    name: 'Seated Fly (Machine)',
+    aliases: ['Seated Fly', 'Fly (Machine)', 'Pec Deck', 'Machine Fly', 'Flies (Machine)'],
     tier: 3,
-    gifUrl: null,
+    gifUrl: 'v3xmPAR.gif',
     male: [
       {
         level: 'Beginner',
@@ -2409,8 +2409,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '67d8950c-2c29-44f8-8cdc-43d238b1a9f2',
     name: 'Hip Thrust (Barbell)',
-    aliases: ['Hip Thrust (Barbell)', 'Barbell Hip Thrust'],
+    aliases: ['Hip Thrust', 'Barbell Hip Thrust'],
     tier: 1,
+    gifUrl: 'hip-thrust(barbell).png',
     male: [
       {
         level: 'Beginner',
@@ -3255,9 +3256,9 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '2b17a9be-b411-4afe-a351-d21c0fd72d3f',
     name: 'Shrug (Smith Machine)',
-    aliases: ['smith machine shrug', 'smith shrug', 'smith machine shrugs'],
+    aliases: ['Smith Shrug', 'smith machine shrug', 'smith shrug', 'smith machine shrugs'],
     tier: 3,
-    gifUrl: null,
+    gifUrl: 'OUQ0ZyW.gif',
     male: [
       {
         level: 'Beginner',
@@ -3341,7 +3342,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     name: 'Rack Pull (Barbell)',
     aliases: ['rack pulls', 'rack deadlift', 'Rack Pull', 'Barbell Rack Pull'],
     tier: 1,
-    gifUrl: null,
+    gifUrl: 'za9Ni4z.gif',
     male: [
       {
         level: 'Beginner',
@@ -5134,7 +5135,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       'Standing Cable Crunch',
     ],
     tier: 3,
-    gifUrl: null,
+    gifUrl: 'cable-crunches(cable).png',
     male: [
       {
         level: 'Beginner',
@@ -5795,7 +5796,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Barbell Decline Bench Press': 'Chest',
   'Bench Press (Smith Machine)': 'Chest',
   'Fly (Dumbbell)': 'Chest',
-  'Fly (Machine)': 'Chest',
+  'Seated Fly (Machine)': 'Chest',
 
   // Shoulders
   'Shoulder Press (Barbell)': 'Shoulders',
@@ -5908,7 +5909,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Barbell Decline Bench Press': 'Push',
   'Bench Press (Smith Machine)': 'Push',
   'Fly (Dumbbell)': 'Push',
-  'Fly (Machine)': 'Push',
+  'Seated Fly (Machine)': 'Push',
   'Shoulder Press (Barbell)': 'Push',
   'Shoulder Press (Machine)': 'Push',
   'Seated Shoulder Press (Dumbbell)': 'Push',

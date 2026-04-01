@@ -204,7 +204,7 @@ const CardDeleteAnimation = {
 
 export default function FeedScreen() {
   const { user, isAnonymous } = useAuth()
-  const { profile } = useProfile()
+  const { profile, isLoading: isProfileLoading } = useProfile()
   const router = useRouter()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
@@ -303,6 +303,7 @@ export default function FeedScreen() {
     userId: user?.id,
     workoutCount: userWorkoutCount,
     hasProfilePic: !!profile?.avatar_url?.trim(),
+    isProfileLoading,
   })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible = isCelebrationVisible
