@@ -5550,6 +5550,213 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
+
+  // Trap Bar / Hex Bar Deadlift
+  {
+    id: '4aeea47e-f927-42bc-88ac-e96e6bd1add9',
+    name: 'Trap Bar Deadlift (Barbell)',
+    aliases: ['Trap Bar Deadlift', 'Hex Bar Deadlift'],
+    tier: 1,
+    gifUrl: 'jQGwmxN.gif',
+    male: [
+      { level: 'Beginner', multiplier: 1.0, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 1.5, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 2.0, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 2.75, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 3.25, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 3.75, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.75, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 1.0, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 1.5, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 2.0, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 2.5, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 2.85, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // Pendlay Row
+  {
+    id: '2bd134ef-c86b-4a9f-9ce8-67a1209501d9',
+    name: 'Pendlay Row (Barbell)',
+    aliases: ['Barbell Pendlay Row', 'Pendlay Row'],
+    tier: 1,
+    gifUrl: 'r0z6xzQ.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.5, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.75, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 1.0, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 1.5, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.75, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 2.0, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.4, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.55, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.8, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 1.05, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.35, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.6, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // Zercher Squat
+  {
+    id: '225fad0b-547e-4796-8df2-3d083904a758',
+    name: 'Zercher Squat (Barbell)',
+    aliases: ['Barbell Zercher Squat', 'Full Zercher Squat (Barbell)', 'Barbell Full Zercher Squat', 'vR1vold'],
+    tier: 1,
+    gifUrl: 'LSTChY9.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.5, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 1.0, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 1.5, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 2.0, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 2.5, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 3.0, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.25, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.5, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 1.0, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 1.5, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.75, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 2.0, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // Goblet Squat (Barbell / Dumbbell)
+  {
+    id: 'afc52a84-6c76-41ce-893e-6654fe922de7',
+    name: 'Goblet Squat (Barbell)',
+    aliases: ['Goblet Squat', 'DB Goblet Squat', 'Dumbbell Goblet Squat'],
+    tier: 2,
+    gifUrl: 'yn8yg1r.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.2, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.85, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.15, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.4, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.25, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.4, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.6, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 0.85, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.1, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // Goblet Squat (Kettlebell)
+  {
+    id: '74a25eb5-7abb-4806-9404-ca3a25cd8fb8',
+    name: 'Goblet Squat (Kettlebell)',
+    aliases: ['Kettlebell Goblet Squat'],
+    tier: 2,
+    gifUrl: 'ZA8b5hc.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.2, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.85, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.15, color: '#F59E0B', description: 'Competitive athlete level' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.25, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.4, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.6, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 0.85, color: '#F59E0B', description: 'Competitive athlete level' },
+    ],
+  },
+
+  // Bulgarian Split Squat (Barbell)
+  {
+    id: 'a7900f7a-291b-41b1-9ed5-c4e97032ddbc',
+    name: 'Bulgarian Split Squat (Barbell)',
+    aliases: [
+      'gGNQmVt',
+      'Barbell Single Leg Split Squat',
+      'Barbell Bulgarian split squat',
+      'BB Bulgarian Split Squat',
+      'BSS',
+      'Split Squat',
+      'Single Leg Split Squat (Barbell)',
+      'Single Leg Split Squat',
+    ],
+    tier: 2,
+    gifUrl: 'gGNQmVt.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.25, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.5, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.75, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 1.25, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.75, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 2.2, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.3, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.85, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.25, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.5, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // EZ Bar Bicep Curl
+  {
+    id: '95c8ba43-d0a1-486a-b272-44ad1e2639a7',
+    name: 'Bicep Curl (EZ Bar)',
+    aliases: ['Ez Barbell Curl', 'EZ Bar Curl'],
+    tier: 2,
+    gifUrl: '6TG6x2w.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.25, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.4, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.6, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.85, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.1, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.3, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.3, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.4, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.6, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 0.8, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.0, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
+
+  // Skull Crusher (EZ Bar)
+  {
+    id: '9db1815a-a6fc-4dc1-a48d-13739ef2fad1',
+    name: 'Skull Crusher (EZ Bar)',
+    aliases: ['Ez Bar Lying Close Grip Triceps Extension Behind Head', 'EZ Bar Skull Crusher'],
+    tier: 2,
+    gifUrl: '6CKUx7o.gif',
+    male: [
+      { level: 'Beginner', multiplier: 0.2, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.8, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 1.1, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 1.3, color: '#EF4444', description: 'World record territory' },
+    ],
+    female: [
+      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
+      { level: 'Novice', multiplier: 0.2, color: '#3B82F6', description: 'A few months training' },
+      { level: 'Intermediate', multiplier: 0.35, color: '#10B981', description: '1-2 years consistent training' },
+      { level: 'Advanced', multiplier: 0.55, color: '#8B5CF6', description: '2-5 years dedicated training' },
+      { level: 'Elite', multiplier: 0.75, color: '#F59E0B', description: 'Competitive athlete level' },
+      { level: 'World Class', multiplier: 0.9, color: '#EF4444', description: 'World record territory' },
+    ],
+  },
 ]
 
 /**
@@ -5675,6 +5882,16 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Wrist Curl (Barbell)': 'Forearms',
   'Reverse Wrist Curl (Barbell)': 'Forearms',
   'Reverse Wrist Curl (Dumbbell)': 'Forearms',
+
+  // New additions
+  'Trap Bar Deadlift (Barbell)': 'Lower Back',
+  'Pendlay Row (Barbell)': 'Back',
+  'Zercher Squat (Barbell)': 'Quads',
+  'Goblet Squat (Barbell)': 'Quads',
+  'Goblet Squat (Kettlebell)': 'Quads',
+  'Bulgarian Split Squat (Barbell)': 'Quads',
+  'Bicep Curl (EZ Bar)': 'Biceps',
+  'Skull Crusher (EZ Bar)': 'Triceps',
 }
 
 /**
@@ -5744,6 +5961,16 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Seated Leg Curl (Machine)': 'Lower',
   'Lying Leg Curl (Machine)': 'Lower',
   'Seated Calf Raise (Machine)': 'Lower',
+
+  // New additions
+  'Trap Bar Deadlift (Barbell)': 'Lower',
+  'Zercher Squat (Barbell)': 'Lower',
+  'Goblet Squat (Barbell)': 'Lower',
+  'Goblet Squat (Kettlebell)': 'Lower',
+  'Bulgarian Split Squat (Barbell)': 'Lower',
+  'Pendlay Row (Barbell)': 'Pull',
+  'Bicep Curl (EZ Bar)': 'Pull',
+  'Skull Crusher (EZ Bar)': 'Push',
 }
 
 /**

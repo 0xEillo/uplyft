@@ -188,6 +188,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payload.routineId,
         payload.durationSeconds,
         payload.song ?? null,
+        payload.idempotencyKey,
         payload.performedAt, // client timestamp for offline support
         correlationId,
       )

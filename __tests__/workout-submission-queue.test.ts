@@ -246,6 +246,49 @@ describe('workout submission queue', () => {
     expect(await loadPlaceholderWorkout()).toBeNull()
   })
 
+  test('reuses the same idempotency key when retrying the same pending workout after offline failure', async () => {
+    const pending = makePendingWorkout({ idempotencyKey: 'same-key' })
+    await savePendingWorkout(pending)
+    await savePlaceholderWorkout({
+      id: 'temp-1',
+      title: pending.title,
+      imageUrl: pending.imageUrl,
+      song: pending.song,
+      created_at: performedAt,
+      isPending: true,
+      user_id: pending.userId,
+      profile: null,
+    })
+
+    mockPostWorkout.mockRejectedValueOnce(
+      new ApiError({
+        error: 'Network error calling parse-workout',
+        code: 'NETWORK',
+      }),
+    )
+
+    const offlineResult = await processPendingWorkoutSubmission('access-token')
+    expect(offlineResult.status).toBe('offline')
+
+    mockPostWorkout.mockResolvedValueOnce({
+      workout: {
+        isWorkoutRelated: true,
+        exercises: [],
+      },
+      createdWorkout: {
+        id: 'workout-1',
+      } as any,
+      correlationId: 'corr-1',
+    })
+
+    const successResult = await processPendingWorkoutSubmission('access-token')
+    expect(successResult.status).toBe('success')
+
+    expect(mockPostWorkout).toHaveBeenCalledTimes(2)
+    expect(mockPostWorkout.mock.calls[0]?.[0].idempotencyKey).toBe('same-key')
+    expect(mockPostWorkout.mock.calls[1]?.[0].idempotencyKey).toBe('same-key')
+  })
+
   test('restores the composer session when background submission fails for a non-network reason', async () => {
     const pending = makePendingWorkout()
     await savePendingWorkout(pending)

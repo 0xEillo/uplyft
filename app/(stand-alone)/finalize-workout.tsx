@@ -27,6 +27,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { beginSingleFlight, endSingleFlight } from '@/lib/utils/single-flight'
 
 export default function FinalizeWorkoutScreen() {
   const router = useRouter()
@@ -55,6 +56,7 @@ export default function FinalizeWorkoutScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const hasDismissedRef = useRef(false)
+  const isFinishingRef = useRef(false)
 
   const closeToTabs = useCallback(() => {
     if (hasDismissedRef.current) {
@@ -178,7 +180,7 @@ export default function FinalizeWorkoutScreen() {
   }
 
   const handleFinish = async () => {
-    if (!hasActiveSession) return
+    if (!hasActiveSession || !beginSingleFlight(isFinishingRef)) return
     setIsLoading(true)
 
     try {
@@ -188,6 +190,7 @@ export default function FinalizeWorkoutScreen() {
       console.error('Failed to submit workout', error)
       alert('Failed to submit workout. Please try again.')
       setIsLoading(false)
+      endSingleFlight(isFinishingRef)
     }
   }
 

@@ -54,6 +54,7 @@ export const requestSchema = z.object({
   workoutTitle: z.string().optional(),
   description: z.string().optional(),
   parserNotes: z.string().optional(),
+  idempotencyKey: z.string().optional(),
   includeCreatedWorkoutDetails: z.boolean().optional(),
   imageUrl: z.string().nullable().optional(),
   song: songSchema.nullable().optional(),

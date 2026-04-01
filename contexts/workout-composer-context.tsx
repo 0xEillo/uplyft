@@ -34,6 +34,7 @@ import {
   loadWorkoutComposerSessionWithMigration,
   saveStoredWorkoutComposerSession,
 } from '@/lib/utils/workout-composer-storage'
+import { beginSingleFlight, endSingleFlight } from '@/lib/utils/single-flight'
 import {
   enqueueWorkoutSubmission,
 } from '@/lib/utils/workout-submission-queue'
@@ -100,6 +101,7 @@ export function WorkoutComposerProvider({
   const [nowMs, setNowMs] = useState(Date.now())
   const sessionRef = useRef(session)
   const hasStartedActivityRef = useRef(false)
+  const isEnqueueingRef = useRef(false)
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -277,6 +279,10 @@ export function WorkoutComposerProvider({
       throw new Error('User must be authenticated to submit workouts')
     }
 
+    if (!beginSingleFlight(isEnqueueingRef)) {
+      return
+    }
+
     const currentSession = sessionRef.current
 
     dispatch({
@@ -298,6 +304,8 @@ export function WorkoutComposerProvider({
         now: Date.now(),
       })
       throw error
+    } finally {
+      endSingleFlight(isEnqueueingRef)
     }
   }, [user, weightUnit])
 

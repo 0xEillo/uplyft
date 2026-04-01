@@ -64,14 +64,14 @@ interface WorkoutSessionRecord {
 interface ExercisePerformanceSummary {
   heaviestWeight: number
   best1RM: number
-  bestSetVolume: { weight: number; reps: number; volume: number } | null
+  bestSet: { weight: number; reps: number; strengthMetric: number } | null
   bestSessionVolume: number
 }
 
 const createEmptyExercisePerformanceSummary = (): ExercisePerformanceSummary => ({
   heaviestWeight: 0,
   best1RM: 0,
-  bestSetVolume: null,
+  bestSet: null,
   bestSessionVolume: 0,
 })
 
@@ -242,20 +242,30 @@ export default function ExerciseDetailScreen() {
             ...records.map((record) => record.weight),
           )
 
-          let bestSetVolume = { weight: 0, reps: 0, volume: 0 }
+          let bestSet: { weight: number; reps: number; strengthMetric: number } | null = null
           records.forEach((record) => {
-            const volume = record.weight * record.maxReps
-            if (volume > bestSetVolume.volume) {
-              bestSetVolume = {
+            const strengthMetric = isRepBased
+              ? record.maxReps
+              : record.estimated1RM
+
+            if (
+              !bestSet ||
+              strengthMetric > bestSet.strengthMetric ||
+              (strengthMetric === bestSet.strengthMetric &&
+                record.weight > bestSet.weight) ||
+              (strengthMetric === bestSet.strengthMetric &&
+                record.weight === bestSet.weight &&
+                record.maxReps > bestSet.reps)
+            ) {
+              bestSet = {
                 weight: record.weight,
                 reps: record.maxReps,
-                volume,
+                strengthMetric,
               }
             }
           })
 
-          nextExercisePerformance.bestSetVolume =
-            bestSetVolume.volume > 0 ? bestSetVolume : null
+          nextExercisePerformance.bestSet = bestSet
         }
 
         let nextHistory: WorkoutSessionRecord[] = []
@@ -821,9 +831,13 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Best Set</Text>
                   <Text style={styles.statValue}>
-                    {exercisePerformance.bestSetVolume 
-                        ? `${formatWeight(exercisePerformance.bestSetVolume.weight, { maximumFractionDigits: 0 })} x ${exercisePerformance.bestSetVolume.reps}` 
-                        : '-'}
+                    {exercisePerformance.bestSet
+                      ? formatLoggedSetSummary(
+                          exercisePerformance.bestSet.weight,
+                          exercisePerformance.bestSet.reps,
+                          formatWeight,
+                        )
+                      : '-'}
                   </Text>
                 </View>
               </View>
