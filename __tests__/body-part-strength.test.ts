@@ -15,6 +15,7 @@ describe('body part strength helpers', () => {
     expect(exerciseNames).not.toContain('Deadlift (Barbell)')
     expect(exerciseNames).not.toContain('Back Extension (Machine)')
     expect(exerciseNames).not.toContain('Hyperextension')
+    expect(exerciseNames).not.toContain('Romanian Deadlift (Barbell)')
     expect(exerciseNames).not.toContain('Shrug (Dumbbell)')
     expect(exerciseNames).not.toContain('Rack Pull (Barbell)')
   })
@@ -40,5 +41,17 @@ describe('body part strength helpers', () => {
         'upper-back',
       ),
     ).toBe(false)
+  })
+
+  test('romanian deadlift only appears for hamstrings trackables', () => {
+    const hamstringExercises = getTrackableExercisesForBodyPart('hamstring').map(
+      (exercise) => exercise.name,
+    )
+    const gluteExercises = getTrackableExercisesForBodyPart('gluteal').map(
+      (exercise) => exercise.name,
+    )
+
+    expect(hamstringExercises).toContain('Romanian Deadlift (Barbell)')
+    expect(gluteExercises).not.toContain('Romanian Deadlift (Barbell)')
   })
 })

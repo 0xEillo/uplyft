@@ -87,4 +87,24 @@ describe('strength display groups', () => {
     expect(groups.find((group) => group.name === 'Shoulders')).toBeTruthy()
     expect(groups.find((group) => group.name === 'Legs')).toBeFalsy()
   })
+
+  test('romanian deadlift contributes to hamstrings but not glutes', () => {
+    const groups = buildSpecificMuscleGroupData({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises: [
+        {
+          exerciseId: 'rdl-1',
+          exerciseName: 'Romanian Deadlift (Barbell)',
+          muscleGroup: 'Hamstrings',
+          max1RM: 180,
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-03-02T00:00:00.000Z'),
+    })
+
+    expect(groups.find((group) => group.name === 'Hamstrings')).toBeTruthy()
+    expect(groups.find((group) => group.name === 'Glutes')).toBeFalsy()
+  })
 })

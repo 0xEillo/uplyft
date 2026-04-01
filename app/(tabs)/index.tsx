@@ -27,6 +27,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
+import { ProfilePicPromptModal } from '@/components/ProfilePicPromptModal'
 import { NotificationBadge } from '@/components/notification-badge'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
@@ -34,6 +35,7 @@ import { WeeklySnapshot } from '@/components/WeeklySnapshot'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import type { StrengthScoreData } from '@/contexts/success-overlay-context'
@@ -41,6 +43,7 @@ import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
+import { useProfilePicPrompt } from '@/hooks/useProfilePicPrompt'
 import {
   schedulePushNotificationPrompt,
   shouldPromptForPushNotificationsAfterWorkout,
@@ -201,6 +204,7 @@ const CardDeleteAnimation = {
 
 export default function FeedScreen() {
   const { user, isAnonymous } = useAuth()
+  const { profile } = useProfile()
   const router = useRouter()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
@@ -291,6 +295,14 @@ export default function FeedScreen() {
   } = useInviteFriendsPrompt({
     userId: user?.id,
     workoutCount: userWorkoutCount,
+  })
+  const {
+    isVisible: isProfilePicPromptVisible,
+    dismiss: dismissProfilePicPrompt,
+  } = useProfilePicPrompt({
+    userId: user?.id,
+    workoutCount: userWorkoutCount,
+    hasProfilePic: !!profile?.avatar_url?.trim(),
   })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
   const isCelebrationUiVisible = isCelebrationVisible
@@ -1282,6 +1294,10 @@ export default function FeedScreen() {
             ? `You've logged ${guestSignInPromptMilestone} workouts as a guest. Sign in to keep your progress synced and protected.`
             : 'Sign in to keep your progress synced and protected.'
         }
+      />
+      <ProfilePicPromptModal
+        visible={isProfilePicPromptVisible}
+        onDismiss={dismissProfilePicPrompt}
       />
     </View>
   )
