@@ -38,10 +38,19 @@ export function RulerPicker({
   const colors = useThemedColors()
   const { width } = useWindowDimensions()
   const scrollViewRef = useRef<ScrollView>(null)
-  /** Latest value so scale/layout updates can re-center without fighting active drags. */
   const valueRef = useRef(value)
-  const lastReportedValueRef = useRef(value)
+  const lastEmittedValueRef = useRef(value)
+  const isDraggingRef = useRef(false)
+  const hasMomentumRef = useRef(false)
+  const queuedExternalValueRef = useRef<number | null>(null)
+  const endDragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   valueRef.current = value
+
+  const clearEndDragTimeout = useCallback(() => {
+    if (endDragTimeoutRef.current === null) return
+    clearTimeout(endDragTimeoutRef.current)
+    endDragTimeoutRef.current = null
+  }, [])
 
   const totalTicks = Math.floor((max - min) / step) + 1
   const tickIndices = useMemo(
@@ -75,41 +84,92 @@ export function RulerPicker({
     [offsetForValue],
   )
 
-  // Align ruler when the scale changes — never on every `value` tick (that caused scrollTo vs finger fights).
   useLayoutEffect(() => {
     syncScrollToValue(valueRef.current)
-    lastReportedValueRef.current = valueRef.current
+    lastEmittedValueRef.current = valueRef.current
   }, [min, max, step, syncScrollToValue])
 
   useEffect(() => {
-    if (value === lastReportedValueRef.current) return
+    if (value === lastEmittedValueRef.current) return
+    if (isDraggingRef.current || hasMomentumRef.current) {
+      queuedExternalValueRef.current = value
+      return
+    }
     syncScrollToValue(value)
-    lastReportedValueRef.current = value
+    lastEmittedValueRef.current = value
   }, [value, syncScrollToValue])
+
+  useEffect(() => clearEndDragTimeout, [clearEndDragTimeout])
+
+  const emitValue = useCallback(
+    (next: number) => {
+      if (next === lastEmittedValueRef.current) return
+      lastEmittedValueRef.current = next
+      onValueChange(next)
+    },
+    [onValueChange],
+  )
+
+  const finalizeOffset = useCallback(
+    (offsetX: number) => {
+      const next = valueFromOffset(offsetX)
+      emitValue(next)
+      syncScrollToValue(next)
+      isDraggingRef.current = false
+      hasMomentumRef.current = false
+
+      const queuedValue = queuedExternalValueRef.current
+      queuedExternalValueRef.current = null
+
+      if (queuedValue !== null && queuedValue !== next) {
+        lastEmittedValueRef.current = queuedValue
+        syncScrollToValue(queuedValue)
+      } else {
+        lastEmittedValueRef.current = next
+      }
+    },
+    [emitValue, syncScrollToValue, valueFromOffset],
+  )
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x
-      const next = valueFromOffset(offsetX)
-      lastReportedValueRef.current = next
-      if (next !== value) {
-        onValueChange(next)
-      }
+      emitValue(valueFromOffset(offsetX))
     },
-    [value, valueFromOffset, onValueChange],
+    [emitValue, valueFromOffset],
+  )
+
+  const handleScrollBeginDrag = useCallback(() => {
+    clearEndDragTimeout()
+    queuedExternalValueRef.current = null
+    hasMomentumRef.current = false
+    isDraggingRef.current = true
+  }, [clearEndDragTimeout])
+
+  const handleMomentumScrollBegin = useCallback(() => {
+    clearEndDragTimeout()
+    hasMomentumRef.current = true
+  }, [clearEndDragTimeout])
+
+  const handleScrollEndDrag = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x
+      clearEndDragTimeout()
+      endDragTimeoutRef.current = setTimeout(() => {
+        if (!hasMomentumRef.current) {
+          finalizeOffset(offsetX)
+        }
+      }, 0)
+    },
+    [clearEndDragTimeout, finalizeOffset],
   )
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = event.nativeEvent.contentOffset.x
-      const next = valueFromOffset(offsetX)
-      lastReportedValueRef.current = next
-      syncScrollToValue(next)
-      if (next !== value) {
-        onValueChange(next)
-      }
+      clearEndDragTimeout()
+      finalizeOffset(event.nativeEvent.contentOffset.x)
     },
-    [value, valueFromOffset, onValueChange, syncScrollToValue],
+    [clearEndDragTimeout, finalizeOffset],
   )
 
   const styles = useMemo(
@@ -198,7 +258,10 @@ export function RulerPicker({
           ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          onScrollBeginDrag={handleScrollBeginDrag}
           onScroll={handleScroll}
+          onScrollEndDrag={handleScrollEndDrag}
+          onMomentumScrollBegin={handleMomentumScrollBegin}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           scrollEventThrottle={16}
           snapToInterval={TICK_WIDTH}
