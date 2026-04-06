@@ -1,13 +1,6 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PanResponder, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+
 import { useThemedColors } from '@/hooks/useThemedColors'
 
 interface RulerPickerProps {
@@ -21,6 +14,7 @@ interface RulerPickerProps {
 }
 
 const TICK_WIDTH = 10
+const TAP_SLOP = 5
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n))
@@ -37,20 +31,21 @@ export function RulerPicker({
 }: RulerPickerProps) {
   const colors = useThemedColors()
   const { width } = useWindowDimensions()
-  const scrollViewRef = useRef<ScrollView>(null)
-  const valueRef = useRef(value)
-  const lastEmittedValueRef = useRef(value)
-  const isDraggingRef = useRef(false)
-  const hasMomentumRef = useRef(false)
-  const queuedExternalValueRef = useRef<number | null>(null)
-  const endDragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  valueRef.current = value
+  const rulerWidth = Math.max(0, width - 16)
+  const sidePadding = Math.max(0, (rulerWidth - TICK_WIDTH) / 2)
 
-  const clearEndDragTimeout = useCallback(() => {
-    if (endDragTimeoutRef.current === null) return
-    clearTimeout(endDragTimeoutRef.current)
-    endDragTimeoutRef.current = null
-  }, [])
+  const clampValue = useCallback(
+    (next: number) => clamp(next, min, max),
+    [max, min],
+  )
+
+  const [draftValue, setDraftValue] = useState(() => clampValue(value))
+  const draftValueRef = useRef(draftValue)
+  const gestureStartValueRef = useRef(draftValue)
+  const isPanningRef = useRef(false)
+  const ignorePropsUntilRef = useRef(0)
+  const pendingValueRef = useRef<number | null>(null)
+  const throttleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const totalTicks = Math.floor((max - min) / step) + 1
   const tickIndices = useMemo(
@@ -58,118 +53,97 @@ export function RulerPicker({
     [totalTicks],
   )
 
-  const offsetForValue = useCallback(
-    (v: number) => {
-      const tickIndex = Math.round((v - min) / step)
-      return tickIndex * TICK_WIDTH
-    },
-    [min, step],
-  )
-
-  const valueFromOffset = useCallback(
-    (offsetX: number) => {
-      const tickIndex = Math.round(offsetX / TICK_WIDTH)
-      return clamp(min + tickIndex * step, min, max)
-    },
-    [min, max, step],
-  )
-
-  const syncScrollToValue = useCallback(
-    (v: number) => {
-      scrollViewRef.current?.scrollTo({
-        x: offsetForValue(v),
-        animated: false,
-      })
-    },
-    [offsetForValue],
-  )
-
-  useLayoutEffect(() => {
-    syncScrollToValue(valueRef.current)
-    lastEmittedValueRef.current = valueRef.current
-  }, [min, max, step, syncScrollToValue])
-
   useEffect(() => {
-    if (value === lastEmittedValueRef.current) return
-    if (isDraggingRef.current || hasMomentumRef.current) {
-      queuedExternalValueRef.current = value
-      return
+    if (isPanningRef.current || Date.now() < ignorePropsUntilRef.current) return
+    const next = clampValue(value)
+    if (next !== draftValueRef.current) {
+      draftValueRef.current = next
+      setDraftValue(next)
     }
-    syncScrollToValue(value)
-    lastEmittedValueRef.current = value
-  }, [value, syncScrollToValue])
+  }, [clampValue, value])
 
-  useEffect(() => clearEndDragTimeout, [clearEndDragTimeout])
+  const onValueChangeRef = useRef(onValueChange)
+  useEffect(() => {
+    onValueChangeRef.current = onValueChange
+  }, [onValueChange])
 
-  const emitValue = useCallback(
+  const flushValueChange = useCallback(() => {
+    if (pendingValueRef.current !== null) {
+      onValueChangeRef.current(pendingValueRef.current)
+      pendingValueRef.current = null
+    }
+    throttleTimeoutRef.current = null
+  }, [])
+
+  const setNextValue = useCallback(
     (next: number) => {
-      if (next === lastEmittedValueRef.current) return
-      lastEmittedValueRef.current = next
-      onValueChange(next)
-    },
-    [onValueChange],
-  )
+      const clamped = clampValue(next)
+      if (clamped === draftValueRef.current) return
 
-  const finalizeOffset = useCallback(
-    (offsetX: number) => {
-      const next = valueFromOffset(offsetX)
-      emitValue(next)
-      syncScrollToValue(next)
-      isDraggingRef.current = false
-      hasMomentumRef.current = false
+      draftValueRef.current = clamped
+      setDraftValue(clamped)
 
-      const queuedValue = queuedExternalValueRef.current
-      queuedExternalValueRef.current = null
-
-      if (queuedValue !== null && queuedValue !== next) {
-        lastEmittedValueRef.current = queuedValue
-        syncScrollToValue(queuedValue)
-      } else {
-        lastEmittedValueRef.current = next
+      pendingValueRef.current = clamped
+      if (!throttleTimeoutRef.current) {
+        throttleTimeoutRef.current = setTimeout(flushValueChange, 32)
       }
     },
-    [emitValue, syncScrollToValue, valueFromOffset],
+    [clampValue, flushValueChange],
   )
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = event.nativeEvent.contentOffset.x
-      emitValue(valueFromOffset(offsetX))
-    },
-    [emitValue, valueFromOffset],
+  const offsetForValue = useCallback(
+    (next: number) => Math.round((clampValue(next) - min) / step) * TICK_WIDTH,
+    [clampValue, min, step],
   )
 
-  const handleScrollBeginDrag = useCallback(() => {
-    clearEndDragTimeout()
-    queuedExternalValueRef.current = null
-    hasMomentumRef.current = false
-    isDraggingRef.current = true
-  }, [clearEndDragTimeout])
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          isPanningRef.current = true
+          gestureStartValueRef.current = draftValueRef.current
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const tickDelta = Math.round(-gestureState.dx / TICK_WIDTH)
+          const target = gestureStartValueRef.current + tickDelta * step
+          setNextValue(target)
+        },
+        onPanResponderRelease: (event, gestureState) => {
+          isPanningRef.current = false
+          ignorePropsUntilRef.current = Date.now() + 250
 
-  const handleMomentumScrollBegin = useCallback(() => {
-    clearEndDragTimeout()
-    hasMomentumRef.current = true
-  }, [clearEndDragTimeout])
+          const wasTap =
+            Math.abs(gestureState.dx) < TAP_SLOP &&
+            Math.abs(gestureState.dy) < TAP_SLOP
 
-  const handleScrollEndDrag = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = event.nativeEvent.contentOffset.x
-      clearEndDragTimeout()
-      endDragTimeoutRef.current = setTimeout(() => {
-        if (!hasMomentumRef.current) {
-          finalizeOffset(offsetX)
-        }
-      }, 0)
-    },
-    [clearEndDragTimeout, finalizeOffset],
-  )
+          if (wasTap) {
+            const loc = event.nativeEvent as {
+              locationX?: number
+            }
+            const distanceFromCenter = (loc.locationX ?? 0) - rulerWidth / 2
+            const tickDelta = Math.round(distanceFromCenter / TICK_WIDTH)
+            setNextValue(draftValueRef.current + tickDelta * step)
+          }
 
-  const handleMomentumScrollEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      clearEndDragTimeout()
-      finalizeOffset(event.nativeEvent.contentOffset.x)
-    },
-    [clearEndDragTimeout, finalizeOffset],
+          if (throttleTimeoutRef.current) {
+            clearTimeout(throttleTimeoutRef.current)
+          }
+          flushValueChange()
+        },
+        onPanResponderTerminate: () => {
+          isPanningRef.current = false
+          ignorePropsUntilRef.current = Date.now() + 250
+          gestureStartValueRef.current = draftValueRef.current
+
+          if (throttleTimeoutRef.current) {
+            clearTimeout(throttleTimeoutRef.current)
+          }
+          flushValueChange()
+        },
+      }),
+    [rulerWidth, setNextValue, step, flushValueChange],
   )
 
   const styles = useMemo(
@@ -209,9 +183,16 @@ export function RulerPicker({
         rulerContainer: {
           height: 60,
           justifyContent: 'flex-end',
+          width: rulerWidth,
+          alignSelf: 'center',
+          overflow: 'hidden',
         },
         rulerContent: {
-          paddingHorizontal: (width - TICK_WIDTH) / 2,
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          height: '100%',
+          paddingHorizontal: sidePadding,
+          transform: [{ translateX: -offsetForValue(draftValue) }],
         },
         tick: {
           width: TICK_WIDTH,
@@ -232,7 +213,7 @@ export function RulerPicker({
         },
         indicator: {
           position: 'absolute',
-          left: width / 2 - 1,
+          left: rulerWidth / 2 - 1,
           bottom: 0,
           width: 2,
           height: 40,
@@ -240,7 +221,7 @@ export function RulerPicker({
           borderRadius: 1,
         },
       }),
-    [colors, width],
+    [colors, draftValue, offsetForValue, rulerWidth, sidePadding],
   )
 
   return (
@@ -248,26 +229,13 @@ export function RulerPicker({
       <View style={styles.header}>
         <Text style={styles.label}>{label}</Text>
         <View style={styles.valueContainer}>
-          <Text style={styles.value}>{value}</Text>
+          <Text style={styles.value}>{draftValue}</Text>
           <Text style={styles.unit}>{unit}</Text>
         </View>
       </View>
 
       <View style={styles.rulerContainer}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onScroll={handleScroll}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollBegin={handleMomentumScrollBegin}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          scrollEventThrottle={16}
-          snapToInterval={TICK_WIDTH}
-          decelerationRate="fast"
-          contentContainerStyle={styles.rulerContent}
-        >
+        <View style={styles.rulerContent}>
           {tickIndices.map((i) => (
             <View key={i} style={styles.tick}>
               <View
@@ -278,8 +246,9 @@ export function RulerPicker({
               />
             </View>
           ))}
-        </ScrollView>
+        </View>
         <View style={styles.indicator} pointerEvents="none" />
+        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
       </View>
     </View>
   )
