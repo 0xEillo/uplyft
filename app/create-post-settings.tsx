@@ -5,9 +5,11 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import {
+  getRestTimerSoundEnabled,
   getShowWarmupSets,
   getToolbarButtons,
   getWarmupCalculatorEnabled,
+  setRestTimerSoundEnabled,
   setShowWarmupSets,
   setToolbarButtons,
   setWarmupCalculatorEnabled,
@@ -55,6 +57,9 @@ export default function CreatePostSettingsScreen() {
   const [showWarmupSets, setShowWarmupSetsState] = useState(
     () => getShowWarmupSets(),
   )
+  const [restTimerSoundEnabled, setRestTimerSoundEnabledState] = useState(
+    () => getRestTimerSoundEnabled(),
+  )
   const styles = createStyles(colors)
 
   const handleGoBack = useCallback(() => {
@@ -91,6 +96,19 @@ export default function CreatePostSettingsScreen() {
       haptic('light')
       trackEvent(AnalyticsEvents.SETTINGS_CHANGED, {
         setting: 'create_post_warmup_calculator',
+        value: enabled,
+      })
+    },
+    [trackEvent],
+  )
+
+  const handleToggleRestTimerSound = useCallback(
+    (enabled: boolean) => {
+      setRestTimerSoundEnabledState(enabled)
+      setRestTimerSoundEnabled(enabled)
+      haptic('light')
+      trackEvent(AnalyticsEvents.SETTINGS_CHANGED, {
+        setting: 'create_post_rest_timer_sound',
         value: enabled,
       })
     },
@@ -164,6 +182,28 @@ export default function CreatePostSettingsScreen() {
                 onValueChange={handleToggleShowWarmupSets}
                 trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
                 thumbColor={showWarmupSets ? colors.brandPrimary : '#F3F4F6'}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Rest Timer</Text>
+          <View style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingTitle}>Play Sound</Text>
+                <Text style={styles.settingDescription}>
+                  Play a sound when your rest timer finishes.
+                </Text>
+              </View>
+              <Switch
+                value={restTimerSoundEnabled}
+                onValueChange={handleToggleRestTimerSound}
+                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
+                thumbColor={
+                  restTimerSoundEnabled ? colors.brandPrimary : '#F3F4F6'
+                }
               />
             </View>
           </View>

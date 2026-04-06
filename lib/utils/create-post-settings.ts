@@ -4,6 +4,7 @@ const storage = new MMKV({ id: 'create-post-settings' })
 
 const WARMUP_CALCULATOR_ENABLED_KEY = '@create_post_warmup_calculator_enabled'
 const TOOLBAR_BUTTONS_KEY = '@create_post_toolbar_buttons'
+const REST_TIMER_SOUND_ENABLED_KEY = '@create_post_rest_timer_sound_enabled'
 
 export function getWarmupCalculatorEnabled(): boolean {
   return storage.getBoolean(WARMUP_CALCULATOR_ENABLED_KEY) ?? true
@@ -97,4 +98,26 @@ export function getShowWarmupSets(): boolean {
 
 export function setShowWarmupSets(show: boolean): void {
   storage.set(SHOW_WARMUP_SETS_KEY, show)
+}
+
+export function getRestTimerSoundEnabled(): boolean {
+  return storage.getBoolean(REST_TIMER_SOUND_ENABLED_KEY) ?? true
+}
+
+export function setRestTimerSoundEnabled(enabled: boolean): void {
+  storage.set(REST_TIMER_SOUND_ENABLED_KEY, enabled)
+}
+
+export function subscribeToRestTimerSoundEnabled(
+  onChange: (enabled: boolean) => void,
+): () => void {
+  const listener = storage.addOnValueChangedListener((changedKey) => {
+    if (changedKey === REST_TIMER_SOUND_ENABLED_KEY) {
+      onChange(getRestTimerSoundEnabled())
+    }
+  })
+
+  return () => {
+    listener.remove()
+  }
 }

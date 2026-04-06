@@ -1,3 +1,7 @@
+import {
+  getRestTimerSoundEnabled,
+  subscribeToRestTimerSoundEnabled,
+} from '@/lib/utils/create-post-settings'
 import { useAudioPlayer } from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
@@ -14,10 +18,15 @@ import { MMKV } from 'react-native-mmkv'
 
 const timerSound = require('../assets/sounds/stopwatch.mp3')
 const REST_TIMER_CHANNEL_ID = 'rest_timer_alarm'
+const REST_TIMER_SILENT_CHANNEL_ID = 'rest_timer_alarm_silent'
 const REST_TIMER_SOUND_FILE = 'stopwatch.mp3'
 const REST_TIMER_VIBRATION_PATTERN = [0, 600, 250, 600]
 const REST_TIMER_STORAGE_KEY = '@rest_timer_state'
 const restTimerStorage = new MMKV({ id: 'rest-timer' })
+
+function getRestTimerChannelId(soundEnabled: boolean): string {
+  return soundEnabled ? REST_TIMER_CHANNEL_ID : REST_TIMER_SILENT_CHANNEL_ID
+}
 
 type PersistedRestTimerState = {
   durationSeconds: number
@@ -80,6 +89,16 @@ function getScheduledNotificationType(notification: unknown): unknown {
   )
 }
 
+function hasGrantedNotificationPermission(
+  settings: Notifications.NotificationPermissionsStatus,
+): boolean {
+  if (Platform.OS === 'ios') {
+    return settings.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED
+  }
+
+  return settings.status === 'granted'
+}
+
 interface RestTimerContextType {
   remainingSeconds: number
   isActive: boolean
@@ -97,6 +116,9 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   const [remainingSeconds, setRemainingSeconds] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const [initialDuration, setInitialDuration] = useState(0)
+  const [restTimerSoundEnabled, setRestTimerSoundEnabled] = useState(() =>
+    getRestTimerSoundEnabled(),
+  )
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const endTimeRef = useRef<number | null>(null)
@@ -104,10 +126,16 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   const notificationIdRef = useRef<string | null>(null)
   const initialDurationRef = useRef(0)
   const timerVersionRef = useRef(0)
+  const restTimerSoundEnabledRef = useRef(restTimerSoundEnabled)
+  const previousRestTimerSoundEnabledRef = useRef(restTimerSoundEnabled)
 
   const player = useAudioPlayer(timerSound)
 
   const playSound = useCallback(() => {
+    if (!restTimerSoundEnabledRef.current) {
+      return
+    }
+
     try {
       player.seekTo(0)
       player.play()
@@ -161,47 +189,46 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
         notificationIds.add(notificationIdRef.current)
       }
 
-    const persistedState = readPersistedRestTimerState()
-    if (persistedState?.notificationId) {
-      notificationIds.add(persistedState.notificationId)
-    }
+      const persistedState = readPersistedRestTimerState()
+      if (persistedState?.notificationId) {
+        notificationIds.add(persistedState.notificationId)
+      }
 
-    try {
-      const scheduledNotifications =
-        await Notifications.getAllScheduledNotificationsAsync()
+      try {
+        const scheduledNotifications =
+          await Notifications.getAllScheduledNotificationsAsync()
 
-      scheduledNotifications.forEach((notification) => {
-        if (getScheduledNotificationType(notification) === 'rest_timer') {
-          notificationIds.add(notification.identifier)
-        }
-      })
-    } catch (error) {
-      console.log('Error loading scheduled rest timer notifications:', error)
-    }
+        scheduledNotifications.forEach((notification) => {
+          if (getScheduledNotificationType(notification) === 'rest_timer') {
+            notificationIds.add(notification.identifier)
+          }
+        })
+      } catch (error) {
+        console.log('Error loading scheduled rest timer notifications:', error)
+      }
 
-    if (expectedTimerVersion !== timerVersionRef.current) {
-      return
-    }
+      if (expectedTimerVersion !== timerVersionRef.current) {
+        return
+      }
 
-    await Promise.allSettled(
-      Array.from(notificationIds).map((notificationId) =>
-        Notifications.cancelScheduledNotificationAsync(notificationId),
-      ),
-    )
+      await Promise.allSettled(
+        Array.from(notificationIds).map((notificationId) =>
+          Notifications.cancelScheduledNotificationAsync(notificationId),
+        ),
+      )
     },
     [],
   )
 
   const ensureNotificationPermission = useCallback(async () => {
     try {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
+      const existingSettings = await Notifications.getPermissionsAsync()
 
-      if (existingStatus === 'granted') {
+      if (hasGrantedNotificationPermission(existingSettings)) {
         return true
       }
 
-      const { status } = await Notifications.requestPermissionsAsync({
+      const nextSettings = await Notifications.requestPermissionsAsync({
         ios: {
           allowAlert: true,
           allowBadge: true,
@@ -209,51 +236,64 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
         },
       })
 
-      return status === 'granted'
+      return hasGrantedNotificationPermission(nextSettings)
     } catch (error) {
       console.log('Error requesting notification permission:', error)
       return false
     }
   }, [])
 
-  const ensureRestTimerChannel = useCallback(async () => {
+  const ensureRestTimerChannel = useCallback(async (soundEnabled: boolean) => {
     if (Platform.OS !== 'android') {
       return
     }
 
     try {
-      await Notifications.setNotificationChannelAsync(REST_TIMER_CHANNEL_ID, {
-        name: 'Rest Timer',
-        description: 'Alerts when your workout rest timer finishes.',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: REST_TIMER_VIBRATION_PATTERN,
-        enableVibrate: true,
-        enableLights: true,
-        showBadge: false,
-        lightColor: '#FF6B35',
-        sound: REST_TIMER_SOUND_FILE,
-        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-        audioAttributes: {
-          usage: Notifications.AndroidAudioUsage.ALARM,
-          contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      await Notifications.setNotificationChannelAsync(
+        getRestTimerChannelId(soundEnabled),
+        {
+          name: soundEnabled ? 'Rest Timer' : 'Rest Timer Silent',
+          description: soundEnabled
+            ? 'Alerts when your workout rest timer finishes.'
+            : 'Silent alerts when your workout rest timer finishes.',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: REST_TIMER_VIBRATION_PATTERN,
+          enableVibrate: true,
+          enableLights: true,
+          showBadge: false,
+          lightColor: '#FF6B35',
+          sound: soundEnabled ? REST_TIMER_SOUND_FILE : null,
+          lockscreenVisibility:
+            Notifications.AndroidNotificationVisibility.PUBLIC,
+          audioAttributes: soundEnabled
+            ? {
+                usage: Notifications.AndroidAudioUsage.ALARM,
+                contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+              }
+            : undefined,
         },
-      })
+      )
     } catch (error) {
       console.log('Error configuring rest timer notification channel:', error)
     }
   }, [])
 
   const createRestTimerNotificationContent = useCallback(
-    (useCustomSound: boolean): Notifications.NotificationContentInput => ({
+    (
+      soundEnabled: boolean,
+      useCustomSound: boolean,
+    ): Notifications.NotificationContentInput => ({
       title: 'Rest Complete ⏱️',
       body: 'Time to start your next set!',
       sound:
         Platform.OS === 'ios'
-          ? useCustomSound
-            ? REST_TIMER_SOUND_FILE
-            : 'default'
-          : true,
-      interruptionLevel: Platform.OS === 'ios' ? 'timeSensitive' : undefined,
+          ? soundEnabled
+            ? useCustomSound
+              ? REST_TIMER_SOUND_FILE
+              : 'default'
+            : false
+          : soundEnabled,
+      interruptionLevel: Platform.OS === 'ios' ? 'active' : undefined,
       priority:
         Platform.OS === 'android'
           ? Notifications.AndroidNotificationPriority.MAX
@@ -282,6 +322,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
+        const soundEnabled = restTimerSoundEnabledRef.current
         const hasPermission = await ensureNotificationPermission()
         if (!hasPermission) {
           persistTimerState({
@@ -292,20 +333,22 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        await ensureRestTimerChannel()
+        await ensureRestTimerChannel(soundEnabled)
 
         const trigger = {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: remainingSeconds,
           channelId:
-            Platform.OS === 'android' ? REST_TIMER_CHANNEL_ID : undefined,
+            Platform.OS === 'android'
+              ? getRestTimerChannelId(soundEnabled)
+              : undefined,
         } satisfies Notifications.TimeIntervalTriggerInput
 
         let notificationId: string
 
         try {
           notificationId = await Notifications.scheduleNotificationAsync({
-            content: createRestTimerNotificationContent(true),
+            content: createRestTimerNotificationContent(soundEnabled, true),
             trigger,
           })
         } catch (error) {
@@ -314,6 +357,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
 
           if (
             Platform.OS === 'ios' &&
+            soundEnabled &&
             errorMessage.includes(
               `Custom sound '${REST_TIMER_SOUND_FILE}' not found in native app`,
             )
@@ -322,7 +366,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
               `Custom notification sound ${REST_TIMER_SOUND_FILE} is unavailable in this iOS build. Falling back to the default sound.`,
             )
             notificationId = await Notifications.scheduleNotificationAsync({
-              content: createRestTimerNotificationContent(false),
+              content: createRestTimerNotificationContent(soundEnabled, false),
               trigger,
             })
           } else {
@@ -450,6 +494,42 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     },
     [activateTimer, isActive],
   )
+
+  useEffect(() => {
+    return subscribeToRestTimerSoundEnabled(setRestTimerSoundEnabled)
+  }, [])
+
+  useEffect(() => {
+    const previousRestTimerSoundEnabled =
+      previousRestTimerSoundEnabledRef.current
+
+    if (!isActive || !endTimeRef.current) {
+      restTimerSoundEnabledRef.current = restTimerSoundEnabled
+      previousRestTimerSoundEnabledRef.current = restTimerSoundEnabled
+      return
+    }
+
+    restTimerSoundEnabledRef.current = restTimerSoundEnabled
+    previousRestTimerSoundEnabledRef.current = restTimerSoundEnabled
+
+    if (previousRestTimerSoundEnabled === restTimerSoundEnabled) {
+      return
+    }
+
+    const remaining = getRemainingSeconds(endTimeRef.current)
+    if (remaining <= 0) {
+      return
+    }
+
+    timerVersionRef.current += 1
+    const timerVersion = timerVersionRef.current
+
+    void syncScheduledNotification(
+      endTimeRef.current,
+      initialDurationRef.current,
+      timerVersion,
+    )
+  }, [isActive, restTimerSoundEnabled, syncScheduledNotification])
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
