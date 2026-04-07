@@ -10,11 +10,28 @@ import {
 describe('posted workout optimization helpers', () => {
   test('prepends processed workout and removes pending placeholders', () => {
     const prev = [
-      { id: 'pending-1', isPending: true, workout_exercises: [] },
-      { id: 'old-1', workout_exercises: [] },
-      { id: 'old-2', workout_exercises: [] },
+      {
+        id: 'pending-1',
+        isPending: true,
+        created_at: '2026-04-07T12:01:00.000Z',
+        workout_exercises: [],
+      },
+      {
+        id: 'old-1',
+        created_at: '2026-04-07T11:00:00.000Z',
+        workout_exercises: [],
+      },
+      {
+        id: 'old-2',
+        created_at: '2026-04-07T10:00:00.000Z',
+        workout_exercises: [],
+      },
     ]
-    const workout = { id: 'new-1', workout_exercises: [] }
+    const workout = {
+      id: 'new-1',
+      created_at: '2026-04-07T12:30:00.000Z',
+      workout_exercises: [],
+    }
 
     const next = prependProcessedWorkoutToFeed(prev, workout)
 
@@ -26,15 +43,61 @@ describe('posted workout optimization helpers', () => {
 
   test('dedupes when processed workout already exists and still removes pending placeholders', () => {
     const prev = [
-      { id: 'pending-1', isPending: true, workout_exercises: [] },
-      { id: 'new-1', workout_exercises: [] },
-      { id: 'old-1', workout_exercises: [] },
+      {
+        id: 'pending-1',
+        isPending: true,
+        created_at: '2026-04-07T12:01:00.000Z',
+        workout_exercises: [],
+      },
+      {
+        id: 'new-1',
+        created_at: '2026-04-07T11:30:00.000Z',
+        workout_exercises: [],
+      },
+      {
+        id: 'old-1',
+        created_at: '2026-04-07T11:00:00.000Z',
+        workout_exercises: [],
+      },
     ]
-    const workout = { id: 'new-1', workout_exercises: [{ id: 'we-1' }] }
+    const workout = {
+      id: 'new-1',
+      created_at: '2026-04-07T12:30:00.000Z',
+      workout_exercises: [{ id: 'we-1' }],
+    }
 
     const next = prependProcessedWorkoutToFeed(prev, workout)
 
     expect(next.map((w) => w.id)).toEqual(['new-1', 'old-1'])
+    expect(next[0]?.workout_exercises).toEqual([{ id: 'we-1' }])
+  })
+
+  test('keeps a newer friend workout above an older processed workout', () => {
+    const prev = [
+      {
+        id: 'friend-newer',
+        created_at: '2026-04-07T12:58:00.000Z',
+        workout_exercises: [{ id: 'we-friend' }],
+      },
+      {
+        id: 'older',
+        created_at: '2026-04-07T12:40:00.000Z',
+        workout_exercises: [{ id: 'we-older' }],
+      },
+    ]
+    const workout = {
+      id: 'mine-older',
+      created_at: '2026-04-07T12:49:00.000Z',
+      workout_exercises: [{ id: 'we-mine' }],
+    }
+
+    const next = prependProcessedWorkoutToFeed(prev, workout)
+
+    expect(next.map((w) => w.id)).toEqual([
+      'friend-newer',
+      'mine-older',
+      'older',
+    ])
   })
 
   test('replaces workout in feed by id without changing order', () => {

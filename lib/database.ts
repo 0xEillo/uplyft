@@ -1945,14 +1945,15 @@ export const database = {
           `
           *,
           routine:workout_routines (id, name),
-          workout_exercises (
+          workout_exercises!inner (
             *,
             exercise:exercises (*),
-            sets (*)
+            sets!inner (*)
           )
         `,
         )
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .order('date', { ascending: false })
         .range(offset, offset + limit - 1)
 
@@ -2008,14 +2009,16 @@ export const database = {
           `
           *,
           routine:workout_routines (id, name),
-          workout_exercises (
+          workout_exercises!inner (
             *,
             exercise:exercises (*),
-            sets (*)
+            sets!inner (*)
           )
         `,
         )
         .in('user_id', authorIds)
+        .eq('is_processing', false)
+        .order('created_at', { ascending: false })
         .order('date', { ascending: false })
         .range(offset, offset + limit - 1)
 
@@ -2056,14 +2059,15 @@ export const database = {
           `
           *,
           routine:workout_routines (id, name),
-          workout_exercises (
+          workout_exercises!inner (
             *,
             exercise:exercises (*),
-            sets (*)
+            sets!inner (*)
           )
         `,
         )
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .gte('date', startDate.toISOString())
         .lte('date', endDate.toISOString())
         .order('date', { ascending: false })
@@ -2086,6 +2090,7 @@ export const database = {
         .from('workout_sessions')
         .select('id')
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .gte('date', startOfWeek.toISOString())
         .order('date', { ascending: true })
 
@@ -2114,6 +2119,7 @@ export const database = {
         .from('workout_sessions')
         .select('id, date, created_at')
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .gte('date', startOfWeek.toISOString())
         .lt('date', endOfWeek.toISOString())
         .order('date', { ascending: true })
@@ -2132,6 +2138,7 @@ export const database = {
         .from('workout_sessions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('is_processing', false)
 
       if (error) throw error
       return count || 0
@@ -2160,6 +2167,7 @@ export const database = {
         .from('workout_sessions')
         .select('id')
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .gte('date', dateStr)
         .lt('date', nextDateStr)
         .order('date', { ascending: true })
@@ -2261,6 +2269,7 @@ export const database = {
         )
         .eq('user_id', userId)
         .eq('routine_id', routineId)
+        .eq('is_processing', false)
         .order('date', { ascending: false })
         .limit(1)
         .single()
@@ -2290,6 +2299,7 @@ export const database = {
         .from('workout_sessions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('is_processing', false)
 
       if (error) throw error
       return count || 0
@@ -2324,6 +2334,7 @@ export const database = {
         `,
         )
         .eq('user_id', userId)
+        .eq('is_processing', false)
         .gte('date', fromDate.toISOString())
         .order('date', { ascending: false })
 

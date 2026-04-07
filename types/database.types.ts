@@ -115,6 +115,7 @@ export interface WorkoutSession {
   song?: WorkoutSong | null
   routine_id: string | null
   duration: number | null
+  is_processing?: boolean
   created_at: string
 }
 

@@ -237,7 +237,7 @@ export default function FeedScreen() {
   }, [])
 
   const loadHydratedPostedWorkout = useCallback(async (workoutId: string) => {
-    const retryDelaysMs = [0, 120, 260]
+    const retryDelaysMs = [0, 200, 500, 1000, 2000]
 
     for (const delayMs of retryDelaysMs) {
       if (delayMs > 0) {
@@ -246,7 +246,11 @@ export default function FeedScreen() {
 
       try {
         const hydratedWorkout = await database.workoutSessions.getById(workoutId)
-        if (hydratedWorkout) {
+        if (
+          hydratedWorkout &&
+          Array.isArray(hydratedWorkout.workout_exercises) &&
+          hydratedWorkout.workout_exercises.length > 0
+        ) {
           return hydratedWorkout
         }
       } catch (error) {
@@ -574,10 +578,10 @@ export default function FeedScreen() {
 
           // Add placeholder at the top if it exists
           const workoutsWithPlaceholder: WorkoutSessionWithDetails[] = placeholder
-            ? ([
+            ? prependProcessedWorkoutToFeed(
+                data,
                 (placeholder as unknown) as WorkoutSessionWithDetails,
-                ...data,
-              ] as WorkoutSessionWithDetails[])
+              )
             : data
 
           setWorkouts(workoutsWithPlaceholder)
@@ -656,13 +660,11 @@ export default function FeedScreen() {
           LayoutAnimation.configureNext(CustomSlideAnimation)
           setWorkouts((prev) => prependProcessedWorkoutToFeed(prev, nextWorkout))
           setOffset((prev) => prev + 1)
-          scrollFeedToTop(false)
         }
 
         const replacePostedWorkout = (nextWorkout: WorkoutSessionWithDetails) => {
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
           setWorkouts((prev) => replaceWorkoutInFeedById(prev, nextWorkout))
-          scrollFeedToTop(false)
         }
 
         const buildCelebrationPayload = (
@@ -966,17 +968,13 @@ export default function FeedScreen() {
       const checkAndLoadPlaceholder = async () => {
         const placeholder = await peekPendingWorkoutPlaceholder()
         if (placeholder) {
-          // Add placeholder to top of feed immediately
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
           setWorkouts((prev) => {
-            // Remove any existing placeholder first
-            const filtered = prev.filter((w: WorkoutWithPending) => !w.isPending)
-            return [
+            return prependProcessedWorkoutToFeed(
+              prev,
               (placeholder as unknown) as WorkoutSessionWithDetails,
-              ...filtered,
-            ]
+            )
           })
-          scrollFeedToTop(false)
         }
       }
 

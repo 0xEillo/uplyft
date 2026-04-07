@@ -29,10 +29,13 @@ import type {
   WeightUnit,
 } from '@/lib/utils/workout-draft'
 import {
+  clearPendingWorkoutProcessingLease,
   clearPendingArtifacts,
   createPlaceholderWorkout,
   loadPendingWorkout,
+  loadPendingWorkoutProcessingLease,
   loadPlaceholderWorkout,
+  savePendingWorkoutProcessingLease,
   savePendingWorkout,
   savePlaceholderWorkout,
 } from '@/lib/utils/workout-draft'
@@ -78,6 +81,8 @@ export type PendingProcessStatus =
       placeholder: PlaceholderWorkout | null
       error: unknown
     }
+
+const PENDING_WORKOUT_PROCESSING_LEASE_TTL_MS = 5 * 60 * 1000
 
 function safeCapture(event: string, properties?: Record<string, unknown>) {
   try {
@@ -315,12 +320,74 @@ export async function peekPendingWorkoutPlaceholder(): Promise<PlaceholderWorkou
   return loadPlaceholderWorkout()
 }
 
+function getPendingWorkoutProcessingLockId(pending: PendingWorkout): string {
+  const normalizedIdempotencyKey = pending.idempotencyKey?.trim()
+  if (normalizedIdempotencyKey) {
+    return normalizedIdempotencyKey
+  }
+
+  return [
+    pending.userId,
+    pending.performedAt,
+    pending.title.trim().toLowerCase(),
+  ].join(':')
+}
+
+async function claimPendingWorkoutProcessingLease(
+  pending: PendingWorkout,
+): Promise<{ token: string } | null> {
+  const startedAt = Date.now()
+  const lockId = getPendingWorkoutProcessingLockId(pending)
+  const existingLease = await loadPendingWorkoutProcessingLease()
+
+  if (
+    existingLease &&
+    existingLease.lockId === lockId &&
+    startedAt - existingLease.startedAt < PENDING_WORKOUT_PROCESSING_LEASE_TTL_MS
+  ) {
+    return null
+  }
+
+  const lease = {
+    token: `${Crypto.randomUUID()}:${startedAt}`,
+    lockId,
+    startedAt,
+  }
+
+  await savePendingWorkoutProcessingLease(lease)
+
+  const confirmedLease = await loadPendingWorkoutProcessingLease()
+  if (!confirmedLease || confirmedLease.token !== lease.token) {
+    return null
+  }
+
+  return { token: lease.token }
+}
+
+async function releasePendingWorkoutProcessingLease(
+  lease: { token: string } | null,
+): Promise<void> {
+  if (!lease) return
+
+  const existingLease = await loadPendingWorkoutProcessingLease()
+  if (!existingLease || existingLease.token !== lease.token) {
+    return
+  }
+
+  await clearPendingWorkoutProcessingLease()
+}
+
 export async function processPendingWorkoutSubmission(
   accessToken: string,
 ): Promise<PendingProcessStatus> {
   const pending = await loadPendingWorkout()
   if (!pending) {
     return { status: 'none' }
+  }
+
+  const processingLease = await claimPendingWorkoutProcessingLease(pending)
+  if (!processingLease) {
+    return { status: 'skipped' }
   }
 
   const placeholder = await loadPlaceholderWorkout()
@@ -364,6 +431,16 @@ export async function processPendingWorkoutSubmission(
 
     if (!response.createdWorkout) {
       throw new Error('Workout created without session payload')
+    }
+
+    if (response.createdWorkout.is_processing === true) {
+      safeCapture('Workout Pending Still Processing', {
+        userId: pending.userId,
+        workoutId: response.createdWorkout.id,
+        correlationId: response.correlationId ?? null,
+      })
+
+      return { status: 'skipped' }
     }
 
     await clearPendingArtifacts()
@@ -437,5 +514,7 @@ export async function processPendingWorkoutSubmission(
       placeholder,
       error,
     }
+  } finally {
+    await releasePendingWorkoutProcessingLease(processingLease)
   }
 }

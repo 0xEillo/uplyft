@@ -12,6 +12,7 @@ import {
 } from '../lib/utils/workout-submission-queue'
 import {
   loadPendingWorkout,
+  savePendingWorkoutProcessingLease,
   loadPlaceholderWorkout,
   savePendingWorkout,
   savePlaceholderWorkout,
@@ -246,6 +247,39 @@ describe('workout submission queue', () => {
     expect(await loadPlaceholderWorkout()).toBeNull()
   })
 
+  test('keeps pending artifacts when the server reports the workout is still processing', async () => {
+    const pending = makePendingWorkout()
+    await savePendingWorkout(pending)
+    await savePlaceholderWorkout({
+      id: 'temp-1',
+      title: pending.title,
+      imageUrl: pending.imageUrl,
+      song: pending.song,
+      created_at: performedAt,
+      isPending: true,
+      user_id: pending.userId,
+      profile: null,
+    })
+
+    mockPostWorkout.mockResolvedValue({
+      workout: {
+        isWorkoutRelated: true,
+        exercises: [],
+      },
+      createdWorkout: {
+        id: 'workout-1',
+        is_processing: true,
+      } as any,
+      correlationId: 'corr-1',
+    })
+
+    const result = await processPendingWorkoutSubmission('access-token')
+
+    expect(result).toEqual({ status: 'skipped' })
+    expect(await loadPendingWorkout()).toEqual(pending)
+    expect(await loadPlaceholderWorkout()).not.toBeNull()
+  })
+
   test('reuses the same idempotency key when retrying the same pending workout after offline failure', async () => {
     const pending = makePendingWorkout({ idempotencyKey: 'same-key' })
     await savePendingWorkout(pending)
@@ -287,6 +321,33 @@ describe('workout submission queue', () => {
     expect(mockPostWorkout).toHaveBeenCalledTimes(2)
     expect(mockPostWorkout.mock.calls[0]?.[0].idempotencyKey).toBe('same-key')
     expect(mockPostWorkout.mock.calls[1]?.[0].idempotencyKey).toBe('same-key')
+  })
+
+  test('skips processing when the same pending workout is already leased by another run', async () => {
+    const pending = makePendingWorkout({ idempotencyKey: 'same-key' })
+    await savePendingWorkout(pending)
+    await savePlaceholderWorkout({
+      id: 'temp-1',
+      title: pending.title,
+      imageUrl: pending.imageUrl,
+      song: pending.song,
+      created_at: performedAt,
+      isPending: true,
+      user_id: pending.userId,
+      profile: null,
+    })
+    await savePendingWorkoutProcessingLease({
+      token: 'lease-1',
+      lockId: 'same-key',
+      startedAt: Date.parse(performedAt),
+    })
+
+    const result = await processPendingWorkoutSubmission('access-token')
+
+    expect(result).toEqual({ status: 'skipped' })
+    expect(mockPostWorkout).not.toHaveBeenCalled()
+    expect(await loadPendingWorkout()).toEqual(pending)
+    expect(await loadPlaceholderWorkout()).not.toBeNull()
   })
 
   test('restores the composer session when background submission fails for a non-network reason', async () => {

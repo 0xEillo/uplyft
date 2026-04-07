@@ -3,6 +3,7 @@ import { MMKV } from 'react-native-mmkv'
 
 export const PENDING_POST_KEY = '@pending_workout_post'
 export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
+const PENDING_POST_PROCESSING_KEY = '@pending_workout_post_processing'
 const WORKOUT_DRAFT_SNAPSHOT_KEY = '@workout_draft_snapshot'
 const WORKOUT_DRAFT_OPS_KEY = '@workout_draft_ops'
 
@@ -147,6 +148,12 @@ export interface PlaceholderWorkout {
     display_name: string
     avatar_url: string | null
   } | null
+}
+
+export interface PendingWorkoutProcessingLease {
+  token: string
+  lockId: string
+  startedAt: number
 }
 
 export function draftHasContent(draft?: WorkoutDraft | null): boolean {
@@ -363,6 +370,29 @@ export async function clearPendingWorkout(): Promise<void> {
   removeKey(PENDING_POST_KEY)
 }
 
+export async function loadPendingWorkoutProcessingLease(): Promise<PendingWorkoutProcessingLease | null> {
+  const data = storage.getString(PENDING_POST_PROCESSING_KEY)
+  if (!data) return null
+
+  try {
+    return JSON.parse(data) as PendingWorkoutProcessingLease
+  } catch (error) {
+    console.error('Failed to parse pending workout processing lease', error)
+    removeKey(PENDING_POST_PROCESSING_KEY)
+    return null
+  }
+}
+
+export async function savePendingWorkoutProcessingLease(
+  lease: PendingWorkoutProcessingLease,
+): Promise<void> {
+  storage.set(PENDING_POST_PROCESSING_KEY, JSON.stringify(lease))
+}
+
+export async function clearPendingWorkoutProcessingLease(): Promise<void> {
+  removeKey(PENDING_POST_PROCESSING_KEY)
+}
+
 export async function loadPlaceholderWorkout(): Promise<PlaceholderWorkout | null> {
   const data = storage.getString(PLACEHOLDER_WORKOUT_KEY)
   if (!data) return null
@@ -387,7 +417,11 @@ export async function clearPlaceholderWorkout(): Promise<void> {
 }
 
 export async function clearPendingArtifacts(): Promise<void> {
-  await Promise.all([clearPendingWorkout(), clearPlaceholderWorkout()])
+  await Promise.all([
+    clearPendingWorkout(),
+    clearPlaceholderWorkout(),
+    clearPendingWorkoutProcessingLease(),
+  ])
 }
 
 export function createPlaceholderWorkout(
