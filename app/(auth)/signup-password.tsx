@@ -5,6 +5,10 @@ import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import {
+  persistOnboardingStrengthSnapshot,
+  type OnboardingStrengthSnapshotInput,
+} from '@/lib/onboarding-strength'
 import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import {
@@ -41,6 +45,7 @@ type OnboardingData = {
   commitment_frequency: CommitmentFrequency | null
   commitment_mode: CommitmentMode
   bio: string | null
+  strength_snapshot?: OnboardingStrengthSnapshotInput | null
 }
 
 export default function SignupPasswordScreen() {
@@ -119,6 +124,10 @@ export default function SignupPasswordScreen() {
 
     await database.profiles.upsert(profileUpdates)
     await persistOnboardingWeight(userId, onboardingData.weight_kg)
+    await persistOnboardingStrengthSnapshot(
+      userId,
+      onboardingData.strength_snapshot,
+    )
   }
 
   const handleSignup = async () => {

@@ -4,6 +4,7 @@ import { LevelBadge } from '@/components/LevelBadge'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { getLevelColor, LEVEL_COLORS } from '@/hooks/useStrengthData'
+import type { OnboardingStrengthSnapshotInput } from '@/lib/onboarding-strength'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
     EXERCISES_WITH_STANDARDS,
@@ -84,6 +85,9 @@ interface StrengthLevelIntroStepProps {
   weightUnit: 'kg' | 'lb'
   onComplete: () => void
   colors: ReturnType<typeof useThemedColors>
+  onStrengthSnapshotChange?: (
+    snapshot: OnboardingStrengthSnapshotInput | null,
+  ) => void
   onPhaseChange?: (
     phase: 'select' | 'input' | 'result' | 'affirmation' | 'rating'
   ) => void
@@ -174,6 +178,7 @@ export function StrengthLevelIntroStep({
   weightUnit,
   onComplete,
   colors,
+  onStrengthSnapshotChange,
   onPhaseChange,
 }: StrengthLevelIntroStepProps) {
   const [phase, setPhase] = useState<'select' | 'input' | 'result' | 'affirmation' | 'rating'>('select')
@@ -281,9 +286,10 @@ export function StrengthLevelIntroStep({
       handleContinueToInput()
     } else {
       haptic('light')
+      onStrengthSnapshotChange?.(null)
       onComplete()
     }
-  }, [selectedExercise, handleContinueToInput, onComplete])
+  }, [selectedExercise, handleContinueToInput, onComplete, onStrengthSnapshotChange])
 
   useEffect(() => {
     // Reset inputs when selected exercise changes
@@ -338,6 +344,12 @@ export function StrengthLevelIntroStep({
     )
 
     if (result) {
+      onStrengthSnapshotChange?.({
+        exerciseName: selectedExercise.name,
+        workingWeightKg: weightInKg,
+        reps,
+        estimated1RMKg: estimated1RM,
+      })
       setCalculatedLevel({
         level: result.level,
         progress: result.progress,
@@ -360,6 +372,7 @@ export function StrengthLevelIntroStep({
     weightKg,
     weightUnit,
     animateTransition,
+    onStrengthSnapshotChange,
   ])
 
   const renderSelectPhase = () => (
@@ -1639,4 +1652,3 @@ const styles = StyleSheet.create({
 })
 
 // Matches LifterLevelsSheet current card format
-

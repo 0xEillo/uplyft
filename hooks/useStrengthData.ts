@@ -1,5 +1,9 @@
 import { useAuth } from '@/contexts/auth-context'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
+import {
+  getOnboardingStrengthSnapshot,
+  mergeOnboardingStrengthSnapshotIntoExerciseData,
+} from '@/lib/onboarding-strength'
 import type {
   OverallStrengthGroup,
   OverallStrengthGroupBreakdown,
@@ -99,13 +103,24 @@ export function useStrengthData() {
       const strengthContext = await loadStrengthScoreDeltaContext<ExerciseData>(
         user.id,
       )
+      const onboardingStrengthSnapshot = await getOnboardingStrengthSnapshot(
+        user.id,
+      )
+      const mergedStrengthContext =
+        mergeOnboardingStrengthSnapshotIntoExerciseData({
+          exercises: strengthContext.exercises,
+          best1RMSnapshotByExerciseId:
+            strengthContext.best1RMSnapshotByExerciseId,
+          snapshot: onboardingStrengthSnapshot,
+        })
+
       setProfile(strengthContext.profile)
       setBest1RMSnapshotByExerciseId(
-        strengthContext.best1RMSnapshotByExerciseId,
+        mergedStrengthContext.best1RMSnapshotByExerciseId,
       )
 
       // Sort by max1RM descending
-      const sorted = [...strengthContext.exercises].sort(
+      const sorted = [...mergedStrengthContext.exercises].sort(
         (a, b) => b.max1RM - a.max1RM,
       )
       setExerciseData(sorted)

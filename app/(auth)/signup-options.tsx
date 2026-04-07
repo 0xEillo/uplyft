@@ -3,6 +3,10 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import {
+  persistOnboardingStrengthSnapshot,
+  type OnboardingStrengthSnapshotInput,
+} from '@/lib/onboarding-strength'
 import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import {
   resolveOnboardingDisplayName,
@@ -43,6 +47,7 @@ type OnboardingData = {
   commitment_mode: CommitmentMode
   experience_level: ExperienceLevel | null
   bio: string | null
+  strength_snapshot?: OnboardingStrengthSnapshotInput | null
 }
 
 export default function SignupOptionsScreen() {
@@ -121,6 +126,10 @@ export default function SignupOptionsScreen() {
 
     await database.profiles.upsert(profileUpdates)
     await persistOnboardingWeight(userId, onboardingData.weight_kg)
+    await persistOnboardingStrengthSnapshot(
+      userId,
+      onboardingData.strength_snapshot,
+    )
   }
 
   const handleAppleSignup = async () => {

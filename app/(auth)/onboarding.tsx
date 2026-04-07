@@ -22,6 +22,10 @@ import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import {
+  persistOnboardingStrengthSnapshot,
+  type OnboardingStrengthSnapshotInput,
+} from '@/lib/onboarding-strength'
 import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { supabase } from '@/lib/supabase'
 import {
@@ -80,6 +84,7 @@ type OnboardingData = {
   equipment: string[]
   bio: string
   coach: string
+  strength_snapshot: OnboardingStrengthSnapshotInput | null
   // Calorie tracking fields
   wantsCalorieTracking: boolean | null
   calorieGoal: number | null
@@ -1621,6 +1626,7 @@ export default function OnboardingScreen() {
     equipment: [],
     bio: '',
     coach: DEFAULT_COACH_ID,
+    strength_snapshot: null,
     // Calorie tracking
     wantsCalorieTracking: null,
     calorieGoal: null,
@@ -1995,6 +2001,10 @@ export default function OnboardingScreen() {
               console.error('Error creating profile:', error)
             } else {
               await persistOnboardingWeight(currentUserId, weightKg)
+              await persistOnboardingStrengthSnapshot(
+                currentUserId,
+                data.strength_snapshot,
+              )
 
               // Refresh profile context so chat has the correct coach data
               await refreshProfile()
@@ -2951,6 +2961,12 @@ export default function OnboardingScreen() {
             weightUnit={weightUnit}
             onComplete={handleNext}
             colors={colors}
+            onStrengthSnapshotChange={(strengthSnapshot) =>
+              setData((prev) => ({
+                ...prev,
+                strength_snapshot: strengthSnapshot,
+              }))
+            }
             onPhaseChange={setStrengthIntroPhase}
           />
         )

@@ -6,6 +6,10 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import {
+  persistOnboardingStrengthSnapshot,
+  type OnboardingStrengthSnapshotInput,
+} from '@/lib/onboarding-strength'
 import { persistOnboardingWeight } from '@/lib/onboarding-weight'
 import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
 import { scheduleTrialExpirationNotification } from '@/lib/services/notification-service'
@@ -64,6 +68,7 @@ export default function TrialOfferScreen() {
     experience_level: ExperienceLevel | null
     bio: string | null
     coach: string | null
+    strength_snapshot?: OnboardingStrengthSnapshotInput | null
   }
 
   const onboardingData: OnboardingData | null = params.onboarding_data
@@ -128,6 +133,10 @@ export default function TrialOfferScreen() {
       }
 
       await persistOnboardingWeight(userId, onboardingData.weight_kg)
+      await persistOnboardingStrengthSnapshot(
+        userId,
+        onboardingData.strength_snapshot,
+      )
     } catch (error) {
       console.error('[TrialOffer] Error setting up guest profile:', error)
     }
