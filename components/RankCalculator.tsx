@@ -12,7 +12,6 @@ import {
   type StrengthLevel,
 } from '@/lib/exercise-standards-config'
 import { estimateOneRepMaxKg } from '@/lib/strength-progress'
-import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -189,14 +188,6 @@ export function RankCalculator() {
     setShowRankModal(true)
   }
 
-  const scrollLeft = () => {
-    carouselRef.current?.scrollToOffset({ offset: 0, animated: true })
-  }
-
-  const scrollRight = () => {
-    carouselRef.current?.scrollToEnd({ animated: true })
-  }
-
   const modalStyles = useMemo(
     () =>
       StyleSheet.create({
@@ -303,15 +294,10 @@ export function RankCalculator() {
       backgroundColor: colors.bg,
     },
     carouselContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
       marginBottom: 16,
     },
-    carouselArrow: {
-      padding: 10,
-    },
     carousel: {
-      flex: 1,
+      width: '100%',
     },
     carouselContent: {
       alignItems: 'center',
@@ -322,18 +308,28 @@ export function RankCalculator() {
       alignItems: 'center',
       marginHorizontal: 12,
       width: 80,
+      minHeight: 112,
+      justifyContent: 'flex-start',
       opacity: 0.5,
     },
     exerciseCardSelected: {
       opacity: 1,
       transform: [{ scale: 1.1 }],
     },
+    exerciseNameWrap: {
+      height: 40,
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      marginBottom: 8,
+      width: '100%',
+    },
     exerciseNameCarousel: {
       fontSize: 14,
+      lineHeight: 18,
       fontWeight: '700',
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: 8,
+      width: '100%',
     },
     exerciseThumbnail: {
       width: 64,
@@ -367,10 +363,6 @@ export function RankCalculator() {
   return (
     <View style={styles.container}>
       <View style={styles.carouselContainer}>
-        <TouchableOpacity style={styles.carouselArrow} onPress={scrollLeft}>
-          <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
-        </TouchableOpacity>
-
         <FlatList
           ref={carouselRef}
           data={rankedExercises}
@@ -404,9 +396,11 @@ export function RankCalculator() {
                 setShowRankModal(false)
               }}
             >
-              <Text style={styles.exerciseNameCarousel} numberOfLines={2}>
-                {getExerciseDisplayName(exercise.name)}
-              </Text>
+              <View style={styles.exerciseNameWrap}>
+                <Text style={styles.exerciseNameCarousel} numberOfLines={2}>
+                  {getExerciseDisplayName(exercise.name)}
+                </Text>
+              </View>
               <ExerciseMediaThumbnail
                 gifUrl={exercise.gifUrl}
                 style={styles.exerciseThumbnail}
@@ -414,14 +408,6 @@ export function RankCalculator() {
             </TouchableOpacity>
           )}
         />
-
-        <TouchableOpacity style={styles.carouselArrow} onPress={scrollRight}>
-          <Ionicons
-            name="chevron-forward"
-            size={28}
-            color={colors.textPrimary}
-          />
-        </TouchableOpacity>
       </View>
 
       {!isRepBasedExercise && (

@@ -18,6 +18,18 @@ function resolveExerciseMediaUrl(gifUrl: string): string {
   return `${STORAGE_BUCKET_URL}${gifUrl}`
 }
 
+function getExerciseMediaContentFit(
+  mediaUrl: string,
+): ExerciseMediaContentFit {
+  const normalizedUrl = mediaUrl.split('?')[0].toLowerCase()
+
+  if (normalizedUrl.endsWith('.gif')) {
+    return 'contain'
+  }
+
+  return 'cover'
+}
+
 type ExerciseMediaContentFit =
   | 'contain'
   | 'cover'
@@ -50,6 +62,10 @@ export const ExerciseMedia = memo(function ExerciseMedia({
     if (!gifUrl) return null
     return resolveExerciseMediaUrl(gifUrl)
   }, [gifUrl])
+  const resolvedContentFit = useMemo(() => {
+    if (!fullUrl) return contentFit
+    return getExerciseMediaContentFit(fullUrl)
+  }, [contentFit, fullUrl])
 
   if (!fullUrl || hasError) {
     return (
@@ -68,7 +84,7 @@ export const ExerciseMedia = memo(function ExerciseMedia({
       <Image
         source={{ uri: fullUrl }}
         style={styles.image}
-        contentFit={contentFit}
+        contentFit={resolvedContentFit}
         autoplay={autoPlay}
         cachePolicy="memory-disk"
         recyclingKey={gifUrl}
@@ -100,6 +116,10 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
     if (!gifUrl) return null
     return resolveExerciseMediaUrl(gifUrl)
   }, [gifUrl])
+  const contentFit = useMemo(() => {
+    if (!fullUrl) return 'contain'
+    return getExerciseMediaContentFit(fullUrl)
+  }, [fullUrl])
 
   if (!fullUrl) {
     return (
@@ -118,7 +138,7 @@ export const ExerciseMediaThumbnail = memo(function ExerciseMediaThumbnail({
       <Image
         source={{ uri: fullUrl }}
         style={styles.image}
-        contentFit="contain"
+        contentFit={contentFit}
         autoplay={autoPlay}
         cachePolicy="memory-disk"
         recyclingKey={gifUrl}
