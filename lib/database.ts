@@ -448,6 +448,37 @@ const hydrateMissingWorkoutExerciseRelations = async <
   return workouts
 }
 
+const SOCIAL_FEED_WORKOUT_SELECT = `
+  id,
+  user_id,
+  date,
+  notes,
+  type,
+  image_url,
+  song,
+  routine_id,
+  duration,
+  created_at,
+  routine:workout_routines (id, name),
+  workout_exercises!inner (
+    id,
+    exercise_id,
+    order_index,
+    exercise_name,
+    exercise:exercises (
+      id,
+      name,
+      created_by,
+      gif_url
+    ),
+    sets!inner (
+      reps,
+      weight,
+      is_warmup
+    )
+  )
+`
+
 const hydrateMissingWorkoutRoutineExerciseRelations = async <
   T extends RoutineWithNullableExerciseRelations,
 >(
@@ -2005,17 +2036,7 @@ export const database = {
       // Fetch workouts from all these users
       const { data: workouts, error } = await supabase
         .from('workout_sessions')
-        .select(
-          `
-          *,
-          routine:workout_routines (id, name),
-          workout_exercises!inner (
-            *,
-            exercise:exercises (*),
-            sets!inner (*)
-          )
-        `,
-        )
+        .select(SOCIAL_FEED_WORKOUT_SELECT)
         .in('user_id', authorIds)
         .eq('is_processing', false)
         .order('created_at', { ascending: false })

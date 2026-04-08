@@ -5,7 +5,7 @@ import { Animated } from 'react-native'
 
 interface AnimatedFeedCardProps {
   workout: WorkoutSessionWithDetails
-  onDelete: () => void
+  onDeleteWorkout: (workoutId: string) => void
   index: number
   isNew?: boolean
   isDeleting?: boolean
@@ -21,7 +21,7 @@ interface AnimatedFeedCardProps {
  */
 export const AnimatedFeedCard = memo(function AnimatedFeedCard({
   workout,
-  onDelete,
+  onDeleteWorkout,
   index,
   isNew = false,
   isDeleting = false,
@@ -87,10 +87,10 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
         }),
       ]).start(() => {
         // Call onDelete after animation completes
-        onDelete()
+        onDeleteWorkout(workout.id)
       })
     }
-  }, [isDeleting, slideAnim, opacityAnim, scaleAnim, onDelete])
+  }, [isDeleting, onDeleteWorkout, opacityAnim, scaleAnim, slideAnim, workout.id])
 
   return (
     <Animated.View
@@ -101,7 +101,7 @@ export const AnimatedFeedCard = memo(function AnimatedFeedCard({
     >
       <AsyncPrFeedCard
         workout={workout}
-        onDelete={onDelete}
+        onDeleteWorkout={onDeleteWorkout}
         isFirst={isFirst}
         isProcessingPending={isProcessingPending}
       />

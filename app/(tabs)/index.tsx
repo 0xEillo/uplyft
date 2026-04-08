@@ -1050,6 +1050,28 @@ export default function FeedScreen() {
     persistAppPostState(nextState)
   }, [appPosts, appPostState, persistAppPostState, user, userWorkoutCount])
 
+  const handleDeleteWorkout = useCallback(
+    (workoutId: string) => {
+      if (workoutId === deletingWorkoutId) {
+        LayoutAnimation.configureNext(CardDeleteAnimation)
+        setWorkouts((prev) => prev.filter((w) => w.id !== workoutId))
+        setDeletingWorkoutId(null)
+        setUserWorkoutCount((prev) => Math.max(0, prev - 1))
+
+        trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
+          workout_id: workoutId,
+        })
+        return
+      }
+
+      setDeletingWorkoutId(workoutId)
+      trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
+        workout_id: workoutId,
+      })
+    },
+    [deletingWorkoutId, trackEvent],
+  )
+
   const renderFeedItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => {
       if (item.type === 'app_post') {
@@ -1080,38 +1102,18 @@ export default function FeedScreen() {
           isProcessingPending={
             pendingPlaceholderUiStatus === 'processing'
           }
-          onDelete={() => {
-            // If already marked for deletion, actually remove from state
-            if (workout.id === deletingWorkoutId) {
-              // Smooth layout animation for remaining cards sliding up
-              LayoutAnimation.configureNext(CardDeleteAnimation)
-              setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
-              setDeletingWorkoutId(null)
-              setUserWorkoutCount((prev) => Math.max(0, prev - 1))
-
-              trackEvent(AnalyticsEvents.WORKOUT_DELETE_CONFIRMED, {
-                workout_id: workout.id,
-              })
-            } else {
-              // Mark for deletion to trigger exit animation
-              setDeletingWorkoutId(workout.id)
-
-              trackEvent(AnalyticsEvents.WORKOUT_DELETE_REQUESTED, {
-                workout_id: workout.id,
-              })
-            }
-          }}
+          onDeleteWorkout={handleDeleteWorkout}
         />
       )
     },
     [
       newWorkoutId,
       deletingWorkoutId,
-      trackEvent,
       isProcessingPending,
       isPendingPlaceholderProcessingLatched,
       handleAppPostCta,
       handleAppPostDismiss,
+      handleDeleteWorkout,
     ],
   )
 

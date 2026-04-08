@@ -396,9 +396,11 @@ export const FeedCard = memo(function FeedCard({
 
   // Load workout count for the week
   useEffect(() => {
-    if (!workout?.date || !userId || !workoutId) {
+    if (!showShareScreen || !workout?.date || !userId || !workoutId) {
       return
     }
+
+    let isMounted = true
 
     const fetchCount = async () => {
       try {
@@ -407,14 +409,20 @@ export const FeedCard = memo(function FeedCard({
           new Date(workout.date),
           workoutId,
         )
-        setWorkoutCountThisWeek(count)
+        if (isMounted) {
+          setWorkoutCountThisWeek(count)
+        }
       } catch (error) {
         console.error('Error fetching workout count:', error)
       }
     }
 
-    fetchCount()
-  }, [workout?.date, workoutId, userId])
+    void fetchCount()
+
+    return () => {
+      isMounted = false
+    }
+  }, [showShareScreen, workout?.date, workoutId, userId])
 
   // Fade in exercises when data loads
   useEffect(() => {

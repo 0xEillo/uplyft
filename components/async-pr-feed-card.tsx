@@ -16,6 +16,7 @@ import { countWorkoutRecords } from '@/lib/utils/pr-count'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
+import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import {
   consumeWorkoutSocialUpdate,
   subscribeWorkoutSocialUpdates,
@@ -51,7 +52,7 @@ interface PrInfo {
 
 interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails
-  onDelete: () => void
+  onDeleteWorkout: (workoutId: string) => void
   isFirst?: boolean
   /** Whether a pending workout is actively being processed (vs just queued) */
   isProcessingPending?: boolean
@@ -63,7 +64,7 @@ interface AsyncPrFeedCardProps {
  */
 export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   workout,
-  onDelete,
+  onDeleteWorkout,
   isFirst = false,
   isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
@@ -193,7 +194,13 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   // Fetch social stats
   useEffect(() => {
-    void fetchSocialStats()
+    const handle = runAfterInteractions(() => {
+      void fetchSocialStats()
+    })
+
+    return () => {
+      handle.cancel?.()
+    }
   }, [fetchSocialStats])
 
   // Keep this card in sync with social changes made from other screens
@@ -313,14 +320,35 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }
     }
 
-    compute()
+    const handle = runAfterInteractions(() => {
+      void compute()
+    })
 
     return () => {
       isMounted = false
+      handle.cancel?.()
     }
   }, [computeContext])
 
-  const exercises = formatWorkoutForDisplay(workout, weightUnit, !getShowWarmupSets())
+  const exercises = useMemo(
+    () => formatWorkoutForDisplay(workout, weightUnit, !getShowWarmupSets()),
+    [weightUnit, workout],
+  )
+
+  const feedStats = useMemo(
+    () => ({
+      exercises: (workout.workout_exercises || []).length,
+      sets:
+        workout.workout_exercises?.reduce(
+          (sum, we) => sum + (we.sets?.length || 0),
+          0,
+        ) || 0,
+      prs,
+      durationSeconds: workout.duration ?? undefined,
+      volume: calculateTotalVolume(workout, 'kg'),
+    }),
+    [prs, workout],
+  )
 
   const handleUserPress = useCallback(() => {
     if (!workout.user_id) return
@@ -338,7 +366,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     // FeedCard already shows confirmation - this is the "confirmed" callback
     try {
       await database.workoutSessions.delete(workout.id, user.id)
-      onDelete()
+      onDeleteWorkout(workout.id)
     } catch (error) {
       console.error('Error deleting workout:', error)
       if (error instanceof OwnershipError) {
@@ -347,7 +375,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }
       Alert.alert('Error', 'Failed to delete workout. Please try again.')
     }
-  }, [isOwnWorkout, onDelete, user?.id, workout.id])
+  }, [isOwnWorkout, onDeleteWorkout, user?.id, workout.id])
 
   const handleCreateRoutine = useCallback(() => {
     router.push({
@@ -475,17 +503,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }
       workoutSong={workout.song ?? null}
       exercises={exercises}
-      stats={{
-        exercises: (workout.workout_exercises || []).length,
-        sets:
-          workout.workout_exercises?.reduce(
-            (sum, we) => sum + (we.sets?.length || 0),
-            0,
-          ) || 0,
-        prs,
-        durationSeconds: workout.duration ?? undefined,
-        volume: calculateTotalVolume(workout, 'kg'),
-      }}
+      stats={feedStats}
       userId={workout.user_id}
       workoutId={workout.id}
       workout={isPending ? undefined : workout}
