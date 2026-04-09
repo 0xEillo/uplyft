@@ -446,74 +446,42 @@ const TAB_EMPTY_STATE_COPY: Record<ActiveTab, TabEmptyStateCopy> = {
 const TabEmptyState = memo(
   ({
     activeTab,
-    showOverview = false,
+    onPress,
   }: {
     activeTab: ActiveTab
     onPress?: () => void
-    showOverview?: boolean
   }) => {
     const colors = useThemedColors()
     const copy = TAB_EMPTY_STATE_COPY[activeTab]
 
     return (
       <View style={emptyTabStyles.container}>
-        <Ionicons
-          name={copy.icon}
-          size={26}
-          color={colors.textTertiary}
-          style={emptyTabStyles.icon}
-        />
+        <View style={[emptyTabStyles.iconContainer, { backgroundColor: colors.surfaceSubtle }]}>
+          <Ionicons
+            name={copy.icon}
+            size={32}
+            color={colors.textSecondary}
+          />
+        </View>
 
-        <Text style={[emptyTabStyles.title, { color: colors.textTertiary }]}>
+        <Text style={[emptyTabStyles.title, { color: colors.textPrimary }]}>
           {copy.title}
         </Text>
-        <Text style={[emptyTabStyles.description, { color: colors.textTertiary }]}>
+        <Text style={[emptyTabStyles.description, { color: colors.textSecondary }]}>
           {copy.description}
         </Text>
 
-        {showOverview && (
-          <View
-            style={[
-              emptyTabStyles.overviewCard,
-              {
-                backgroundColor: colors.surfaceSubtle,
-                borderColor: colors.border,
-              },
-            ]}
+        {onPress && (
+          <TouchableOpacity
+            style={[emptyTabStyles.button, { backgroundColor: colors.textPrimary }]}
+            onPress={onPress}
+            activeOpacity={0.8}
           >
-            <Text style={[emptyTabStyles.overviewEyebrow, { color: colors.textSecondary }]}>
-              Available in Body Log
+            <Text style={[emptyTabStyles.buttonText, { color: colors.bg }]}>
+              {copy.buttonText}
             </Text>
-            <View style={emptyTabStyles.overviewChips}>
-              {TABS.map((tab) => {
-                const isActive = tab.id === activeTab
-                return (
-                  <View
-                    key={tab.id}
-                    style={[
-                      emptyTabStyles.overviewChip,
-                      isActive
-                        ? { backgroundColor: colors.textPrimary }
-                        : { backgroundColor: colors.bg, borderColor: colors.border },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        emptyTabStyles.overviewChipText,
-                        isActive
-                          ? { color: colors.bg }
-                          : { color: colors.textSecondary },
-                      ]}
-                    >
-                      {tab.label}
-                    </Text>
-                  </View>
-                )
-              })}
-            </View>
-          </View>
+          </TouchableOpacity>
         )}
-
       </View>
     )
   },
@@ -523,58 +491,42 @@ TabEmptyState.displayName = 'TabEmptyState'
 const emptyTabStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingHorizontal: 32,
+    paddingTop: 60,
     paddingBottom: 80,
   },
-  icon: {
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    maxWidth: 280,
-    opacity: 0.7,
-  },
-  overviewCard: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  iconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 24,
   },
-  overviewEyebrow: {
-    fontSize: 12,
+  title: {
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    textAlign: 'center',
     marginBottom: 12,
+    letterSpacing: -0.4,
   },
-  overviewChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 32,
   },
-  overviewChip: {
+  button: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 160,
+    alignItems: 'center',
   },
-  overviewChipText: {
-    fontSize: 13,
+  buttonText: {
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: -0.2,
   },
 })
 
@@ -1157,56 +1109,58 @@ export default function BodyLogScreen() {
 
   // Shared tabs header
   const TabsHeader = useMemo(() => (
-    <ScrollView
-      ref={(node) => {
-        tabsScrollRef.current = node
-      }}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentOffset={{ x: tabsScrollOffsetRef.current, y: 0 }}
-      scrollEventThrottle={16}
-      onScroll={(event) => {
-        tabsScrollOffsetRef.current = event.nativeEvent.contentOffset.x
-      }}
-      onLayout={(event) => {
-        tabsViewportWidthRef.current = event.nativeEvent.layout.width
-        requestAnimationFrame(() => scrollTabIntoView(activeTab))
-      }}
-      onContentSizeChange={(width) => {
-        tabsContentWidthRef.current = width
-        requestAnimationFrame(() => scrollTabIntoView(activeTab))
-      }}
-      contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 20 }}
-    >
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.id
-        return (
-          <TouchableOpacity
-            key={tab.id}
-            onLayout={(event) => {
-              const { x, width } = event.nativeEvent.layout
-              tabLayoutsRef.current[tab.id] = { x, width }
-              if (tab.id === activeTab) {
-                requestAnimationFrame(() => scrollTabIntoView(tab.id))
-              }
-            }}
-            style={[
-              tabStyles.pill,
-              isActive ? { backgroundColor: colors.textPrimary } : { backgroundColor: colors.surfaceSubtle },
-            ]}
-            onPress={() => handleTabPress(tab.id)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              tabStyles.pillText,
-              isActive ? { color: colors.bg, fontWeight: '700' } : { color: colors.textSecondary, fontWeight: '600' },
-            ]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        )
-      })}
-    </ScrollView>
+    <View style={{ flexGrow: 0, flexShrink: 0 }}>
+      <ScrollView
+        ref={(node) => {
+          tabsScrollRef.current = node
+        }}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentOffset={{ x: tabsScrollOffsetRef.current, y: 0 }}
+        scrollEventThrottle={16}
+        onScroll={(event) => {
+          tabsScrollOffsetRef.current = event.nativeEvent.contentOffset.x
+        }}
+        onLayout={(event) => {
+          tabsViewportWidthRef.current = event.nativeEvent.layout.width
+          requestAnimationFrame(() => scrollTabIntoView(activeTab))
+        }}
+        onContentSizeChange={(width) => {
+          tabsContentWidthRef.current = width
+          requestAnimationFrame(() => scrollTabIntoView(activeTab))
+        }}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 20 }}
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              onLayout={(event) => {
+                const { x, width } = event.nativeEvent.layout
+                tabLayoutsRef.current[tab.id] = { x, width }
+                if (tab.id === activeTab) {
+                  requestAnimationFrame(() => scrollTabIntoView(tab.id))
+                }
+              }}
+              style={[
+                tabStyles.pill,
+                isActive ? { backgroundColor: colors.textPrimary } : { backgroundColor: colors.surfaceSubtle },
+              ]}
+              onPress={() => handleTabPress(tab.id)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                tabStyles.pillText,
+                isActive ? { color: colors.bg, fontWeight: '700' } : { color: colors.textSecondary, fontWeight: '600' },
+              ]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    </View>
   ), [activeTab, colors, handleTabPress, scrollTabIntoView])
 
   const refreshControl = (
@@ -1257,7 +1211,6 @@ export default function BodyLogScreen() {
             <TabEmptyState
               activeTab={activeTab}
               onPress={handleContextAdd}
-              showOverview
             />
           </ScrollView>
         ) : activeTab === 'weight' ? (
