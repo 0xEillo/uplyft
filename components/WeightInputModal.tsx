@@ -1,8 +1,12 @@
-import { useUnit, type WeightUnit } from '@/contexts/unit-context'
+import {
+  kgToPreferred,
+  useUnit,
+  type WeightUnit,
+} from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -18,6 +22,20 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const WEIGHT_UNITS: WeightUnit[] = ['kg', 'lb']
+
+const formatWeightInputValue = (
+  weightKg: number | null | undefined,
+  unit: WeightUnit,
+): string => {
+  if (weightKg === null || weightKg === undefined || Number.isNaN(weightKg)) {
+    return ''
+  }
+
+  const preferredWeight = kgToPreferred(weightKg, unit)
+  return unit === 'kg'
+    ? preferredWeight.toFixed(1)
+    : Math.round(preferredWeight).toString()
+}
 
 interface WeightInputModalProps {
   visible: boolean
@@ -36,12 +54,17 @@ export function WeightInputModal({
   const insets = useSafeAreaInsets()
   const { weightUnit, setWeightUnit, convertInputToKg } = useUnit()
 
-  const [weightInput, setWeightInput] = useState(
-    initialValue !== null && initialValue !== undefined
-      ? initialValue.toFixed(1)
-      : '',
-  )
+  const [weightInput, setWeightInput] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const wasVisibleRef = useRef(false)
+
+  useEffect(() => {
+    if (visible && !wasVisibleRef.current) {
+      setWeightInput(formatWeightInputValue(initialValue, weightUnit))
+    }
+
+    wasVisibleRef.current = visible
+  }, [initialValue, visible, weightUnit])
 
   const normalizedWeight = weightInput.replace(',', '.')
   const weightValue =
@@ -64,6 +87,14 @@ export function WeightInputModal({
   const handleWeightUnitToggle = async (unit: WeightUnit) => {
     if (weightUnit === unit) return
     haptic('light')
+    const currentInput = weightInput.trim()
+
+    if (currentInput.length > 0) {
+      const currentValue = parseFloat(currentInput.replace(',', '.'))
+      const currentWeightKg = convertInputToKg(currentValue)
+      setWeightInput(formatWeightInputValue(currentWeightKg, unit))
+    }
+
     setWeightUnit(unit)
   }
 

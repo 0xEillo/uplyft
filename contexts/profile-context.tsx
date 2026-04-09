@@ -1,4 +1,5 @@
 import { database } from '@/lib/database'
+import { applyPendingOnboardingProfile } from '@/lib/pending-onboarding'
 import { Profile } from '@/types/database.types'
 import React, {
     createContext,
@@ -37,6 +38,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true)
+      await applyPendingOnboardingProfile(user.id).catch((error) => {
+        console.warn(
+          '[ProfileContext] Failed to apply pending onboarding profile:',
+          error,
+        )
+      })
       const profileData = await database.profiles.getByIdOrNull(user.id)
       setProfile(profileData)
     } catch (error) {

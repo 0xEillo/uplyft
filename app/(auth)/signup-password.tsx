@@ -6,47 +6,26 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
-  persistOnboardingStrengthSnapshot,
-  type OnboardingStrengthSnapshotInput,
-} from '@/lib/onboarding-strength'
-import { persistOnboardingWeight } from '@/lib/onboarding-weight'
-import { resolveOnboardingDisplayName, resolveUserTagBase } from '@/lib/profile-identity'
-import {
-  CommitmentDay,
-  CommitmentFrequency,
-  CommitmentMode,
-  Gender,
-  Goal,
-} from '@/types/database.types'
+  type PendingOnboardingProfileData,
+  queuePendingOnboardingProfile,
+  syncOnboardingDataToProfile,
+} from '@/lib/pending-onboarding'
+import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-
-type OnboardingData = {
-  name: string
-  gender: Gender | null
-  height_cm: number | null
-  weight_kg: number | null
-  age: number | null
-  goal: Goal[]
-  commitment: CommitmentDay[] | null
-  commitment_frequency: CommitmentFrequency | null
-  commitment_mode: CommitmentMode
-  bio: string | null
-  strength_snapshot?: OnboardingStrengthSnapshotInput | null
-}
 
 export default function SignupPasswordScreen() {
   const params = useLocalSearchParams()
@@ -59,75 +38,13 @@ export default function SignupPasswordScreen() {
   const styles = createStyles(colors)
 
   // Parse onboarding data from params
-  const onboardingData: OnboardingData | null = params.onboarding_data
+  const onboardingData: PendingOnboardingProfileData | null = params.onboarding_data
     ? JSON.parse(params.onboarding_data as string)
     : null
 
   const updateProfileWithOnboardingData = async (userId: string) => {
     if (!onboardingData) return
-
-    const displayName = resolveOnboardingDisplayName(onboardingData.name)
-    const userTagBase = resolveUserTagBase(displayName)
-    const existingProfile = await database.profiles
-      .getByIdOrNull(userId)
-      .catch((error) => {
-        console.warn(
-          '[SignupPassword] Failed to load existing profile before onboarding sync.',
-          error,
-        )
-        return null
-      })
-
-    let userTag: string | null = existingProfile?.user_tag ?? null
-    if (!userTag) {
-      try {
-        userTag = await database.profiles.generateUniqueUserTag(userTagBase)
-      } catch (tagError) {
-        console.warn(
-          '[SignupPassword] Failed to generate user tag from onboarding name. Falling back to Athlete.',
-          tagError,
-        )
-        userTag = await database.profiles.generateUniqueUserTag('Athlete')
-      }
-    }
-
-    const profileUpdates: {
-      id: string
-      user_tag?: string
-      display_name: string
-      gender: Gender | null
-      height_cm: number | null
-      age: number | null
-      goals: Goal[] | null
-      commitment: CommitmentDay[] | null
-      commitment_frequency: CommitmentFrequency | null
-      bio: string | null
-    } = {
-      id: userId,
-      display_name: displayName,
-      gender: onboardingData.gender,
-      height_cm: onboardingData.height_cm,
-      age: onboardingData.age,
-      goals: onboardingData.goal.length > 0 ? onboardingData.goal : null,
-      commitment:
-        onboardingData.commitment_mode === 'specific_days'
-          ? onboardingData.commitment
-          : null,
-      commitment_frequency:
-        onboardingData.commitment_mode === 'frequency'
-          ? onboardingData.commitment_frequency
-          : null,
-      bio: onboardingData.bio,
-    }
-
-    profileUpdates.user_tag = userTag
-
-    await database.profiles.upsert(profileUpdates)
-    await persistOnboardingWeight(userId, onboardingData.weight_kg)
-    await persistOnboardingStrengthSnapshot(
-      userId,
-      onboardingData.strength_snapshot,
-    )
+    await syncOnboardingDataToProfile(userId, onboardingData)
   }
 
   const handleSignup = async () => {
@@ -149,11 +66,14 @@ export default function SignupPasswordScreen() {
     setIsLoading(true)
     try {
       let userId: string | undefined
+      let hasAuthenticatedSession = false
+      let shouldQueueOnboardingForLater = false
 
       if (isAnonymous && user) {
         // Link email to existing anonymous account
         await linkWithEmail(email, password)
         userId = user.id
+        hasAuthenticatedSession = true
 
         // Update profile to remove guest status
         try {
@@ -167,29 +87,54 @@ export default function SignupPasswordScreen() {
         // Create new account
         const result = await signUp(email, password)
         userId = result.userId
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession()
+        hasAuthenticatedSession = currentSession?.user?.id === userId
       }
 
       // If we have onboarding data, update the profile
       if (userId && onboardingData) {
-        try {
-          await updateProfileWithOnboardingData(userId)
-        } catch (profileError) {
-          console.error(
-            'Error updating profile with onboarding data:',
-            profileError,
-          )
-          // Don't fail the signup if profile update fails
+        if (hasAuthenticatedSession) {
+          try {
+            await updateProfileWithOnboardingData(userId)
+          } catch (profileError) {
+            console.error(
+              'Error updating profile with onboarding data:',
+              profileError,
+            )
+            shouldQueueOnboardingForLater = true
+          }
+        } else {
+          shouldQueueOnboardingForLater = true
+        }
+
+        if (shouldQueueOnboardingForLater) {
+          await queuePendingOnboardingProfile(userId, onboardingData)
         }
       }
 
       // Navigate to trial offer after signup if we have onboarding data
       if (onboardingData) {
-        router.replace({
-          pathname: '/(auth)/trial-offer',
-          params: {
-            onboarding_data: params.onboarding_data as string,
-          },
-        } as Parameters<typeof router.replace>[0])
+        if (hasAuthenticatedSession) {
+          router.replace({
+            pathname: '/(auth)/trial-offer',
+            params: {
+              onboarding_data: params.onboarding_data as string,
+            },
+          } as Parameters<typeof router.replace>[0])
+        } else {
+          Alert.alert(
+            'Verify your email',
+            'We saved your onboarding details. Verify your email, then sign in to finish setting up your profile and weight log.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(auth)/welcome'),
+              },
+            ],
+          )
+        }
       } else {
         // For anonymous linking, we don't necessarily need verification, but for fresh signup we might.
         // Assuming linkWithEmail (updateUser) might confirm immediately or ask for verification depending on Supabase config.
@@ -203,6 +148,8 @@ export default function SignupPasswordScreen() {
               delayMs: 600,
             })
           }
+        } else if (hasAuthenticatedSession) {
+          router.replace('/(tabs)')
         } else {
           Alert.alert(
             'Success',
