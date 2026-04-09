@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { formatBodyFat, type BodyLogEntryWithImages } from '@/lib/body-log/metadata'
-import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { normalizeImageUris } from '@/lib/utils/image-normalization'
@@ -1038,12 +1037,10 @@ export default function BodyLogScreen() {
       trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
       setBodyFatSheetVisible(true)
     } else if (activeTab === 'meals') {
-      try {
-        await setPendingChatAttachment({ action: 'scan_food' })
-      } catch (error) {
-        console.error('[BodyLog] Failed to queue scan-food handoff:', error)
-      }
-      router.push('/(tabs)/chat' as any)
+      router.push({
+        pathname: '/body-log/daily-food-log',
+        params: { logDate: getLocalDateKey(new Date().toISOString()) },
+      })
     } else if (activeTab === 'photos') {
       handleAddPhoto()
     }

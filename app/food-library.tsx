@@ -9,7 +9,7 @@ import { database } from '@/lib/database'
 import { setPendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import type { DailyLogMeal } from '@/types/database.types'
-import { Stack, useRouter } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -109,6 +109,7 @@ const getLocalDateString = (): string => {
 }
 
 export default function FoodLibraryScreen() {
+  const { logDate } = useLocalSearchParams<{ logDate?: string }>()
   const router = useRouter()
   const { trackEvent } = useAnalytics()
   const colors = useThemedColors()
@@ -224,7 +225,7 @@ export default function FoodLibraryScreen() {
         source: meal.source ?? 'manual',
         confidence: meal.confidence ?? null,
         metadata: meal.metadata ?? { from: 'food_library_page' },
-        logDate: getLocalDateString(),
+        logDate: logDate ?? getLocalDateString(),
       })
 
       trackEvent(AnalyticsEvents.FOOD_LOGGED, {
@@ -242,7 +243,7 @@ export default function FoodLibraryScreen() {
         ToastAndroid.show('Meal logged', ToastAndroid.SHORT)
       }
     },
-    [user?.id, trackEvent],
+    [user?.id, trackEvent, logDate],
   )
 
   const handleUseFoodText = useCallback(async (text: string) => {

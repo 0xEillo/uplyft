@@ -16,8 +16,8 @@ import { getMealImageUrls } from '@/lib/utils/meal-image-storage'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -190,8 +190,11 @@ export default function DailyFoodLogScreen() {
 
   const handleOpenFoodLibrary = useCallback(() => {
     haptic('light')
-    router.push('/chat')
-  }, [router])
+    router.push({
+      pathname: '/food-library',
+      params: resolvedLogDate ? { logDate: resolvedLogDate } : undefined,
+    })
+  }, [router, resolvedLogDate])
 
   const prefillTotals = useMemo(
     () => parseJson<DailyTotals>(params.totalsJson, DEFAULT_TOTALS),
@@ -308,6 +311,38 @@ export default function DailyFoodLogScreen() {
       cancelled = true
     }
   }, [fetchFoodLogData, resolvedLogDate, user?.id])
+
+  const hasLoadedOnce = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnce.current) {
+        hasLoadedOnce.current = true
+        return
+      }
+      if (!user?.id || !resolvedLogDate) return
+
+      let cancelled = false
+      const silentRefresh = async () => {
+        try {
+          const { daySummary, dayMeals, recentMeals } = await fetchFoodLogData(
+            user.id,
+            resolvedLogDate,
+          )
+          if (cancelled) return
+          setSummary(daySummary)
+          setMeals(dayMeals)
+          setRecentMealsRaw(recentMeals)
+        } catch (error) {
+          console.error('Error refreshing daily food log on focus:', error)
+        }
+      }
+
+      silentRefresh()
+      return () => {
+        cancelled = true
+      }
+    }, [fetchFoodLogData, resolvedLogDate, user?.id]),
+  )
 
   useEffect(() => {
     if (resolvedLogDate && user?.id) {
@@ -1096,8 +1131,18 @@ export default function DailyFoodLogScreen() {
               <Text
                 style={[styles.emptySubtitle, { color: colors.textTertiary }]}
               >
-                Log food in chat to see your meals and macros for this day.
+                Search our database or use the AI to log your food.
               </Text>
+              <TouchableOpacity
+                style={[styles.emptyStateButton, { backgroundColor: colors.textPrimary }]}
+                onPress={handleOpenFoodLibrary}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="search" size={16} color={colors.bg} />
+                <Text style={[styles.emptyStateButtonText, { color: colors.bg }]}>
+                  Search Food
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.mealsList}>
@@ -1656,6 +1701,19 @@ const createStyles = (
       textAlign: 'center',
       lineHeight: 18,
       maxWidth: 260,
+    },
+    emptyStateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 999,
+      marginTop: 12,
+    },
+    emptyStateButtonText: {
+      fontSize: 15,
+      fontWeight: '700',
     },
     mealsList: {
       gap: 0,
