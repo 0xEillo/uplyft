@@ -464,7 +464,6 @@ const SOCIAL_FEED_WORKOUT_SELECT = `
     id,
     exercise_id,
     order_index,
-    exercise_name,
     exercise:exercises (
       id,
       name,
