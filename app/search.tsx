@@ -55,7 +55,7 @@ export default function SearchScreen() {
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = 52
 
   // Block anonymous users from social features
   useEffect(() => {
@@ -516,7 +516,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      margin: 14,
+      marginHorizontal: 14,
+      marginTop: 4,
       marginBottom: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.surfaceSubtle,
