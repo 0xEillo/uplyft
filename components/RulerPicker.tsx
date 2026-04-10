@@ -15,6 +15,7 @@ interface RulerPickerProps {
 
 const TICK_WIDTH = 10
 const TAP_SLOP = 5
+const DIRECTION_LOCK_THRESHOLD = 8
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n))
@@ -100,7 +101,20 @@ export function RulerPicker({
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gestureState) => {
+          const absX = Math.abs(gestureState.dx)
+          const absY = Math.abs(gestureState.dy)
+          return absX > DIRECTION_LOCK_THRESHOLD && absX > absY * 1.5
+        },
+        onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
+          const absX = Math.abs(gestureState.dx)
+          const absY = Math.abs(gestureState.dy)
+          return absX > DIRECTION_LOCK_THRESHOLD && absX > absY * 1.5
+        },
+        onPanResponderTerminationRequest: (_event, gestureState) => {
+          const absX = Math.abs(gestureState.dx)
+          return absX <= DIRECTION_LOCK_THRESHOLD
+        },
         onPanResponderGrant: () => {
           isPanningRef.current = true
           gestureStartValueRef.current = draftValueRef.current
