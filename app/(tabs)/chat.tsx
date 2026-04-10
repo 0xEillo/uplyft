@@ -11,7 +11,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.content}>
-        <WorkoutChat />
+        <WorkoutChat persistence={{ kind: 'main' }} />
       </View>
     </SafeAreaView>
   )

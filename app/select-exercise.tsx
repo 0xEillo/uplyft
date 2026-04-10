@@ -37,7 +37,6 @@ import {
 import {
   memo,
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -470,25 +469,20 @@ export default function SelectExerciseScreen() {
   )
 
   const trimmedQuery = searchQuery.trim()
-  const deferredTrimmedQuery = useDeferredValue(trimmedQuery)
-  const deferredSelectedMuscleGroups = useDeferredValue(selectedMuscleGroups)
-  const deferredSelectedEquipment = useDeferredValue(selectedEquipment)
-  const deferredShowOnlyMine = useDeferredValue(showOnlyMine)
-  const deferredShowOnlyFavorites = useDeferredValue(showOnlyFavorites)
-  const hasDeferredMuscleFilter = deferredSelectedMuscleGroups.length > 0
-  const hasDeferredEquipmentFilter = deferredSelectedEquipment.length > 0
+  const hasMuscleFilter = selectedMuscleGroups.length > 0
+  const hasEquipmentFilter = selectedEquipment.length > 0
   const hasFilters =
-    hasDeferredMuscleFilter ||
-    hasDeferredEquipmentFilter ||
-    deferredShowOnlyMine ||
-    deferredShowOnlyFavorites
+    hasMuscleFilter ||
+    hasEquipmentFilter ||
+    showOnlyMine ||
+    showOnlyFavorites
 
   const selectedMuscleGroupSet = useMemo(() => new Set(selectedMuscleGroups), [
     selectedMuscleGroups,
   ])
-  const deferredSelectedEquipmentSet = useMemo(
-    () => new Set(deferredSelectedEquipment),
-    [deferredSelectedEquipment],
+  const selectedEquipmentSet = useMemo(
+    () => new Set(selectedEquipment),
+    [selectedEquipment],
   )
   const visibleMuscleChips = useMemo(() => {
     const availableMuscleGroups = new Set(muscleGroups)
@@ -497,52 +491,52 @@ export default function SelectExerciseScreen() {
       isMuscleFilterAvailable(chip.group, availableMuscleGroups),
     )
   }, [muscleGroups, selectedMuscleGroupSet])
-  // Debounced filtered results with fuzzy search
+  // Memoized filtered results with fuzzy search
   const filteredExercises = useMemo(() => {
     let result = exercises
 
     // Apply fuzzy search filter (handles typos, plurals, word order)
-    if (deferredTrimmedQuery) {
-      result = fuzzySearchExercises(result, deferredTrimmedQuery)
+    if (trimmedQuery) {
+      result = fuzzySearchExercises(result, trimmedQuery)
     }
 
     // Apply muscle group filter
-    if (hasDeferredMuscleFilter) {
+    if (hasMuscleFilter) {
       result = result.filter(
         (e) =>
           matchesMuscleGroupFilter(
             e.muscle_group,
-            deferredSelectedMuscleGroups,
+            selectedMuscleGroups,
           ),
       )
     }
 
     // Apply equipment filter
-    if (hasDeferredEquipmentFilter) {
+    if (hasEquipmentFilter) {
       result = result.filter((e) =>
-        matchesExerciseEquipmentFilter(e, deferredSelectedEquipmentSet),
+        matchesExerciseEquipmentFilter(e, selectedEquipmentSet),
       )
     }
 
     // Apply "Yours" filter - show only exercises created by current user
-    if (deferredShowOnlyMine && user?.id) {
+    if (showOnlyMine && user?.id) {
       result = result.filter((e) => e.created_by === user.id)
     }
 
-    if (deferredShowOnlyFavorites) {
+    if (showOnlyFavorites) {
       result = result.filter((e) => favoriteExerciseIds.has(e.id))
     }
 
     return result
   }, [
     exercises,
-    deferredTrimmedQuery,
-    hasDeferredMuscleFilter,
-    deferredSelectedMuscleGroups,
-    hasDeferredEquipmentFilter,
-    deferredSelectedEquipmentSet,
-    deferredShowOnlyMine,
-    deferredShowOnlyFavorites,
+    trimmedQuery,
+    hasMuscleFilter,
+    selectedMuscleGroups,
+    hasEquipmentFilter,
+    selectedEquipmentSet,
+    showOnlyMine,
+    showOnlyFavorites,
     favoriteExerciseIds,
     user?.id,
   ])
@@ -557,25 +551,25 @@ export default function SelectExerciseScreen() {
       cancelAnimationFrame(frame)
     }
   }, [
-    deferredTrimmedQuery,
-    deferredSelectedMuscleGroups,
-    deferredSelectedEquipment,
-    deferredShowOnlyMine,
-    deferredShowOnlyFavorites,
+    trimmedQuery,
+    selectedMuscleGroups,
+    selectedEquipment,
+    showOnlyMine,
+    showOnlyFavorites,
     filteredExercises.length,
   ])
 
   const emptyStateText = useMemo(() => {
-    if (deferredTrimmedQuery) {
+    if (trimmedQuery) {
       return hasFilters
-        ? `No exercises found for "${deferredTrimmedQuery}" with selected filters`
-        : `No exercises found for "${deferredTrimmedQuery}"`
+        ? `No exercises found for "${trimmedQuery}" with selected filters`
+        : `No exercises found for "${trimmedQuery}"`
     }
     if (hasFilters) {
       return 'No exercises match the selected filters'
     }
     return 'Start typing to search'
-  }, [deferredTrimmedQuery, hasFilters])
+  }, [trimmedQuery, hasFilters])
 
   // Handle keyboard events
   useEffect(() => {
@@ -773,47 +767,47 @@ export default function SelectExerciseScreen() {
     let result = recentExercises
 
     // Apply fuzzy search filter
-    if (deferredTrimmedQuery) {
-      result = fuzzySearchExercises(result, deferredTrimmedQuery)
+    if (trimmedQuery) {
+      result = fuzzySearchExercises(result, trimmedQuery)
     }
 
     // Apply muscle group filter
-    if (hasDeferredMuscleFilter) {
+    if (hasMuscleFilter) {
       result = result.filter(
         (e) =>
           matchesMuscleGroupFilter(
             e.muscle_group,
-            deferredSelectedMuscleGroups,
+            selectedMuscleGroups,
           ),
       )
     }
 
     // Apply equipment filter
-    if (hasDeferredEquipmentFilter) {
+    if (hasEquipmentFilter) {
       result = result.filter((e) =>
-        matchesExerciseEquipmentFilter(e, deferredSelectedEquipmentSet),
+        matchesExerciseEquipmentFilter(e, selectedEquipmentSet),
       )
     }
 
     // Apply "Yours" filter
-    if (deferredShowOnlyMine && user?.id) {
+    if (showOnlyMine && user?.id) {
       result = result.filter((e) => e.created_by === user.id)
     }
 
-    if (deferredShowOnlyFavorites) {
+    if (showOnlyFavorites) {
       result = result.filter((e) => favoriteExerciseIds.has(e.id))
     }
 
     return result
   }, [
     recentExercises,
-    deferredTrimmedQuery,
-    hasDeferredMuscleFilter,
-    deferredSelectedMuscleGroups,
-    hasDeferredEquipmentFilter,
-    deferredSelectedEquipmentSet,
-    deferredShowOnlyMine,
-    deferredShowOnlyFavorites,
+    trimmedQuery,
+    hasMuscleFilter,
+    selectedMuscleGroups,
+    hasEquipmentFilter,
+    selectedEquipmentSet,
+    showOnlyMine,
+    showOnlyFavorites,
     favoriteExerciseIds,
     user?.id,
   ])
@@ -1189,6 +1183,7 @@ export default function SelectExerciseScreen() {
             ListEmptyComponent={ListEmpty}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            maintainVisibleContentPosition={{ disabled: true }}
             contentContainerStyle={listContentContainerStyle}
           />
         </View>

@@ -334,6 +334,10 @@ export function WorkoutCoachSheet({
             {/* WorkoutChat in sheet mode */}
             <View style={styles.chatContainer}>
               <WorkoutChat
+                persistence={{
+                  kind: 'create_post',
+                  sessionId: workoutContext.sessionId,
+                }}
                 mode="sheet"
                 workoutContext={workoutContext}
                 onAddExercise={onAddExercise}

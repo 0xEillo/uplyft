@@ -1,9 +1,11 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useProfile } from '@/contexts/profile-context'
+import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
+import { clearAllCoachChatSnapshots } from '@/lib/utils/coach-chat-storage'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useCallback, useRef, useState } from 'react'
@@ -27,6 +29,7 @@ const SHEET_SPACING = {
 } as const
 
 export default function ChatSettingsScreen() {
+  const { user } = useAuth()
   const { profile, updateProfile } = useProfile()
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -70,6 +73,27 @@ export default function ChatSettingsScreen() {
       setIsUpdating(false)
     }
   }
+
+  const handleClearAllCoachChats = useCallback(() => {
+    Alert.alert(
+      'Clear All Coach Chats',
+      'This will remove your saved AI coach history and drafts from the main chat and the create-post coach sheet on this device.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            haptic('light')
+            void clearAllCoachChatSnapshots(user?.id)
+          },
+        },
+      ],
+    )
+  }, [user?.id])
 
   const styles = createStyles(colors, isDark)
 
@@ -153,6 +177,18 @@ export default function ChatSettingsScreen() {
             {contextText.length}/500
           </Text>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>History</Text>
+          <TouchableOpacity
+            style={styles.clearChatsButton}
+            onPress={handleClearAllCoachChats}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={18} color="#B42318" />
+            <Text style={styles.clearChatsText}>Clear all coach chats</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {isUpdating && (
@@ -215,6 +251,22 @@ const createStyles = (
       fontWeight: '500',
       color: colors.textTertiary,
       textAlign: 'right',
+    },
+    clearChatsButton: {
+      minHeight: 52,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(180,35,24,0.35)' : '#F3C7C2',
+      backgroundColor: isDark ? 'rgba(180,35,24,0.12)' : '#FFF4F2',
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    clearChatsText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#B42318',
     },
     coachScroll: {
       marginHorizontal: -20,

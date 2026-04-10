@@ -338,6 +338,7 @@ export default function CreatePostScreen() {
   const {
     canReview,
     discardSession,
+    session,
     draft,
     elapsedSeconds: workoutElapsedSeconds,
     enterReview,
@@ -449,6 +450,7 @@ export default function CreatePostScreen() {
   // Context for the AI coach sheet
   const workoutContext = useMemo(
     () => ({
+      sessionId: session.meta.sessionId ?? undefined,
       title: workoutTitle,
       notes,
       exercises: structuredData.map((e) => ({
@@ -462,7 +464,7 @@ export default function CreatePostScreen() {
           .filter((set) => set.weight || set.reps),
       })),
     }),
-    [workoutTitle, notes, structuredData],
+    [notes, session.meta.sessionId, structuredData, workoutTitle],
   )
 
   // Check if workout is empty (no notes, no structured workouts)

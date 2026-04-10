@@ -60,6 +60,15 @@ import { withDailyLogMealImagePath } from '@/lib/utils/daily-log-meals'
 import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 import { uploadMealImage } from '@/lib/utils/meal-image-storage'
 import {
+  clearAllCoachChatSnapshots,
+  getCoachChatPersistenceScopeKey,
+  loadCoachChatSnapshot,
+  migrateCoachChatSnapshot,
+  saveCoachChatSnapshot,
+  type CoachChatMessage as Message,
+  type CoachChatPersistenceDescriptor,
+} from '@/lib/utils/coach-chat-storage'
+import {
   loadDraft as loadWorkoutDraft,
   saveDraft,
   StructuredExerciseDraft,
@@ -155,16 +164,6 @@ const GOAL_PROMPT_LABELS: Record<string, string> = {
   improve_cardio: 'improving conditioning',
   become_flexible: 'improving mobility',
   general_fitness: 'improving overall fitness',
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  images?: string[] // Image URIs for display
-  linkedUserMessageId?: string
-  createdAt?: string
-  status?: 'sending' | 'sent' | 'failed'
 }
 
 type StreamingResponseResult = {
@@ -576,6 +575,8 @@ export interface SuggestionsConfig {
 
 // Props for WorkoutChat component
 export interface WorkoutChatProps {
+  persistence: CoachChatPersistenceDescriptor
+
   // For modal/sheet usage
   mode?: 'fullscreen' | 'sheet'
 
@@ -1266,6 +1267,7 @@ const getFoodCardMealLabel = (
 }
 
 export function WorkoutChat({
+  persistence,
   mode = 'fullscreen',
   customSuggestions,
   workoutContext,
@@ -1275,7 +1277,7 @@ export function WorkoutChat({
   hidePlanningWizard = false,
   onClose,
   onChatStarted,
-}: WorkoutChatProps = {}) {
+}: WorkoutChatProps) {
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
@@ -1361,6 +1363,11 @@ export function WorkoutChat({
     Record<string, string>
   >({})
   const { user, session } = useAuth()
+  const [activePersistence, setActivePersistence] =
+    useState<CoachChatPersistenceDescriptor>(persistence)
+  const [hasHydratedPersistedChat, setHasHydratedPersistedChat] =
+    useState(false)
+  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
   const { trackEvent } = useAnalytics()
@@ -1383,6 +1390,39 @@ export function WorkoutChat({
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const tabBarVisibility = useTabBarVisibility()
   const isFocused = useIsFocused()
+  const activePersistenceKey = useMemo(
+    () => getCoachChatPersistenceScopeKey(activePersistence),
+    [activePersistence],
+  )
+
+  useEffect(() => {
+    const nextPersistenceKey = getCoachChatPersistenceScopeKey(persistence)
+    if (nextPersistenceKey === activePersistenceKey) return
+
+    const shouldPromoteCreatePostDraft =
+      activePersistence.kind === 'create_post' &&
+      !activePersistence.sessionId &&
+      persistence.kind === 'create_post' &&
+      Boolean(persistence.sessionId)
+
+    if (shouldPromoteCreatePostDraft && user?.id) {
+      let cancelled = false
+
+      void migrateCoachChatSnapshot(user.id, activePersistence, persistence).then(
+        () => {
+          if (!cancelled) {
+            setActivePersistence(persistence)
+          }
+        },
+      )
+
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setActivePersistence(persistence)
+  }, [activePersistence, activePersistenceKey, persistence, user?.id])
 
   const closeWizardAndRestoreTabBar = useCallback(() => {
     tabBarVisibility?.setHideForFullscreenOverlay(false)
@@ -1536,12 +1576,83 @@ export function WorkoutChat({
 
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => {
+    if (mode === 'fullscreen' && !isFocused) return
+    if (isLoading) return
+
+    let cancelled = false
+    setHasHydratedPersistedChat(false)
+
+    const hydratePersistedChat = async () => {
+      const snapshot = await loadCoachChatSnapshot(user?.id, activePersistence)
+      if (cancelled) return
+
+      const restoredMessages = snapshot?.messages ?? []
+      const restoredInput = snapshot?.input ?? ''
+      const restoredImages = snapshot?.selectedImages ?? []
+      const hasRestoredState =
+        restoredMessages.length > 0 ||
+        restoredInput.trim().length > 0 ||
+        restoredImages.length > 0
+
+      setMessages(restoredMessages)
+      setInput(restoredInput)
+      setSelectedImages(restoredImages)
+      setHasChatStarted(hasRestoredState)
+
+      if (hasRestoredState) {
+        setHasLoadedWelcome(true)
+        setIsWelcomeTyping(false)
+      }
+
+      setHasHydratedPersistedChat(true)
+    }
+
+    void hydratePersistedChat()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activePersistence, isFocused, isLoading, mode, user?.id])
+
+  useEffect(() => {
+    if (!hasHydratedPersistedChat || !user?.id) return
+
+    if (persistTimeoutRef.current) {
+      clearTimeout(persistTimeoutRef.current)
+    }
+
+    persistTimeoutRef.current = setTimeout(() => {
+      persistTimeoutRef.current = null
+      void saveCoachChatSnapshot(user.id, activePersistence, {
+        messages,
+        input,
+        selectedImages,
+      })
+    }, 250)
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current)
+        persistTimeoutRef.current = null
+      }
+    }
+  }, [
+    activePersistence,
+    hasHydratedPersistedChat,
+    input,
+    messages,
+    selectedImages,
+    user?.id,
+  ])
+
   // Show welcome message for first-time users (fullscreen mode only)
   useEffect(() => {
     // Wait for profile to load before showing welcome message so we have the user's name
     if (
       mode !== 'fullscreen' ||
       !isFocused ||
+      !hasHydratedPersistedChat ||
       hasLoadedWelcome ||
       !user?.id ||
       isProfileLoading
@@ -1597,6 +1708,7 @@ export function WorkoutChat({
   }, [
     mode,
     isFocused,
+    hasHydratedPersistedChat,
     hasLoadedWelcome,
     user?.id,
     coachId,
@@ -1800,6 +1912,10 @@ export function WorkoutChat({
   )
 
   const hasWorkout = currentWorkoutExercises.length > 0
+  const hasResettableChatState =
+    messages.length > 0 ||
+    input.trim().length > 0 ||
+    selectedImages.length > 0
 
   const primaryGoalLabel = useMemo(() => {
     const primaryGoal = profile?.goals?.[0]
@@ -1906,8 +2022,13 @@ export function WorkoutChat({
 
   // Notify parent when chat has started (has messages)
   useEffect(() => {
-    onChatStarted?.(messages.length > 0 || isLoading)
-  }, [messages.length, isLoading, onChatStarted])
+    onChatStarted?.(
+      messages.length > 0 ||
+        isLoading ||
+        input.trim().length > 0 ||
+        selectedImages.length > 0,
+    )
+  }, [input, isLoading, messages.length, onChatStarted, selectedImages.length])
 
   // Coach is now managed by ProfileContext - automatically updates when changed
 
@@ -3024,6 +3145,17 @@ export function WorkoutChat({
     setSuggestionMode('main')
     inputRef.current?.clear()
     Keyboard.dismiss()
+
+    if (activePersistence.kind === 'main') {
+      void clearAllCoachChatSnapshots(user?.id)
+      return
+    }
+
+    void saveCoachChatSnapshot(user?.id, activePersistence, {
+      messages: [],
+      input: '',
+      selectedImages: [],
+    })
   }
 
   const handleSuggestionPress = (
@@ -3838,7 +3970,7 @@ export function WorkoutChat({
         </Modal>
         {!(planningState.isActive && planningState.step === 'wizard') && (
           <>
-            {/* Top Left Menu Button - Toggles between Settings (if empty) and Clear (if messages) */}
+            {/* Top-left action toggles between settings and clearing the saved chat state. */}
             {mode === 'fullscreen' && (
               <>
                 <LiquidGlassSurface
@@ -3850,7 +3982,7 @@ export function WorkoutChat({
                     <TouchableOpacity
                       style={styles.newChatButton}
                       onPress={
-                        messages.length > 0
+                        hasResettableChatState
                           ? handleNewChat
                           : () => {
                               haptic('light')
@@ -3866,7 +3998,7 @@ export function WorkoutChat({
                     >
                       <Ionicons
                         name={
-                          messages.length > 0
+                          hasResettableChatState
                             ? 'create-outline'
                             : 'settings-sharp'
                         }
