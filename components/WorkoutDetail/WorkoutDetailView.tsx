@@ -440,7 +440,7 @@ export function WorkoutDetailView({
                   <Text
                     style={[
                       styles.workoutNotes,
-                      { color: colors.textSecondary },
+                      { color: colors.textPrimary },
                     ]}
                   >
                     {workout.notes}
