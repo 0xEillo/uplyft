@@ -1,6 +1,6 @@
 import { getExerciseStrengthMetric } from '@/lib/exercise-strength'
 import { isRepBasedExercise } from '@/lib/exercise-standards-config'
-import { getStrengthStandard } from '@/lib/strength-standards'
+import { getStandardsLadder, getStrengthStandard } from '@/lib/strength-standards'
 
 describe('exercise strength helpers', () => {
   test('weighted decline sit up is treated as weight-based', () => {
@@ -42,5 +42,31 @@ describe('exercise strength helpers', () => {
     })
 
     expect(metric).toBeCloseTo(116.67, 1)
+  })
+
+  test('close grip bench press stays slightly easier than standard bench', () => {
+    const benchMale = getStandardsLadder('Bench Press (Barbell)', 'male')
+    const closeGripMale = getStandardsLadder(
+      'Close Grip Bench Press (Barbell)',
+      'male',
+    )
+    const benchFemale = getStandardsLadder('Bench Press (Barbell)', 'female')
+    const closeGripFemale = getStandardsLadder(
+      'Close Grip Bench Press (Barbell)',
+      'female',
+    )
+
+    expect(closeGripMale).not.toBeNull()
+    expect(closeGripFemale).not.toBeNull()
+    expect(benchMale).not.toBeNull()
+    expect(benchFemale).not.toBeNull()
+
+    closeGripMale!.forEach((standard, index) => {
+      expect(standard.multiplier).toBeLessThan(benchMale![index].multiplier)
+    })
+
+    closeGripFemale!.forEach((standard, index) => {
+      expect(standard.multiplier).toBeLessThan(benchFemale![index].multiplier)
+    })
   })
 })
