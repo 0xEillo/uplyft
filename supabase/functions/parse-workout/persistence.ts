@@ -216,6 +216,12 @@ export async function createWorkoutSession(
       if (setsError) throw setsError
     }
 
+    const { error: recordCountError } = await supabase.rpc(
+      'refresh_workout_record_count',
+      { p_session_id: session.id },
+    )
+    if (recordCountError) throw recordCountError
+
     const { data: finalizedSession, error: finalizeSessionError } = await supabase
       .from('workout_sessions')
       .update({ is_processing: false })

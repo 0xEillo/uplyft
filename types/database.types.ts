@@ -115,6 +115,7 @@ export interface WorkoutSession {
   song?: WorkoutSong | null
   routine_id: string | null
   duration: number | null
+  record_count: number
   is_processing?: boolean
   created_at: string
 }
@@ -258,6 +259,16 @@ export interface WorkoutSessionWithDetails extends WorkoutSession {
   }
   isPending?: boolean // Flag for placeholder workouts being processed
   profile?: Profile // Profile of the user who created the workout (for social feed)
+}
+
+export interface FeedWorkoutSocial {
+  likeCount: number
+  commentCount: number
+  isLiked: boolean
+}
+
+export interface FeedWorkout extends WorkoutSessionWithDetails {
+  social: FeedWorkoutSocial
 }
 
 export interface WorkoutRoutineExerciseWithDetails

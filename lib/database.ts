@@ -21,6 +21,7 @@ import type {
     DailyLogMealSource,
     DailyLogSummary,
     Exercise,
+    FeedWorkout,
     ExploreProgram,
     ExploreProgramRoutine,
     ExploreRoutine,
@@ -452,12 +453,14 @@ const SOCIAL_FEED_WORKOUT_SELECT = `
   id,
   user_id,
   date,
+  raw_text,
   notes,
   type,
   image_url,
   song,
   routine_id,
   duration,
+  record_count,
   created_at,
   routine:workout_routines (id, name),
   workout_exercises!inner (
@@ -1152,6 +1155,21 @@ export const database = {
       return (data || [])
         .map((row: any) => row.profile)
         .filter(Boolean) as Partial<Profile>[]
+    },
+
+    async getLikedWorkoutIds(workoutIds: string[], userId: string) {
+      if (!workoutIds.length) {
+        return [] as string[]
+      }
+
+      const { data, error } = await supabase
+        .from('workout_likes')
+        .select('workout_id')
+        .eq('user_id', userId)
+        .in('workout_id', workoutIds)
+
+      if (error) throw error
+      return (data || []).map((row: { workout_id: string }) => row.workout_id)
     },
   },
 
@@ -1965,6 +1983,10 @@ export const database = {
         if (setsError) throw setsError
       }
 
+      session.record_count = await database.workoutSessions.refreshRecordCount(
+        session.id,
+      )
+
       return session as WorkoutSession
     },
 
@@ -2049,27 +2071,49 @@ export const database = {
         return []
       }
 
-      await hydrateMissingWorkoutExerciseRelations(workouts)
+      const typedWorkouts =
+        workouts as unknown as WorkoutSessionWithDetails[]
 
-      // Fetch profiles for all unique user IDs in the workouts
-      const uniqueUserIds = [...new Set(workouts.map((w) => w.user_id))]
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, user_tag, display_name, avatar_url')
-        .in('id', uniqueUserIds)
+      await hydrateMissingWorkoutExerciseRelations(typedWorkouts)
 
-      if (profileError) throw profileError
+      const uniqueUserIds = [...new Set(typedWorkouts.map((w) => w.user_id))]
+      const workoutIds = typedWorkouts.map((workout) => workout.id)
 
-      // Create a map of user_id -> profile for quick lookup
-      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
+      const [
+        profilesResult,
+        socialStats,
+        likedWorkoutIds,
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, user_tag, display_name, avatar_url')
+          .in('id', uniqueUserIds),
+        database.workoutSocial.getStatsForWorkouts(workoutIds),
+        database.workoutLikes.getLikedWorkoutIds(workoutIds, userId),
+      ])
 
-      // Attach profile to each workout
-      const workoutsWithProfiles = workouts.map((workout) => ({
-        ...workout,
-        profile: profileMap.get(workout.user_id),
-      }))
+      if (profilesResult.error) throw profilesResult.error
 
-      return workoutsWithProfiles as WorkoutSessionWithDetails[]
+      const profileMap = new Map(
+        (profilesResult.data || []).map((profile) => [profile.id, profile]),
+      )
+      const socialStatsMap = new Map(
+        socialStats.map((stat) => [stat.workout_id, stat]),
+      )
+      const likedWorkoutIdSet = new Set(likedWorkoutIds)
+
+      return typedWorkouts.map((workout) => {
+        const social = socialStatsMap.get(workout.id)
+        return {
+          ...workout,
+          profile: profileMap.get(workout.user_id),
+          social: {
+            likeCount: social?.like_count ?? 0,
+            commentCount: social?.comment_count ?? 0,
+            isLiked: likedWorkoutIdSet.has(workout.id),
+          },
+        }
+      }) as FeedWorkout[]
     },
 
     async getWorkoutsByDateRange(userId: string, startDate: Date, endDate: Date) {
@@ -2253,6 +2297,16 @@ export const database = {
 
       if (error) throw error
       return data as WorkoutSession
+    },
+
+    async refreshRecordCount(sessionId: string): Promise<number> {
+      const { data, error } = await supabase.rpc(
+        'refresh_workout_record_count',
+        { p_session_id: sessionId },
+      )
+
+      if (error) throw error
+      return typeof data === 'number' ? data : 0
     },
 
     async delete(sessionId: string, userId: string) {

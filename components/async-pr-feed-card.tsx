@@ -4,7 +4,6 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { useUserLevel } from '@/hooks/useUserLevel'
 import { buildWorkoutAnalysisPrompt } from '@/lib/ai/workoutPrompt'
 import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
 import { getCoach } from '@/lib/coaches'
@@ -12,11 +11,9 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, OwnershipError } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { PrService } from '@/lib/pr'
-import { countWorkoutRecords } from '@/lib/utils/pr-count'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
-import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import {
   consumeWorkoutSocialUpdate,
   subscribeWorkoutSocialUpdates,
@@ -24,7 +21,11 @@ import {
   type WorkoutSocialUpdate,
 } from '@/lib/utils/workout-social-updates'
 import { calculateTotalVolume } from '@/lib/utils/workout-stats'
-import { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
+import type {
+  FeedWorkoutSocial,
+  Profile,
+  WorkoutSessionWithDetails,
+} from '@/types/database.types'
 import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
@@ -51,7 +52,9 @@ interface PrInfo {
 }
 
 interface AsyncPrFeedCardProps {
-  workout: WorkoutSessionWithDetails
+  workout: WorkoutSessionWithDetails & {
+    social?: FeedWorkoutSocial
+  }
   onDeleteWorkout: (workoutId: string) => void
   isFirst?: boolean
   /** Whether a pending workout is actively being processed (vs just queued) */
@@ -59,8 +62,8 @@ interface AsyncPrFeedCardProps {
 }
 
 /**
- * Feed card component that asynchronously computes PRs for a workout session.
- * Memoized to prevent unnecessary re-renders and PR recomputations.
+ * Feed card component that keeps list-item work light by consuming
+ * preloaded social metadata and deferring heavier PR analysis until needed.
  */
 export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   workout,
@@ -74,27 +77,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
-  const { level: userLevel, isLoading: isLevelLoading } = useUserLevel(
-    workout.user_id ?? undefined,
-  )
-  const [prs, setPrs] = useState<number>(0)
-  const [prInfo, setPrInfo] = useState<PrInfo[]>([])
-  const computeContext = useMemo(() => {
-    if (workout.isPending || !workout.created_at || !workout.date) return null
-    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
-    if (!prUserId) return null
-    return {
-      sessionId: workout.id,
-      userId: prUserId,
-      createdAt: workout.created_at,
-      date: workout.date,
-      exercises: (workout.workout_exercises || []).map((we) => ({
-        exerciseId: we.exercise_id,
-        exerciseName: we.exercise?.name || 'Exercise',
-        sets: mapSetsToPrContext(we.sets),
-      })),
-    }
-  }, [user?.id, workout])
 
   // Determine if this workout belongs to the current user
   const isOwnWorkout = user?.id === workout.user_id
@@ -107,9 +89,11 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const coach = getCoach(coachId)
 
   // Social interaction states
-  const [likeCount, setLikeCount] = useState(0)
-  const [commentCount, setCommentCount] = useState(0)
-  const [isLiked, setIsLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(workout.social?.likeCount ?? 0)
+  const [commentCount, setCommentCount] = useState(
+    workout.social?.commentCount ?? 0,
+  )
+  const [isLiked, setIsLiked] = useState(workout.social?.isLiked ?? false)
   const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
 
   const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
@@ -122,6 +106,21 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       avatar_url: profile?.avatar_url ?? null,
     }
   }, [profile?.avatar_url, profile?.display_name, profile?.user_tag, user?.id])
+
+  useEffect(() => {
+    setLikeCount(workout.social?.likeCount ?? 0)
+    setCommentCount(workout.social?.commentCount ?? 0)
+    setIsLiked(workout.social?.isLiked ?? false)
+  }, [
+    workout.id,
+    workout.social?.commentCount,
+    workout.social?.isLiked,
+    workout.social?.likeCount,
+  ])
+
+  useEffect(() => {
+    setRecentLikers([])
+  }, [workout.id])
 
   const applySocialUpdate = useCallback(
     (
@@ -166,43 +165,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     [],
   )
 
-  const fetchSocialStats = useCallback(async () => {
-    if (!user || !workout.id || workout.isPending) return
-
-    try {
-      // Fetch like count and check if user has liked
-      const [
-        likeCountResult,
-        hasLikedResult,
-        commentCountResult,
-        recentLikersResult,
-      ] = await Promise.all([
-        database.workoutLikes.getCount(workout.id),
-        database.workoutLikes.hasLiked(workout.id, user.id),
-        database.workoutComments.getCount(workout.id),
-        database.workoutLikes.getRecentLikers(workout.id),
-      ])
-
-      setLikeCount(likeCountResult)
-      setIsLiked(hasLikedResult)
-      setCommentCount(commentCountResult)
-      setRecentLikers(recentLikersResult)
-    } catch (error) {
-      console.error('Error fetching social stats:', error)
-    }
-  }, [user, workout.id, workout.isPending])
-
-  // Fetch social stats
-  useEffect(() => {
-    const handle = runAfterInteractions(() => {
-      void fetchSocialStats()
-    })
-
-    return () => {
-      handle.cancel?.()
-    }
-  }, [fetchSocialStats])
-
   // Keep this card in sync with social changes made from other screens
   useEffect(() => {
     if (!workout.id || workout.isPending) return
@@ -210,22 +172,15 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     const pendingUpdate = consumeWorkoutSocialUpdate(workout.id)
     if (pendingUpdate) {
       applySocialUpdate(pendingUpdate)
-      void fetchSocialStats()
     }
 
     const unsubscribe = subscribeWorkoutSocialUpdates((update) => {
       if (update.workoutId !== workout.id) return
       applySocialUpdate(update)
-      void fetchSocialStats()
     })
 
     return unsubscribe
-  }, [
-    applySocialUpdate,
-    fetchSocialStats,
-    workout.id,
-    workout.isPending,
-  ])
+  }, [applySocialUpdate, workout.id, workout.isPending])
 
   // Handle like toggle
   const handleLike = useCallback(async () => {
@@ -281,73 +236,34 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     })
   }, [workout.id, pathname, router])
 
-  useEffect(() => {
-    if (!computeContext) return
-
-    let isMounted = true
-
-    const compute = async () => {
-      try {
-        const result = await PrService.computePrsForSession(computeContext)
-        if (!isMounted) return
-
-        const prData = result.perExercise.map((exPr) => ({
-          exerciseId: exPr.exerciseId,
-          exerciseName: exPr.exerciseName,
-          prSetIndices: new Set(exPr.prs.flatMap((pr) => pr.setIndices || [])),
-          prLabels: exPr.prs.map((pr) => pr.label),
-          prDetails: exPr.prs.map((pr) => ({
-            kind: pr.kind,
-            label: pr.label,
-            value: pr.value,
-            previousValue: pr.previousValue,
-            weight: pr.weight,
-            previousReps: pr.previousReps,
-            currentReps: pr.currentReps,
-            setIndices: pr.setIndices,
-            isCurrent: pr.isCurrent,
-          })),
-          hasCurrentPR: exPr.prs.some((pr) => pr.isCurrent),
-        }))
-        setPrs(countWorkoutRecords(prData))
-        setPrInfo(prData)
-      } catch (error) {
-        console.error('Error computing PRs:', error)
-        if (isMounted) {
-          setPrs(0)
-          setPrInfo([])
-        }
-      }
-    }
-
-    const handle = runAfterInteractions(() => {
-      void compute()
-    })
-
-    return () => {
-      isMounted = false
-      handle.cancel?.()
-    }
-  }, [computeContext])
-
   const exercises = useMemo(
-    () => formatWorkoutForDisplay(workout, weightUnit, !getShowWarmupSets()),
+    () =>
+      formatWorkoutForDisplay(workout, weightUnit, {
+        hideWarmupSets: !getShowWarmupSets(),
+        limit: 5,
+        includeSetDetails: false,
+      }),
     [weightUnit, workout],
+  )
+
+  const totalSetCount = useMemo(
+    () =>
+      workout.workout_exercises?.reduce(
+        (sum, exercise) => sum + (exercise.sets?.length || 0),
+        0,
+      ) || 0,
+    [workout],
   )
 
   const feedStats = useMemo(
     () => ({
-      exercises: (workout.workout_exercises || []).length,
-      sets:
-        workout.workout_exercises?.reduce(
-          (sum, we) => sum + (we.sets?.length || 0),
-          0,
-        ) || 0,
-      prs,
+      sets: totalSetCount,
+      records:
+        typeof workout.record_count === 'number' ? workout.record_count : 0,
       durationSeconds: workout.duration ?? undefined,
       volume: calculateTotalVolume(workout, 'kg'),
     }),
-    [prs, workout],
+    [totalSetCount, workout.duration, workout.record_count, workout],
   )
 
   const handleUserPress = useCallback(() => {
@@ -406,10 +322,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   const handleCoachPress = useCallback(async () => {
     if (!isOwnWorkout || workout.isPending) return
 
-    const totalSetCount = (workout.workout_exercises || []).reduce(
-      (sum, exercise) => sum + (exercise.sets?.length || 0),
-      0,
-    )
     const workingSetCount = (workout.workout_exercises || []).reduce(
       (sum, exercise) =>
         sum +
@@ -418,6 +330,47 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
           0),
       0,
     )
+
+    let workoutPrInfo: PrInfo[] = []
+    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
+    if (prUserId && workout.created_at && workout.date) {
+      try {
+        const result = await PrService.computePrsForSession({
+          sessionId: workout.id,
+          userId: prUserId,
+          createdAt: workout.created_at,
+          date: workout.date,
+          exercises: (workout.workout_exercises || []).map((exercise) => ({
+            exerciseId: exercise.exercise_id,
+            exerciseName: exercise.exercise?.name || 'Exercise',
+            sets: mapSetsToPrContext(exercise.sets),
+          })),
+        })
+
+        workoutPrInfo = result.perExercise.map((exercisePr) => ({
+          exerciseId: exercisePr.exerciseId,
+          exerciseName: exercisePr.exerciseName,
+          prSetIndices: new Set(
+            exercisePr.prs.flatMap((detail) => detail.setIndices || []),
+          ),
+          prLabels: exercisePr.prs.map((detail) => detail.label),
+          prDetails: exercisePr.prs.map((detail) => ({
+            kind: detail.kind,
+            label: detail.label,
+            value: detail.value,
+            previousValue: detail.previousValue,
+            weight: detail.weight,
+            previousReps: detail.previousReps,
+            currentReps: detail.currentReps,
+            setIndices: detail.setIndices,
+            isCurrent: detail.isCurrent,
+          })),
+          hasCurrentPR: exercisePr.prs.some((detail) => detail.isCurrent),
+        }))
+      } catch (error) {
+        console.error('Error computing PRs for coach analysis:', error)
+      }
+    }
 
     const workoutContext: WorkoutContext = {
       sessionId: workout.id,
@@ -448,7 +401,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
         volumeKg: calculateTotalVolume(workout, 'kg'),
         completedAt: workout.created_at ?? null,
       },
-      prs: prInfo.flatMap((exercisePr) =>
+      prs: workoutPrInfo.flatMap((exercisePr) =>
         exercisePr.prDetails.map((detail) => ({
           exerciseName: exercisePr.exerciseName,
           kind: detail.kind,
@@ -480,7 +433,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       workout_id: workout.id,
     })
     router.push('/(tabs)/chat' as any)
-  }, [isOwnWorkout, prInfo, router, trackEvent, workout])
+  }, [isOwnWorkout, router, trackEvent, totalSetCount, user?.id, workout])
 
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
@@ -490,7 +443,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       userName={userName}
       userAvatar={avatarUrl || ''}
       coachAvatarSource={coach.image}
-      userLevel={isLevelLoading ? null : userLevel}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
         isPending
@@ -503,6 +455,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }
       workoutSong={workout.song ?? null}
       exercises={exercises}
+      totalExerciseCount={workout.workout_exercises?.length || 0}
       stats={feedStats}
       userId={workout.user_id}
       workoutId={workout.id}
@@ -513,7 +466,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onDelete={isPending || !isOwnWorkout ? undefined : handleDelete}
       onCreateRoutine={isPending ? undefined : handleCreateRoutine}
       onRoutinePress={handleRoutinePress}
-      prInfo={prInfo}
       isPending={isPending}
       isProcessingPending={isProcessingPending}
       likeCount={likeCount}

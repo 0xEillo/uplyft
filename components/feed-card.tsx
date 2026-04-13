@@ -36,10 +36,7 @@ import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
 
-import type { StrengthLevel } from '@/lib/strength-standards'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
-import { LevelBadge } from './LevelBadge'
-import { PrTooltip } from './pr-tooltip'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 
 // Helper functions for compact formatting
@@ -69,9 +66,8 @@ function formatVolumeCompact(
 }
 
 interface WorkoutStats {
-  exercises: number
   sets: number
-  prs: number // number of personal records achieved
+  records: number
   durationSeconds?: number
   volume?: number // in kg
 }
@@ -93,25 +89,6 @@ interface ExerciseDisplay {
   setDetails?: SetDetail[]
 }
 
-interface PrDetailForDisplay {
-  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
-  label: string // e.g., "1RM", "11 reps @ 65kg"
-  value: number
-  previousValue?: number
-  weight: number // the weight for this PR
-  previousReps?: number // previous max reps at this weight
-  currentReps: number // current max reps at this weight
-  isCurrent: boolean // true if this is still the all-time PR
-}
-
-export interface ExercisePRInfo {
-  exerciseName: string
-  prSetIndices: Set<number>
-  prLabels: string[]
-  prDetails: PrDetailForDisplay[] // Full PR details for tooltip
-  hasCurrentPR: boolean // true if at least one PR is still current
-}
-
 export interface CommentPreview {
   id: string
   username: string
@@ -124,20 +101,19 @@ export interface FeedCardProps {
   userName: string
   userAvatar: string
   coachAvatarSource?: number
-  userLevel?: StrengthLevel | null
   timeAgo: string
   workoutTitle: string
   workoutDescription?: string | null
   workoutImageUrl?: string | null
   workoutSong?: WorkoutSong | null
   exercises: ExerciseDisplay[]
+  totalExerciseCount?: number
   stats: WorkoutStats
   userId?: string
   workoutId?: string
   workout?: WorkoutSessionWithDetails // Full workout object for sharing
   onUserPress?: () => void
   onCardPress?: () => void // Navigate to workout detail
-  prInfo?: ExercisePRInfo[]
   isPending?: boolean // Flag to show skeleton while workout is being parsed
   isProcessingPending?: boolean // Flag to indicate actively processing vs just queued
   isFirst?: boolean // Hide top border for first card
@@ -165,20 +141,19 @@ export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
   coachAvatarSource,
-  userLevel,
   timeAgo,
   workoutTitle,
   workoutDescription,
   workoutImageUrl,
   workoutSong: workoutSongProp,
   exercises,
+  totalExerciseCount = exercises.length,
   stats,
   userId,
   workoutId,
   workout,
   onUserPress,
   onCardPress,
-  prInfo = [],
   isPending = false,
   isProcessingPending = false,
   isFirst = false,
@@ -212,11 +187,6 @@ export const FeedCard = memo(function FeedCard({
 
   const mediaFirst = !!workoutImageUrl
 
-  const [tooltipVisible, setTooltipVisible] = useState(false)
-  const [
-    selectedExercisePR,
-    setSelectedExercisePR,
-  ] = useState<ExercisePRInfo | null>(null)
   const [descriptionTruncated, setDescriptionTruncated] = useState(false)
   useEffect(() => {
     setDescriptionTruncated(false)
@@ -329,8 +299,12 @@ export const FeedCard = memo(function FeedCard({
   )
   const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
   const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
-  const hasMoreExercises = exercises.length > PREVIEW_LIMIT
   const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
+  const hiddenExerciseCount = Math.max(
+    0,
+    totalExerciseCount - displayedExercises.length,
+  )
+  const hasMoreExercises = hiddenExerciseCount > 0
 
   // Shimmer animation for skeleton rows (only when actively processing)
   useEffect(() => {
@@ -480,7 +454,7 @@ export const FeedCard = memo(function FeedCard({
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Records</Text>
-            <Text style={styles.statValue}>{stats.prs}</Text>
+            <Text style={styles.statValue}>{stats.records}</Text>
           </View>
         </Pressable>
       )
@@ -495,7 +469,7 @@ export const FeedCard = memo(function FeedCard({
       stats.durationSeconds,
       stats.volume,
       weightUnit,
-      stats.prs,
+      stats.records,
     ],
   )
 
@@ -585,8 +559,8 @@ export const FeedCard = memo(function FeedCard({
                   style={styles.seeMoreButton}
                 >
                   <Text style={styles.seeMoreText}>
-                    See {exercises.length - PREVIEW_LIMIT} more{' '}
-                    {exercises.length - PREVIEW_LIMIT === 1
+                    See {hiddenExerciseCount} more{' '}
+                    {hiddenExerciseCount === 1
                       ? 'exercise'
                       : 'exercises'}
                   </Text>
@@ -624,7 +598,7 @@ export const FeedCard = memo(function FeedCard({
       hasMoreExercises,
       colors.brandPrimary,
       isDark,
-      exercises.length,
+      hiddenExerciseCount,
       styles,
       PREVIEW_LIMIT,
       skeletonRowWidths,
@@ -712,14 +686,6 @@ export const FeedCard = memo(function FeedCard({
               <Text style={styles.userName} numberOfLines={1}>
                 {userName}
               </Text>
-              {userLevel && !isPending && (
-                <LevelBadge
-                  level={userLevel}
-                  size="xs"
-                  showTooltipOnPress
-                  style={styles.lifterBadge}
-                />
-              )}
             </View>
             {(displayRoutine || (workoutSong && !isPending)) && (
               <View style={styles.headerSubtitle}>
@@ -1118,19 +1084,6 @@ export const FeedCard = memo(function FeedCard({
             </View>
           </Pressable>
         </Modal>
-      )}
-
-      {/* PR Tooltip */}
-      {selectedExercisePR && (
-        <PrTooltip
-          visible={tooltipVisible}
-          onClose={() => {
-            setTooltipVisible(false)
-            setSelectedExercisePR(null)
-          }}
-          prDetails={selectedExercisePR.prDetails}
-          exerciseName={selectedExercisePR.exerciseName}
-        />
       )}
 
       {/* Workout Share Screen Modal */}

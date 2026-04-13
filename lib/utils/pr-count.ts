@@ -1,5 +1,6 @@
 interface PrInfoWithDetails {
   prDetails?: readonly unknown[] | null
+  prSetIndices?: Set<number>
 }
 
 export function countWorkoutRecords(

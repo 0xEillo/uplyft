@@ -681,6 +681,8 @@ export default function EditWorkoutScreen() {
       )
       await Promise.all(updateSetPromises)
 
+      await database.workoutSessions.refreshRecordCount(workoutId)
+
       handleExit()
     } catch (error) {
       console.error('Error saving workout:', error)

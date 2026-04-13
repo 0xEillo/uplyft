@@ -16,6 +16,12 @@ export interface ExerciseDisplay {
   }[]
 }
 
+export interface FormatWorkoutForDisplayOptions {
+  hideWarmupSets?: boolean
+  limit?: number
+  includeSetDetails?: boolean
+}
+
 export function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString)
   const now = new Date()
@@ -55,17 +61,29 @@ export function normalizeExerciseName(name: string): string {
 export function formatWorkoutForDisplay(
   workout: WorkoutSessionWithDetails,
   unit: WeightUnit,
-  hideWarmupSets = false,
+  options: boolean | FormatWorkoutForDisplayOptions = false,
 ): ExerciseDisplay[] {
   if (!workout.workout_exercises || workout.workout_exercises.length === 0) {
     return []
   }
 
+  const normalizedOptions =
+    typeof options === 'boolean' ? { hideWarmupSets: options } : options
+  const {
+    hideWarmupSets = false,
+    limit,
+    includeSetDetails = true,
+  } = normalizedOptions
+
   // Sort by order_index to preserve the original exercise order from the notepad
   const sortedExercises = [...workout.workout_exercises]
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+  const exercisesToFormat =
+    typeof limit === 'number'
+      ? sortedExercises.slice(0, Math.max(0, limit))
+      : sortedExercises
 
-  return sortedExercises.map((we) => {
+  return exercisesToFormat.map((we) => {
     const exercise = we.exercise
     const rawSets = we.sets || []
     const sets = hideWarmupSets ? rawSets.filter((s) => !s.is_warmup) : rawSets
@@ -128,10 +146,14 @@ export function formatWorkoutForDisplay(
       weight: weightDisplay,
       hasVariedSets,
       isCustom: isCustomExercise,
-      setDetails: sets.map((s) => ({
-        reps: s.reps,
-        weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
-      })),
+      ...(includeSetDetails
+        ? {
+            setDetails: sets.map((s) => ({
+              reps: s.reps,
+              weight: s.weight !== null ? kgToPreferred(s.weight, unit) : null,
+            })),
+          }
+        : {}),
     }
   })
 }
