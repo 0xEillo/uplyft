@@ -1,3 +1,4 @@
+import { getCompletedTutorialStepCount } from '@/constants/tutorial'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
@@ -29,7 +30,7 @@ export const TutorialProgressCard = memo(() => {
   // Don't show if dismissed or complete
   if (isTutorialDismissed || isTutorialComplete) return null
 
-  const completedCount = completedSteps.size
+  const completedCount = getCompletedTutorialStepCount(completedSteps)
   const totalSteps = tutorialSteps.length
 
   // Find current step

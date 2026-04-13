@@ -1,6 +1,7 @@
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
+import { getCompletedTutorialStepCount } from '@/constants/tutorial'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
@@ -78,7 +79,7 @@ export const ProfileDashboard = memo(
     )
 
     const TrialButton = () => {
-      const completedCount = completedSteps.size
+      const completedCount = getCompletedTutorialStepCount(completedSteps)
       const totalSteps = tutorialSteps.length
 
       return (

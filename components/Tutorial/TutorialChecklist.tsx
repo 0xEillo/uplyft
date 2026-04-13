@@ -1,4 +1,5 @@
 import { useTheme } from '@/contexts/theme-context'
+import { getCompletedTutorialStepCount } from '@/constants/tutorial'
 import { TutorialStep, useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic, hapticSuccess } from '@/lib/haptics'
@@ -223,9 +224,9 @@ export const TutorialChecklist = memo(
       completedSteps,
     } = useTutorial()
 
-    const completedCount = completedSteps.size
+    const completedCount = getCompletedTutorialStepCount(completedSteps)
     const totalSteps = tutorialSteps.length
-    const progressPercent = (completedCount / totalSteps) * 100
+    const progressPercent = totalSteps > 0 ? (completedCount / totalSteps) * 100 : 0
 
     // Find the current step (first incomplete step)
     const currentStepIndex = tutorialSteps.findIndex((s) => !s.completed)

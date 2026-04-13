@@ -68,6 +68,40 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   },
 ]
 
+export const VALID_TUTORIAL_STEP_IDS = new Set<TutorialStepId>(
+  TUTORIAL_STEPS.map((step) => step.id),
+)
+
+export const AUTO_COMPLETED_TUTORIAL_STEP_IDS: TutorialStepId[] = TUTORIAL_STEPS
+  .filter((step) => step.autoComplete)
+  .map((step) => step.id)
+
+export function normalizeTutorialStepIds(
+  stepIds: readonly string[] | null | undefined,
+): TutorialStepId[] {
+  if (!stepIds?.length) return []
+
+  return Array.from(
+    new Set(stepIds.filter((stepId): stepId is TutorialStepId => {
+      return VALID_TUTORIAL_STEP_IDS.has(stepId as TutorialStepId)
+    })),
+  )
+}
+
+export function getCompletedTutorialStepCount(
+  completedStepIds: ReadonlySet<string>,
+): number {
+  return TUTORIAL_STEPS.reduce((count, step) => {
+    return count + (completedStepIds.has(step.id) ? 1 : 0)
+  }, 0)
+}
+
+export function isTutorialCompleteForStepIds(
+  completedStepIds: ReadonlySet<string>,
+): boolean {
+  return getCompletedTutorialStepCount(completedStepIds) === TUTORIAL_STEPS.length
+}
+
 // Map from trial feature to the step it's associated with
 export const TRIAL_FEATURE_TO_STEP: Partial<Record<TrialFeatureId, TutorialStepId>> = {
   // ai_workout: 'generate_workout', // Removed from tutorial

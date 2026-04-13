@@ -5829,91 +5829,6 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
-  // Goblet Squat (Barbell / Dumbbell)
-  {
-    id: 'afc52a84-6c76-41ce-893e-6654fe922de7',
-    name: 'Goblet Squat (Barbell)',
-    aliases: ['Goblet Squat', 'DB Goblet Squat', 'Dumbbell Goblet Squat'],
-    tier: 2,
-    gifUrl: 'yn8yg1r.gif',
-    male: [
-      {
-        level: 'Beginner',
-        multiplier: 0.2,
-        color: '#64748B',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 0.35,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 0.55,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 0.85,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 1.15,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 1.4,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-    female: [
-      {
-        level: 'Beginner',
-        multiplier: 0.15,
-        color: '#64748B',
-        description: 'Just starting out',
-      },
-      {
-        level: 'Novice',
-        multiplier: 0.25,
-        color: '#3B82F6',
-        description: 'A few months training',
-      },
-      {
-        level: 'Intermediate',
-        multiplier: 0.4,
-        color: '#10B981',
-        description: '1-2 years consistent training',
-      },
-      {
-        level: 'Advanced',
-        multiplier: 0.6,
-        color: '#8B5CF6',
-        description: '2-5 years dedicated training',
-      },
-      {
-        level: 'Elite',
-        multiplier: 0.85,
-        color: '#F59E0B',
-        description: 'Competitive athlete level',
-      },
-      {
-        level: 'World Class',
-        multiplier: 1.1,
-        color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-
   // Goblet Squat (Kettlebell)
   {
     id: '74a25eb5-7abb-4806-9404-ca3a25cd8fb8',
@@ -6383,7 +6298,6 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Trap Bar Deadlift (Barbell)': 'Lower Back',
   'Pendlay Row (Barbell)': 'Back',
   'Zercher Squat (Barbell)': 'Quads',
-  'Goblet Squat (Barbell)': 'Quads',
   'Goblet Squat (Kettlebell)': 'Quads',
   'Bulgarian Split Squat (Barbell)': 'Quads',
   'Bicep Curl (EZ Bar)': 'Biceps',
@@ -6461,7 +6375,6 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   // New additions
   'Trap Bar Deadlift (Barbell)': 'Lower',
   'Zercher Squat (Barbell)': 'Lower',
-  'Goblet Squat (Barbell)': 'Lower',
   'Goblet Squat (Kettlebell)': 'Lower',
   'Bulgarian Split Squat (Barbell)': 'Lower',
   'Pendlay Row (Barbell)': 'Pull',

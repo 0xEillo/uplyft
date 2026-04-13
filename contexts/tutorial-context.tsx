@@ -1,4 +1,7 @@
 import {
+    AUTO_COMPLETED_TUTORIAL_STEP_IDS,
+    isTutorialCompleteForStepIds,
+    normalizeTutorialStepIds,
     TRIAL_FEATURE_TO_STEP,
     TrialFeatureId,
     TUTORIAL_DISMISSED_KEY,
@@ -123,15 +126,22 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
 
         // Start with auto-completed steps
-        const autoCompletedSteps = TUTORIAL_STEPS
-          .filter((s) => s.autoComplete)
-          .map((s) => s.id)
-        const initialSteps = new Set<TutorialStepId>(autoCompletedSteps)
+        const initialSteps = new Set<TutorialStepId>(
+          AUTO_COMPLETED_TUTORIAL_STEP_IDS,
+        )
 
         // Merge with saved progress
         if (progressData) {
-          const completed = JSON.parse(progressData) as TutorialStepId[]
+          const savedIds = JSON.parse(progressData) as string[]
+          const completed = normalizeTutorialStepIds(savedIds)
           completed.forEach((id) => initialSteps.add(id))
+
+          if (savedIds.length !== completed.length) {
+            void AsyncStorage.setItem(
+              storageKeys.progress,
+              JSON.stringify(Array.from(initialSteps)),
+            )
+          }
         }
 
         setCompletedSteps(initialSteps)
@@ -308,7 +318,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         AsyncStorage.removeItem(storageKeys.dismissed),
         AsyncStorage.removeItem(storageKeys.trial),
       ])
-      setCompletedSteps(new Set())
+      setCompletedSteps(new Set(AUTO_COMPLETED_TUTORIAL_STEP_IDS))
       setConsumedTrials(new Set())
       setIsTutorialDismissed(false)
     } catch (error) {
@@ -322,7 +332,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     completed: completedSteps.has(step.id),
   }))
 
-  const isTutorialComplete = completedSteps.size === TUTORIAL_STEPS.length
+  const isTutorialComplete = isTutorialCompleteForStepIds(completedSteps)
 
   const value: TutorialContextValue = {
     tutorialSteps,

@@ -13,7 +13,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -54,9 +53,10 @@ export default function FinalizeWorkoutScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const hasDismissedRef = useRef(false)
   const isFinishingRef = useRef(false)
+  const scrollViewRef = useRef<ScrollView>(null)
+  const descriptionLayoutY = useRef(0)
 
   const closeToTabs = useCallback(() => {
     if (hasDismissedRef.current) {
@@ -67,17 +67,13 @@ export default function FinalizeWorkoutScreen() {
     router.dismissTo('/(tabs)')
   }, [router])
 
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-    const showSub = Keyboard.addListener(showEvent, (e) =>
-      setKeyboardHeight(e.endCoordinates.height),
-    )
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0))
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
+  const scrollToDescription = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({
+        y: descriptionLayoutY.current - 80,
+        animated: true,
+      })
+    })
   }, [])
 
   useEffect(() => {
@@ -257,11 +253,9 @@ export default function FinalizeWorkoutScreen() {
         style={styles.content}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollContainer}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: 40 + keyboardHeight },
-          ]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
@@ -591,7 +585,12 @@ export default function FinalizeWorkoutScreen() {
           )}
 
           {/* Description Input */}
-          <View style={styles.descriptionSection}>
+          <View
+            style={styles.descriptionSection}
+            onLayout={(e) => {
+              descriptionLayoutY.current = e.nativeEvent.layout.y
+            }}
+          >
             <Text
               style={[
                 styles.statLabel,
@@ -601,7 +600,14 @@ export default function FinalizeWorkoutScreen() {
               Description
             </Text>
             <TextInput
-              style={[styles.input, { color: colors.textPrimary }]}
+              style={[
+                styles.input,
+                {
+                  color: colors.textPrimary,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
               placeholder="How did your workout go? Leave some notes here..."
               placeholderTextColor={colors.textTertiary}
               multiline
@@ -609,6 +615,7 @@ export default function FinalizeWorkoutScreen() {
               onChangeText={(value) => updateReview({ description: value })}
               textAlignVertical="top"
               editable={!isLoading}
+              onFocus={scrollToDescription}
             />
           </View>
         </ScrollView>
@@ -908,8 +915,12 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     lineHeight: 24,
-    minHeight: 100,
+    minHeight: 120,
+    maxHeight: 200,
     textAlignVertical: 'top',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   menuContainer: {
     position: 'absolute',
