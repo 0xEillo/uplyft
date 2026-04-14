@@ -1578,7 +1578,6 @@ export function WorkoutChat({
 
   useEffect(() => {
     if (mode === 'fullscreen' && !isFocused) return
-    if (isLoading) return
 
     let cancelled = false
     setHasHydratedPersistedChat(false)
@@ -1613,10 +1612,11 @@ export function WorkoutChat({
     return () => {
       cancelled = true
     }
-  }, [activePersistence, isFocused, isLoading, mode, user?.id])
+  }, [activePersistence, isFocused, mode, user?.id])
 
   useEffect(() => {
     if (!hasHydratedPersistedChat || !user?.id) return
+    if (messages.some((message) => message.status === 'sending')) return
 
     if (persistTimeoutRef.current) {
       clearTimeout(persistTimeoutRef.current)
@@ -2288,6 +2288,19 @@ export function WorkoutChat({
       interrupted: false,
     }
   }
+
+  const fetchNonStreamingChatText = useCallback(
+    async (body: unknown): Promise<string> => {
+      const response = await callChatFunction(body, {
+        accessToken: session?.access_token,
+        retryCount: 1,
+        preferNoStream: true,
+      })
+
+      return response.text()
+    },
+    [session?.access_token],
+  )
 
   // Convert image URI to base64
   const convertImageToBase64 = async (uri: string): Promise<string> => {
@@ -3003,12 +3016,9 @@ export function WorkoutChat({
         },
       ])
 
-      const responseMode = response.headers.get('x-chat-response-mode')
-      const reader =
-        responseMode === 'text' ? null : response.body?.getReader() ?? null
-      if (!reader) {
-        // Boring and reliable path: plain text, non-streaming response.
-        const assistantContent = await response.text()
+      const applyAssistantContent = (assistantContent: string) => {
+        const normalizedContent =
+          assistantContent || 'I received an empty response. Please try again.'
         const messageParsedWorkout = parseWorkoutForDisplay(assistantContent)
         const messageParsedProgram = messageParsedWorkout
           ? null
@@ -3025,30 +3035,38 @@ export function WorkoutChat({
             m.id === assistantMessageId
               ? {
                   ...m,
-                  content:
-                    assistantContent ||
-                    'I received an empty response. Please try again.',
+                  content: normalizedContent,
                 }
               : m,
           ),
         )
+      }
+
+      const fallbackToNonStreamingResponse = async () => {
+        const assistantContent = await fetchNonStreamingChatText(requestBody)
+        applyAssistantContent(assistantContent)
+        return assistantContent
+      }
+
+      const responseMode = response.headers.get('x-chat-response-mode')
+      const reader =
+        responseMode === 'text' ? null : response.body?.getReader() ?? null
+      if (!reader) {
+        const assistantContent =
+          responseMode === 'stream'
+            ? await fallbackToNonStreamingResponse()
+            : await response.text()
+
+        if (responseMode !== 'stream') {
+          applyAssistantContent(assistantContent)
+        }
       } else {
         const streamResult = await processStreamingResponse(
           reader,
           assistantMessageId,
         )
-        if (!streamResult.interrupted && !streamResult.content.trim()) {
-          throw new Error('Chat response stream completed without any text')
-        }
-        if (streamResult.interrupted && !streamResult.content.trim()) {
-          if (!hiddenPrompt) {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === userMessage.id ? { ...m, status: 'failed' } : m,
-              ),
-            )
-          }
-          return
+        if (streamResult.interrupted || !streamResult.content.trim()) {
+          await fallbackToNonStreamingResponse()
         }
       }
     } catch (error) {
@@ -3333,11 +3351,9 @@ export function WorkoutChat({
 
       const assistantMessageId = (Date.now() + 1).toString()
 
-      const responseMode = response.headers.get('x-chat-response-mode')
-      const reader =
-        responseMode === 'text' ? null : response.body?.getReader() ?? null
-      if (!reader) {
-        const assistantContent = await response.text()
+      const applyGeneratedPlanContent = (assistantContent: string) => {
+        const normalizedContent =
+          assistantContent || 'I received an empty response. Please try again.'
 
         // Use timeout to step out of current stack for state updates
         setTimeout(() => {
@@ -3354,7 +3370,7 @@ export function WorkoutChat({
             {
               id: assistantMessageId,
               role: 'assistant',
-              content: assistantContent,
+              content: normalizedContent,
             },
           ])
 
@@ -3365,6 +3381,26 @@ export function WorkoutChat({
             }
           }
         }, 0)
+      }
+
+      const fallbackToNonStreamingResponse = async () => {
+        const assistantContent = await fetchNonStreamingChatText(requestBody)
+        applyGeneratedPlanContent(assistantContent)
+        return assistantContent
+      }
+
+      const responseMode = response.headers.get('x-chat-response-mode')
+      const reader =
+        responseMode === 'text' ? null : response.body?.getReader() ?? null
+      if (!reader) {
+        const assistantContent =
+          responseMode === 'stream'
+            ? await fallbackToNonStreamingResponse()
+            : await response.text()
+
+        if (responseMode !== 'stream') {
+          applyGeneratedPlanContent(assistantContent)
+        }
       } else {
         // Stream silently - no placeholder message initially
         const streamResult = await processStreamingResponse(
@@ -3374,7 +3410,8 @@ export function WorkoutChat({
         )
 
         if (streamResult.interrupted || !streamResult.content.trim()) {
-          throw new Error('Workout generation stream was interrupted')
+          await fallbackToNonStreamingResponse()
+          return
         }
 
         // Once complete, add the message
