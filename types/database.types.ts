@@ -1,4 +1,5 @@
 import type { WorkoutSong } from '@/types/music'
+import type { StrengthLevel } from '@/lib/strength-standards'
 
 export type Gender = 'male' | 'female' | 'prefer_not_to_say'
 export type Goal =
@@ -47,6 +48,10 @@ export interface Profile {
   experience_level: ExperienceLevel | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean
+  overall_strength_score: number | null
+  overall_strength_level: StrengthLevel | null
+  overall_strength_progress: number | null
+  overall_strength_updated_at: string | null
   created_at: string
   updated_at: string
   coach: string | null

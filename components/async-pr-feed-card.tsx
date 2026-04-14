@@ -86,6 +86,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     ? 'You'
     : workout.profile?.display_name || 'User'
   const avatarUrl = workout.profile?.avatar_url || null
+  const userLevel =
+    (isOwnWorkout
+      ? profile?.overall_strength_level ?? workout.profile?.overall_strength_level
+      : workout.profile?.overall_strength_level) ?? null
   const coach = getCoach(coachId)
 
   // Social interaction states
@@ -442,6 +446,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     <FeedCard
       userName={userName}
       userAvatar={avatarUrl || ''}
+      userLevel={userLevel}
       coachAvatarSource={coach.image}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={

@@ -16,6 +16,7 @@ import {
   getLatestDailyWeightKg,
   normalizeLogDate,
 } from '../_shared/daily-weight.ts'
+import { refreshUserStrengthProfileCache } from '../_shared/strength.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'
 import { GEMINI_FALLBACK_MODEL, GEMINI_MODEL } from '../_shared/openrouter.ts'
 import { createServiceClient, createUserClient } from '../_shared/supabase.ts'
@@ -390,6 +391,13 @@ serve(async (req: Request) => {
           throw insertDailyWeightError
         }
       }
+
+      await refreshUserStrengthProfileCache(supabase, userId).catch((error) => {
+        console.error(
+          '[BODY_LOG] Failed to refresh cached strength profile after weight update:',
+          error,
+        )
+      })
     }
 
     const { data: updated, error: updateError } = await supabase

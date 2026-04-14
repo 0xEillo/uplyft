@@ -12,7 +12,8 @@ import {
   getLeaderboardExercises,
   isRepBasedExercise,
 } from '@/lib/exercise-standards-config'
-import { estimateOneRepMaxKg } from '@/lib/strength-progress'
+import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
+import { estimateOneRepMaxKg, getStrengthGender } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
     DailyLogConfidence,
@@ -262,6 +263,72 @@ const syncProfileWeightCacheFromDailyLog = async (userId: string) => {
   if (error) {
     throw error
   }
+
+  await refreshProfileStrengthCache(userId).catch((refreshError) => {
+    console.warn(
+      '[ProfileStrengthCache] Failed to refresh after weight sync:',
+      refreshError,
+    )
+  })
+}
+
+const PROFILE_FEED_SELECT =
+  'id, user_tag, display_name, avatar_url, overall_strength_score, overall_strength_level, overall_strength_progress, overall_strength_updated_at'
+
+const refreshProfileStrengthCache = async (userId: string) => {
+  const profile = await database.profiles.getByIdOrNull(userId)
+  const strengthGender = getStrengthGender(profile?.gender ?? null)
+  const bodyweightKg = profile?.weight_kg ?? null
+
+  const cacheBase = {
+    overall_strength_score: null,
+    overall_strength_level: null,
+    overall_strength_progress: null,
+    overall_strength_updated_at: new Date().toISOString(),
+  }
+
+  if (!strengthGender || !bodyweightKg || bodyweightKg <= 0) {
+    const { error } = await supabase
+      .from('profiles')
+      .update(cacheBase)
+      .eq('id', userId)
+
+    if (error) throw error
+    return cacheBase
+  }
+
+  const exercises = await database.stats.getMajorCompoundLiftsData(userId)
+
+  if (exercises.length === 0) {
+    const { error } = await supabase
+      .from('profiles')
+      .update(cacheBase)
+      .eq('id', userId)
+
+    if (error) throw error
+    return cacheBase
+  }
+
+  const result = calculateOverallStrengthScore({
+    gender: strengthGender,
+    bodyweightKg,
+    exercises,
+  })
+
+  const cachedStrength = {
+    overall_strength_score: result.score,
+    overall_strength_level: result.level,
+    overall_strength_progress: Math.round(result.progress),
+    overall_strength_updated_at: new Date().toISOString(),
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(cachedStrength)
+    .eq('id', userId)
+
+  if (error) throw error
+  return cachedStrength
 }
 
 const getDailyWeightsByDate = async (
@@ -638,6 +705,16 @@ export const database = {
         .single()
 
       if (error) throw error
+
+      if ('gender' in sanitizedUpdates) {
+        await refreshProfileStrengthCache(userId).catch((refreshError) => {
+          console.warn(
+            '[ProfileStrengthCache] Failed to refresh after profile update:',
+            refreshError,
+          )
+        })
+      }
+
       return hydrateProfileWeightFromDailyLog(data as Profile)
     },
 
@@ -650,7 +727,21 @@ export const database = {
         .single()
 
       if (error) throw error
+
+      if ('gender' in sanitizedProfile) {
+        await refreshProfileStrengthCache(profile.id).catch((refreshError) => {
+          console.warn(
+            '[ProfileStrengthCache] Failed to refresh after profile upsert:',
+            refreshError,
+          )
+        })
+      }
+
       return hydrateProfileWeightFromDailyLog(data as Profile)
+    },
+
+    async refreshStrengthCache(userId: string) {
+      return refreshProfileStrengthCache(userId)
     },
 
     async searchByUserTag(userTag: string) {
@@ -1987,6 +2078,13 @@ export const database = {
         session.id,
       )
 
+      await refreshProfileStrengthCache(userId).catch((refreshError) => {
+        console.warn(
+          '[ProfileStrengthCache] Failed to refresh after workout creation:',
+          refreshError,
+        )
+      })
+
       return session as WorkoutSession
     },
 
@@ -2022,7 +2120,7 @@ export const database = {
       // Fetch profile for the user to display avatar/name
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, user_tag, display_name, avatar_url')
+        .select(PROFILE_FEED_SELECT)
         .eq('id', userId)
         .single()
 
@@ -2086,7 +2184,7 @@ export const database = {
       ] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, user_tag, display_name, avatar_url')
+          .select(PROFILE_FEED_SELECT)
           .in('id', uniqueUserIds),
         database.workoutSocial.getStatsForWorkouts(workoutIds),
         database.workoutLikes.getLikedWorkoutIds(workoutIds, userId),
@@ -2322,6 +2420,13 @@ export const database = {
         .eq('user_id', userId)
 
       if (error) throw error
+
+      await refreshProfileStrengthCache(userId).catch((refreshError) => {
+        console.warn(
+          '[ProfileStrengthCache] Failed to refresh after workout deletion:',
+          refreshError,
+        )
+      })
     },
 
     async getLastForRoutine(

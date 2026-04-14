@@ -78,7 +78,7 @@ export default function MuscleGroupDetailScreen() {
     return trackableConfigs
       .map((config) => {
         const userExercise = filteredExercises.find(
-          (ex) => ex.exerciseName === config.name,
+          (ex) => ex.exerciseId === config.id,
         )
 
         return {

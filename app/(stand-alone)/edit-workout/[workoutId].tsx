@@ -682,6 +682,12 @@ export default function EditWorkoutScreen() {
       await Promise.all(updateSetPromises)
 
       await database.workoutSessions.refreshRecordCount(workoutId)
+      await database.profiles.refreshStrengthCache(user.id).catch((refreshError) => {
+        console.warn(
+          '[ProfileStrengthCache] Failed to refresh after workout edit:',
+          refreshError,
+        )
+      })
 
       handleExit()
     } catch (error) {

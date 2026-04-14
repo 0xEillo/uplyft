@@ -28,6 +28,7 @@ import {
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
+import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -100,6 +101,7 @@ export interface CommentPreview {
 export interface FeedCardProps {
   userName: string
   userAvatar: string
+  userLevel?: Profile['overall_strength_level']
   coachAvatarSource?: number
   timeAgo: string
   workoutTitle: string
@@ -140,6 +142,7 @@ export interface FeedCardProps {
 export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
+  userLevel,
   coachAvatarSource,
   timeAgo,
   workoutTitle,
@@ -686,6 +689,13 @@ export const FeedCard = memo(function FeedCard({
               <Text style={styles.userName} numberOfLines={1}>
                 {userName}
               </Text>
+              {userLevel && (
+                <LevelBadge
+                  level={userLevel}
+                  size="xs"
+                  style={styles.lifterBadge}
+                />
+              )}
             </View>
             {(displayRoutine || (workoutSong && !isPending)) && (
               <View style={styles.headerSubtitle}>

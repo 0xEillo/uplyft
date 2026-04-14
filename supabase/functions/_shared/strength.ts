@@ -130,6 +130,13 @@ export interface UserStrengthProfile {
   missingRequirements: string[]
 }
 
+export interface StrengthProfileCacheUpdate {
+  overall_strength_score: number | null
+  overall_strength_level: StrengthLevel | null
+  overall_strength_progress: number | null
+  overall_strength_updated_at: string
+}
+
 interface SupportedExerciseSnapshot {
   exerciseId: string
   exerciseName: string
@@ -923,4 +930,34 @@ export async function buildUserStrengthProfile(
     exerciseRanks,
     missingRequirements,
   }
+}
+
+export async function refreshUserStrengthProfileCache(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<StrengthProfileCacheUpdate> {
+  const strengthProfile = await buildUserStrengthProfile(supabase, userId)
+  const cacheUpdate: StrengthProfileCacheUpdate = strengthProfile.overallLevel
+    ? {
+        overall_strength_score: strengthProfile.overallLevel.points,
+        overall_strength_level: strengthProfile.overallLevel.level,
+        overall_strength_progress: Math.round(
+          strengthProfile.overallLevel.progress,
+        ),
+        overall_strength_updated_at: new Date().toISOString(),
+      }
+    : {
+        overall_strength_score: null,
+        overall_strength_level: null,
+        overall_strength_progress: null,
+        overall_strength_updated_at: new Date().toISOString(),
+      }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(cacheUpdate)
+    .eq('id', userId)
+
+  if (error) throw error
+  return cacheUpdate
 }

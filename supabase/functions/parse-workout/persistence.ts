@@ -1,4 +1,5 @@
 import { createServiceClient } from '../_shared/supabase.ts'
+import { refreshUserStrengthProfileCache } from '../_shared/strength.ts'
 import {
   isWorkoutSessionIdempotencyConflict,
   normalizeIdempotencyKey,
@@ -221,6 +222,18 @@ export async function createWorkoutSession(
       { p_session_id: session.id },
     )
     if (recordCountError) throw recordCountError
+
+    await refreshUserStrengthProfileCache(supabase, userId).catch((error) => {
+      logWithCorrelation(
+        correlationId,
+        'Failed to refresh cached strength profile after workout creation',
+        {
+          userId,
+          sessionId: session.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      )
+    })
 
     const { data: finalizedSession, error: finalizeSessionError } = await supabase
       .from('workout_sessions')
