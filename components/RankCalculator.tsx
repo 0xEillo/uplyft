@@ -423,6 +423,7 @@ export function RankCalculator() {
           min={0}
           max={maxDisplayWeight}
           step={1}
+          dragMultiplier={2}
         />
       )}
 
