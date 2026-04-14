@@ -1186,6 +1186,7 @@ function createStyles(
       alignItems: 'center',
       marginTop: 2,
       flexWrap: 'nowrap',
+      paddingRight: 8,
     },
     subtitleSeparator: {
       fontSize: 12,
