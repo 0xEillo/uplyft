@@ -1335,6 +1335,32 @@ export const database = {
       return (data || []) as WorkoutComment[]
     },
 
+    async listWithProfilesByWorkout(workoutId: string, limit = 50, offset = 0) {
+      const { data: commentsData, error } = await supabase
+        .from('workout_comments')
+        .select('*')
+        .eq('workout_id', workoutId)
+        .order('created_at', { ascending: true })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+      if (!commentsData || commentsData.length === 0) return []
+
+      const uniqueUserIds = [...new Set(commentsData.map((c) => c.user_id))]
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', uniqueUserIds)
+
+      if (profilesError) throw profilesError
+
+      const profileMap = new Map(profilesData?.map((p) => [p.id, p]) || [])
+      return commentsData.map((c) => ({
+        ...c,
+        profile: profileMap.get(c.user_id) as Profile,
+      }))
+    },
+
     async getCount(workoutId: string) {
       const { count, error } = await supabase
         .from('workout_comments')

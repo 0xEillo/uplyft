@@ -132,7 +132,8 @@ export interface FeedCardProps {
   routine?: { id: string; name: string } | null
   onRoutinePress?: () => void
   recentLikers?: Partial<Profile>[]
-  latestComment?: CommentPreview | null
+  comments?: CommentPreview[]
+  currentUserAvatar?: string | null
 }
 
 /**
@@ -172,7 +173,8 @@ export const FeedCard = memo(function FeedCard({
   routine,
   onRoutinePress,
   recentLikers = [],
-  latestComment,
+  comments = [],
+  currentUserAvatar,
 }: FeedCardProps): ReactElement {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -1019,44 +1021,69 @@ export const FeedCard = memo(function FeedCard({
             </View>
           )}
 
-          {/* Comment Preview Section */}
-          {latestComment && (
-            <View style={styles.commentPreviewContainer}>
-              {latestComment.userAvatar ? (
-                <Image
-                  source={{ uri: latestComment.userAvatar }}
-                  style={styles.commentAvatar}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  transition={100}
-                />
-              ) : (
-                <View style={styles.commentAvatarPlaceholder}>
-                  <Text style={styles.commentAvatarPlaceholderText}>
-                    {latestComment.username[0]}
-                  </Text>
+          {/* Comments Section */}
+          {comments.length > 0 && (
+            <View style={styles.commentsListContainer}>
+              {comments.map((comment) => (
+                <View key={comment.id} style={styles.commentPreviewContainer}>
+                  {comment.userAvatar ? (
+                    <Image
+                      source={{ uri: comment.userAvatar }}
+                      style={styles.commentAvatar}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={100}
+                    />
+                  ) : (
+                    <View style={styles.commentAvatarPlaceholder}>
+                      <Text style={styles.commentAvatarPlaceholderText}>
+                        {comment.username[0]}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.commentContent}>
+                    <View style={styles.commentHeader}>
+                      <Text style={styles.commentUsername}>
+                        {comment.username}
+                      </Text>
+                      <Text style={styles.commentTime}>{comment.timeAgo}</Text>
+                    </View>
+                    <Text style={styles.commentText} numberOfLines={2}>
+                      {comment.text}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.commentLikeButton}>
+                    <Ionicons
+                      name="heart-outline"
+                      size={14}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
                 </View>
-              )}
-              <View style={styles.commentContent}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentUsername}>
-                    {latestComment.username}
-                  </Text>
-                  <Text style={styles.commentTime}>{latestComment.timeAgo}</Text>
-                </View>
-                <Text style={styles.commentText} numberOfLines={2}>
-                  {latestComment.text}
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.commentLikeButton}>
-                <Ionicons
-                  name="heart-outline"
-                  size={14}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
+              ))}
             </View>
           )}
+
+          {/* Add Comment Input */}
+          <TouchableOpacity 
+            style={styles.addCommentContainer}
+            onPress={onComment}
+            activeOpacity={0.7}
+          >
+            {currentUserAvatar ? (
+              <Image
+                source={{ uri: currentUserAvatar }}
+                style={styles.addCommentAvatar}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <View style={[styles.addCommentAvatar, styles.addCommentAvatarPlaceholder]}>
+                <Ionicons name="person" size={12} color={colors.surface} />
+              </View>
+            )}
+            <Text style={styles.addCommentText}>Add a comment...</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -1633,12 +1660,15 @@ function createStyles(
       paddingHorizontal: 4,
       marginTop: 4,
     },
+    commentsListContainer: {
+      marginTop: 4,
+      marginBottom: 8,
+      gap: 12,
+    },
     commentPreviewContainer: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       paddingHorizontal: 4,
-      marginTop: 8,
-      marginBottom: 4,
       gap: 10,
     },
     commentAvatar: {
@@ -1686,6 +1716,29 @@ function createStyles(
     },
     commentLikeButton: {
       padding: 4,
+    },
+    addCommentContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 4,
+      paddingVertical: 12,
+      gap: 12,
+    },
+    addCommentAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    addCommentAvatarPlaceholder: {
+      backgroundColor: colors.brandPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addCommentText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      flex: 1,
     },
     likedByContainer: {
       flexDirection: 'row',

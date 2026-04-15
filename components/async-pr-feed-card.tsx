@@ -99,6 +99,26 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   )
   const [isLiked, setIsLiked] = useState(workout.social?.isLiked ?? false)
   const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
+  const [comments, setComments] = useState<any[]>([])
+
+  useEffect(() => {
+    if (!workout.id || workout.isPending) return
+    let isMounted = true
+    const fetchComments = async () => {
+      try {
+        const fetchedComments = await database.workoutComments.listWithProfilesByWorkout(workout.id, 2)
+        if (isMounted) {
+          setComments(fetchedComments)
+        }
+      } catch (error) {
+        console.error('Error fetching comments for feed card:', error)
+      }
+    }
+    void fetchComments()
+    return () => {
+      isMounted = false
+    }
+  }, [workout.id, workout.isPending, commentCount])
 
   const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
     if (!user?.id) return null
@@ -439,6 +459,16 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     router.push('/(tabs)/chat' as any)
   }, [isOwnWorkout, router, trackEvent, totalSetCount, user?.id, workout])
 
+  const commentPreviews = useMemo(() => {
+    return comments.map((c) => ({
+      id: c.id,
+      username: c.profile?.display_name || c.profile?.user_tag || 'User',
+      userAvatar: c.profile?.avatar_url,
+      text: c.content,
+      timeAgo: formatTimeAgo(c.created_at),
+    }))
+  }, [comments])
+
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
 
@@ -481,6 +511,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       onCoachPress={isPending || !isOwnWorkout ? undefined : handleCoachPress}
       isFirst={isFirst}
       recentLikers={recentLikers}
+      comments={commentPreviews}
+      currentUserAvatar={profile?.avatar_url}
     />
   )
 })
