@@ -4,7 +4,6 @@ import {
   getExerciseNameMap,
   getTrackableExercisesForMuscle,
 } from './exercise-standards-config'
-import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
 import {
   calculateExerciseStrengthPoints,
   calculateStrengthAggregateFromScores,
@@ -204,22 +203,16 @@ export function buildSpecificMuscleGroupData<
     })
     if (points === null) return
 
-    const canonicalName = exerciseNameMap.get(exercise.exerciseName)?.name ?? exercise.exerciseName
     const primaryMuscle = resolveExerciseSpecificMuscle(
       exercise.exerciseName,
       exercise.muscleGroup,
     )
-    const secondaryMuscle =
-      SECONDARY_EXERCISE_MUSCLE_MAPPING[canonicalName] ??
-      SECONDARY_EXERCISE_MUSCLE_MAPPING[exercise.exerciseName] ??
-      null
 
     const tier = exerciseNameMap.get(exercise.exerciseName)?.tier ?? 3
     const weightedPoints = points * EXERCISE_TIER_WEIGHTS[tier]
 
-    ;[primaryMuscle, secondaryMuscle].forEach((muscle, index) => {
+    ;[primaryMuscle].forEach((muscle) => {
       if (!muscle) return
-      if (index === 1 && muscle === primaryMuscle) return
 
       const existing = groupState.get(muscle) ?? {
         exercises: [],

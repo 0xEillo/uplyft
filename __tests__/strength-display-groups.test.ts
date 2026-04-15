@@ -59,7 +59,7 @@ describe('strength display groups', () => {
     })
   })
 
-  test('builds specific muscle groups for tappable body regions', () => {
+  test('builds specific muscle groups from each exercise primary muscle only', () => {
     const groups = buildSpecificMuscleGroupData({
       gender: 'male',
       bodyweightKg: 100,
@@ -83,7 +83,7 @@ describe('strength display groups', () => {
     })
 
     expect(groups.find((group) => group.name === 'Quads')).toBeTruthy()
-    expect(groups.find((group) => group.name === 'Glutes')).toBeTruthy()
+    expect(groups.find((group) => group.name === 'Glutes')).toBeFalsy()
     expect(groups.find((group) => group.name === 'Shoulders')).toBeTruthy()
     expect(groups.find((group) => group.name === 'Legs')).toBeFalsy()
   })

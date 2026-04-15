@@ -54,4 +54,18 @@ describe('body part strength helpers', () => {
     expect(hamstringExercises).toContain('Romanian Deadlift (Barbell)')
     expect(gluteExercises).not.toContain('Romanian Deadlift (Barbell)')
   })
+
+  test('squat patterns stay in quads trackables and do not spill into glutes', () => {
+    const quadExercises = getTrackableExercisesForBodyPart('quadriceps').map(
+      (exercise) => exercise.name,
+    )
+    const gluteExercises = getTrackableExercisesForBodyPart('gluteal').map(
+      (exercise) => exercise.name,
+    )
+
+    expect(quadExercises).toContain('Squat (Barbell)')
+    expect(quadExercises).toContain('Bulgarian Split Squat (Dumbbell)')
+    expect(gluteExercises).not.toContain('Squat (Barbell)')
+    expect(gluteExercises).not.toContain('Bulgarian Split Squat (Dumbbell)')
+  })
 })

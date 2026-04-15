@@ -3,8 +3,6 @@
  * Single source of truth for exercises that have strength standards
  */
 
-import { SECONDARY_EXERCISE_MUSCLE_MAPPING } from './exercise-standards-config-secondary'
-
 export type StrengthLevel =
   | 'Untrained'
   | 'Beginner'
@@ -3096,17 +3094,17 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
     ],
   },
-  // Machine Shrug
+  // Barbell Shrug
   {
     id: 'de0aeeaa-8bd0-4c4b-8602-986025dfdc17',
-    name: 'Shrug (Machine)',
-    aliases: ['Shrug', 'Machine Shrug'],
-    tier: 3,
+    name: 'Shrug (Barbell)',
+    aliases: ['Shrug', 'Barbell Shrug', 'BB Shrug'],
+    tier: 1,
     gifUrl: 'ZZKbeMw.gif',
     male: [
       {
         level: 'Beginner',
-        multiplier: 0.6,
+        multiplier: 0.5,
         color: '#64748B',
         description: 'Just starting out',
       },
@@ -3124,19 +3122,19 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Advanced',
-        multiplier: 2.0,
+        multiplier: 2.25,
         color: '#8B5CF6',
         description: '2-5 years dedicated training',
       },
       {
         level: 'Elite',
-        multiplier: 2.6,
+        multiplier: 3.25,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 3.2,
+        multiplier: 4.0,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -3144,19 +3142,19 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     female: [
       {
         level: 'Beginner',
-        multiplier: 0.4,
+        multiplier: 0.25,
         color: '#64748B',
         description: 'Just starting out',
       },
       {
         level: 'Novice',
-        multiplier: 0.7,
+        multiplier: 0.5,
         color: '#3B82F6',
         description: 'A few months training',
       },
       {
         level: 'Intermediate',
-        multiplier: 1.1,
+        multiplier: 1.0,
         color: '#10B981',
         description: '1-2 years consistent training',
       },
@@ -3168,13 +3166,13 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       },
       {
         level: 'Elite',
-        multiplier: 2.0,
+        multiplier: 2.25,
         color: '#F59E0B',
         description: 'Competitive athlete level',
       },
       {
         level: 'World Class',
-        multiplier: 2.5,
+        multiplier: 2.75,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -6230,7 +6228,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'T Bar Row (Machine)': 'Back',
 
   // Traps
-  'Shrug (Machine)': 'Traps',
+  'Shrug (Barbell)': 'Traps',
   'Shrug (Dumbbell)': 'Traps',
   'Shrug (Smith Machine)': 'Traps',
   'Rack Pull (Barbell)': 'Traps',
@@ -6345,7 +6343,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Seated Row (Machine)': 'Pull',
   'Rope Face Pulls (Cable)': 'Pull',
   'Reverse Fly (Dumbbell)': 'Pull',
-  'Shrug (Machine)': 'Pull',
+  'Shrug (Barbell)': 'Pull',
   'Shrug (Dumbbell)': 'Pull',
   'Shrug (Smith Machine)': 'Pull',
   'Rack Pull (Barbell)': 'Pull',
@@ -6388,22 +6386,12 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
 export function getTrackableExercisesForMuscle(
   muscleName: string,
 ): ExerciseStandardsConfig[] {
-  const primaryExerciseNames = Object.entries(EXERCISE_MUSCLE_MAPPING)
+  const exerciseNames = Object.entries(EXERCISE_MUSCLE_MAPPING)
     .filter(([_, muscle]) => muscle === muscleName)
     .map(([exercise, _]) => exercise)
-
-  const secondaryExerciseNames = Object.entries(
-    SECONDARY_EXERCISE_MUSCLE_MAPPING,
-  )
-    .filter(([_, muscle]) => muscle === muscleName)
-    .map(([exercise, _]) => exercise)
-
-  const allExerciseNames = Array.from(
-    new Set([...primaryExerciseNames, ...secondaryExerciseNames]),
-  )
 
   return EXERCISES_WITH_STANDARDS.filter((ex) =>
-    allExerciseNames.includes(ex.name),
+    exerciseNames.includes(ex.name),
   )
 }
 
