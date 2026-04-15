@@ -1023,67 +1023,69 @@ export const FeedCard = memo(function FeedCard({
 
           {/* Comments Section */}
           {comments.length > 0 && (
-            <View style={styles.commentsListContainer}>
-              {comments.map((comment) => (
-                <View key={comment.id} style={styles.commentPreviewContainer}>
-                  {comment.userAvatar ? (
-                    <Image
-                      source={{ uri: comment.userAvatar }}
-                      style={styles.commentAvatar}
-                      contentFit="cover"
-                      cachePolicy="memory-disk"
-                      transition={100}
-                    />
-                  ) : (
-                    <View style={styles.commentAvatarPlaceholder}>
-                      <Text style={styles.commentAvatarPlaceholderText}>
-                        {comment.username[0]}
+            <>
+              <View style={styles.commentsListContainer}>
+                {comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentPreviewContainer}>
+                    {comment.userAvatar ? (
+                      <Image
+                        source={{ uri: comment.userAvatar }}
+                        style={styles.commentAvatar}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        transition={100}
+                      />
+                    ) : (
+                      <View style={styles.commentAvatarPlaceholder}>
+                        <Text style={styles.commentAvatarPlaceholderText}>
+                          {comment.username[0]}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.commentContent}>
+                      <View style={styles.commentHeader}>
+                        <Text style={styles.commentUsername}>
+                          {comment.username}
+                        </Text>
+                        <Text style={styles.commentTime}>{comment.timeAgo}</Text>
+                      </View>
+                      <Text style={styles.commentText} numberOfLines={2}>
+                        {comment.text}
                       </Text>
                     </View>
-                  )}
-                  <View style={styles.commentContent}>
-                    <View style={styles.commentHeader}>
-                      <Text style={styles.commentUsername}>
-                        {comment.username}
-                      </Text>
-                      <Text style={styles.commentTime}>{comment.timeAgo}</Text>
-                    </View>
-                    <Text style={styles.commentText} numberOfLines={2}>
-                      {comment.text}
-                    </Text>
+                    <TouchableOpacity style={styles.commentLikeButton}>
+                      <Ionicons
+                        name="heart-outline"
+                        size={14}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity style={styles.commentLikeButton}>
-                    <Ionicons
-                      name="heart-outline"
-                      size={14}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Add Comment Input */}
-          <TouchableOpacity 
-            style={styles.addCommentContainer}
-            onPress={onComment}
-            activeOpacity={0.7}
-          >
-            {currentUserAvatar ? (
-              <Image
-                source={{ uri: currentUserAvatar }}
-                style={styles.addCommentAvatar}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-              />
-            ) : (
-              <View style={[styles.addCommentAvatar, styles.addCommentAvatarPlaceholder]}>
-                <Ionicons name="person" size={12} color={colors.surface} />
+                ))}
               </View>
-            )}
-            <Text style={styles.addCommentText}>Add a comment...</Text>
-          </TouchableOpacity>
+
+              {/* Add Comment Input */}
+              <TouchableOpacity 
+                style={styles.addCommentContainer}
+                onPress={onComment}
+                activeOpacity={0.7}
+              >
+                {currentUserAvatar ? (
+                  <Image
+                    source={{ uri: currentUserAvatar }}
+                    style={styles.addCommentAvatar}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                  />
+                ) : (
+                  <View style={[styles.addCommentAvatar, styles.addCommentAvatarPlaceholder]}>
+                    <Ionicons name="person" size={12} color={colors.surface} />
+                  </View>
+                )}
+                <Text style={styles.addCommentText}>Add a comment...</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 
