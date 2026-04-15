@@ -274,7 +274,7 @@ export async function uploadBodyLogImage(
 ): Promise<string> {
   try {
     // Normalize to JPEG before upload to avoid large HEIC payloads and speed up transfer.
-    const processedImage = await ImageManipulator.manipulateAsync(uri, [], {
+    const processedImage = await ImageManipulator.manipulateAsync(uri, [{ rotate: 0 }], {
       format: ImageManipulator.SaveFormat.JPEG,
       compress: BODY_LOG_UPLOAD_COMPRESS,
     })

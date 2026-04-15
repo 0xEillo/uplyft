@@ -14,7 +14,7 @@ export async function normalizeImageUri(
   uri: string,
   options: NormalizeImageOptions = {},
 ): Promise<string> {
-  const normalized = await ImageManipulator.manipulateAsync(uri, [], {
+  const normalized = await ImageManipulator.manipulateAsync(uri, [{ rotate: 0 }], {
     compress: options.compress ?? DEFAULT_COMPRESS,
     format: ImageManipulator.SaveFormat.JPEG,
   })

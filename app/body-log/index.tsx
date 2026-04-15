@@ -15,6 +15,7 @@ import {
     getBodyLogImageUrls,
     prefetchBodyLogImages,
     getThumbnailUrlsWithPrefetch,
+    deleteBodyLogImage,
 } from '@/lib/utils/body-log-storage'
 import type { DailyLogEntry, DailyLogSummary } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -552,6 +553,7 @@ export default function BodyLogScreen() {
   const [photoHeroUrls, setPhotoHeroUrls] = useState<Record<string, string>>({})
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false)
   const [photoViewerIndex, setPhotoViewerIndex] = useState(0)
+  const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
   const bodyPageRef = useRef(0)
   const dailyPageRef = useRef(0)
   const hasFocusedOnce = useRef(false)
@@ -868,6 +870,39 @@ export default function BodyLogScreen() {
       ensureHeroUrls(getViewerPrefetchPaths(progressPhotos, safeIndex))
     },
     [ensureHeroUrls, progressPhotos],
+  )
+
+  const handleDeletePhoto = useCallback(
+    (photo: ProgressPhotoItem) => {
+      const doDelete = async () => {
+        if (!user || isDeletingPhoto) return
+        setIsDeletingPhoto(true)
+        try {
+          const imageId = photo.id.split(':')[1]
+          await Promise.all([
+            database.bodyLog.deleteImage(imageId, user.id),
+            deleteBodyLogImage(photo.filePath),
+          ])
+          haptic('medium')
+
+          if (progressPhotos.length <= 1) {
+            setPhotoViewerVisible(false)
+          }
+          await loadEntries(true, true)
+        } catch (e) {
+          console.error('Error deleting photo:', e)
+          Alert.alert('Error', 'Failed to delete photo. Please try again.')
+        } finally {
+          setIsDeletingPhoto(false)
+        }
+      }
+
+      Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ])
+    },
+    [user, isDeletingPhoto, progressPhotos.length, loadEntries],
   )
 
   useEffect(() => {
@@ -1480,7 +1515,28 @@ export default function BodyLogScreen() {
               </Text>
             </View>
 
-            <View style={{ width: 40, height: 40 }} />
+            <TouchableOpacity
+              onPress={() => {
+                const photo = progressPhotos[photoViewerIndex]
+                if (photo) handleDeletePhoto(photo)
+              }}
+              disabled={isDeletingPhoto}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+              }}
+              activeOpacity={0.85}
+            >
+              {isDeletingPhoto ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
 
           {photoViewerVisible && progressPhotos.length > 0 && (

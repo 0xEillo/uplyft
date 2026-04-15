@@ -7,6 +7,7 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: false,
         isProfileLoading: true,
         isReady: true,
+        nextPromptWorkoutCount: 3,
         timesShown: 0,
         workoutCount: 10,
       }),
@@ -17,6 +18,7 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: false,
         isProfileLoading: false,
         isReady: false,
+        nextPromptWorkoutCount: 3,
         timesShown: 0,
         workoutCount: 10,
       }),
@@ -29,6 +31,7 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: true,
         isProfileLoading: false,
         isReady: true,
+        nextPromptWorkoutCount: 3,
         timesShown: 0,
         workoutCount: 10,
       }),
@@ -41,6 +44,7 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: false,
         isProfileLoading: false,
         isReady: true,
+        nextPromptWorkoutCount: 3,
         timesShown: 0,
         workoutCount: 2,
       }),
@@ -51,8 +55,33 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: false,
         isProfileLoading: false,
         isReady: true,
+        nextPromptWorkoutCount: 3,
         timesShown: 0,
         workoutCount: 3,
+      }),
+    ).toBe(true)
+  })
+
+  it('waits until 3 workouts after the last dismissal', () => {
+    expect(
+      shouldShowProfilePicPrompt({
+        hasProfilePic: false,
+        isProfileLoading: false,
+        isReady: true,
+        nextPromptWorkoutCount: 13,
+        timesShown: 1,
+        workoutCount: 12,
+      }),
+    ).toBe(false)
+
+    expect(
+      shouldShowProfilePicPrompt({
+        hasProfilePic: false,
+        isProfileLoading: false,
+        isReady: true,
+        nextPromptWorkoutCount: 13,
+        timesShown: 1,
+        workoutCount: 13,
       }),
     ).toBe(true)
   })
@@ -63,6 +92,7 @@ describe('shouldShowProfilePicPrompt', () => {
         hasProfilePic: false,
         isProfileLoading: false,
         isReady: true,
+        nextPromptWorkoutCount: 12,
         timesShown: 3,
         workoutCount: 20,
       }),
