@@ -5692,24 +5692,36 @@ export function WorkoutChat({
 
           const name = productData.product_name || 'Item'
           const brand = productData.brands ? ` (${productData.brands})` : ''
-          const serving = productData.serving_size || '1 serving'
+          const nutr = productData.nutriments || {}
+
+          // Pick a consistent nutrition base so the stepper has a clear meaning.
+          // Prefer per-serving when the product declares a serving quantity and
+          // at least calories-per-serving; otherwise fall back to per 100g.
+          const servingGrams: number | undefined =
+            typeof productData.serving_quantity === 'number'
+              ? productData.serving_quantity
+              : productData.serving_quantity
+                ? parseFloat(productData.serving_quantity)
+                : undefined
+          const hasPerServing =
+            servingGrams != null &&
+            !Number.isNaN(servingGrams) &&
+            nutr['energy-kcal_serving'] != null
 
           const cals =
-            productData.nutriments?.['energy-kcal'] ||
-            productData.nutriments?.['energy-kcal_100g'] ||
+            (hasPerServing ? nutr['energy-kcal_serving'] : nutr['energy-kcal_100g']) ??
             0
           const protein =
-            productData.nutriments?.proteins ||
-            productData.nutriments?.proteins_value ||
-            0
+            (hasPerServing ? nutr.proteins_serving : nutr.proteins_100g) ?? 0
           const carbs =
-            productData.nutriments?.carbohydrates ||
-            productData.nutriments?.carbohydrates_value ||
-            0
-          const fat =
-            productData.nutriments?.fat ||
-            productData.nutriments?.fat_value ||
-            0
+            (hasPerServing ? nutr.carbohydrates_serving : nutr.carbohydrates_100g) ?? 0
+          const fat = (hasPerServing ? nutr.fat_serving : nutr.fat_100g) ?? 0
+
+          const servingLabel = hasPerServing
+            ? productData.serving_size
+              ? `1 ${productData.serving_size.trim()}`
+              : `serving (${servingGrams}g)`
+            : '100g'
 
           setManualFoodData({
             name: `${name}${brand}`,
@@ -5717,7 +5729,9 @@ export function WorkoutChat({
             protein,
             carbs,
             fat,
-            servingSize: serving,
+            servingSize: productData.serving_size || (hasPerServing ? 'serving' : '100g'),
+            servingLabel,
+            servingGrams: hasPerServing ? servingGrams : 100,
           })
         }}
       />

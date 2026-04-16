@@ -17,7 +17,21 @@ export interface ManualFoodLogData {
   protein: number
   carbs: number
   fat: number
+  /**
+   * Raw serving description from the data source (e.g. "30 g", "1 biscuit (25g)").
+   * Used as the summary label when logging.
+   */
   servingSize?: string
+  /**
+   * Short human-readable unit label shown in the UI to explain what the stepper
+   * multiplies. Examples: "serving (30g)", "100g", "1 biscuit (25g)".
+   * If omitted, falls back to "serving".
+   */
+  servingLabel?: string
+  /**
+   * Grams per 1 stepper unit, if known. Enables showing a running gram total.
+   */
+  servingGrams?: number
 }
 
 interface ManualFoodLogSheetProps {
@@ -59,6 +73,18 @@ export function ManualFoodLogSheet({
   const carbs = Math.round(foodData.carbs * quantity)
   const fat = Math.round(foodData.fat * quantity)
 
+  const unitLabel = foodData.servingLabel || foodData.servingSize || 'serving'
+  const isPer100g = /^100\s*g$/i.test(unitLabel)
+  const stepperCaption = isPer100g
+    ? `× 100g`
+    : quantity === 1
+      ? 'serving'
+      : 'servings'
+  const totalGrams =
+    foodData.servingGrams != null
+      ? `${+(foodData.servingGrams * quantity).toFixed(1)}g total`
+      : null
+
   // Determine meal tag based on time of day
   const hour = new Date().getHours()
   let mealTag = 'Snack'
@@ -99,22 +125,36 @@ export function ManualFoodLogSheet({
           </View>
 
           <View style={styles.titleRow}>
-            <Text
-              style={[styles.foodName, { color: colors.textPrimary }]}
-              numberOfLines={2}
-            >
-              {foodData.name}
-            </Text>
-            <View style={[styles.stepper, { borderColor: colors.border }]}>
-              <TouchableOpacity onPress={handleDecrease} style={styles.stepperBtn}>
-                <Ionicons name="remove" size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={[styles.stepperValue, { color: colors.textPrimary }]}>
-                {quantity}
+            <View style={styles.titleTextCol}>
+              <Text
+                style={[styles.foodName, { color: colors.textPrimary }]}
+                numberOfLines={2}
+              >
+                {foodData.name}
               </Text>
-              <TouchableOpacity onPress={handleIncrease} style={styles.stepperBtn}>
-                <Ionicons name="add" size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
+              <Text
+                style={[styles.servingSubtitle, { color: colors.textTertiary }]}
+                numberOfLines={1}
+              >
+                Per {unitLabel}
+              </Text>
+            </View>
+            <View style={styles.stepperCol}>
+              <View style={[styles.stepper, { borderColor: colors.border }]}>
+                <TouchableOpacity onPress={handleDecrease} style={styles.stepperBtn}>
+                  <Ionicons name="remove" size={20} color={colors.textPrimary} />
+                </TouchableOpacity>
+                <Text style={[styles.stepperValue, { color: colors.textPrimary }]}>
+                  {quantity}
+                </Text>
+                <TouchableOpacity onPress={handleIncrease} style={styles.stepperBtn}>
+                  <Ionicons name="add" size={20} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.stepperCaption, { color: colors.textTertiary }]}>
+                {stepperCaption}
+                {totalGrams ? ` · ${totalGrams}` : ''}
+              </Text>
             </View>
           </View>
 
@@ -236,15 +276,26 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 24,
     gap: 16,
   },
-  foodName: {
+  titleTextCol: {
     flex: 1,
+    gap: 4,
+  },
+  foodName: {
     fontSize: 24,
     fontWeight: '800',
     lineHeight: 30,
+  },
+  servingSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  stepperCol: {
+    alignItems: 'center',
+    gap: 6,
   },
   stepper: {
     flexDirection: 'row',
@@ -253,6 +304,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  stepperCaption: {
+    fontSize: 11,
+    fontWeight: '500',
+    maxWidth: 140,
+    textAlign: 'center',
   },
   stepperBtn: {
     padding: 8,
