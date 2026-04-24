@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -27,7 +28,7 @@ export default function AccountInfoSettingsScreen() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return

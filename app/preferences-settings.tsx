@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -35,7 +36,7 @@ export default function PreferencesSettingsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPrivacyUpdating, setIsPrivacyUpdating] = useState(false)
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return

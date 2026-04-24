@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { SlideInView } from '@/components/slide-in-view'
+import { Layout } from '@/constants/theme'
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
 import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
@@ -118,7 +119,7 @@ export function WorkoutDetailView({
   const router = useRouter()
   const params = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const [menuVisible, setMenuVisible] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const hideWarmupSets = !getShowWarmupSets()

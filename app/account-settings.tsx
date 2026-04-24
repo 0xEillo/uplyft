@@ -1,6 +1,15 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import {
+  FontSize,
+  IconSize,
+  Layout,
+  Opacity,
+  Radius,
+  Spacing,
+  Typography,
+} from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -12,7 +21,6 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Linking,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,7 +37,7 @@ export default function SettingsScreen() {
   const colors = useThemedColors()
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const resolvedReturnTo =
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
@@ -264,7 +272,7 @@ export default function SettingsScreen() {
       <View style={styles.actionButtonContent}>
         <Ionicons
           name={icon}
-          size={22}
+          size={IconSize.lg}
           color={isDestructive ? colors.statusError : colors.textSecondary}
         />
         <View style={styles.actionTextContainer}>
@@ -282,7 +290,7 @@ export default function SettingsScreen() {
           )}
         </View>
       </View>
-      {rightContent || <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+      {rightContent || <Ionicons name="chevron-forward" size={IconSize.md} color={colors.textMuted} />}
     </TouchableOpacity>
   )
 
@@ -293,7 +301,7 @@ export default function SettingsScreen() {
           leftContent={
             <NavbarIsland>
               <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                <Ionicons name="arrow-back" size={IconSize.xl} color={colors.textPrimary} />
               </TouchableOpacity>
             </NavbarIsland>
           }
@@ -314,11 +322,11 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={styles.guestBanner}
             onPress={() => router.push('/(auth)/create-account')}
-            activeOpacity={0.9}
+            activeOpacity={Opacity.pressed}
           >
             <View style={styles.guestBannerContent}>
               <View style={styles.guestBannerIconContainer}>
-                <Ionicons name="cloud-upload" size={24} color={colors.brandPrimary} />
+                <Ionicons name="cloud-upload" size={IconSize.xl} color={colors.brandPrimary} />
               </View>
               <View style={styles.guestBannerText}>
                 <Text style={styles.guestBannerTitle}>Create an Account</Text>
@@ -326,7 +334,7 @@ export default function SettingsScreen() {
                   Sync your data across devices and never lose your progress
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.brandPrimary} />
+              <Ionicons name="chevron-forward" size={IconSize.md} color={colors.brandPrimary} />
             </View>
           </TouchableOpacity>
         )}
@@ -381,7 +389,7 @@ export default function SettingsScreen() {
                       </Text>
                     </View>
                   )}
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                  <Ionicons name="chevron-forward" size={IconSize.md} color={colors.textMuted} />
                 </View>
               }
             />
@@ -445,6 +453,9 @@ export default function SettingsScreen() {
   )
 }
 
+/** Row divider inset: aligns divider with text after the icon + gap. */
+const ROW_DIVIDER_INSET = 50
+
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
@@ -452,14 +463,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       backgroundColor: colors.bg,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '700',
+      ...Typography.headerTitle,
       color: colors.textPrimary,
     },
     backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: Layout.tapTarget,
+      height: Layout.tapTarget,
+      borderRadius: Radius.pill,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -467,35 +477,33 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     scrollContent: {
-      paddingBottom: 40,
+      paddingBottom: Spacing.xxxl,
     },
     section: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.lg,
     },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: '700',
+      ...Typography.overline,
       color: colors.textSecondary,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-      marginLeft: 4,
+      marginBottom: Spacing.sm,
+      marginLeft: Spacing.xs,
     },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
+      borderRadius: Radius.lg,
+      borderWidth: Layout.hairline,
       borderColor: colors.border,
       overflow: 'hidden',
     },
     cardDivider: {
-      height: 1,
+      height: Layout.hairline,
       backgroundColor: colors.border,
-      marginLeft: 50,
+      marginLeft: ROW_DIVIDER_INSET,
     },
     actionButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 16,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.base,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -503,51 +511,50 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     actionButtonContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: Spacing.base,
       flex: 1,
     },
     actionTextContainer: {
       flex: 1,
     },
     actionButtonTextNeutral: {
-      fontSize: 16,
-      fontWeight: '600',
+      ...Typography.bodyLargeSemibold,
       color: colors.textPrimary,
     },
     actionButtonSubtext: {
-      fontSize: 13,
+      ...Typography.caption,
       color: colors.textSecondary,
-      marginTop: 2,
+      marginTop: Spacing.xxs,
     },
     dangerButtonText: {
-      fontSize: 16,
+      fontSize: Typography.bodyLarge.fontSize,
       fontWeight: '700',
       color: colors.statusError,
     },
     followRequestRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: Spacing.sm,
     },
     pendingBadge: {
       minWidth: 28,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 14,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.pill,
       backgroundColor: colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     pendingBadgeText: {
-      color: colors.surface,
-      fontSize: 12,
+      fontSize: FontSize.tiny,
       fontWeight: '700',
+      color: colors.surface,
     },
     guestBanner: {
-      marginHorizontal: 20,
-      marginTop: 20,
+      marginHorizontal: Spacing.lg,
+      marginTop: Spacing.lg,
       backgroundColor: colors.brandPrimary + '12',
-      borderRadius: 16,
+      borderRadius: Radius.lg,
       borderWidth: 2,
       borderColor: colors.brandPrimary + '30',
       overflow: 'hidden',
@@ -555,13 +562,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     guestBannerContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
-      gap: 12,
+      padding: Spacing.base,
+      gap: Spacing.md,
     },
     guestBannerIconContainer: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: Layout.tapTarget,
+      height: Layout.tapTarget,
+      borderRadius: Radius.pill,
       backgroundColor: colors.brandPrimary + '20',
       justifyContent: 'center',
       alignItems: 'center',
@@ -570,14 +577,13 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     guestBannerTitle: {
-      fontSize: 16,
+      ...Typography.bodyLargeSemibold,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 2,
+      marginBottom: Spacing.xxs,
     },
     guestBannerSubtitle: {
-      fontSize: 13,
+      ...Typography.caption,
       color: colors.textSecondary,
-      lineHeight: 18,
     },
   })

@@ -1,6 +1,7 @@
 import { BaseNavbar } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { Layout } from '@/constants/theme'
 import { RecoveryBodyView } from '@/components/RecoveryBodyView'
 import { StatsView } from '@/components/StatsView'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
@@ -26,7 +27,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const NAVBAR_HEIGHT = 76
+const NAVBAR_HEIGHT = Layout.navbarHeight
 
 type ViewMode = 'recovery' | 'strength' | 'stats'
 type BodyTab = 'strength' | 'recovery'

@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { registerForPushNotifications } from '@/hooks/usePushNotifications'
@@ -40,7 +41,7 @@ export default function NotificationSettingsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPushSettingsUpdating, setIsPushSettingsUpdating] = useState(false)
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   const loadRetentionPreferences = useCallback(async () => {
     if (!user?.id) return

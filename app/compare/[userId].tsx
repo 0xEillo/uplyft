@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -71,7 +72,7 @@ export default function CompareScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)

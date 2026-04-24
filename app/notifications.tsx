@@ -3,6 +3,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -218,7 +219,7 @@ export default function NotificationsScreen() {
   )
 
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   return (
     <SlideInView

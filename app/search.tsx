@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
+import { Layout } from '@/constants/theme'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -55,7 +56,7 @@ export default function SearchScreen() {
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 52
+  const NAVBAR_HEIGHT = Layout.navbarHeightCompact
 
   // Block anonymous users from social features
   useEffect(() => {

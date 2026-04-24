@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
+import { Layout } from '@/constants/theme'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
@@ -102,7 +103,7 @@ const FEED_APP_POST_PER_WORKOUTS = 2
 const FEED_APP_POST_MIN_WORKOUTS = 3
 
 // BaseNavbar min-height (60) + vertical padding (8 * 2) = ~76
-const NAVBAR_HEIGHT = 76
+const NAVBAR_HEIGHT = Layout.navbarHeight
 
 type GuestSignInPromptState = {
   lastShownMilestone: number

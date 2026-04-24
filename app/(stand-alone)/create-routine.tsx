@@ -1,6 +1,7 @@
 import { BaseNavbar } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { Paywall } from '@/components/paywall'
+import { Layout } from '@/constants/theme'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -1012,7 +1013,7 @@ export default function CreateRoutineScreen() {
   }, [draggingScale, draggingOpacity])
 
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const styles = createStyles(colors)
 
   if (isLoading) {

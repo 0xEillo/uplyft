@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -27,7 +28,7 @@ export default function SubscriptionSettingsScreen() {
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
   const [isRestoring, setIsRestoring] = useState(false)
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   useEffect(() => {
     trackEvent('subscription_settings_viewed')

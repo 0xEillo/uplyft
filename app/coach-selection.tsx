@@ -1,5 +1,6 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
+import { Layout } from '@/constants/theme'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -25,7 +26,7 @@ export default function CoachSelectionScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleSelectCoach = async (coachId: CoachId) => {

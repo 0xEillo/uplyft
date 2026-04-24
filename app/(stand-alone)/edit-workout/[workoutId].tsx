@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { Layout } from '@/constants/theme'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -857,7 +858,7 @@ export default function EditWorkoutScreen() {
   }
 
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const styles = createStyles(colors)
 
   const stats = workout ? calculateWorkoutStats(workout, weightUnit) : null

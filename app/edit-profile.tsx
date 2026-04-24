@@ -8,6 +8,7 @@ import {
     GOALS,
 } from '@/constants/options'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -49,7 +50,7 @@ export default function EditProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isUploadingImage, setIsUploadingImage] = useState(false)

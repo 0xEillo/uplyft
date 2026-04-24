@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
@@ -40,7 +41,7 @@ const TOOLBAR_BUTTON_OPTIONS: {
   { id: 'search', label: 'Add Exercise', icon: 'add-outline' },
 ]
 
-const NAVBAR_HEIGHT = 76
+const NAVBAR_HEIGHT = Layout.navbarHeight
 
 export default function CreatePostSettingsScreen() {
   const colors = useThemedColors()

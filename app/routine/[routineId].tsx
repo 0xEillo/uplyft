@@ -1,6 +1,7 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { Layout } from '@/constants/theme'
 import { Paywall } from '@/components/paywall'
 import { RoutineExerciseCard } from '@/components/RoutineExerciseCard'
 import { SlideInView } from '@/components/slide-in-view'
@@ -74,7 +75,7 @@ export default function RoutineDetailScreen() {
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = 76
+  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   const [routine, setRoutine] = useState<NormalizedRoutine | null>(null)
   const [isLoading, setIsLoading] = useState(true)
