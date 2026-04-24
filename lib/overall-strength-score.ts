@@ -81,8 +81,6 @@ export interface StrengthScoreProjectionResult {
 }
 
 export const OVERALL_STRENGTH_SCORE_CAP = 1000
-const DECAY_GRACE_DAYS = 14
-const DECAY_RATE_PER_WEEK = 0.05
 // Geometric decay for normalized weighted average across exercises in a group.
 // Each subsequent exercise gets 0.5x the weight of the previous, then all weights
 // are normalized to sum to 1. This means the group score reflects balanced strength
@@ -215,24 +213,6 @@ function buildSessionBaselineExercises(input: {
   })
 }
 
-function computeDecayFactor(
-  lastTrainedAt: string | null,
-  now: Date,
-): number {
-  if (!lastTrainedAt) return 1
-  const trainedAt = asDateOrNull(lastTrainedAt)
-  if (!trainedAt) return 1
-
-  const diffMs = now.getTime() - trainedAt.getTime()
-  if (diffMs <= 0) return 1
-
-  const daysSinceLastTrain = diffMs / (1000 * 60 * 60 * 24)
-  if (daysSinceLastTrain <= DECAY_GRACE_DAYS) return 1
-
-  const overdueWeeks = (daysSinceLastTrain - DECAY_GRACE_DAYS) / 7
-  return Math.max(0, 1 - overdueWeeks * DECAY_RATE_PER_WEEK)
-}
-
 export function calculateStrengthAggregateFromScores(input: {
   weightedExerciseScores: number[]
   lastTrainedAt: string | null
@@ -243,7 +223,6 @@ export function calculateStrengthAggregateFromScores(input: {
   effectiveScore: number
 } {
   const { weightedExerciseScores, lastTrainedAt } = input
-  const now = input.now ?? new Date()
 
   const sortedScores = [...weightedExerciseScores].sort((a, b) => b - a)
   const topExerciseScore = sortedScores[0] ?? 0
@@ -257,9 +236,8 @@ export function calculateStrengthAggregateFromScores(input: {
         totalWeight
       : 0
 
-  const decayFactor =
-    groupRawScore > 0 ? computeDecayFactor(lastTrainedAt, now) : 1
-  const effectiveScore = groupRawScore * decayFactor
+  const decayFactor = 1
+  const effectiveScore = groupRawScore
 
   return {
     topExerciseScore: clampScore(topExerciseScore),

@@ -35,8 +35,6 @@ export interface SpecificMuscleGroupData<TExercise> {
 }
 
 const exerciseNameMap = getExerciseNameMap()
-const DISPLAY_DECAY_GRACE_DAYS = 14
-const DISPLAY_DECAY_RATE_PER_WEEK = 0.05
 const REPRESENTATIVE_ANCHOR_EXERCISE_DECAY = 0.75
 const REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR = 0.95
 const REPRESENTATIVE_SUPPORT_MAX_UPLIFT = 1
@@ -144,29 +142,6 @@ export function getTrackableExercisesForDisplayGroup(
   )
 }
 
-function asDateOrNull(value: string | null | undefined): Date | null {
-  if (!value) return null
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-function computeDisplayDecayFactor(
-  lastTrainedAt: string | null,
-  now: Date,
-): number {
-  const trainedAt = asDateOrNull(lastTrainedAt)
-  if (!trainedAt) return 1
-
-  const diffMs = now.getTime() - trainedAt.getTime()
-  if (diffMs <= 0) return 1
-
-  const daysSinceLastTrain = diffMs / (1000 * 60 * 60 * 24)
-  if (daysSinceLastTrain <= DISPLAY_DECAY_GRACE_DAYS) return 1
-
-  const overdueWeeks = (daysSinceLastTrain - DISPLAY_DECAY_GRACE_DAYS) / 7
-  return Math.max(0, 1 - overdueWeeks * DISPLAY_DECAY_RATE_PER_WEEK)
-}
-
 function calculateWeightedAverage(
   values: number[],
   weights: number[],
@@ -234,7 +209,6 @@ export function buildSpecificMuscleGroupData<
   exercises: TExercise[]
   now?: Date
 }): SpecificMuscleGroupData<TExercise>[] {
-  const now = input.now ?? new Date()
   const groupState = new Map<
     string,
     {
@@ -324,8 +298,7 @@ export function buildSpecificMuscleGroupData<
         REPRESENTATIVE_SUPPORT_MAX_UPLIFT,
         supportLift * REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR,
       )
-      const decayFactor = computeDisplayDecayFactor(state.lastTrainedAt, now)
-      const effectiveScore = (anchorScore + uplift) * decayFactor
+      const effectiveScore = anchorScore + uplift
       const rank = scoreToLevelProgress(effectiveScore)
 
       return {

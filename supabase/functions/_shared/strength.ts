@@ -214,8 +214,6 @@ interface SupportedExerciseSnapshot {
 }
 
 const OVERALL_STRENGTH_SCORE_CAP = 1000
-const DECAY_GRACE_DAYS = 14
-const DECAY_RATE_PER_WEEK = 0.05
 const SECONDARY_EXERCISE_DECAY = 0.5
 
 const LEVEL_POINT_ANCHORS: Record<StrengthLevel, number> = {
@@ -537,21 +535,6 @@ function toOverallGroup(
   }
 }
 
-function computeDecayFactor(lastTrainedAt: string | null, now: Date): number {
-  if (!lastTrainedAt) return 1
-  const trainedAt = asDateOrNull(lastTrainedAt)
-  if (!trainedAt) return 1
-
-  const diffMs = now.getTime() - trainedAt.getTime()
-  if (diffMs <= 0) return 1
-
-  const daysSinceLastTrain = diffMs / (1000 * 60 * 60 * 24)
-  if (daysSinceLastTrain <= DECAY_GRACE_DAYS) return 1
-
-  const overdueWeeks = (daysSinceLastTrain - DECAY_GRACE_DAYS) / 7
-  return Math.max(0, 1 - overdueWeeks * DECAY_RATE_PER_WEEK)
-}
-
 function calculateOverallStrengthScore(input: {
   gender: StrengthGender
   bodyweightKg: number
@@ -559,7 +542,6 @@ function calculateOverallStrengthScore(input: {
   now?: Date
 }): LifterLevelDetails {
   const { gender, bodyweightKg, exercises } = input
-  const now = input.now ?? new Date()
 
   const groupState: Record<
     OverallStrengthGroup,
@@ -641,9 +623,8 @@ function calculateOverallStrengthScore(input: {
             ) / totalWeight
           : 0
 
-      const decayFactor =
-        groupRawScore > 0 ? computeDecayFactor(state.lastTrainedAt, now) : 1
-      const effectiveScore = groupRawScore * decayFactor
+      const decayFactor = 1
+      const effectiveScore = groupRawScore
       const weightedContribution = effectiveScore * weight
       totalScore += weightedContribution
 

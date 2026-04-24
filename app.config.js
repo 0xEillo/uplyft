@@ -24,6 +24,7 @@ envFiles
     dotenv.config({
       path: filePath,
       override: index === 0,
+      quiet: true,
     })
   })
 

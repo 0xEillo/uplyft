@@ -206,4 +206,32 @@ describe('strength display groups', () => {
       level: 'Intermediate',
     })
   })
+
+  test('does not downgrade an anchored muscle level just because the lifts are older', () => {
+    const groups = buildSpecificMuscleGroupData({
+      gender: 'male',
+      bodyweightKg: TEST_BODYWEIGHT_KG,
+      exercises: [
+        {
+          exerciseId: 'shrug-1',
+          exerciseName: 'Shrug (Barbell)',
+          muscleGroup: 'Traps',
+          max1RM: getMax1RMForLevel('Shrug (Barbell)', 'Intermediate'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'rack-1',
+          exerciseName: 'Rack Pull (Barbell)',
+          muscleGroup: 'Traps',
+          max1RM: getMax1RMForLevel('Rack Pull (Barbell)', 'Intermediate'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-04-24T00:00:00.000Z'),
+    })
+
+    expect(groups.find((group) => group.name === 'Traps')).toMatchObject({
+      level: 'Intermediate',
+    })
+  })
 })

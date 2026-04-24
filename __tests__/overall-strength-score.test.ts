@@ -142,7 +142,7 @@ describe('overall strength score', () => {
     )
   })
 
-  test('applies decay after 14-day grace period', () => {
+  test('keeps full score even when a lift has not been trained recently', () => {
     const now = new Date('2026-02-15T00:00:00.000Z')
     const lastTrainedAt = new Date('2026-01-25T00:00:00.000Z') // 21 days ago
 
@@ -170,10 +170,10 @@ describe('overall strength score', () => {
     })
 
     const expected = Math.round(
-      chestPoints * EXERCISE_TIER_WEIGHTS[1] * 0.95 * 0.19,
+      chestPoints * EXERCISE_TIER_WEIGHTS[1] * 0.19,
     )
 
-    expect(overall.groupBreakdown.Chest.decayFactor).toBeCloseTo(0.95, 5)
+    expect(overall.groupBreakdown.Chest.decayFactor).toBe(1)
     expect(overall.score).toBe(expected)
   })
 
