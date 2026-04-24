@@ -1,9 +1,7 @@
 import { BlurredHeader } from '@/components/blurred-header'
-
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
-import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
@@ -34,7 +32,6 @@ import {
     Modal,
     Platform,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -42,23 +39,14 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { BodyFatAddSheet } from '@/components/BodyFatAddSheet'
-import { BodyFatInputModal } from '@/components/BodyFatInputModal'
-import { DailyCalorieGoalHeader } from '@/components/BodyLog/DailyCalorieGoalHeader'
 import { BodyWeightChart } from '@/components/BodyLog/BodyWeightChart'
-import { WeightInputModal } from '@/components/WeightInputModal'
+import { LogMeasuresModal } from '@/components/LogMeasuresModal'
 
 const PAGE_SIZE = 40
 const HAS_VISITED_BODY_LOG_KEY = 'hasVisitedBodyLog'
 const HEADER_ROW_HEIGHT = 52
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const PHOTO_COLUMNS = 3
-const PHOTO_GAP = 2
-const PHOTO_SIZE = Math.floor(
-  (SCREEN_WIDTH - PHOTO_GAP * (PHOTO_COLUMNS + 1)) / PHOTO_COLUMNS,
-)
-
-type ActiveTab = 'weight' | 'bodyfat' | 'meals' | 'photos'
+const PHOTO_SIZE = 120
 
 function getLocalDateKey(dateString: string): string {
   const date = new Date(dateString)
@@ -86,9 +74,9 @@ function formatDate(dateString: string): string {
   if (entryDate.getTime() === yesterday.getTime()) return 'Yesterday'
 
   return date.toLocaleDateString('en-US', {
-    weekday: 'short',
     month: 'short',
     day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   })
 }
 
@@ -112,24 +100,6 @@ type ProgressPhotoItem = {
   entryCreatedAt: string
 }
 
-type PhotoGridAddItem = {
-  id: 'add-photo'
-  type: 'add'
-}
-
-type PhotoGridPhotoItem = ProgressPhotoItem & {
-  type: 'photo'
-}
-
-type PhotoGridItem = PhotoGridAddItem | PhotoGridPhotoItem
-
-type TabEmptyStateCopy = {
-  icon: keyof typeof Ionicons.glyphMap
-  title: string
-  description: string
-  buttonText: string
-}
-
 function getViewerPrefetchPaths(
   photos: ProgressPhotoItem[],
   index: number,
@@ -140,34 +110,36 @@ function getViewerPrefetchPaths(
     .filter((path): path is string => Boolean(path))
 }
 
-// ── Stats Row ─────────────────────────────────────────────────────────────────
-
-const StatsRow = memo(
+const MeasureRow = memo(
   ({ entry, onPress }: { entry: EntryWithSignedUrl; onPress: (e: EntryWithSignedUrl) => void }) => {
     const colors = useThemedColors()
     const { formatWeight } = useUnit()
     const hasWeight = entry.weight_kg !== null
     const hasBF = entry.body_fat_percentage !== null
+    const hasPhotos = entry.images.length > 0
 
-    if (!hasWeight && !hasBF) return null
+    if (!hasWeight && !hasBF && !hasPhotos) return null
 
     return (
       <TouchableOpacity
-        style={[statsRowStyles.row, { borderBottomColor: colors.border }]}
+        style={[rowStyles.row, { borderBottomColor: colors.border }]}
         onPress={() => onPress(entry)}
         activeOpacity={0.7}
       >
-        <Text style={[statsRowStyles.date, { color: colors.textSecondary }]}>
-          {formatDate(entry.created_at)}
-        </Text>
-        <View style={statsRowStyles.right}>
+        <View style={rowStyles.left}>
+          <Text style={[rowStyles.date, { color: colors.textPrimary }]}>
+            {formatDate(entry.created_at)}
+          </Text>
+          {hasPhotos && <Ionicons name="camera" size={16} color={colors.textTertiary} />}
+        </View>
+        <View style={rowStyles.right}>
           {hasWeight && (
-            <Text style={[statsRowStyles.weight, { color: colors.textPrimary }]}>
+            <Text style={[rowStyles.weight, { color: colors.textPrimary }]}>
               {formatWeight(entry.weight_kg)}
             </Text>
           )}
           {hasBF && (
-            <Text style={[statsRowStyles.bf, { color: colors.textSecondary }]}>
+            <Text style={[rowStyles.bf, { color: colors.textSecondary }]}>
               {formatBodyFat(entry.body_fat_percentage)} body fat
             </Text>
           )}
@@ -176,9 +148,9 @@ const StatsRow = memo(
     )
   },
 )
-StatsRow.displayName = 'StatsRow'
+MeasureRow.displayName = 'MeasureRow'
 
-const statsRowStyles = StyleSheet.create({
+const rowStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,8 +159,13 @@ const statsRowStyles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   date: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
   },
   right: {
@@ -206,387 +183,31 @@ const statsRowStyles = StyleSheet.create({
   },
 })
 
-// ── Meals Row ─────────────────────────────────────────────────────────────────
-
-const MealsRow = memo(
-  ({ entry, onPress }: { entry: EntryWithSignedUrl; onPress: (e: EntryWithSignedUrl) => void }) => {
-    const colors = useThemedColors()
-    const totals = entry.dailySummary?.totals
-    if (!totals || totals.meal_count === 0) return null
-
-    const macros = [
-      { label: 'P', value: Math.round(totals.protein_g), color: '#F87171' },
-      { label: 'C', value: Math.round(totals.carbs_g), color: '#FBBF24' },
-      { label: 'F', value: Math.round(totals.fat_g), color: '#60A5FA' },
-    ]
-
-    return (
-      <TouchableOpacity
-        style={[mealsRowStyles.row, { borderBottomColor: colors.border }]}
-        onPress={() => onPress(entry)}
-        activeOpacity={0.7}
-      >
-        <View style={mealsRowStyles.left}>
-          <Text style={[mealsRowStyles.date, { color: colors.textSecondary }]}>
-            {formatDate(entry.created_at)}
-          </Text>
-          <View style={mealsRowStyles.macroRow}>
-            {macros.map((m) => (
-              <View key={m.label} style={mealsRowStyles.macroChip}>
-                <Text style={[mealsRowStyles.macroLabel, { color: m.color }]}>{m.label}</Text>
-                <Text style={[mealsRowStyles.macroValue, { color: colors.textSecondary }]}>{m.value}g</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-        <View style={mealsRowStyles.right}>
-          <Text style={[mealsRowStyles.calories, { color: colors.textPrimary }]}>
-            {Math.round(totals.calories)}
-          </Text>
-          <Text style={[mealsRowStyles.kcal, { color: colors.textSecondary }]}>kcal</Text>
-        </View>
-      </TouchableOpacity>
-    )
-  },
-)
-MealsRow.displayName = 'MealsRow'
-
-const mealsRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  left: {
-    flex: 1,
-    gap: 6,
-  },
-  date: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  macroRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  macroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  macroLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  macroValue: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  right: {
-    alignItems: 'flex-end',
-  },
-  calories: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  kcal: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: -2,
-  },
-})
-
-// ── Progress Photo Tiles ──────────────────────────────────────────────────────
-
-const ProgressPhotoTile = memo(
-  ({
-    item,
-    imageUrl,
-    onPress,
-  }: {
-    item: ProgressPhotoItem
-    imageUrl: string | null
-    onPress: () => void
-  }) => {
-    const colors = useThemedColors()
-
-    return (
-      <TouchableOpacity
-        style={[photoGridStyles.card, { backgroundColor: colors.surfaceSubtle }]}
-        onPress={onPress}
-        activeOpacity={0.94}
-      >
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={photoGridStyles.image}
-            contentFit="cover"
-            cachePolicy="disk"
-            transition={120}
-            recyclingKey={item.id}
-          />
-        ) : (
-          <View
-            style={[
-              photoGridStyles.image,
-              photoGridStyles.loadingTile,
-              { backgroundColor: colors.surfaceSubtle },
-            ]}
-          >
-            <ActivityIndicator size="small" color={colors.textTertiary} />
-          </View>
-        )}
-      </TouchableOpacity>
-    )
-  },
-)
-ProgressPhotoTile.displayName = 'ProgressPhotoTile'
-
-const AddPhotoTile = memo(
-  ({ onPress, isLoading }: { onPress: () => void; isLoading: boolean }) => {
-    const colors = useThemedColors()
-
-    return (
-      <TouchableOpacity
-        style={[
-          photoGridStyles.card,
-          photoGridStyles.addCard,
-          {
-            backgroundColor: colors.surfaceSubtle,
-            borderColor: colors.border,
-          },
-        ]}
-        onPress={onPress}
-        disabled={isLoading}
-        activeOpacity={0.9}
-      >
-        {isLoading ? (
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
-        ) : (
-          <>
-            <Ionicons name="add" size={22} color={colors.textPrimary} />
-            <Text style={[photoGridStyles.addText, { color: colors.textSecondary }]}>
-              Add
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-    )
-  },
-)
-AddPhotoTile.displayName = 'AddPhotoTile'
-
-const photoGridStyles = StyleSheet.create({
-  card: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  loadingTile: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  addText: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: -0.1,
-  },
-})
-
-// ── Tabs bar ──────────────────────────────────────────────────────────────────
-
-const TABS: { id: ActiveTab; label: string }[] = [
-  { id: 'weight', label: 'Weight' },
-  ...(NUTRITION_FEATURES_ENABLED
-    ? [{ id: 'meals' as const, label: 'Nutrition' }]
-    : []),
-  { id: 'bodyfat', label: 'Body Scan' },
-  { id: 'photos', label: 'Progress Pics' },
-]
-const TAB_AUTO_SCROLL_GUTTER = 20
-const TAB_EMPTY_STATE_COPY: Record<ActiveTab, TabEmptyStateCopy> = {
-  weight: {
-    icon: 'fitness-outline',
-    title: 'Start tracking your weight',
-    description:
-      'Log weigh-ins here and switch tabs above to add body scans or progress photos too.',
-    buttonText: 'Log Weight',
-  },
-  meals: {
-    icon: 'nutrition-outline',
-    title: 'Start tracking your nutrition',
-    description: 'Keep meals, calories, and macros together with the rest of your body log.',
-    buttonText: 'Log Nutrition',
-  },
-  bodyfat: {
-    icon: 'analytics-outline',
-    title: 'Start your body scan history',
-    description: 'Save a body-fat reading manually or run a scan when you are ready to compare progress.',
-    buttonText: 'Add Body Scan',
-  },
-  photos: {
-    icon: 'images-outline',
-    title: 'Start your progress photo timeline',
-    description: 'Capture front, side, and back photos over time so your visual progress lives in one place.',
-    buttonText: 'Add Progress Photo',
-  },
-}
-
-const TabEmptyState = memo(
-  ({
-    activeTab,
-    onPress,
-  }: {
-    activeTab: ActiveTab
-    onPress?: () => void
-  }) => {
-    const colors = useThemedColors()
-    const copy = TAB_EMPTY_STATE_COPY[activeTab]
-    const showIcon = activeTab === 'meals' || activeTab === 'photos'
-
-    return (
-      <View style={emptyTabStyles.container}>
-        {showIcon ? (
-          <View
-            style={[
-              emptyTabStyles.iconContainer,
-              { backgroundColor: colors.surfaceSubtle },
-            ]}
-          >
-            <Ionicons
-              name={copy.icon}
-              size={32}
-              color={colors.textSecondary}
-            />
-          </View>
-        ) : null}
-
-        <Text style={[emptyTabStyles.title, { color: colors.textPrimary }]}>
-          {copy.title}
-        </Text>
-        <Text style={[emptyTabStyles.description, { color: colors.textSecondary }]}>
-          {copy.description}
-        </Text>
-
-        {onPress && (
-          <TouchableOpacity
-            style={[emptyTabStyles.button, { backgroundColor: colors.textPrimary }]}
-            onPress={onPress}
-            activeOpacity={0.8}
-          >
-            <Text style={[emptyTabStyles.buttonText, { color: colors.bg }]}>
-              {copy.buttonText}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    )
-  },
-)
-TabEmptyState.displayName = 'TabEmptyState'
-
-const emptyTabStyles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 60,
-    paddingBottom: 80,
-  },
-  iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.4,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 999,
-    minWidth: 160,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-})
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
-
-export default function BodyLogScreen() {
+export default function MeasuresScreen() {
   const colors = useThemedColors()
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
-  const { formatWeight } = useUnit()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
   const [shouldExit, setShouldExit] = useState(false)
   const [entries, setEntries] = useState<EntryWithSignedUrl[]>([])
-  const [todayCalorieGoal, setTodayCalorieGoal] = useState<number | null>(null)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [activeTab, setActiveTab] = useState<ActiveTab>('weight')
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false)
   const [photoThumbUrls, setPhotoThumbUrls] = useState<Record<string, string>>({})
   const [photoHeroUrls, setPhotoHeroUrls] = useState<Record<string, string>>({})
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false)
   const [photoViewerIndex, setPhotoViewerIndex] = useState(0)
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
+  const [logModalVisible, setLogModalVisible] = useState(false)
+  
   const bodyPageRef = useRef(0)
   const dailyPageRef = useRef(0)
   const hasFocusedOnce = useRef(false)
-  const tabsScrollRef = useRef<ScrollView | null>(null)
-  const tabLayoutsRef = useRef<Partial<Record<ActiveTab, { x: number; width: number }>>>({})
-  const tabsViewportWidthRef = useRef(0)
-  const tabsContentWidthRef = useRef(0)
-  const tabsScrollOffsetRef = useRef(0)
 
-  const weightEntries = useMemo(
-    () => entries.filter(e => e.weight_kg !== null),
-    [entries],
-  )
-  const bodyfatEntries = useMemo(
-    () => entries.filter(e => e.body_fat_percentage !== null),
-    [entries],
-  )
-  const mealsEntries = useMemo(
-    () => entries.filter(e => (e.dailySummary?.totals?.meal_count ?? 0) > 0),
-    [entries],
-  )
   const progressPhotos = useMemo<ProgressPhotoItem[]>(
     () =>
       entries
@@ -610,13 +231,6 @@ export default function BodyLogScreen() {
           return b.sequence - a.sequence
         }),
     [entries],
-  )
-  const photoGridData = useMemo<PhotoGridItem[]>(
-    () => [
-      { id: 'add-photo', type: 'add' },
-      ...progressPhotos.map((photo) => ({ ...photo, type: 'photo' as const })),
-    ],
-    [progressPhotos],
   )
 
   const fetchThumbnailUrls = useCallback(
@@ -672,17 +286,30 @@ export default function BodyLogScreen() {
         rawDailyEntries.map((dailyEntry) => [dailyEntry.log_date, dailyEntry]),
       )
 
-      const bodyRows: EntryWithSignedUrl[] = bodyWithThumbnails.map((entry) => {
+      const bodyRowsByDate = new Map<string, EntryWithSignedUrl>()
+
+      bodyWithThumbnails.forEach((entry) => {
         const logDate = getLocalDateKey(entry.created_at)
         const dailyEntry = dailyEntryByDate.get(logDate)
-        return {
-          ...entry,
-          weight_kg: dailyEntry?.weight_kg ?? entry.weight_kg,
-          logDate,
-          dailySummary: summaryByDate[logDate] ?? null,
-          isNutritionOnly: false,
+        
+        const existing = bodyRowsByDate.get(logDate)
+        if (existing) {
+          existing.images = [...existing.images, ...entry.images]
+          existing.weight_kg = existing.weight_kg ?? entry.weight_kg
+          existing.body_fat_percentage = existing.body_fat_percentage ?? entry.body_fat_percentage
+          existing.thumbnailUrl = existing.thumbnailUrl ?? entry.thumbnailUrl
+        } else {
+          bodyRowsByDate.set(logDate, {
+            ...entry,
+            weight_kg: dailyEntry?.weight_kg ?? entry.weight_kg,
+            logDate,
+            dailySummary: summaryByDate[logDate] ?? null,
+            isNutritionOnly: false,
+          })
         }
       })
+
+      const bodyRows: EntryWithSignedUrl[] = Array.from(bodyRowsByDate.values())
 
       const nutritionOnlyRows: EntryWithSignedUrl[] = rawDailyEntries
         .filter((dailyEntry) => !bodyDateKeys.has(dailyEntry.log_date))
@@ -745,19 +372,6 @@ export default function BodyLogScreen() {
         setHasMore(bodyPage.hasMore || dailyPage.hasMore)
         bodyPageRef.current = 1
         dailyPageRef.current = 1
-
-        // Extract today's goal
-        const todayKey = getLocalDateKey(new Date().toISOString())
-        const todayEntry = mergedEntries.find(e => e.logDate === todayKey)
-        if (todayEntry?.dailySummary?.goals.calorie_goal) {
-          setTodayCalorieGoal(todayEntry.dailySummary.goals.calorie_goal)
-        } else {
-          // Fallback check: if no entry for today, we might need to fetch summary explicitly if we want it always.
-          // But getSummariesForDates already covers all dates in the list.
-          // If today is NOT in the list, we can fetch it.
-          const summary = await database.dailyLog.getDaySummary(user.id, todayKey)
-          setTodayCalorieGoal(summary?.goals.calorie_goal ?? null)
-        }
       } catch (e) {
         console.error('Error loading entries:', e)
       } finally {
@@ -803,11 +417,11 @@ export default function BodyLogScreen() {
   useFocusEffect(
     useCallback(() => {
       if (hasFocusedOnce.current) {
-        loadEntries(true, true) // silent refresh when returning from sub-page
+        loadEntries(true, true)
       } else {
         hasFocusedOnce.current = true
         trackEvent(AnalyticsEvents.BODY_LOG_VIEWED)
-        loadEntries(false) // initial load with spinner
+        loadEntries(false)
       }
     }, [loadEntries, trackEvent]),
   )
@@ -946,272 +560,99 @@ export default function BodyLogScreen() {
     [router, trackEvent],
   )
 
-  const handleFoodEntryOpen = useCallback(
-    (entry: EntryWithSignedUrl) => {
-      router.push({
-        pathname: '/body-log/daily-food-log',
-        params: {
-          logDate: entry.logDate,
-          entryId: entry.id,
-          totalsJson: entry.dailySummary ? JSON.stringify(entry.dailySummary.totals) : undefined,
-          goalsJson: entry.dailySummary ? JSON.stringify(entry.dailySummary.goals) : undefined,
-        },
-      })
-    },
-    [router],
-  )
-
-  // ── Context-aware add ─────────────────────────
-  const [weightModalVisible, setWeightModalVisible] = useState(false)
-  const [bodyFatSheetVisible, setBodyFatSheetVisible] = useState(false)
-  const [bodyFatInputVisible, setBodyFatInputVisible] = useState(false)
-
-  const handleSaveWeight = useCallback(async (weightKg: number) => {
+  const handleSaveModal = async ({ weightKg, bodyFat, photoUris }: { weightKg?: number; bodyFat?: number; photoUris?: string[] }) => {
     if (!user) return
+    setIsUploadingPhotos(true)
     try {
-      await database.dailyLog.updateDay(user.id, { weightKg })
-      haptic('medium')
-      loadEntries(true)
-    } catch (e) {
-      console.error('Error saving weight:', e)
-      Alert.alert('Error', 'Failed to save weight. Please try again.')
-    }
-  }, [user, loadEntries])
-
-  const handleSaveBodyFat = useCallback(async (bodyFatPercentage: number) => {
-    if (!user) return
-    const entry = await database.bodyLog.createEntry(user.id)
-    await database.bodyLog.updateEntryMetrics(entry.id, { body_fat_percentage: bodyFatPercentage })
-    loadEntries(true)
-  }, [user, loadEntries])
-
-  const handleImportProgressPhotos = useCallback(
-    async (uris: string[]) => {
-      if (!user || uris.length === 0 || isUploadingPhotos) return
-
-      setIsUploadingPhotos(true)
-      try {
+      const entry = await database.bodyLog.createEntry(user.id)
+      
+      if (bodyFat !== undefined) {
+        await database.bodyLog.updateEntryMetrics(entry.id, { body_fat_percentage: bodyFat })
+      }
+      
+      if (weightKg !== undefined) {
+        await database.dailyLog.updateDay(user.id, { weightKg })
+      }
+      
+      if (photoUris && photoUris.length > 0) {
         const { uploadBodyLogImages } = await import('@/lib/utils/body-log-storage')
-
-        for (let start = 0; start < uris.length; start += 3) {
-          const batch = uris.slice(start, start + 3)
-          const entry = await database.bodyLog.createEntry(user.id)
-          const filePaths = await uploadBodyLogImages(batch, user.id, entry.id)
-
-          for (let i = 0; i < filePaths.length; i++) {
-            await database.bodyLog.addImage(entry.id, user.id, filePaths[i], i + 1)
-          }
+        const filePaths = await uploadBodyLogImages(photoUris, user.id, entry.id)
+        for (let i = 0; i < filePaths.length; i++) {
+          await database.bodyLog.addImage(entry.id, user.id, filePaths[i], i + 1)
         }
-
-        haptic('medium')
-        await loadEntries(true)
-      } catch (error) {
-        console.error('Error uploading progress photos:', error)
-        Alert.alert('Upload Failed', 'Unable to add progress photos. Please try again.')
-      } finally {
-        setIsUploadingPhotos(false)
       }
-    },
-    [isUploadingPhotos, loadEntries, user],
-  )
 
-  const handleAddPhoto = useCallback(async () => {
-    if (!user || isUploadingPhotos) return
+      haptic('medium')
+      await loadEntries(true)
+    } catch (e) {
+      console.error('Error saving measurements:', e)
+      Alert.alert('Error', 'Failed to save measurements. Please try again.')
+    } finally {
+      setIsUploadingPhotos(false)
+    }
+  }
 
-    const launchCamera = async () => {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Camera Permission', 'Camera access is needed to take photos.')
-        return
+  const handlePickPhoto = async (): Promise<string[]> => {
+    return new Promise((resolve) => {
+      const launchCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync()
+        if (status !== 'granted') {
+          Alert.alert('Camera Permission', 'Camera access is needed to take photos.')
+          return resolve([])
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          aspect: [3, 4],
+          quality: 0.8,
+        })
+        if (!result.canceled && result.assets.length > 0) {
+          const uris = await normalizeImageUris(result.assets.map(a => a.uri))
+          resolve(uris)
+        } else {
+          resolve([])
+        }
       }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        aspect: [3, 4],
-        quality: 0.8,
-      })
-      if (!result.canceled && result.assets.length > 0) {
-        const normalizedUris = await normalizeImageUris(
-          result.assets.map((asset) => asset.uri),
+
+      const launchLibrary = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (status !== 'granted') {
+          Alert.alert('Library Permission', 'Photo library access is needed to select photos.')
+          return resolve([])
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          aspect: [3, 4],
+          quality: 0.8,
+          allowsMultipleSelection: true,
+        })
+        if (!result.canceled && result.assets.length > 0) {
+          const uris = await normalizeImageUris(result.assets.map(a => a.uri))
+          resolve(uris)
+        } else {
+          resolve([])
+        }
+      }
+
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          { options: ['Cancel', 'Take Photo', 'Choose from Library'], cancelButtonIndex: 0 },
+          (idx) => {
+            if (idx === 1) launchCamera()
+            else if (idx === 2) launchLibrary()
+            else resolve([])
+          },
         )
-        await handleImportProgressPhotos(normalizedUris)
+      } else {
+        Alert.alert('Add Photo', 'Choose an option', [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve([]) },
+          { text: 'Take Photo', onPress: launchCamera },
+          { text: 'Choose from Library', onPress: launchLibrary },
+        ])
       }
-    }
-
-    const launchLibrary = async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Library Permission', 'Photo library access is needed to select photos.')
-        return
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        aspect: [3, 4],
-        quality: 0.8,
-        allowsMultipleSelection: true,
-      })
-      if (!result.canceled && result.assets.length > 0) {
-        const normalizedUris = await normalizeImageUris(
-          result.assets.map((asset) => asset.uri),
-        )
-        await handleImportProgressPhotos(normalizedUris)
-      }
-    }
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Take Photo', 'Choose from Library'], cancelButtonIndex: 0 },
-        (idx) => {
-          if (idx === 1) launchCamera()
-          if (idx === 2) launchLibrary()
-        },
-      )
-    } else {
-      Alert.alert('Add Photo', 'Choose an option', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Take Photo', onPress: launchCamera },
-        { text: 'Choose from Library', onPress: launchLibrary },
-      ])
-    }
-  }, [handleImportProgressPhotos, isUploadingPhotos, user])
-
-  const handleContextAdd = useCallback(async () => {
-    if (!user) return alert('You must be logged in')
-    haptic('medium')
-
-    if (activeTab === 'weight') {
-      setWeightModalVisible(true)
-    } else if (activeTab === 'bodyfat') {
-      trackEvent(AnalyticsEvents.BODY_LOG_ENTRY_STARTED)
-      setBodyFatSheetVisible(true)
-    } else if (activeTab === 'meals') {
-      router.push({
-        pathname: '/body-log/daily-food-log',
-        params: { logDate: getLocalDateKey(new Date().toISOString()) },
-      })
-    } else if (activeTab === 'photos') {
-      handleAddPhoto()
-    }
-  }, [user, activeTab, router, trackEvent, handleAddPhoto])
+    })
+  }
 
   const topPad = insets.top + HEADER_ROW_HEIGHT + 16
-
-  const scrollTabIntoView = useCallback((tabId: ActiveTab) => {
-    const scrollView = tabsScrollRef.current
-    const tabLayout = tabLayoutsRef.current[tabId]
-    const viewportWidth = tabsViewportWidthRef.current
-
-    if (!scrollView || !tabLayout || viewportWidth <= 0) return
-
-    const contentWidth = Math.max(tabsContentWidthRef.current, viewportWidth)
-    const currentOffset = tabsScrollOffsetRef.current
-    const visibleLeft = currentOffset
-    const visibleRight = currentOffset + viewportWidth
-    const targetLeft = Math.max(0, tabLayout.x - TAB_AUTO_SCROLL_GUTTER)
-    const targetRight = Math.min(
-      contentWidth,
-      tabLayout.x + tabLayout.width + TAB_AUTO_SCROLL_GUTTER,
-    )
-
-    if (targetLeft >= visibleLeft && targetRight <= visibleRight) return
-
-    const maxOffset = Math.max(0, contentWidth - viewportWidth)
-    let nextOffset = currentOffset
-
-    if (targetLeft < visibleLeft) {
-      nextOffset = targetLeft
-    } else if (targetRight > visibleRight) {
-      nextOffset = targetRight - viewportWidth
-    }
-
-    nextOffset = Math.max(0, Math.min(nextOffset, maxOffset))
-    if (Math.abs(nextOffset - currentOffset) < 1) return
-
-    tabsScrollOffsetRef.current = nextOffset
-    scrollView.scrollTo({ x: nextOffset, animated: true })
-  }, [])
-
-  const handleTabPress = useCallback(
-    (tabId: ActiveTab) => {
-      haptic('light')
-      if (tabId === activeTab) {
-        scrollTabIntoView(tabId)
-        return
-      }
-
-      setActiveTab(tabId)
-    },
-    [activeTab, scrollTabIntoView],
-  )
-
-  useEffect(() => {
-    if (!NUTRITION_FEATURES_ENABLED && activeTab === 'meals') {
-      setActiveTab('weight')
-    }
-  }, [activeTab])
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      scrollTabIntoView(activeTab)
-    })
-
-    return () => cancelAnimationFrame(frame)
-  }, [activeTab, scrollTabIntoView])
-
-  // Shared tabs header
-  const TabsHeader = useMemo(() => (
-    <View style={{ flexGrow: 0, flexShrink: 0 }}>
-      <ScrollView
-        ref={(node) => {
-          tabsScrollRef.current = node
-        }}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentOffset={{ x: tabsScrollOffsetRef.current, y: 0 }}
-        scrollEventThrottle={16}
-        onScroll={(event) => {
-          tabsScrollOffsetRef.current = event.nativeEvent.contentOffset.x
-        }}
-        onLayout={(event) => {
-          tabsViewportWidthRef.current = event.nativeEvent.layout.width
-          requestAnimationFrame(() => scrollTabIntoView(activeTab))
-        }}
-        onContentSizeChange={(width) => {
-          tabsContentWidthRef.current = width
-          requestAnimationFrame(() => scrollTabIntoView(activeTab))
-        }}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 20 }}
-      >
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              onLayout={(event) => {
-                const { x, width } = event.nativeEvent.layout
-                tabLayoutsRef.current[tab.id] = { x, width }
-                if (tab.id === activeTab) {
-                  requestAnimationFrame(() => scrollTabIntoView(tab.id))
-                }
-              }}
-              style={[
-                tabStyles.pill,
-                isActive ? { backgroundColor: colors.textPrimary } : { backgroundColor: colors.surfaceSubtle },
-              ]}
-              onPress={() => handleTabPress(tab.id)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                tabStyles.pillText,
-                isActive ? { color: colors.bg, fontWeight: '700' } : { color: colors.textSecondary, fontWeight: '600' },
-              ]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-    </View>
-  ), [activeTab, colors, handleTabPress, scrollTabIntoView])
 
   const refreshControl = (
     <RefreshControl
@@ -1237,13 +678,16 @@ export default function BodyLogScreen() {
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <BlurredHeader fadeExtension={12}>
           <ScreenHeader
-            title="Body Log"
+            title="Measures"
             onLeftPress={() => setShouldExit(true)}
             leftIcon="arrow-back"
             rightIcon="add"
-            onRightPress={handleContextAdd}
-            rightLoading={activeTab === 'photos' && isUploadingPhotos}
-            rightDisabled={activeTab === 'photos' && isUploadingPhotos}
+            onRightPress={() => {
+              haptic('light')
+              setLogModalVisible(true)
+            }}
+            rightLoading={isUploadingPhotos}
+            rightDisabled={isUploadingPhotos}
           />
         </BlurredHeader>
 
@@ -1251,234 +695,89 @@ export default function BodyLogScreen() {
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
-        ) : entries.length === 0 ? (
-          <ScrollView
-            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100, flexGrow: 1 }}
-            showsVerticalScrollIndicator={false}
-            refreshControl={refreshControl}
-          >
-            {TabsHeader}
-            <TabEmptyState
-              activeTab={activeTab}
-              onPress={handleContextAdd}
-            />
-          </ScrollView>
-        ) : activeTab === 'weight' ? (
-          // ── Weight: date → weight value
-          <FlatList
-            key="weight"
-            data={weightEntries}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              if (item.weight_kg === null) return null
-              return (
-                <TouchableOpacity
-                  style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-                  onPress={() => handleEntryOpen(item)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textSecondary }}>
-                    {formatDate(item.created_at)}
-                  </Text>
-                  <Text style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.4, color: colors.textPrimary }}>
-                    {formatWeight(item.weight_kg)}
-                  </Text>
-                </TouchableOpacity>
-              )
-            }}
-            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100 }}
-            scrollIndicatorInsets={{ top: topPad }}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            maxToRenderPerBatch={15}
-            windowSize={10}
-            initialNumToRender={15}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
-            ListHeaderComponent={
-              <View>
-                {TabsHeader}
-                {user && <BodyWeightChart userId={user.id} />}
-              </View>
-            }
-            ListEmptyComponent={
-              <TabEmptyState activeTab="weight" onPress={handleContextAdd} />
-            }
-            ListFooterComponent={footer}
-            refreshControl={refreshControl}
-          />
-        ) : activeTab === 'bodyfat' ? (
-          // ── Body Fat: date → body fat %
-          <FlatList
-            key="bodyfat"
-            data={bodyfatEntries}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              if (item.body_fat_percentage === null) return null
-              return (
-                <TouchableOpacity
-                  style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-                  onPress={() => handleEntryOpen(item)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textSecondary }}>
-                    {formatDate(item.created_at)}
-                  </Text>
-                  <Text style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.4, color: colors.textPrimary }}>
-                    {item.body_fat_percentage}%
-                  </Text>
-                </TouchableOpacity>
-              )
-            }}
-            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100 }}
-            scrollIndicatorInsets={{ top: topPad }}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            maxToRenderPerBatch={15}
-            windowSize={10}
-            initialNumToRender={15}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
-            ListHeaderComponent={<View>{TabsHeader}</View>}
-            ListEmptyComponent={
-              <TabEmptyState activeTab="bodyfat" onPress={handleContextAdd} />
-            }
-            ListFooterComponent={footer}
-            refreshControl={refreshControl}
-          />
-        ) : NUTRITION_FEATURES_ENABLED && activeTab === 'meals' ? (
-          // ── Meals: calorie-first day rows
-          <FlatList
-            key="meals"
-            data={mealsEntries}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <MealsRow entry={item} onPress={handleFoodEntryOpen} />}
-            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100 }}
-            scrollIndicatorInsets={{ top: topPad }}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            maxToRenderPerBatch={15}
-            windowSize={10}
-            initialNumToRender={15}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
-            ListHeaderComponent={
-              <View>
-                {TabsHeader}
-                {user && (
-                    <DailyCalorieGoalHeader 
-                        userId={user.id} 
-                        currentGoal={todayCalorieGoal}
-                        onUpdate={(goal) => setTodayCalorieGoal(goal)}
-                    />
-                )}
-              </View>
-            }
-            ListEmptyComponent={
-              <TabEmptyState activeTab="meals" onPress={handleContextAdd} />
-            }
-            ListFooterComponent={footer}
-            refreshControl={refreshControl}
-          />
         ) : (
-          // ── Photos: flat photo library grid
           <FlatList
-            key="photos"
-            data={photoGridData}
+            data={entries.filter(e => e.weight_kg !== null || e.body_fat_percentage !== null || e.images.length > 0)}
             keyExtractor={(item) => item.id}
-            numColumns={PHOTO_COLUMNS}
-            columnWrapperStyle={{ gap: PHOTO_GAP, paddingHorizontal: PHOTO_GAP }}
-            renderItem={({ item, index }) => {
-              if (item.type === 'add') {
-                return (
-                  <AddPhotoTile
-                    onPress={handleAddPhoto}
-                    isLoading={isUploadingPhotos}
-                  />
-                )
-              }
-
-              return (
-                <ProgressPhotoTile
-                  item={item}
-                  imageUrl={photoThumbUrls[item.filePath] ?? null}
-                  onPress={() => handleOpenPhotoViewer(index - 1)}
-                />
-              )
-            }}
-            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100, gap: PHOTO_GAP }}
+            renderItem={({ item }) => <MeasureRow entry={item} onPress={handleEntryOpen} />}
+            contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100 }}
             scrollIndicatorInsets={{ top: topPad }}
             showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            maxToRenderPerBatch={18}
-            windowSize={10}
-            initialNumToRender={24}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
             ListHeaderComponent={
-              <View style={{ paddingHorizontal: PHOTO_GAP }}>
-                {TabsHeader}
-                <View
-                  style={{
-                    paddingHorizontal: 6,
-                    paddingBottom: 10,
-                    paddingTop: 2,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: '700',
-                      letterSpacing: -0.2,
-                    }}
-                  >
-                    All Photos
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: '600',
-                    }}
-                >
-                  {progressPhotos.length} {progressPhotos.length === 1 ? 'photo' : 'photos'}
-                  </Text>
+              <View style={{ paddingBottom: 16 }}>
+                {progressPhotos.length > 0 && (
+                  <>
+                    <View style={headerStyles.sectionHeader}>
+                      <Text style={[headerStyles.sectionTitle, { color: colors.textSecondary }]}>Progress Pictures</Text>
+                    </View>
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={progressPhotos}
+                      keyExtractor={item => item.id}
+                      contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 24 }}
+                      renderItem={({ item, index }) => (
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => handleOpenPhotoViewer(index)}
+                          style={[headerStyles.photoCard, { backgroundColor: colors.surfaceSubtle }]}
+                        >
+                          <Image 
+                            source={{ uri: photoThumbUrls[item.filePath] ?? undefined }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                            transition={200}
+                          />
+                          <View style={headerStyles.photoDateOverlay}>
+                            <Text style={[headerStyles.photoDateText, { color: '#fff' }]}>
+                              {formatDate(item.entryCreatedAt)}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </>
+                )}
+
+                {user && (
+                  <View style={{ marginBottom: 12 }}>
+                    <BodyWeightChart userId={user.id} />
+                  </View>
+                )}
+
+                <View style={[headerStyles.sectionHeader, { paddingTop: 16 }]}>
+                  <Text style={[headerStyles.sectionTitle, { color: colors.textSecondary }]}>Weight History</Text>
                 </View>
               </View>
             }
-            ListFooterComponent={footer}
             ListEmptyComponent={
-              <TabEmptyState activeTab="photos" onPress={handleContextAdd} />
+              <View style={{ alignItems: 'center', padding: 40, opacity: 0.6 }}>
+                <Ionicons name="body-outline" size={48} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 }}>
+                  No measurements yet
+                </Text>
+                <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center' }}>
+                  Tap the + button to log your first weight, body fat, or progress picture.
+                </Text>
+              </View>
             }
+            ListFooterComponent={footer}
             refreshControl={refreshControl}
           />
         )}
       </View>
 
-      <WeightInputModal
-        visible={weightModalVisible}
-        onClose={() => setWeightModalVisible(false)}
-        onSave={handleSaveWeight}
-      />
-
-      <BodyFatAddSheet
-        visible={bodyFatSheetVisible}
-        onClose={() => setBodyFatSheetVisible(false)}
-        onManual={() => setBodyFatInputVisible(true)}
-        onBodyScan={() => {
-          setBodyFatSheetVisible(false)
+      <LogMeasuresModal
+        visible={logModalVisible}
+        onClose={() => setLogModalVisible(false)}
+        onSave={handleSaveModal}
+        onAddPhoto={handlePickPhoto}
+        onScanPress={() => {
+          setLogModalVisible(false)
           router.push('/body-log/scan' as any)
         }}
-      />
-
-      <BodyFatInputModal
-        visible={bodyFatInputVisible}
-        onClose={() => setBodyFatInputVisible(false)}
-        onSave={handleSaveBodyFat}
       />
 
       <Modal
@@ -1612,15 +911,37 @@ export default function BodyLogScreen() {
   )
 }
 
-const tabStyles = StyleSheet.create({
-  pill: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-    justifyContent: 'center',
+const headerStyles = StyleSheet.create({
+  sectionHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pillText: {
-    fontSize: 15,
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+  photoCard: {
+    width: PHOTO_SIZE,
+    height: Math.round(PHOTO_SIZE * 1.33), // 3:4 aspect ratio
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  photoDateOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  photoDateText: {
+    fontSize: 12,
+    fontWeight: '600',
+  }
 })

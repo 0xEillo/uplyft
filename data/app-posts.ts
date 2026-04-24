@@ -135,12 +135,12 @@ export const APP_POSTS: AppPost[] = [
   },
   {
     id: 'body-log',
-    title: 'Body Log Trends Over Time',
+    title: 'Measures Trends Over Time',
     body: 'Track weight, body fat, and progress photos in one place.',
     createdAt: '2026-01-26T12:40:00.000Z',
     preview: 'body_log',
     badge: 'TRACK',
-    ctaText: 'Open Body Log',
+    ctaText: 'Open Measures',
     ctaRoute: '/body-log/',
   },
   {

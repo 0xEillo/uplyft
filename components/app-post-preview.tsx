@@ -436,7 +436,7 @@ function BodyLogPreview() {
       <View style={shared.headerRow}>
         <View style={shared.headerTitleRow}>
           <Ionicons name="body-outline" size={18} color={colors.textPrimary} />
-          <Text style={shared.headerTitle}>Body Log Trends</Text>
+          <Text style={shared.headerTitle}>Measures Trends</Text>
         </View>
         <View style={shared.headerBadge}>
           <Text style={shared.headerBadgeText}>TRACK</Text>
