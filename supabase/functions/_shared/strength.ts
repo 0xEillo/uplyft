@@ -25,8 +25,23 @@ export type OverallStrengthGroup =
   | 'Arms'
   | 'Core'
 
-type ExerciseStandardsConfig = (typeof GENERATED_EXERCISES_WITH_STANDARDS)[number]
-type StrengthStandard = ExerciseStandardsConfig['male'][number]
+interface StrengthStandard {
+  level: StrengthLevel
+  multiplier: number
+  color: string
+  description: string
+}
+
+interface ExerciseStandardsConfig {
+  id: string
+  name: string
+  aliases?: readonly string[]
+  gifUrl?: string | null
+  male: readonly StrengthStandard[]
+  female: readonly StrengthStandard[]
+  tier?: 1 | 2 | 3
+  isRepBased?: boolean
+}
 
 interface SetRow {
   reps: number | null
@@ -137,6 +152,54 @@ export interface StrengthProfileCacheUpdate {
   overall_strength_updated_at: string
 }
 
+export interface PracticalRepTarget {
+  weightKg: number
+  reps: number
+  estimated1RMKg: number
+}
+
+export interface LifterPointTargetCandidate {
+  exerciseId: string
+  exerciseName: string
+  canonicalExerciseName: string
+  source: 'tracked' | 'unlogged'
+  muscleGroup: string | null
+  targetGroup: OverallStrengthGroup | null
+  isRepBased: boolean
+  tier: 1 | 2 | 3
+  currentValue: number
+  currentMetric: 'estimated_1rm_kg' | 'reps'
+  targetValue: number
+  targetMetric: 'estimated_1rm_kg' | 'reps'
+  targetEstimated1RMKg: number | null
+  practicalTargets: PracticalRepTarget[]
+  projectedPoints: number
+  projectedLevel: StrengthLevel
+  projectedNextLevel: StrengthLevel | null
+  projectedProgress: number
+  pointsGained: number
+  requestedPoints: number
+  level: StrengthLevel
+  nextLevel: StrengthLevel | null
+  progress: number
+  relevanceScore: number
+}
+
+export interface LifterPointTargetsResult {
+  available: boolean
+  profile: UserStrengthProfile['profile']
+  missingRequirements?: string[]
+  reason?: string
+  requestedPoints: number
+  currentPoints: number
+  currentLevel: StrengthLevel
+  currentNextLevel: StrengthLevel | null
+  currentProgress: number
+  trackedExercises: number
+  bestTarget: LifterPointTargetCandidate | null
+  alternatives: LifterPointTargetCandidate[]
+}
+
 interface SupportedExerciseSnapshot {
   exerciseId: string
   exerciseName: string
@@ -195,11 +258,13 @@ const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
 ]
 
 const exerciseNameMap = buildExerciseNameMap()
+const exerciseMuscleMapping =
+  GENERATED_EXERCISE_MUSCLE_MAPPING as Record<string, string | undefined>
 
 function buildExerciseNameMap(): Map<string, ExerciseStandardsConfig> {
   const map = new Map<string, ExerciseStandardsConfig>()
 
-  GENERATED_EXERCISES_WITH_STANDARDS.forEach((config) => {
+  ;(GENERATED_EXERCISES_WITH_STANDARDS as readonly ExerciseStandardsConfig[]).forEach((config) => {
     map.set(normaliseName(config.name), config)
     config.aliases?.forEach((alias) => {
       map.set(normaliseName(alias), config)
@@ -269,6 +334,16 @@ function estimateOneRepMaxKg(weightKg: number, reps: number): number {
   }
 
   return weightKg * (1 + reps / 30)
+}
+
+function roundTo(value: number, decimals = 1): number {
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
+
+function roundUpToIncrement(value: number, increment: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return Math.ceil(value / increment) * increment
 }
 
 function getStrengthStandard(input: {
@@ -422,8 +497,8 @@ function resolveSpecificMuscleName(
   const canonicalName = config?.name ?? exerciseName
 
   return (
-    GENERATED_EXERCISE_MUSCLE_MAPPING[canonicalName] ??
-    GENERATED_EXERCISE_MUSCLE_MAPPING[exerciseName] ??
+    exerciseMuscleMapping[canonicalName] ??
+    exerciseMuscleMapping[exerciseName] ??
     fallbackMuscle ??
     null
   )
@@ -613,6 +688,101 @@ function calculateOverallStrengthScore(input: {
   }
 }
 
+function calculatePreciseOverallPoints(result: LifterLevelDetails): number {
+  return clampScore(
+    (Object.keys(result.groupBreakdown) as OverallStrengthGroup[]).reduce(
+      (sum, group) => sum + result.groupBreakdown[group].weightedContribution,
+      0,
+    ),
+  )
+}
+
+function sameCanonicalExerciseName(left: string, right: string): boolean {
+  const leftConfig = getExerciseConfig(left)
+  const rightConfig = getExerciseConfig(right)
+  return (leftConfig?.name ?? left) === (rightConfig?.name ?? right)
+}
+
+function buildSnapshotFromRank(
+  rank: ExerciseRankDetails,
+): SupportedExerciseSnapshot {
+  return {
+    exerciseId: rank.exerciseId,
+    exerciseName: rank.exerciseName,
+    canonicalExerciseName: rank.canonicalExerciseName,
+    muscleGroup: rank.muscleGroup,
+    max1RM: rank.currentValue,
+    lastTrainedAt: rank.lastTrainedAt,
+    bestSetWeightKg: rank.bestSetWeightKg,
+    bestSetReps: rank.bestSetReps,
+    isRepBased: rank.isRepBased,
+    tier: rank.tier,
+  }
+}
+
+function projectExercisePerformance(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: SupportedExerciseSnapshot[]
+  exercise: SupportedExerciseSnapshot
+  targetValue: number
+  now?: Date
+}): {
+  currentResult: LifterLevelDetails
+  projectedResult: LifterLevelDetails
+  rawPointsGained: number
+  pointsGained: number
+} | null {
+  const { gender, bodyweightKg, exercises, exercise, targetValue } = input
+  const now = input.now ?? new Date()
+
+  if (!Number.isFinite(targetValue) || targetValue <= 0) return null
+
+  const existingIndex = exercises.findIndex(
+    (candidate) =>
+      candidate.exerciseId === exercise.exerciseId ||
+      sameCanonicalExerciseName(candidate.exerciseName, exercise.exerciseName),
+  )
+  const existingExercise =
+    existingIndex >= 0 ? exercises[existingIndex] : null
+  const projectedValue = Math.max(existingExercise?.max1RM ?? 0, targetValue)
+  const projectedExercise: SupportedExerciseSnapshot = {
+    ...(existingExercise ?? exercise),
+    max1RM: projectedValue,
+    lastTrainedAt: now.toISOString(),
+  }
+  const projectedExercises =
+    existingIndex >= 0
+      ? exercises.map((candidate, index) =>
+          index === existingIndex ? projectedExercise : candidate,
+        )
+      : [...exercises, projectedExercise]
+
+  const currentResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises,
+    now,
+  })
+  const projectedResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises: projectedExercises,
+    now,
+  })
+
+  return {
+    currentResult,
+    projectedResult,
+    rawPointsGained: Math.max(
+      0,
+      calculatePreciseOverallPoints(projectedResult) -
+        calculatePreciseOverallPoints(currentResult),
+    ),
+    pointsGained: Math.max(0, projectedResult.points - currentResult.points),
+  }
+}
+
 function getNextLevelAnchor(nextLevel: StrengthLevel | null): number | null {
   if (!nextLevel) return null
   return LEVEL_POINT_ANCHORS[nextLevel] ?? null
@@ -709,7 +879,9 @@ export function getExerciseStandardsForProfile(input: {
   }
 
   const isRepBased = config.isRepBased ?? false
-  const targetMetric = isRepBased ? 'reps' : 'estimated_1rm_kg'
+  const targetMetric: 'estimated_1rm_kg' | 'reps' = isRepBased
+    ? 'reps'
+    : 'estimated_1rm_kg'
   const levels = (gender === 'male' ? config.male : config.female).map(
     (standard) => ({
       level: standard.level,
@@ -760,6 +932,360 @@ function sortExerciseRanksByDefault(
   }
 
   return compareNullableDatesDesc(left.lastTrainedAt, right.lastTrainedAt)
+}
+
+function getPracticalRepTargets(targetEstimated1RMKg: number): PracticalRepTarget[] {
+  if (!Number.isFinite(targetEstimated1RMKg) || targetEstimated1RMKg <= 0) {
+    return []
+  }
+
+  return [5, 6, 8].map((reps) => {
+    const exactWeight = targetEstimated1RMKg / (1 + reps / 30)
+    const weightKg = roundUpToIncrement(exactWeight, 2.5)
+    return {
+      weightKg: roundTo(weightKg, 1),
+      reps,
+      estimated1RMKg: roundTo(estimateOneRepMaxKg(weightKg, reps), 1),
+    }
+  })
+}
+
+function getExerciseLevelAtValue(input: {
+  exerciseName: string
+  gender: StrengthGender
+  bodyweightKg: number
+  value: number
+}): {
+  level: StrengthLevel
+  nextLevel: StrengthLevel | null
+  progress: number
+} {
+  const standard = getStrengthStandard({
+    exerciseName: input.exerciseName,
+    gender: input.gender,
+    bodyweightKg: input.bodyweightKg,
+    oneRepMax: input.value,
+  })
+
+  return {
+    level: standard?.level ?? 'Untrained',
+    nextLevel: standard?.nextLevel?.level ?? null,
+    progress: standard?.progress ?? 0,
+  }
+}
+
+function buildUnloggedSnapshot(config: ExerciseStandardsConfig): SupportedExerciseSnapshot {
+  const specificMuscle =
+    exerciseMuscleMapping[config.name] ?? null
+
+  return {
+    exerciseId: config.id,
+    exerciseName: config.name,
+    canonicalExerciseName: config.name,
+    muscleGroup: specificMuscle,
+    max1RM: 0,
+    lastTrainedAt: null,
+    bestSetWeightKg: null,
+    bestSetReps: null,
+    isRepBased: config.isRepBased ?? false,
+    tier: config.tier ?? 3,
+  }
+}
+
+function exerciseMatchesQuery(
+  exercise: Pick<SupportedExerciseSnapshot, 'exerciseName' | 'canonicalExerciseName'>,
+  query: string,
+): boolean {
+  const normalizedQuery = normaliseName(query)
+  const name = normaliseName(exercise.exerciseName)
+  const canonical = normaliseName(exercise.canonicalExerciseName)
+  return name.includes(normalizedQuery) || canonical.includes(normalizedQuery)
+}
+
+function buildPointTargetCandidatePool(input: {
+  profile: UserStrengthProfile
+  exerciseName?: string
+}): { exercise: SupportedExerciseSnapshot; source: 'tracked' | 'unlogged' }[] {
+  const tracked = input.profile.exerciseRanks.map((rank) => ({
+    exercise: buildSnapshotFromRank(rank),
+    source: 'tracked' as const,
+  }))
+  const trackedCanonical = new Set(
+    tracked.map((candidate) => candidate.exercise.canonicalExerciseName),
+  )
+
+  const unlogged = (GENERATED_EXERCISES_WITH_STANDARDS as readonly ExerciseStandardsConfig[])
+    .filter((config) => !trackedCanonical.has(config.name))
+    .filter((config) => (config.tier ?? 3) <= 2)
+    .map((config) => ({
+      exercise: buildUnloggedSnapshot(config),
+      source: 'unlogged' as const,
+    }))
+
+  const pool = [...tracked, ...unlogged]
+  if (!input.exerciseName?.trim()) return pool
+
+  const exactMatches = pool.filter((candidate) => {
+    const normalizedInput = normaliseName(input.exerciseName as string)
+    return (
+      normaliseName(candidate.exercise.exerciseName) === normalizedInput ||
+      normaliseName(candidate.exercise.canonicalExerciseName) === normalizedInput
+    )
+  })
+  if (exactMatches.length > 0) return exactMatches
+
+  return pool.filter((candidate) =>
+    exerciseMatchesQuery(candidate.exercise, input.exerciseName as string),
+  )
+}
+
+function findMinimumTargetForPointGain(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: SupportedExerciseSnapshot[]
+  exercise: SupportedExerciseSnapshot
+  requestedPoints: number
+  now?: Date
+}): {
+  targetValue: number
+  projection: NonNullable<ReturnType<typeof projectExercisePerformance>>
+} | null {
+  const { gender, bodyweightKg, exercises, exercise, requestedPoints } = input
+  const now = input.now ?? new Date()
+  const standards = getStandardsLadder(exercise.exerciseName, gender)
+  if (!standards || standards.length === 0) return null
+
+  const highestStandard = standards[standards.length - 1]
+  const standardsMaxValue = exercise.isRepBased
+    ? highestStandard.multiplier
+    : bodyweightKg * highestStandard.multiplier
+  const currentValue = Math.max(0, exercise.max1RM)
+  const upperBound = Math.max(
+    standardsMaxValue,
+    currentValue > 0 ? currentValue * 1.5 : standardsMaxValue,
+  )
+
+  const maxProjection = projectExercisePerformance({
+    gender,
+    bodyweightKg,
+    exercises,
+    exercise,
+    targetValue: upperBound,
+    now,
+  })
+  if (!maxProjection || maxProjection.pointsGained < requestedPoints) {
+    return null
+  }
+
+  let low = currentValue
+  let high = upperBound
+
+  for (let i = 0; i < 28; i += 1) {
+    const mid = (low + high) / 2
+    const projection = projectExercisePerformance({
+      gender,
+      bodyweightKg,
+      exercises,
+      exercise,
+      targetValue: mid,
+      now,
+    })
+
+    if (projection && projection.pointsGained >= requestedPoints) {
+      high = mid
+    } else {
+      low = mid
+    }
+  }
+
+  const targetValue = exercise.isRepBased
+    ? Math.ceil(high)
+    : roundTo(roundUpToIncrement(high, 0.1), 1)
+  const projection = projectExercisePerformance({
+    gender,
+    bodyweightKg,
+    exercises,
+    exercise,
+    targetValue,
+    now,
+  })
+
+  if (!projection || projection.pointsGained < requestedPoints) return null
+
+  return {
+    targetValue,
+    projection,
+  }
+}
+
+function calculatePointTargetRelevance(input: {
+  source: 'tracked' | 'unlogged'
+  exercise: SupportedExerciseSnapshot
+  targetGroup: OverallStrengthGroup | null
+  pointsGained: number
+  requestedPoints: number
+  currentLevel: StrengthLevel
+  weakestGroup: OverallStrengthGroup | null
+  hasExerciseFilter: boolean
+}): number {
+  let score = 0
+  score += Math.min(input.pointsGained / input.requestedPoints, 1.75) * 40
+  score += input.exercise.tier === 1 ? 24 : input.exercise.tier === 2 ? 14 : 4
+  score += input.source === 'tracked' ? 28 : 0
+  score += input.targetGroup === input.weakestGroup ? 18 : 0
+  score += getLevelSortScore(input.currentLevel) * 3
+  score += input.hasExerciseFilter ? 30 : 0
+  score += input.source === 'unlogged' ? -10 : 0
+  return roundTo(score, 2)
+}
+
+export function calculateLifterPointTargets(input: {
+  profile: UserStrengthProfile
+  requestedPoints: number
+  exerciseName?: string
+  includeAlternatives?: boolean
+  now?: Date
+}): LifterPointTargetsResult {
+  const requestedPoints = Math.max(1, Math.round(input.requestedPoints))
+  const { profile } = input
+
+  if (profile.missingRequirements.length > 0) {
+    return {
+      available: false,
+      profile: profile.profile,
+      missingRequirements: profile.missingRequirements,
+      requestedPoints,
+      currentPoints: profile.overallLevel?.points ?? 0,
+      currentLevel: profile.overallLevel?.level ?? 'Untrained',
+      currentNextLevel: profile.overallLevel?.nextLevel ?? 'Beginner',
+      currentProgress: profile.overallLevel?.progress ?? 0,
+      trackedExercises: profile.exerciseRanks.length,
+      bestTarget: null,
+      alternatives: [],
+    }
+  }
+
+  const gender = profile.profile.gender as StrengthGender
+  const bodyweightKg = profile.profile.bodyweightKg as number
+  const now = input.now ?? new Date()
+  const trackedExercises = profile.exerciseRanks.map(buildSnapshotFromRank)
+  const currentResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises: trackedExercises,
+    now,
+  })
+  const candidatePool = buildPointTargetCandidatePool({
+    profile,
+    exerciseName: input.exerciseName,
+  })
+
+  const candidates = candidatePool
+    .map(({ exercise, source }) => {
+      const target = findMinimumTargetForPointGain({
+        gender,
+        bodyweightKg,
+        exercises: trackedExercises,
+        exercise,
+        requestedPoints,
+        now,
+      })
+      if (!target) return null
+
+      const specificMuscle = resolveSpecificMuscleName(
+        exercise.exerciseName,
+        exercise.muscleGroup,
+      )
+      const targetGroup = toOverallGroup(specificMuscle)
+      const exerciseLevel = getExerciseLevelAtValue({
+        exerciseName: exercise.exerciseName,
+        gender,
+        bodyweightKg,
+        value: target.targetValue,
+      })
+      const targetMetric = exercise.isRepBased ? 'reps' : 'estimated_1rm_kg'
+
+      return {
+        exerciseId: exercise.exerciseId,
+        exerciseName: exercise.exerciseName,
+        canonicalExerciseName: exercise.canonicalExerciseName,
+        source,
+        muscleGroup: exercise.muscleGroup,
+        targetGroup,
+        isRepBased: exercise.isRepBased,
+        tier: exercise.tier,
+        currentValue: roundTo(exercise.max1RM, exercise.isRepBased ? 0 : 1),
+        currentMetric: targetMetric,
+        targetValue: roundTo(target.targetValue, exercise.isRepBased ? 0 : 1),
+        targetMetric,
+        targetEstimated1RMKg: exercise.isRepBased
+          ? null
+          : roundTo(target.targetValue, 1),
+        practicalTargets: exercise.isRepBased
+          ? []
+          : getPracticalRepTargets(target.targetValue),
+        projectedPoints: target.projection.projectedResult.points,
+        projectedLevel: target.projection.projectedResult.level,
+        projectedNextLevel: target.projection.projectedResult.nextLevel,
+        projectedProgress: target.projection.projectedResult.progress,
+        pointsGained: target.projection.pointsGained,
+        requestedPoints,
+        level: exerciseLevel.level,
+        nextLevel: exerciseLevel.nextLevel,
+        progress: exerciseLevel.progress,
+        relevanceScore: calculatePointTargetRelevance({
+          source,
+          exercise,
+          targetGroup,
+          pointsGained: target.projection.pointsGained,
+          requestedPoints,
+          currentLevel: exerciseLevel.level,
+          weakestGroup: currentResult.weakestGroup,
+          hasExerciseFilter: Boolean(input.exerciseName?.trim()),
+        }),
+      } satisfies LifterPointTargetCandidate
+    })
+    .filter(
+      (candidate): candidate is LifterPointTargetCandidate =>
+        candidate !== null,
+    )
+    .sort((left, right) => {
+      if (right.relevanceScore !== left.relevanceScore) {
+        return right.relevanceScore - left.relevanceScore
+      }
+      if (right.pointsGained !== left.pointsGained) {
+        return right.pointsGained - left.pointsGained
+      }
+      if (left.source !== right.source) {
+        return left.source === 'tracked' ? -1 : 1
+      }
+      return left.targetValue - right.targetValue
+    })
+
+  const bestTarget = candidates[0] ?? null
+  const alternatives = (input.includeAlternatives ?? true)
+    ? candidates.slice(1, 4)
+    : []
+
+  return {
+    available: bestTarget !== null,
+    profile: profile.profile,
+    ...(bestTarget
+      ? {}
+      : {
+          reason: input.exerciseName?.trim()
+            ? 'No matching exercise can reach that point target.'
+            : 'No exercise target can reach that point target.',
+        }),
+    requestedPoints,
+    currentPoints: currentResult.points,
+    currentLevel: currentResult.level,
+    currentNextLevel: currentResult.nextLevel,
+    currentProgress: currentResult.progress,
+    trackedExercises: profile.exerciseRanks.length,
+    bestTarget,
+    alternatives,
+  }
 }
 
 function getMissingRequirements(input: {

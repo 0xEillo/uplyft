@@ -1,18 +1,20 @@
 import {
   EXERCISE_MUSCLE_MAPPING,
-  EXERCISE_TIER_WEIGHTS,
   getExerciseNameMap,
   getTrackableExercisesForMuscle,
 } from './exercise-standards-config'
 import {
-  calculateExerciseStrengthPoints,
-  calculateStrengthAggregateFromScores,
   getOverallStrengthGroupLevelProgress,
   type OverallStrengthGroup,
   type OverallStrengthGroupBreakdown,
 } from './overall-strength-score'
 import type { ExerciseStandardsConfig, StrengthLevel } from './exercise-standards-config'
-import type { StrengthGender } from './strength-progress'
+import {
+  scoreToLevelProgress,
+  toLevelScore,
+  type StrengthGender,
+} from './strength-progress'
+import { getStrengthStandard } from './strength-standards'
 
 export type DisplayStrengthGroup = OverallStrengthGroup
 
@@ -33,6 +35,16 @@ export interface SpecificMuscleGroupData<TExercise> {
 }
 
 const exerciseNameMap = getExerciseNameMap()
+const DISPLAY_DECAY_GRACE_DAYS = 14
+const DISPLAY_DECAY_RATE_PER_WEEK = 0.05
+const REPRESENTATIVE_ANCHOR_EXERCISE_DECAY = 0.75
+const REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR = 0.95
+const REPRESENTATIVE_SUPPORT_MAX_UPLIFT = 1
+const REPRESENTATIVE_SUPPORT_TIER_WEIGHTS: Record<1 | 2 | 3, number> = {
+  1: 1,
+  2: 0.7,
+  3: 0.5,
+}
 
 export const DISPLAY_STRENGTH_GROUP_ORDER: DisplayStrengthGroup[] = [
   'Chest',
@@ -132,6 +144,44 @@ export function getTrackableExercisesForDisplayGroup(
   )
 }
 
+function asDateOrNull(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function computeDisplayDecayFactor(
+  lastTrainedAt: string | null,
+  now: Date,
+): number {
+  const trainedAt = asDateOrNull(lastTrainedAt)
+  if (!trainedAt) return 1
+
+  const diffMs = now.getTime() - trainedAt.getTime()
+  if (diffMs <= 0) return 1
+
+  const daysSinceLastTrain = diffMs / (1000 * 60 * 60 * 24)
+  if (daysSinceLastTrain <= DISPLAY_DECAY_GRACE_DAYS) return 1
+
+  const overdueWeeks = (daysSinceLastTrain - DISPLAY_DECAY_GRACE_DAYS) / 7
+  return Math.max(0, 1 - overdueWeeks * DISPLAY_DECAY_RATE_PER_WEEK)
+}
+
+function calculateWeightedAverage(
+  values: number[],
+  weights: number[],
+): number {
+  if (values.length === 0 || values.length !== weights.length) {
+    return 0
+  }
+
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0)
+  if (totalWeight <= 0) return 0
+
+  return values.reduce((sum, value, index) => sum + value * weights[index], 0) /
+    totalWeight
+}
+
 export function buildDisplayStrengthGroupData<
   TExercise extends { exerciseName: string; muscleGroup?: string | null },
 >(input: {
@@ -189,39 +239,46 @@ export function buildSpecificMuscleGroupData<
     string,
     {
       exercises: TExercise[]
-      weightedExerciseScores: number[]
+      representativeScores: Array<{ score: number; tier: 1 | 2 | 3 }>
       lastTrainedAt: string | null
     }
   >()
 
   input.exercises.forEach((exercise) => {
-    const points = calculateExerciseStrengthPoints({
-      exerciseName: exercise.exerciseName,
-      gender: input.gender,
-      bodyweightKg: input.bodyweightKg,
-      estimated1RMKg: exercise.max1RM,
-    })
-    if (points === null) return
+    const strengthInfo = getStrengthStandard(
+      exercise.exerciseName,
+      input.gender,
+      input.bodyweightKg,
+      exercise.max1RM,
+    )
+    if (!strengthInfo) return
 
     const primaryMuscle = resolveExerciseSpecificMuscle(
       exercise.exerciseName,
       exercise.muscleGroup,
     )
 
-    const tier = exerciseNameMap.get(exercise.exerciseName)?.tier ?? 3
-    const weightedPoints = points * EXERCISE_TIER_WEIGHTS[tier]
+    const config = exerciseNameMap.get(exercise.exerciseName)
+    const tier = config?.tier ?? 3
+    const representativeScore = toLevelScore(
+      strengthInfo.level,
+      strengthInfo.progress,
+    )
 
     ;[primaryMuscle].forEach((muscle) => {
       if (!muscle) return
 
       const existing = groupState.get(muscle) ?? {
         exercises: [],
-        weightedExerciseScores: [],
+        representativeScores: [],
         lastTrainedAt: null,
       }
 
       existing.exercises.push(exercise)
-      existing.weightedExerciseScores.push(weightedPoints)
+      existing.representativeScores.push({
+        score: representativeScore,
+        tier,
+      })
 
       const existingTime = existing.lastTrainedAt
         ? new Date(existing.lastTrainedAt).getTime()
@@ -240,21 +297,43 @@ export function buildSpecificMuscleGroupData<
 
   return Array.from(groupState.entries())
     .map(([name, state]) => {
-      const aggregate = calculateStrengthAggregateFromScores({
-        weightedExerciseScores: state.weightedExerciseScores,
-        lastTrainedAt: state.lastTrainedAt,
-        now,
-      })
-      const rank = getOverallStrengthGroupLevelProgress({
-        effectiveScore: aggregate.effectiveScore,
-      })
+      const bestTier = state.representativeScores.reduce<1 | 2 | 3>(
+        (currentBest, entry) => Math.min(currentBest, entry.tier) as 1 | 2 | 3,
+        3,
+      )
+      const anchorScores = state.representativeScores
+        .filter((entry) => entry.tier === bestTier)
+        .map((entry) => entry.score)
+        .sort((a, b) => b - a)
+      const anchorScore = calculateWeightedAverage(
+        anchorScores.slice(0, 2),
+        anchorScores.slice(0, 2).map((_, index) =>
+          Math.pow(REPRESENTATIVE_ANCHOR_EXERCISE_DECAY, index),
+        ),
+      )
+      const supportScore = calculateWeightedAverage(
+        state.representativeScores.map((entry) => entry.score),
+        state.representativeScores.map(
+          (entry) => REPRESENTATIVE_SUPPORT_TIER_WEIGHTS[entry.tier],
+        ),
+      )
+      // Anchor on the best available tier, then let broader support nudge the
+      // displayed muscle level upward without allowing lower-tier work to drag it down.
+      const supportLift = Math.max(0, supportScore - anchorScore)
+      const uplift = Math.min(
+        REPRESENTATIVE_SUPPORT_MAX_UPLIFT,
+        supportLift * REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR,
+      )
+      const decayFactor = computeDisplayDecayFactor(state.lastTrainedAt, now)
+      const effectiveScore = (anchorScore + uplift) * decayFactor
+      const rank = scoreToLevelProgress(effectiveScore)
 
       return {
         name,
         level: rank.level,
         progress: rank.progress,
         exercises: state.exercises,
-        averageScore: aggregate.effectiveScore,
+        averageScore: effectiveScore,
       }
     })
     .sort((a, b) => b.averageScore - a.averageScore)

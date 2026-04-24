@@ -3,8 +3,11 @@ import {
     calculateOverallStrengthScoreDeltaForSession,
     calculateExerciseStrengthPoints,
     calculateOverallStrengthScore,
+    calculateStrengthScoreProjectionForExerciseLevel,
+    calculateStrengthScoreProjectionForExerciseTarget,
     getOverallStrengthGroupLevelProgress,
     getLatestStrengthIncreaseSession,
+    getStrengthLevelTargetPerformance,
     scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
 import { EXERCISE_TIER_WEIGHTS } from '../lib/exercise-standards-config'
@@ -31,6 +34,17 @@ describe('overall strength score', () => {
     })
 
     expect(points).toBe(OVERALL_STRENGTH_SCORE_CAP)
+  })
+
+  test('calculates target performance for a strength level', () => {
+    const target = getStrengthLevelTargetPerformance({
+      exerciseName: 'Bench Press (Barbell)',
+      gender: 'male',
+      bodyweightKg: 100,
+      targetLevel: 'Intermediate',
+    })
+
+    expect(target).toBe(125)
   })
 
   test('maps score to correct level and progress', () => {
@@ -182,6 +196,85 @@ describe('overall strength score', () => {
     expect(result.liftsTracked).toBe(0)
     expect(result.score).toBe(0)
     expect(result.level).toBe('Untrained')
+  })
+
+  test('projects overall score gain with the same group aggregate as the real score', () => {
+    const now = new Date('2026-02-15T00:00:00.000Z')
+    const exercises = [
+      {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 125,
+        lastTrainedAt: now.toISOString(),
+      },
+      {
+        exerciseId: 'incline-bench',
+        exerciseName: 'Incline Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 80,
+        lastTrainedAt: now.toISOString(),
+      },
+      {
+        exerciseId: 'squat',
+        exerciseName: 'Squat (Barbell)',
+        muscleGroup: 'Quads',
+        max1RM: 150,
+        lastTrainedAt: now.toISOString(),
+      },
+    ]
+
+    const projection = calculateStrengthScoreProjectionForExerciseTarget({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises,
+      exercise: exercises[1],
+      targetPerformance: 100,
+      now,
+    })
+    const expectedProjected = calculateOverallStrengthScore({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises: [
+        exercises[0],
+        {
+          ...exercises[1],
+          max1RM: 100,
+          lastTrainedAt: now.toISOString(),
+        },
+        exercises[2],
+      ],
+      now,
+    })
+
+    expect(projection).not.toBeNull()
+    expect(projection?.targetGroup).toBe('Chest')
+    expect(projection?.projectedResult.score).toBe(expectedProjected.score)
+    expect(projection?.pointsGained).toBe(
+      expectedProjected.score - projection!.currentResult.score,
+    )
+    expect(projection?.rawPointsGained).toBeGreaterThan(0)
+  })
+
+  test('projects gain when an untracked exercise reaches a target level', () => {
+    const now = new Date('2026-02-15T00:00:00.000Z')
+    const projection = calculateStrengthScoreProjectionForExerciseLevel({
+      gender: 'male',
+      bodyweightKg: 100,
+      exercises: [],
+      exercise: {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+      },
+      targetLevel: 'Beginner',
+      now,
+    })
+
+    expect(projection).not.toBeNull()
+    expect(projection?.currentResult.score).toBe(0)
+    expect(projection?.projectedResult.score).toBe(21)
+    expect(projection?.pointsGained).toBe(21)
   })
 
   test('picks the latest strength increase session from snapshots', () => {

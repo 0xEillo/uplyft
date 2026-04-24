@@ -17,6 +17,7 @@ import {
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -624,11 +625,15 @@ function buildDefaultSuggestions(input: {
         text: 'Generate Workout',
         icon: 'flash-outline',
       },
-      {
-        id: 'log_meal',
-        text: 'Log Meal',
-        icon: 'nutrition',
-      },
+      ...(NUTRITION_FEATURES_ENABLED
+        ? [
+            {
+              id: 'log_meal',
+              text: 'Log Meal',
+              icon: 'nutrition',
+            },
+          ]
+        : []),
       {
         id: 'view_stats',
         text: 'Get Stats',
@@ -1849,7 +1854,11 @@ export function WorkoutChat({
         }
       }
 
-      applyFoodLibraryPrefill()
+      if (NUTRITION_FEATURES_ENABLED) {
+        applyFoodLibraryPrefill()
+      } else {
+        void consumePendingFoodLibraryChatText()
+      }
 
       const applyAttachmentHandoff = async () => {
         try {
@@ -1873,7 +1882,10 @@ export function WorkoutChat({
               const combined = [...prev, ...pending.uris]
               return combined.slice(0, MAX_IMAGES)
             })
-          } else if (pending.action === 'scan_food') {
+          } else if (
+            pending.action === 'scan_food' &&
+            NUTRITION_FEATURES_ENABLED
+          ) {
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
             void openWorkoutPlanningWizard()
@@ -2009,9 +2021,33 @@ export function WorkoutChat({
     }
   }, [])
 
-  // Auto-scroll to bottom when new messages arrive or content changes
-  const scrollToBottom = () => {
-    messagesListRef.current?.scrollToEnd({ animated: true })
+  // Auto-scroll to bottom when new messages arrive or content changes.
+  // Respects the user's scroll position: if they've scrolled up to read
+  // history, we don't yank them back down on every content size change or
+  // streaming token. Re-pins when they return near the bottom or send a msg.
+  const shouldAutoScrollRef = useRef(true)
+  const AUTO_SCROLL_BOTTOM_THRESHOLD = 80
+
+  const scrollToBottom = (options?: { force?: boolean; animated?: boolean }) => {
+    const force = options?.force ?? false
+    const animated = options?.animated ?? true
+    if (!force && !shouldAutoScrollRef.current) return
+    if (force) shouldAutoScrollRef.current = true
+    messagesListRef.current?.scrollToEnd({ animated })
+  }
+
+  const handleMessagesScroll = (event: {
+    nativeEvent: {
+      contentOffset: { y: number }
+      contentSize: { height: number }
+      layoutMeasurement: { height: number }
+    }
+  }) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height)
+    shouldAutoScrollRef.current =
+      distanceFromBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD
   }
 
   useEffect(() => {
@@ -2032,12 +2068,13 @@ export function WorkoutChat({
 
   // Coach is now managed by ProfileContext - automatically updates when changed
 
-  // Scroll to bottom when buttons appear (to ensure they're visible)
+  // Scroll to bottom when buttons appear (to ensure they're visible).
+  // Force here because the plan just finished generating and the action
+  // buttons are the point of the interaction.
   useEffect(() => {
     if (generatedPlanContent) {
-      // Small delay to ensure buttons are rendered before scrolling
       setTimeout(() => {
-        scrollToBottom()
+        scrollToBottom({ force: true })
       }, 100)
     }
   }, [generatedPlanContent])
@@ -2048,7 +2085,7 @@ export function WorkoutChat({
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
         setIsKeyboardVisible(true)
-        setTimeout(() => scrollToBottom(), 100)
+        setTimeout(() => scrollToBottom({ force: true }), 100)
       },
     )
 
@@ -2810,6 +2847,10 @@ export function WorkoutChat({
       content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
       status: hiddenPrompt ? undefined : 'sending',
+    }
+
+    if (!hiddenPrompt) {
+      shouldAutoScrollRef.current = true
     }
 
     // Show or update user message only for visible user sends
@@ -4235,9 +4276,9 @@ export function WorkoutChat({
 
                         // Regular messages show with coach avatar
                         // Hide partial JSON blocks while streaming
-                        const foodLogPayload = parseFoodLogPayload(
-                          message.content,
-                        )
+                        const foodLogPayload = NUTRITION_FEATURES_ENABLED
+                          ? parseFoodLogPayload(message.content)
+                          : null
 
                         // Calculate progress for chart rings
                         const { calorie_goal, protein_goal_g } =
@@ -5136,9 +5177,15 @@ export function WorkoutChat({
                 logLayout('scrollView', e.nativeEvent.layout)
               }
               onContentSizeChange={() => {
-                ;(messages.length > 0 || isLoading || isWelcomeTyping) &&
+                if (
+                  (messages.length > 0 || isLoading || isWelcomeTyping) &&
+                  shouldAutoScrollRef.current
+                ) {
                   scrollToBottom()
+                }
               }}
+              onScroll={handleMessagesScroll}
+              scrollEventThrottle={16}
               ListEmptyComponent={
                 messages.length === 0 &&
                 !isLoading &&
@@ -5155,8 +5202,8 @@ export function WorkoutChat({
                           />
                         </View>
                         <Text style={styles.welcomeDescription}>
-                          Plan your next workout, dive into your stats, or log a
-                          meal — just ask.
+                          Plan your next workout, dive into your stats, or talk
+                          programming and recovery — just ask.
                         </Text>
                       </View>
                     )}
@@ -5658,153 +5705,166 @@ export function WorkoutChat({
         />
       </KeyboardAvoidingView>
 
-      <FoodScannerModal
-        visible={isFoodScannerVisible}
-        onClose={() => setIsFoodScannerVisible(false)}
-        onScanFood={(imageUri) => {
-          setIsFoodScannerVisible(false)
-          if (selectedImages.length < MAX_IMAGES) {
-            setSelectedImages((prev) => [...prev, imageUri])
-          } else {
-            Alert.alert(
-              'Maximum Images Reached',
-              `You can only add up to ${MAX_IMAGES} images per message.`,
-            )
-          }
-        }}
-        onScanFoodLabel={(imageUri) => {
-          setIsFoodScannerVisible(false)
-          const prompt = `I've scanned a nutrition label. Please read the label in this image and tell me: the product name, the serving size, and the macros per serving (calories, protein, carbs, fat). Then ask me how many servings I had so you can log the correct amount. Do NOT output a <food_log> block yet — wait for me to tell you the quantity first.`
-          handleSendMessage(prompt, {
-            forceImages: [imageUri],
-            scanMode: 'food_label',
-          })
-        }}
-        onScanBarcode={(productData) => {
-          setIsFoodScannerVisible(false)
-          if (productData.error || productData.not_found) {
-            Alert.alert(
-              'Barcode Not Found',
-              "We couldn't find food data for this barcode.",
-            )
-            return
-          }
+      {NUTRITION_FEATURES_ENABLED && (
+        <>
+          <FoodScannerModal
+            visible={isFoodScannerVisible}
+            onClose={() => setIsFoodScannerVisible(false)}
+            onScanFood={(imageUri) => {
+              setIsFoodScannerVisible(false)
+              if (selectedImages.length < MAX_IMAGES) {
+                setSelectedImages((prev) => [...prev, imageUri])
+              } else {
+                Alert.alert(
+                  'Maximum Images Reached',
+                  `You can only add up to ${MAX_IMAGES} images per message.`,
+                )
+              }
+            }}
+            onScanFoodLabel={(imageUri) => {
+              setIsFoodScannerVisible(false)
+              const prompt = `I've scanned a nutrition label. Please read the label in this image and tell me: the product name, the serving size, and the macros per serving (calories, protein, carbs, fat). Then ask me how many servings I had so you can log the correct amount. Do NOT output a <food_log> block yet — wait for me to tell you the quantity first.`
+              handleSendMessage(prompt, {
+                forceImages: [imageUri],
+                scanMode: 'food_label',
+              })
+            }}
+            onScanBarcode={(productData) => {
+              setIsFoodScannerVisible(false)
+              if (productData.error || productData.not_found) {
+                Alert.alert(
+                  'Barcode Not Found',
+                  "We couldn't find food data for this barcode.",
+                )
+                return
+              }
 
-          const name = productData.product_name || 'Item'
-          const brand = productData.brands ? ` (${productData.brands})` : ''
-          const nutr = productData.nutriments || {}
+              const name = productData.product_name || 'Item'
+              const brand = productData.brands ? ` (${productData.brands})` : ''
+              const nutr = productData.nutriments || {}
 
-          // Pick a consistent nutrition base so the stepper has a clear meaning.
-          // Prefer per-serving when the product declares a serving quantity and
-          // at least calories-per-serving; otherwise fall back to per 100g.
-          const servingGrams: number | undefined =
-            typeof productData.serving_quantity === 'number'
-              ? productData.serving_quantity
-              : productData.serving_quantity
-                ? parseFloat(productData.serving_quantity)
-                : undefined
-          const hasPerServing =
-            servingGrams != null &&
-            !Number.isNaN(servingGrams) &&
-            nutr['energy-kcal_serving'] != null
+              // Pick a consistent nutrition base so the stepper has a clear meaning.
+              // Prefer per-serving when the product declares a serving quantity and
+              // at least calories-per-serving; otherwise fall back to per 100g.
+              const servingGrams: number | undefined =
+                typeof productData.serving_quantity === 'number'
+                  ? productData.serving_quantity
+                  : productData.serving_quantity
+                    ? parseFloat(productData.serving_quantity)
+                    : undefined
+              const hasPerServing =
+                servingGrams != null &&
+                !Number.isNaN(servingGrams) &&
+                nutr['energy-kcal_serving'] != null
 
-          const cals =
-            (hasPerServing ? nutr['energy-kcal_serving'] : nutr['energy-kcal_100g']) ??
-            0
-          const protein =
-            (hasPerServing ? nutr.proteins_serving : nutr.proteins_100g) ?? 0
-          const carbs =
-            (hasPerServing ? nutr.carbohydrates_serving : nutr.carbohydrates_100g) ?? 0
-          const fat = (hasPerServing ? nutr.fat_serving : nutr.fat_100g) ?? 0
+              const cals =
+                (hasPerServing
+                  ? nutr['energy-kcal_serving']
+                  : nutr['energy-kcal_100g']) ?? 0
+              const protein =
+                (hasPerServing ? nutr.proteins_serving : nutr.proteins_100g) ?? 0
+              const carbs =
+                (hasPerServing
+                  ? nutr.carbohydrates_serving
+                  : nutr.carbohydrates_100g) ?? 0
+              const fat =
+                (hasPerServing ? nutr.fat_serving : nutr.fat_100g) ?? 0
 
-          const servingLabel = hasPerServing
-            ? productData.serving_size
-              ? `1 ${productData.serving_size.trim()}`
-              : `serving (${servingGrams}g)`
-            : '100g'
+              const servingLabel = hasPerServing
+                ? productData.serving_size
+                  ? `1 ${productData.serving_size.trim()}`
+                  : `serving (${servingGrams}g)`
+                : '100g'
 
-          setManualFoodData({
-            name: `${name}${brand}`,
-            calories: cals,
-            protein,
-            carbs,
-            fat,
-            servingSize: productData.serving_size || (hasPerServing ? 'serving' : '100g'),
-            servingLabel,
-            servingGrams: hasPerServing ? servingGrams : 100,
-          })
-        }}
-      />
+              setManualFoodData({
+                name: `${name}${brand}`,
+                calories: cals,
+                protein,
+                carbs,
+                fat,
+                servingSize:
+                  productData.serving_size ||
+                  (hasPerServing ? 'serving' : '100g'),
+                servingLabel,
+                servingGrams: hasPerServing ? servingGrams : 100,
+              })
+            }}
+          />
 
-      <ManualFoodLogSheet
-        visible={!!manualFoodData}
-        foodData={manualFoodData}
-        onClose={() => setManualFoodData(null)}
-        onLog={async (data, quantity) => {
-          setManualFoodData(null)
-          if (!user?.id) {
-            Alert.alert('Sign In Required', 'Please sign in to save food logs.')
-            return
-          }
+          <ManualFoodLogSheet
+            visible={!!manualFoodData}
+            foodData={manualFoodData}
+            onClose={() => setManualFoodData(null)}
+            onLog={async (data, quantity) => {
+              setManualFoodData(null)
+              if (!user?.id) {
+                Alert.alert(
+                  'Sign In Required',
+                  'Please sign in to save food logs.',
+                )
+                return
+              }
 
-          const summary = `${quantity}x ${data.servingSize || 'serving'} of ${
-            data.name
-          }`
-          const cals = Math.round(data.calories * quantity)
-          const protein = Math.round(data.protein * quantity)
-          const carbs = Math.round(data.carbs * quantity)
-          const fat = Math.round(data.fat * quantity)
+              const summary = `${quantity}x ${data.servingSize || 'serving'} of ${
+                data.name
+              }`
+              const cals = Math.round(data.calories * quantity)
+              const protein = Math.round(data.protein * quantity)
+              const carbs = Math.round(data.carbs * quantity)
+              const fat = Math.round(data.fat * quantity)
 
-          try {
-            const today = getLocalDateString()
-            const mealPayload = {
-              description: summary,
-              calories: cals,
-              protein_g: protein,
-              carbs_g: carbs,
-              fat_g: fat,
-              source: 'manual' as const,
-              confidence: 'high' as const,
-              metadata: { from: 'manual_barcode_log' },
-              logDate: today,
-            }
+              try {
+                const today = getLocalDateString()
+                const mealPayload = {
+                  description: summary,
+                  calories: cals,
+                  protein_g: protein,
+                  carbs_g: carbs,
+                  fat_g: fat,
+                  source: 'manual' as const,
+                  confidence: 'high' as const,
+                  metadata: { from: 'manual_barcode_log' },
+                  logDate: today,
+                }
 
-            const inserted = await database.dailyLog.logMeal(
-              user.id,
-              mealPayload,
-            )
-            setLatestLoggedMealId(inserted.id)
-            await refreshDailyLogSummary()
-            trackEvent(AnalyticsEvents.FOOD_LOGGED, {
-              source: 'manual_barcode',
-              action: 'log',
-              calories: cals,
-              has_macros: true,
-            })
-            hapticSuccess()
+                const inserted = await database.dailyLog.logMeal(
+                  user.id,
+                  mealPayload,
+                )
+                setLatestLoggedMealId(inserted.id)
+                await refreshDailyLogSummary()
+                trackEvent(AnalyticsEvents.FOOD_LOGGED, {
+                  source: 'manual_barcode',
+                  action: 'log',
+                  calories: cals,
+                  has_macros: true,
+                })
+                hapticSuccess()
 
-            // Optionally add a system message to the chat so the user sees it logged
-            const systemMessage: Message = {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: `Logged **${summary}** manually.\n\n<food_log>{"action":"log","summary":"${summary}","calories":${cals},"protein_g":${protein},"carbs_g":${carbs},"fat_g":${fat},"source":"manual","confidence":"high"}</food_log>`,
-              createdAt: new Date().toISOString(),
-            }
-            setMessages((prev) => [...prev, systemMessage])
-            setLoggedMealIdByMessage((prev) => ({
-              ...prev,
-              [systemMessage.id]: inserted.id,
-            }))
-            setFoodActionState((prev) => ({
-              ...prev,
-              [systemMessage.id]: 'saved',
-            }))
-          } catch (error) {
-            console.error('[WorkoutChat] Failed to manually log meal:', error)
-            Alert.alert('Could not save meal', 'Please try again.')
-          }
-        }}
-      />
+                // Optionally add a system message to the chat so the user sees it logged
+                const systemMessage: Message = {
+                  id: Date.now().toString(),
+                  role: 'assistant',
+                  content: `Logged **${summary}** manually.\n\n<food_log>{"action":"log","summary":"${summary}","calories":${cals},"protein_g":${protein},"carbs_g":${carbs},"fat_g":${fat},"source":"manual","confidence":"high"}</food_log>`,
+                  createdAt: new Date().toISOString(),
+                }
+                setMessages((prev) => [...prev, systemMessage])
+                setLoggedMealIdByMessage((prev) => ({
+                  ...prev,
+                  [systemMessage.id]: inserted.id,
+                }))
+                setFoodActionState((prev) => ({
+                  ...prev,
+                  [systemMessage.id]: 'saved',
+                }))
+              } catch (error) {
+                console.error('[WorkoutChat] Failed to manually log meal:', error)
+                Alert.alert('Could not save meal', 'Please try again.')
+              }
+            }}
+          />
+        </>
+      )}
 
       <CoachSelectionSheet
         visible={isCoachSheetVisible}

@@ -5,6 +5,7 @@ import {
 } from '@/lib/services/notification-service'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
+import * as Device from 'expo-device'
 import React, {
     createContext,
     ReactNode,
@@ -18,6 +19,7 @@ import type { CustomerInfoUpdateListener } from 'react-native-purchases'
 import Purchases, {
     CustomerInfo,
     LOG_LEVEL,
+    PACKAGE_TYPE,
     PurchasesOffering,
 } from 'react-native-purchases'
 import { useAuth } from './auth-context'
@@ -35,6 +37,174 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
   undefined,
 )
 
+const LOCAL_SIMULATOR_MONTHLY_PACKAGE_ID = '$rc_monthly'
+const LOCAL_SIMULATOR_YEARLY_PACKAGE_ID = '$rc_annual'
+
+const buildLocalSimulatorOffering = (): PurchasesOffering => {
+  const presentedOfferingContext = {
+    offeringIdentifier: 'local-simulator',
+    placementIdentifier: null,
+    targetingContext: null,
+  }
+
+  const monthlyPackage = {
+    identifier: LOCAL_SIMULATOR_MONTHLY_PACKAGE_ID,
+    packageType: PACKAGE_TYPE.MONTHLY,
+    product: {
+      identifier: 'repai_pro_monthly_local',
+      description: 'Local simulator monthly subscription',
+      title: 'Rep AI Pro Monthly',
+      price: 5.99,
+      priceString: '$5.99',
+      pricePerWeek: null,
+      pricePerMonth: 5.99,
+      pricePerYear: 71.88,
+      pricePerWeekString: null,
+      pricePerMonthString: '$5.99',
+      pricePerYearString: '$71.88',
+      currencyCode: 'USD',
+      introPrice: null,
+      discounts: null,
+      productCategory: 'SUBSCRIPTION',
+      productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+      subscriptionPeriod: 'P1M',
+      defaultOption: null,
+      subscriptionOptions: null,
+      presentedOfferingIdentifier: 'local-simulator',
+      presentedOfferingContext,
+    },
+    offeringIdentifier: 'local-simulator',
+    presentedOfferingContext,
+  }
+
+  const yearlyPackage = {
+    identifier: LOCAL_SIMULATOR_YEARLY_PACKAGE_ID,
+    packageType: PACKAGE_TYPE.ANNUAL,
+    product: {
+      identifier: 'repai_pro_yearly_local',
+      description: 'Local simulator yearly subscription',
+      title: 'Rep AI Pro Yearly',
+      price: 24.99,
+      priceString: '$24.99',
+      pricePerWeek: null,
+      pricePerMonth: 2.08,
+      pricePerYear: 24.99,
+      pricePerWeekString: null,
+      pricePerMonthString: '$2.08',
+      pricePerYearString: '$24.99',
+      currencyCode: 'USD',
+      introPrice: null,
+      discounts: null,
+      productCategory: 'SUBSCRIPTION',
+      productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+      subscriptionPeriod: 'P1Y',
+      defaultOption: null,
+      subscriptionOptions: null,
+      presentedOfferingIdentifier: 'local-simulator',
+      presentedOfferingContext,
+    },
+    offeringIdentifier: 'local-simulator',
+    presentedOfferingContext,
+  }
+
+  return {
+    identifier: 'local-simulator',
+    serverDescription: 'Local simulator purchases',
+    metadata: {
+      displayYearlyPrice: true,
+      localSimulatorPurchases: true,
+    },
+    availablePackages: [monthlyPackage, yearlyPackage],
+    lifetime: null,
+    annual: yearlyPackage,
+    sixMonth: null,
+    threeMonth: null,
+    twoMonth: null,
+    monthly: monthlyPackage,
+    weekly: null,
+  } as PurchasesOffering
+}
+
+const buildLocalSimulatorCustomerInfo = (
+  appUserId: string,
+  productIdentifier?: string,
+): CustomerInfo => {
+  const now = new Date()
+  const purchaseDate = now.toISOString()
+  const expirationDate = new Date(now)
+  expirationDate.setDate(expirationDate.getDate() + 7)
+  const expirationDateIso = expirationDate.toISOString()
+
+  const proEntitlement = productIdentifier
+    ? {
+        identifier: 'Pro',
+        isActive: true,
+        willRenew: true,
+        periodType: 'TRIAL',
+        latestPurchaseDate: purchaseDate,
+        latestPurchaseDateMillis: now.getTime(),
+        originalPurchaseDate: purchaseDate,
+        originalPurchaseDateMillis: now.getTime(),
+        expirationDate: expirationDateIso,
+        expirationDateMillis: expirationDate.getTime(),
+        store: 'TEST_STORE',
+        productIdentifier,
+        productPlanIdentifier: null,
+        isSandbox: true,
+        unsubscribeDetectedAt: null,
+        unsubscribeDetectedAtMillis: null,
+        billingIssueDetectedAt: null,
+        billingIssueDetectedAtMillis: null,
+        ownershipType: 'PURCHASED',
+        verification: 'NOT_REQUESTED',
+      }
+    : null
+
+  const subscriptionsByProductIdentifier = productIdentifier
+    ? {
+        [productIdentifier]: {
+          productIdentifier,
+          purchaseDate,
+          originalPurchaseDate: purchaseDate,
+          expiresDate: expirationDateIso,
+          store: 'TEST_STORE',
+          isSandbox: true,
+          unsubscribeDetectedAt: null,
+          billingIssueDetectedAt: null,
+          ownershipType: 'PURCHASED',
+          periodType: 'TRIAL',
+          refundedAt: null,
+          storeTransactionId: `local-simulator-${productIdentifier}`,
+          isActive: true,
+          willRenew: true,
+        },
+      }
+    : {}
+
+  return {
+    entitlements: {
+      all: proEntitlement ? { Pro: proEntitlement } : {},
+      active: proEntitlement ? { Pro: proEntitlement } : {},
+      verification: 'NOT_REQUESTED',
+    },
+    activeSubscriptions: productIdentifier ? [productIdentifier] : [],
+    allPurchasedProductIdentifiers: productIdentifier ? [productIdentifier] : [],
+    latestExpirationDate: productIdentifier ? expirationDateIso : null,
+    firstSeen: purchaseDate,
+    originalAppUserId: appUserId,
+    requestDate: purchaseDate,
+    allExpirationDates: productIdentifier
+      ? { [productIdentifier]: expirationDateIso }
+      : {},
+    allPurchaseDates: productIdentifier ? { [productIdentifier]: purchaseDate } : {},
+    originalApplicationVersion: null,
+    originalPurchaseDate: productIdentifier ? purchaseDate : null,
+    managementURL: null,
+    nonSubscriptionTransactions: [],
+    subscriptionsByProductIdentifier,
+  } as CustomerInfo
+}
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user, isAuthTransitioning } = useAuth()
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null)
@@ -44,6 +214,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const customerInfoListenerRef = useRef<CustomerInfoUpdateListener | null>(
     null,
   )
+  const localSimulatorPurchasesEnabled =
+    __DEV__ &&
+    Platform.OS === 'ios' &&
+    !Device.isDevice &&
+    Constants.expoConfig?.extra?.revenueCatUseLocalSimulatorPurchases === true
 
   // Configure RevenueCat SDK once on mount
   useEffect(() => {
@@ -51,6 +226,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     const configureRevenueCat = async () => {
       try {
+        if (localSimulatorPurchasesEnabled) {
+          console.info(
+            '[RevenueCat] Using local simulator purchase mode. No Apple account is required.',
+          )
+          setOfferings(buildLocalSimulatorOffering())
+          setCustomerInfo(
+            buildLocalSimulatorCustomerInfo(user?.id ?? 'local-simulator-user'),
+          )
+          setHasConfigured(true)
+          return
+        }
+
         // Check if running in Expo Go (not supported)
         const isExpoGo = Constants.appOwnership === 'expo'
         if (isExpoGo) {
@@ -144,6 +331,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isActive = false
+      if (localSimulatorPurchasesEnabled) {
+        return
+      }
       if (customerInfoListenerRef.current) {
         Purchases.removeCustomerInfoUpdateListener(
           customerInfoListenerRef.current,
@@ -151,11 +341,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         customerInfoListenerRef.current = null
       }
     }
-  }, []) // Only run once on mount
+  }, [localSimulatorPurchasesEnabled, user?.id]) // Only re-run if local simulator mode context changes
 
   // Handle user login separately
   useEffect(() => {
-    if (isLoading || !hasConfigured) {
+    if (localSimulatorPurchasesEnabled || isLoading || !hasConfigured) {
       return
     }
 
@@ -189,7 +379,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     syncRevenueCatUser()
-  }, [user?.id, isAuthTransitioning, isLoading, hasConfigured]) // Run when user ID changes or initialization completes
+  }, [
+    user?.id,
+    isAuthTransitioning,
+    isLoading,
+    hasConfigured,
+    localSimulatorPurchasesEnabled,
+  ]) // Run when user ID changes or initialization completes
 
   // Check if user has Pro entitlement (case-sensitive: must match RevenueCat dashboard)
   const proEntitlement = customerInfo?.entitlements.active['Pro']
@@ -285,6 +481,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Restore purchases
   const restorePurchases = async (): Promise<CustomerInfo> => {
+    if (localSimulatorPurchasesEnabled) {
+      const info =
+        customerInfo ??
+        buildLocalSimulatorCustomerInfo(user?.id ?? 'local-simulator-user')
+      setCustomerInfo(info)
+      return info
+    }
+
     try {
       const info = await Purchases.restorePurchases()
       setCustomerInfo(info)
@@ -297,6 +501,23 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Purchase a package
   const purchasePackage = async (packageId: string): Promise<CustomerInfo> => {
+    if (localSimulatorPurchasesEnabled) {
+      const selectedPackage = offerings?.availablePackages.find(
+        (pkg) => pkg.identifier === packageId,
+      )
+
+      if (!selectedPackage) {
+        throw new Error(`Package ${packageId} not found`)
+      }
+
+      const info = buildLocalSimulatorCustomerInfo(
+        user?.id ?? 'local-simulator-user',
+        selectedPackage.product.identifier,
+      )
+      setCustomerInfo(info)
+      return info
+    }
+
     try {
       if (!offerings) {
         throw new Error('No offerings available')

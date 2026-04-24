@@ -3,6 +3,22 @@ import {
   buildSpecificMuscleGroupData,
   resolveDatabaseMuscleToDisplayGroup,
 } from '../lib/strength-display-groups'
+import { getStandardsLadder } from '../lib/strength-standards'
+
+const TEST_BODYWEIGHT_KG = 100
+
+function getMax1RMForLevel(
+  exerciseName: string,
+  level: 'Beginner' | 'Novice' | 'Intermediate' | 'Advanced',
+): number {
+  const ladder = getStandardsLadder(exerciseName, 'male')
+  const standard = ladder?.find((entry) => entry.level === level)
+  if (!standard) {
+    throw new Error(`Missing ${level} standard for ${exerciseName}`)
+  }
+
+  return Math.round(standard.multiplier * TEST_BODYWEIGHT_KG)
+}
 
 describe('strength display groups', () => {
   test('maps specific muscles into shared display groups', () => {
@@ -91,7 +107,7 @@ describe('strength display groups', () => {
   test('romanian deadlift contributes to hamstrings but not glutes', () => {
     const groups = buildSpecificMuscleGroupData({
       gender: 'male',
-      bodyweightKg: 100,
+      bodyweightKg: TEST_BODYWEIGHT_KG,
       exercises: [
         {
           exerciseId: 'rdl-1',
@@ -106,5 +122,88 @@ describe('strength display groups', () => {
 
     expect(groups.find((group) => group.name === 'Hamstrings')).toBeTruthy()
     expect(groups.find((group) => group.name === 'Glutes')).toBeFalsy()
+  })
+
+  test('keeps a muscle at the tier-1 anchor level when lower-tier work is weaker', () => {
+    const groups = buildSpecificMuscleGroupData({
+      gender: 'male',
+      bodyweightKg: TEST_BODYWEIGHT_KG,
+      exercises: [
+        {
+          exerciseId: 'bench-1',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel(
+            'Bench Press (Barbell)',
+            'Intermediate',
+          ),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'incline-1',
+          exerciseName: 'Incline Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel(
+            'Incline Bench Press (Barbell)',
+            'Intermediate',
+          ),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'fly-1',
+          exerciseName: 'Fly (Dumbbell)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel('Fly (Dumbbell)', 'Novice'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-03-02T00:00:00.000Z'),
+    })
+
+    expect(groups.find((group) => group.name === 'Chest')).toMatchObject({
+      level: 'Intermediate',
+    })
+  })
+
+  test('lets strong lower-tier support lifts raise a weak tier-1 anchor by about one level', () => {
+    const groups = buildSpecificMuscleGroupData({
+      gender: 'male',
+      bodyweightKg: TEST_BODYWEIGHT_KG,
+      exercises: [
+        {
+          exerciseId: 'bench-1',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel('Bench Press (Barbell)', 'Novice'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'fly-1',
+          exerciseName: 'Fly (Dumbbell)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel('Fly (Dumbbell)', 'Advanced'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'machine-1',
+          exerciseName: 'Chest Press (Machine)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel('Chest Press (Machine)', 'Advanced'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+        {
+          exerciseId: 'machine-2',
+          exerciseName: 'Seated Fly (Machine)',
+          muscleGroup: 'Chest',
+          max1RM: getMax1RMForLevel('Seated Fly (Machine)', 'Advanced'),
+          lastTrainedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      now: new Date('2026-03-02T00:00:00.000Z'),
+    })
+
+    expect(groups.find((group) => group.name === 'Chest')).toMatchObject({
+      level: 'Intermediate',
+    })
   })
 })

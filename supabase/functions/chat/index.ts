@@ -32,6 +32,7 @@ import {
 } from '../_shared/stats.ts'
 import {
   buildUserStrengthProfile,
+  calculateLifterPointTargets,
   getExerciseStandardsForProfile,
 } from '../_shared/strength.ts'
 import { createUserClient } from '../_shared/supabase.ts'
@@ -1913,6 +1914,34 @@ async function buildUserContext(
         }
       },
     }),
+    getLifterPointTargets: tool({
+      description:
+        "Calculate exact lift targets that would increase the user's overall lifter score by a requested number of points. Use for questions like 'how do I gain 10 points?', 'what do I need to bench for +15 points?', or 'best lift to level up my score'.",
+      inputSchema: z
+        .object({
+          pointsTarget: z.number().int().min(1).max(250),
+          exerciseName: z.string().trim().min(1).max(120).optional(),
+          includeAlternatives: z.boolean().optional(),
+        })
+        .partial({
+          exerciseName: true,
+          includeAlternatives: true,
+        }),
+      execute: async ({
+        pointsTarget,
+        exerciseName,
+        includeAlternatives = true,
+      }) => {
+        const strengthProfile = await getStrengthProfile()
+
+        return calculateLifterPointTargets({
+          profile: strengthProfile,
+          requestedPoints: pointsTarget,
+          exerciseName,
+          includeAlternatives,
+        })
+      },
+    }),
     getExerciseRanks: tool({
       description:
         "Return exercise rank details for the user's standards-backed lifts, including current rank, next level, progress, and gap to level up. Use limit and offset when you need the full list.",
@@ -2400,8 +2429,8 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     "Do not confuse your coaching defaults with the user's actual behavior. Never describe 6-8 / 10-12, low-volume training, or any other coach default as what the user is currently doing unless their logged data supports it.",
     'When discussing rep ranges, set counts, volume, or training style, first interpret the user’s actual logged training pattern. If you then give a recommendation, clearly frame it as your advice or preferred training method, not as their current approach.',
     'If the user asks whether their rep ranges are good, whether they should change reps, or how they currently train, use the training-pattern data first. Prefer wording like "your recent training is mostly..." or "my recommendation would be..."',
-    'When giving coaching advice, prioritize in this order: 1) adherence/consistency problems, 2) recovery/readiness constraints, 3) standards/rank bottlenecks and weak muscle groups, 4) body composition or nutrition issues, 5) exercise-selection fine-tuning.',
-    "Base advice on the user's actual goal when possible. For strength goals, prioritize standards, rank gaps, lift selection, recovery, and consistency. For physique or weight goals, prioritize body composition, nutrition, adherence, and muscle balance.",
+    'When giving coaching advice, prioritize in this order: 1) adherence/consistency problems, 2) recovery/readiness constraints, 3) standards/rank bottlenecks, point-gain opportunities, and weak muscle groups, 4) body composition or nutrition issues, 5) exercise-selection fine-tuning.',
+    "Base advice on the user's actual goal when possible. For strength goals, make lifter points and rank progression feel like a core coaching layer: prioritize standards, point-gain targets, rank gaps, lift selection, recovery, and consistency. For physique or weight goals, prioritize body composition, nutrition, adherence, and muscle balance.",
     'If the user asks what to improve, why progress is slow, what to focus on next, whether they are on track, or what to change, diagnose before advising. Use the relevant tools instead of answering from generic gym knowledge alone.',
     'When data is available, make recommendations concrete: name the lift, muscle group, nutrition target, recovery issue, or cadence issue that matters most, and say what to do next.',
     'Use the recent training-pattern context to judge how the user actually trains: exercise count, working sets, rep ranges, and per-muscle session volume. This is especially important for advice about too much volume, too little volume, poor exercise selection, or inappropriate rep ranges.',
@@ -2410,7 +2439,9 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     'Use getWorkoutSessionById only as a fallback or if you specifically need the raw session after inspecting the workout-analysis snapshot.',
     'For post-workout analysis of the just-finished session, combine getWorkoutAnalysisSnapshot with getPersonalRecords or getStrengthProgress only when that adds meaningful exercise-specific detail.',
     'If the user asks how to train better, whether they are doing too many exercises or sets, whether their rep ranges make sense, whether they are overdoing a muscle group like chest, or how their programming structure looks, call getTrainingPatterns.',
-    'If the user asks about lifter level, points, exercise ranks, full standards ladders, target weights or reps for Beginner/Novice/Intermediate/Advanced/Elite/World Class, next level targets, or which lift is closest to leveling up, call getLifterLevel, getExerciseRanks, and/or getExerciseStandards.',
+    'If the user asks how to gain a specific number of lifter points, how many points a lift target is worth, what weight/reps to hit for more points, or the best single lift to raise their score, call getLifterLevel first and then getLifterPointTargets. Report the exact returned target; do not estimate the point math yourself.',
+    'When using getLifterPointTargets, explain the best target plainly: current points, requested gain, exercise, target estimated 1RM or reps, practical weight-rep options, projected points, and whether the lift is tracked or an unlogged estimate. If source is unlogged, explicitly say it is a new-lift estimate because the user has not logged it yet.',
+    'If the user asks about lifter level, points, exercise ranks, full standards ladders, target weights or reps for Beginner/Novice/Intermediate/Advanced/Elite/World Class, next level targets, or which lift is closest to leveling up, call getLifterLevel, getLifterPointTargets, getExerciseRanks, and/or getExerciseStandards as appropriate.',
     'If the user asks for their exact current points, score, or lifter level, always call getLifterLevel first and report the exact returned points value. Do not infer it from the level name or round it to the level threshold.',
     'If the user asks about recovery, readiness, what muscle is fresh, whether they should train something today, or what is still fatigued, call getRecoveryStatus.',
     'If the user asks about consistency, streaks, workout calendar, momentum, cadence, or whether they are on track with training frequency, call getConsistencyAdherence.',

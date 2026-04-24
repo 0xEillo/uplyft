@@ -1148,16 +1148,10 @@ export default function BodyLogDetailScreen() {
   }
 
   const handleDelete = async () => {
-    // If this is a new entry that hasn't been created yet, just go back
-    if (entryId === 'new') {
-      handleBack()
-      return
-    }
-
     haptic('medium')
 
     const imageCount = entry?.images?.length || 0
-    const hasWeight = entry?.weight_kg !== null
+    const hasWeight = entry?.weight_kg != null
 
     let message = 'This entry will be permanently deleted.'
     if (imageCount > 0 && hasWeight) {
@@ -1178,12 +1172,33 @@ export default function BodyLogDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            if (!entryId) {
+            if (!user) {
               return
             }
 
-            // Delete from database (CASCADE will delete images too)
-            await database.bodyLog.deleteEntry(entryId)
+            const targetLogDate =
+              activeLogDate ||
+              normalizeLogDateParam(logDate) ||
+              (entry?.created_at ? getLocalDateKey(entry.created_at) : null)
+
+            if (entryId && entryId !== 'new') {
+              // Delete body-log metadata and photos when this is a persisted body entry.
+              await database.bodyLog.deleteEntry(entryId)
+            }
+
+            if (targetLogDate) {
+              const dailyEntry = await database.dailyLog.getDayEntry(
+                user.id,
+                targetLogDate,
+              )
+
+              if (dailyEntry?.weight_kg != null) {
+                await database.dailyLog.updateDay(user.id, {
+                  logDate: targetLogDate,
+                  weightKg: null,
+                })
+              }
+            }
 
             // Haptic feedback for success
             hapticSuccess()

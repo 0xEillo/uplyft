@@ -3,6 +3,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useUnit } from '@/contexts/unit-context'
@@ -411,7 +412,9 @@ const photoGridStyles = StyleSheet.create({
 
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: 'weight', label: 'Weight' },
-  { id: 'meals', label: 'Nutrition' },
+  ...(NUTRITION_FEATURES_ENABLED
+    ? [{ id: 'meals' as const, label: 'Nutrition' }]
+    : []),
   { id: 'bodyfat', label: 'Body Scan' },
   { id: 'photos', label: 'Progress Pics' },
 ]
@@ -420,7 +423,8 @@ const TAB_EMPTY_STATE_COPY: Record<ActiveTab, TabEmptyStateCopy> = {
   weight: {
     icon: 'fitness-outline',
     title: 'Start tracking your weight',
-    description: 'Log weigh-ins here and switch tabs above to add meals, body scans, or progress photos too.',
+    description:
+      'Log weigh-ins here and switch tabs above to add body scans or progress photos too.',
     buttonText: 'Log Weight',
   },
   meals: {
@@ -453,16 +457,24 @@ const TabEmptyState = memo(
   }) => {
     const colors = useThemedColors()
     const copy = TAB_EMPTY_STATE_COPY[activeTab]
+    const showIcon = activeTab === 'meals' || activeTab === 'photos'
 
     return (
       <View style={emptyTabStyles.container}>
-        <View style={[emptyTabStyles.iconContainer, { backgroundColor: colors.surfaceSubtle }]}>
-          <Ionicons
-            name={copy.icon}
-            size={32}
-            color={colors.textSecondary}
-          />
-        </View>
+        {showIcon ? (
+          <View
+            style={[
+              emptyTabStyles.iconContainer,
+              { backgroundColor: colors.surfaceSubtle },
+            ]}
+          >
+            <Ionicons
+              name={copy.icon}
+              size={32}
+              color={colors.textSecondary}
+            />
+          </View>
+        ) : null}
 
         <Text style={[emptyTabStyles.title, { color: colors.textPrimary }]}>
           {copy.title}
@@ -1132,6 +1144,12 @@ export default function BodyLogScreen() {
   )
 
   useEffect(() => {
+    if (!NUTRITION_FEATURES_ENABLED && activeTab === 'meals') {
+      setActiveTab('weight')
+    }
+  }, [activeTab])
+
+  useEffect(() => {
     const frame = requestAnimationFrame(() => {
       scrollTabIntoView(activeTab)
     })
@@ -1328,7 +1346,7 @@ export default function BodyLogScreen() {
             ListFooterComponent={footer}
             refreshControl={refreshControl}
           />
-        ) : activeTab === 'meals' ? (
+        ) : NUTRITION_FEATURES_ENABLED && activeTab === 'meals' ? (
           // ── Meals: calorie-first day rows
           <FlatList
             key="meals"

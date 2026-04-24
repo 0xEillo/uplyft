@@ -25,14 +25,14 @@ import {
 } from "@/lib/body-mapping";
 import { database } from "@/lib/database";
 import {
-  EXERCISE_TIER_WEIGHTS,
   EXERCISE_MUSCLE_MAPPING,
   getExerciseNameMap,
   isRepBasedExercise,
 } from "@/lib/exercise-standards-config";
 import { haptic } from "@/lib/haptics";
 import {
-  calculateExerciseStrengthPoints,
+  calculateStrengthScoreProjectionForExerciseLevel,
+  getStrengthLevelTargetPerformance,
   LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
 import {
@@ -136,6 +136,7 @@ function mapMuscleToFocusGroup(
     case "Adductors":
       return "Legs";
     case "Back":
+    case "Lats":
     case "Traps":
     case "Lower Back":
       return "Back";
@@ -394,71 +395,39 @@ export function StrengthBodyView({
       return [];
     }
 
-    type GroupStrengthState = {
-      topExerciseId: string | null;
-      topScore: number;
-      runnerUpScore: number;
-    };
-
-    const groupState = new Map<FocusGroup, GroupStrengthState>(
-      (Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).map((group) => [
-        group,
-        { topExerciseId: null, topScore: 0, runnerUpScore: 0 },
-      ]),
-    );
+    const scoreProjectionDate = new Date();
 
     const baseRows = trackedExercisesWithProgress.map((exercise) => {
       const config = EXERCISE_CONFIG_BY_NAME.get(exercise.exerciseName);
       const canonicalName = config?.name ?? exercise.exerciseName;
       const tier = config?.tier ?? 3;
-      const tierWeight = EXERCISE_TIER_WEIGHTS[tier];
 
       const specificMuscle =
         EXERCISE_MUSCLE_MAPPING[canonicalName] ?? exercise.muscleGroup ?? null;
       const focusGroup = mapMuscleToFocusGroup(specificMuscle);
-
-      const currentPoints =
-        calculateExerciseStrengthPoints({
-          exerciseName: exercise.exerciseName,
-          gender: strengthGender,
-          bodyweightKg,
-          estimated1RMKg: exercise.max1RM,
-        }) ?? 0;
-      const weightedCurrentPoints = currentPoints * tierWeight;
-
-      if (focusGroup) {
-        const state = groupState.get(focusGroup);
-        if (state) {
-          if (weightedCurrentPoints > state.topScore) {
-            state.runnerUpScore = state.topScore;
-            state.topScore = weightedCurrentPoints;
-            state.topExerciseId = exercise.exerciseId;
-          } else if (weightedCurrentPoints > state.runnerUpScore) {
-            state.runnerUpScore = weightedCurrentPoints;
-          }
-        }
-      }
 
       return {
         exercise,
         tier,
         specificMuscle,
         focusGroup,
-        weightedCurrentPoints,
       };
     });
 
     const bestGroupScore = Math.max(
       0,
-      ...Array.from(groupState.values()).map((group) => group.topScore),
+      ...(Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).map(
+        (group) => overallLevel?.groupBreakdown[group]?.effectiveScore ?? 0,
+      ),
     );
 
     const weaknessByGroup = new Map<FocusGroup, number>();
     (Object.keys(FOCUS_GROUP_WEIGHTS) as FocusGroup[]).forEach((group) => {
-      const topScore = groupState.get(group)?.topScore ?? 0;
+      const groupScore =
+        overallLevel?.groupBreakdown[group]?.effectiveScore ?? 0;
       const weakness =
         bestGroupScore > 0
-          ? Math.max(0, (bestGroupScore - topScore) / bestGroupScore)
+          ? Math.max(0, (bestGroupScore - groupScore) / bestGroupScore)
           : 0;
       weaknessByGroup.set(group, weakness);
     });
@@ -470,7 +439,11 @@ export function StrengthBodyView({
         if (Math.abs(weaknessGap) > 0.025) {
           return weaknessGap;
         }
-        return FOCUS_GROUP_WEIGHTS[b] - FOCUS_GROUP_WEIGHTS[a];
+        const bWeight =
+          overallLevel?.groupBreakdown[b]?.weight ?? FOCUS_GROUP_WEIGHTS[b];
+        const aWeight =
+          overallLevel?.groupBreakdown[a]?.weight ?? FOCUS_GROUP_WEIGHTS[a];
+        return bWeight - aWeight;
       },
     );
     const groupRank = new Map<FocusGroup, number>(
@@ -514,9 +487,13 @@ export function StrengthBodyView({
           reliableTarget = ladder.find((s) => s.level === "Novice");
         if (!reliableTarget) return null;
 
-        const targetWeight = config.isRepBased
-          ? reliableTarget.multiplier
-          : Math.ceil(bodyweightKg * reliableTarget.multiplier);
+        const targetWeight = getStrengthLevelTargetPerformance({
+          exerciseName: canonicalName,
+          gender: strengthGender,
+          bodyweightKg,
+          targetLevel: reliableTarget.level,
+        });
+        if (targetWeight === null) return null;
         const tier = config.tier ?? 3;
 
         const forgedExercise: TrackedExerciseWithProgress = {
@@ -539,7 +516,6 @@ export function StrengthBodyView({
           tier,
           specificMuscle,
           focusGroup,
-          weightedCurrentPoints: 0,
         };
       })
       .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -555,43 +531,32 @@ export function StrengthBodyView({
         (row) => row.exercise.nextLevel && row.exercise.targetWeight !== null,
       )
       .map((row) => {
-        const targetWeight = row.exercise.targetWeight ?? row.exercise.max1RM;
-        const tierWeight = EXERCISE_TIER_WEIGHTS[row.tier];
-        const groupWeight = row.focusGroup
-          ? FOCUS_GROUP_WEIGHTS[row.focusGroup]
+        const projection = calculateStrengthScoreProjectionForExerciseLevel({
+          exercise: {
+            exerciseId: row.exercise.exerciseId,
+            exerciseName: row.exercise.exerciseName,
+            muscleGroup: row.exercise.muscleGroup,
+            lastTrainedAt: row.exercise.lastTrainedAt,
+          },
+          exercises: exerciseData,
+          gender: strengthGender,
+          bodyweightKg,
+          targetLevel: row.exercise.nextLevel ?? row.exercise.level,
+          now: scoreProjectionDate,
+        });
+        if (!projection) return null;
+
+        const groupWeight = projection.targetGroup
+          ? projection.projectedResult.groupBreakdown[projection.targetGroup]
+              .weight
           : 0.08;
 
-        const nextPoints =
-          calculateExerciseStrengthPoints({
-            exerciseName: row.exercise.exerciseName,
-            gender: strengthGender,
-            bodyweightKg,
-            estimated1RMKg: targetWeight,
-          }) ?? 0;
-        const weightedNextPoints = nextPoints * tierWeight;
-
-        const potentialDelta = Math.max(
-          0,
-          (weightedNextPoints - row.weightedCurrentPoints) * groupWeight,
-        );
-
-        let estimatedScoreGain = potentialDelta;
+        const projectedScoreGain = projection.rawPointsGained;
+        const estimatedScoreGain = projection.pointsGained;
         let focusWeakness = 0;
         let orderingRank = Number.MAX_SAFE_INTEGER;
 
         if (row.focusGroup) {
-          const state = groupState.get(row.focusGroup);
-          const currentTop = state?.topScore ?? 0;
-          const alternateTop =
-            state?.topExerciseId === row.exercise.exerciseId
-              ? state.runnerUpScore
-              : (state?.topScore ?? 0);
-          const predictedTop = Math.max(alternateTop, weightedNextPoints);
-          const groupLift = Math.max(0, predictedTop - currentTop);
-          estimatedScoreGain = Math.max(
-            groupLift * groupWeight,
-            potentialDelta * 0.35,
-          );
           focusWeakness = weaknessByGroup.get(row.focusGroup) ?? 0;
           orderingRank =
             groupRank.get(row.focusGroup) ?? Number.MAX_SAFE_INTEGER;
@@ -606,7 +571,9 @@ export function StrengthBodyView({
 
         const targetDeltaKg = Math.max(
           1,
-          Math.ceil(targetWeight - row.exercise.max1RM),
+          Math.ceil(
+            projection.targetPerformance - projection.currentPerformance,
+          ),
         );
 
         const distanceFactor = isUntapped
@@ -634,7 +601,7 @@ export function StrengthBodyView({
           : 0;
 
         const readinessWeightedGain =
-          estimatedScoreGain * (0.15 + readinessFactor * readinessFactor * 3);
+          projectedScoreGain * (0.15 + readinessFactor * readinessFactor * 3);
 
         const nextLevelIntensity = getLevelIntensity(
           row.exercise.nextLevel ?? row.exercise.level,
@@ -647,7 +614,7 @@ export function StrengthBodyView({
           readinessWeightedGain * levelDifficultyFactor;
 
         const impactScore = Math.round(
-          estimatedScoreGain * levelDifficultyFactor * 3.2 +
+          projectedScoreGain * levelDifficultyFactor * 3.2 +
             groupWeight * 32 * (1 + focusWeakness * 0.5) +
             progressToLevelUp * 24 +
             distanceFactor * 16 +
@@ -671,6 +638,10 @@ export function StrengthBodyView({
           orderingRank,
         };
       })
+      .filter(
+        (exercise): exercise is NonNullable<typeof exercise> =>
+          exercise !== null,
+      )
       .sort((a, b) => {
         const gainDiff = b.priorityScore - a.priorityScore;
         if (Math.abs(gainDiff) > 0.01) {
@@ -711,10 +682,11 @@ export function StrengthBodyView({
       };
     });
   }, [
+    exerciseData,
+    overallLevel,
     profile?.weight_kg,
     strengthGender,
     trackedExercisesWithProgress,
-    overallLevel?.balancedLevel,
   ]);
 
   const shouldShowPrioritySection = useMemo(() => {

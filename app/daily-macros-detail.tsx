@@ -1,4 +1,5 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -7,7 +8,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { calculateMaintenanceCalories, resolveCalorieGoal } from '@/lib/nutrition'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -57,6 +58,10 @@ const firstParam = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value
 
 export default function DailyMacrosDetailScreen() {
+  if (!NUTRITION_FEATURES_ENABLED) {
+    return <Redirect href="/body-log" />
+  }
+
   const router = useRouter()
   const rawParams = useLocalSearchParams<{
     totalsJson?: string | string[]

@@ -2,6 +2,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -16,7 +17,13 @@ import { getMealImageUrls } from '@/lib/utils/meal-image-storage'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import {
+  Redirect,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -157,6 +164,10 @@ function getMealSourceIcon(
 }
 
 export default function DailyFoodLogScreen() {
+  if (!NUTRITION_FEATURES_ENABLED) {
+    return <Redirect href="/body-log" />
+  }
+
   const params = useLocalSearchParams<{
     logDate?: string
     entryId?: string

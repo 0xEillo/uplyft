@@ -67,6 +67,19 @@ export interface OverallStrengthScoreDeltaForSessionResult {
   pointsGained: number
 }
 
+export interface StrengthScoreProjectionResult {
+  currentResult: OverallStrengthScoreResult
+  projectedResult: OverallStrengthScoreResult
+  currentScore: number
+  projectedScore: number
+  rawPointsGained: number
+  pointsGained: number
+  currentPerformance: number
+  targetPerformance: number
+  targetGroup: OverallStrengthGroup | null
+  projectedExercises: OverallStrengthExerciseInput[]
+}
+
 export const OVERALL_STRENGTH_SCORE_CAP = 1000
 const DECAY_GRACE_DAYS = 14
 const DECAY_RATE_PER_WEEK = 0.05
@@ -161,6 +174,21 @@ function resolveSpecificMuscleName(
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 0
   return Math.max(0, Math.min(OVERALL_STRENGTH_SCORE_CAP, score))
+}
+
+function getPreciseOverallScore(result: OverallStrengthScoreResult): number {
+  return clampScore(
+    (Object.keys(result.groupBreakdown) as OverallStrengthGroup[]).reduce(
+      (sum, group) => sum + result.groupBreakdown[group].weightedContribution,
+      0,
+    ),
+  )
+}
+
+function sameCanonicalExerciseName(left: string, right: string): boolean {
+  const leftCanonical = exerciseNameMap.get(left)?.name ?? left
+  const rightCanonical = exerciseNameMap.get(right)?.name ?? right
+  return leftCanonical === rightCanonical
 }
 
 function buildSessionBaselineExercises(input: {
@@ -294,6 +322,146 @@ export function calculateExerciseStrengthPoints(input: {
     : estimated1RMKg / bodyweightKg
   const rawPoints = interpolatePointsFromStandards(ratio, standards)
   return clampScore(rawPoints)
+}
+
+export function getStrengthLevelTargetPerformance(input: {
+  exerciseName: string
+  gender: StrengthGender
+  bodyweightKg: number
+  targetLevel: StrengthLevel
+}): number | null {
+  const { exerciseName, gender, bodyweightKg, targetLevel } = input
+  if (
+    !Number.isFinite(bodyweightKg) ||
+    bodyweightKg <= 0 ||
+    !hasStrengthStandards(exerciseName)
+  ) {
+    return null
+  }
+
+  const standards = getStandardsLadder(exerciseName, gender)
+  const targetStandard = standards?.find(
+    (standard) => standard.level === targetLevel,
+  )
+  if (!targetStandard) return null
+
+  const config = exerciseNameMap.get(exerciseName)
+  return config?.isRepBased
+    ? Math.ceil(targetStandard.multiplier)
+    : Math.ceil(bodyweightKg * targetStandard.multiplier)
+}
+
+export function calculateStrengthScoreProjectionForExerciseTarget(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: OverallStrengthExerciseInput[]
+  exercise: Pick<
+    OverallStrengthExerciseInput,
+    'exerciseId' | 'exerciseName' | 'muscleGroup' | 'lastTrainedAt'
+  >
+  targetPerformance: number
+  now?: Date
+}): StrengthScoreProjectionResult | null {
+  const { gender, bodyweightKg, exercises, exercise, targetPerformance } = input
+  const now = input.now ?? new Date()
+
+  if (
+    !hasStrengthStandards(exercise.exerciseName) ||
+    !Number.isFinite(bodyweightKg) ||
+    bodyweightKg <= 0 ||
+    !Number.isFinite(targetPerformance) ||
+    targetPerformance <= 0
+  ) {
+    return null
+  }
+
+  const existingIndex = exercises.findIndex(
+    (candidate) =>
+      candidate.exerciseId === exercise.exerciseId ||
+      sameCanonicalExerciseName(
+        candidate.exerciseName,
+        exercise.exerciseName,
+      ),
+  )
+  const existingExercise =
+    existingIndex >= 0 ? exercises[existingIndex] : null
+  const currentPerformance = existingExercise?.max1RM ?? 0
+  const projectedPerformance = Math.max(currentPerformance, targetPerformance)
+  const projectedLastTrainedAt = now.toISOString()
+  const projectedExercise: OverallStrengthExerciseInput = {
+    ...(existingExercise ?? exercise),
+    max1RM: projectedPerformance,
+    lastTrainedAt: projectedLastTrainedAt,
+  }
+  const projectedExercises =
+    existingIndex >= 0
+      ? exercises.map((candidate, index) =>
+          index === existingIndex ? projectedExercise : candidate,
+        )
+      : [...exercises, projectedExercise]
+
+  const currentResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises,
+    now,
+  })
+  const projectedResult = calculateOverallStrengthScore({
+    gender,
+    bodyweightKg,
+    exercises: projectedExercises,
+    now,
+  })
+
+  const currentScore = getPreciseOverallScore(currentResult)
+  const projectedScore = getPreciseOverallScore(projectedResult)
+  const rawPointsGained = Math.max(0, projectedScore - currentScore)
+  const specificMuscle = resolveSpecificMuscleName(
+    exercise.exerciseName,
+    exercise.muscleGroup,
+  )
+
+  return {
+    currentResult,
+    projectedResult,
+    currentScore,
+    projectedScore,
+    rawPointsGained,
+    pointsGained: Math.max(0, projectedResult.score - currentResult.score),
+    currentPerformance,
+    targetPerformance: projectedPerformance,
+    targetGroup: toOverallGroup(specificMuscle),
+    projectedExercises,
+  }
+}
+
+export function calculateStrengthScoreProjectionForExerciseLevel(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: OverallStrengthExerciseInput[]
+  exercise: Pick<
+    OverallStrengthExerciseInput,
+    'exerciseId' | 'exerciseName' | 'muscleGroup' | 'lastTrainedAt'
+  >
+  targetLevel: StrengthLevel
+  now?: Date
+}): StrengthScoreProjectionResult | null {
+  const targetPerformance = getStrengthLevelTargetPerformance({
+    exerciseName: input.exercise.exerciseName,
+    gender: input.gender,
+    bodyweightKg: input.bodyweightKg,
+    targetLevel: input.targetLevel,
+  })
+  if (targetPerformance === null) return null
+
+  return calculateStrengthScoreProjectionForExerciseTarget({
+    gender: input.gender,
+    bodyweightKg: input.bodyweightKg,
+    exercises: input.exercises,
+    exercise: input.exercise,
+    targetPerformance,
+    now: input.now,
+  })
 }
 
 export function scoreToOverallLevelProgress(score: number): {

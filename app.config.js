@@ -13,7 +13,7 @@ const isProductionBuild = buildProfile === 'production'
 const envFilesByProfile = {
   development: ['.env.test', '.env'],
   staging: ['.env.staging', '.env'],
-  production: ['.env'],
+  production: ['.env.production', '.env'],
 }
 
 const envFiles = envFilesByProfile[buildProfile] || ['.env']
@@ -228,6 +228,8 @@ module.exports = {
         ? process.env.REVENUECAT_TEST_STORE_KEY
         : undefined,
       revenueCatUseTestStore: allowRevenueCatTestStore ? true : false,
+      revenueCatUseLocalSimulatorPurchases:
+        process.env.REVENUECAT_USE_LOCAL_SIMULATOR_PURCHASES === 'true',
     },
   },
 }

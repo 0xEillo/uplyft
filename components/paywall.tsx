@@ -43,7 +43,8 @@ export function Paywall({
   const styles = createStyles(colors, screenHeight)
 
   const { trackEvent } = useAnalytics()
-  const { purchasePackage, restorePurchases, offerings } = useSubscription()
+  const { purchasePackage, restorePurchases, offerings, isLoading } =
+    useSubscription()
 
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -53,6 +54,7 @@ export function Paywall({
   const {
     monthly: monthlyPackage,
     yearly: yearlyPackage,
+    available: availablePackages,
   } = useRevenueCatPackages(offerings)
 
   // Remote toggle: RevenueCat Offering metadata "displayYearlyPrice" (default true for app review)
@@ -122,8 +124,22 @@ export function Paywall({
     ]
   }, [yearlyPackage, monthlyPackage, displayYearlyPrice])
 
-  const selectedPackage = plans[selectedPlanIndex].package
-  const isYearlySelected = plans[selectedPlanIndex].type === 'yearly'
+  useEffect(() => {
+    if (yearlyPackage) {
+      setSelectedPlanIndex(1)
+      return
+    }
+
+    if (monthlyPackage) {
+      setSelectedPlanIndex(0)
+    }
+  }, [monthlyPackage, yearlyPackage])
+
+  const selectedPlan = plans[selectedPlanIndex] ?? plans[0]
+  const selectedPackage =
+    selectedPlan?.package ?? availablePackages[0] ?? null
+  const isYearlySelected = selectedPlan?.type === 'yearly'
+  const isPurchaseReady = Boolean(selectedPackage)
 
   // Get hero image based on user gender (if available)
   const getHeroImage = () => {
@@ -135,11 +151,27 @@ export function Paywall({
   const buttonText = isYearlySelected ? 'Try 7 days free' : 'Continue'
 
   const handleSubscribe = async () => {
+    if (isLoading) {
+      Alert.alert(
+        'Loading Subscription',
+        'Subscription options are still loading. Please try again in a moment.',
+      )
+      return
+    }
+
+    if (!selectedPackage) {
+      Alert.alert(
+        'Subscription Unavailable',
+        'We could not load subscription options on this device. If you are testing on the iOS simulator, make sure StoreKit/RevenueCat products are configured for the build you are running.',
+      )
+      return
+    }
+
     // Track CTA tap immediately (user expressed intent to subscribe)
     trackEvent(AnalyticsEvents.PAYWALL_CTA_TAPPED, {
       feature: 'subscription',
       source_screen: 'paywall',
-      plan_type: plans[selectedPlanIndex].type,
+      plan_type: selectedPlan.type,
       product_id: selectedPackage?.identifier,
       price_string: selectedPackage?.product.priceString,
     })
@@ -147,13 +179,8 @@ export function Paywall({
     try {
       setIsPurchasing(true)
 
-      if (!selectedPackage) {
-        Alert.alert('Error', 'Please select a subscription plan.')
-        return
-      }
-
       trackEvent(AnalyticsEvents.SUBSCRIPTION_STARTED, {
-        plan_type: plans[selectedPlanIndex].type,
+        plan_type: selectedPlan.type,
         product_id: selectedPackage.identifier,
         price_string: selectedPackage.product.priceString,
         price: selectedPackage.product.price,
@@ -182,7 +209,7 @@ export function Paywall({
         if (isTrialPeriod) {
           // Track trial start separately for clear funnel analysis
           trackEvent(AnalyticsEvents.SUBSCRIPTION_TRIAL_STARTED, {
-            plan_type: plans[selectedPlanIndex].type,
+            plan_type: selectedPlan.type,
             product_id: selectedPackage.identifier,
             price_string: selectedPackage.product.priceString,
             price: selectedPackage.product.price,
@@ -196,7 +223,7 @@ export function Paywall({
 
         // Purchase successful and entitlement verified - close the paywall
         trackEvent(AnalyticsEvents.SUBSCRIPTION_COMPLETED, {
-          plan_type: plans[selectedPlanIndex].type,
+          plan_type: selectedPlan.type,
           product_id: selectedPackage.identifier,
           price_string: selectedPackage.product.priceString,
           price: selectedPackage.product.price,
@@ -230,7 +257,7 @@ export function Paywall({
       }
       if (purchaseError?.userCancelled) {
         trackEvent(AnalyticsEvents.SUBSCRIPTION_CANCELLED, {
-          plan_type: plans[selectedPlanIndex].type,
+          plan_type: selectedPlan.type,
           product_id: selectedPackage?.identifier,
           price_string: selectedPackage?.product.priceString,
           source_screen: 'paywall',
@@ -240,7 +267,7 @@ export function Paywall({
       }
 
       trackEvent(AnalyticsEvents.SUBSCRIPTION_FAILED, {
-        plan_type: plans[selectedPlanIndex].type,
+        plan_type: selectedPlan.type,
         product_id: selectedPackage?.identifier,
         price_string: selectedPackage?.product.priceString,
         source_screen: 'paywall',
@@ -474,13 +501,19 @@ export function Paywall({
             <TouchableOpacity
               style={styles.mainButton}
               onPress={handleSubscribe}
-              disabled={isPurchasing || isRestoring || !selectedPackage}
+              disabled={isPurchasing || isRestoring}
               activeOpacity={0.8}
             >
               {isPurchasing ? (
                 <ActivityIndicator color={colors.bg} />
               ) : (
-                <Text style={styles.mainButtonText}>{buttonText}</Text>
+                <Text style={styles.mainButtonText}>
+                  {isLoading
+                    ? 'Loading...'
+                    : isPurchaseReady
+                      ? buttonText
+                      : 'Subscription unavailable'}
+                </Text>
               )}
             </TouchableOpacity>
 

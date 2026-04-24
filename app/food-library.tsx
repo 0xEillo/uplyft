@@ -2,6 +2,7 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { ScreenHeader } from '@/components/screen-header'
 import { FoodLibrarySheet, type FoodLibraryMealDraft } from '@/components/food-library-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -9,7 +10,7 @@ import { database } from '@/lib/database'
 import { setPendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import type { DailyLogMeal } from '@/types/database.types'
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -109,6 +110,10 @@ const getLocalDateString = (): string => {
 }
 
 export default function FoodLibraryScreen() {
+  if (!NUTRITION_FEATURES_ENABLED) {
+    return <Redirect href="/chat" />
+  }
+
   const { logDate } = useLocalSearchParams<{ logDate?: string }>()
   const router = useRouter()
   const { trackEvent } = useAnalytics()

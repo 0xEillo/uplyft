@@ -1,4 +1,5 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { NATIVE_SHEET_LAYOUT } from '@/constants/native-sheet-layout'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -248,13 +249,17 @@ export default function ChatAttachmentScreen() {
       subtitle: 'Create a custom workout plan',
       onPress: () => dispatch({ action: 'generate_workout' }),
     },
-    {
-      id: 'scan-food',
-      icon: 'scan-outline' as const,
-      label: 'Scan Food',
-      subtitle: 'Identify food with camera',
-      onPress: () => dispatch({ action: 'scan_food' }),
-    },
+    ...(NUTRITION_FEATURES_ENABLED
+      ? [
+          {
+            id: 'scan-food',
+            icon: 'scan-outline' as const,
+            label: 'Scan Food',
+            subtitle: 'Identify food with camera',
+            onPress: () => dispatch({ action: 'scan_food' }),
+          },
+        ]
+      : []),
   ]
 
   const content = (
