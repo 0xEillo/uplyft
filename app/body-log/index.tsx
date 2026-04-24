@@ -706,7 +706,7 @@ export default function MeasuresScreen() {
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
             ListHeaderComponent={
-              <View style={{ paddingBottom: 16 }}>
+              <View style={{ paddingBottom: 0 }}>
                 {progressPhotos.length > 0 && (
                   <>
                     <View style={headerStyles.sectionHeader}>
@@ -741,15 +741,15 @@ export default function MeasuresScreen() {
                   </>
                 )}
 
-                {user && (
-                  <View style={{ marginBottom: 12 }}>
-                    <BodyWeightChart userId={user.id} />
-                  </View>
-                )}
-
                 <View style={[headerStyles.sectionHeader, { paddingTop: 16 }]}>
                   <Text style={[headerStyles.sectionTitle, { color: colors.textSecondary }]}>Weight History</Text>
                 </View>
+
+                {user && (
+                  <View>
+                    <BodyWeightChart userId={user.id} />
+                  </View>
+                )}
               </View>
             }
             ListEmptyComponent={

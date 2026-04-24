@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import Svg, {
   Circle,
   Defs,
@@ -408,10 +409,6 @@ export const BodyWeightChart = memo(({ userId }: BodyWeightChartProps) => {
     )
   }
 
-  if (rawData.length < 2) {
-    return null // Need at least 2 data points
-  }
-
   const accentColor = colors.brandPrimary
   const gridColor = colors.border
   const labelColor = colors.textTertiary
@@ -667,8 +664,9 @@ export const BodyWeightChart = memo(({ userId }: BodyWeightChartProps) => {
           </View>
         ) : (
           <View style={[styles.chartWrap, styles.emptyChart]}>
+            <Ionicons name="bar-chart-outline" size={48} color={colors.textTertiary} style={{ marginBottom: 12, opacity: 0.5 }} />
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              Not enough data for this range
+              No data in time period
             </Text>
           </View>
         )}
@@ -684,7 +682,7 @@ BodyWeightChart.displayName = 'BodyWeightChart'
 const styles = StyleSheet.create({
   outerWrap: {
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 0,
   },
   container: {
     borderRadius: 18,
