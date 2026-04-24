@@ -1,7 +1,16 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { BlurredHeader } from '@/components/blurred-header'
+import {
+  SettingsCard,
+  SettingsScreen,
+  SettingsSection,
+  SettingsSwitchRow,
+} from '@/components/ui/settings'
 import { AnalyticsEvents } from '@/constants/analytics-events'
-import { Layout } from '@/constants/theme'
+import {
+  FontWeight,
+  Radius,
+  Spacing,
+  Typography,
+} from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
@@ -19,15 +28,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
-import {
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 const TOOLBAR_BUTTON_OPTIONS: {
   id: ToolbarButtonId
@@ -41,54 +42,40 @@ const TOOLBAR_BUTTON_OPTIONS: {
   { id: 'search', label: 'Add Exercise', icon: 'add-outline' },
 ]
 
-const NAVBAR_HEIGHT = Layout.navbarHeight
-
 export default function CreatePostSettingsScreen() {
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
-  const insets = useSafeAreaInsets()
-  const [
-    warmupCalculatorEnabled,
-    setWarmupCalculatorEnabledState,
-  ] = useState(() => getWarmupCalculatorEnabled())
+  const [warmupCalculatorEnabled, setWarmupCalculatorEnabledState] = useState(
+    () => getWarmupCalculatorEnabled(),
+  )
   const [toolbarButtons, setToolbarButtonsState] = useState<ToolbarButtonId[]>(
     () => getToolbarButtons(),
   )
-  const [showWarmupSets, setShowWarmupSetsState] = useState(
-    () => getShowWarmupSets(),
+  const [showWarmupSets, setShowWarmupSetsState] = useState(() =>
+    getShowWarmupSets(),
   )
-  const [restTimerSoundEnabled, setRestTimerSoundEnabledState] = useState(
-    () => getRestTimerSoundEnabled(),
+  const [restTimerSoundEnabled, setRestTimerSoundEnabledState] = useState(() =>
+    getRestTimerSoundEnabled(),
   )
   const styles = createStyles(colors)
 
-  const handleGoBack = useCallback(() => {
-    router.back()
-  }, [router])
+  const handleToggleShowWarmupSets = useCallback((enabled: boolean) => {
+    setShowWarmupSetsState(enabled)
+    setShowWarmupSets(enabled)
+    haptic('light')
+  }, [])
 
-  const handleToggleShowWarmupSets = useCallback(
-    (enabled: boolean) => {
-      setShowWarmupSetsState(enabled)
-      setShowWarmupSets(enabled)
-      haptic('light')
-    },
-    [],
-  )
-
-  const handleToggleToolbarButton = useCallback(
-    (id: ToolbarButtonId) => {
-      haptic('light')
-      setToolbarButtonsState((prev) => {
-        const next = prev.includes(id)
-          ? prev.filter((b) => b !== id)
-          : [...prev, id]
-        setToolbarButtons(next)
-        return next
-      })
-    },
-    [],
-  )
+  const handleToggleToolbarButton = useCallback((id: ToolbarButtonId) => {
+    haptic('light')
+    setToolbarButtonsState((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((b) => b !== id)
+        : [...prev, id]
+      setToolbarButtons(next)
+      return next
+    })
+  }, [])
 
   const handleToggleWarmupCalculator = useCallback(
     (enabled: boolean) => {
@@ -117,237 +104,99 @@ export default function CreatePostSettingsScreen() {
   )
 
   return (
-    <View style={styles.container}>
-      <BlurredHeader>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
+    <SettingsScreen title="Workout Settings" onBack={() => router.back()}>
+      <SettingsSection title="Create Workout">
+        <SettingsCard>
+          <SettingsSwitchRow
+            title="Warm-up Calculator"
+            value={warmupCalculatorEnabled}
+            onValueChange={handleToggleWarmupCalculator}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Workout Display">
+        <SettingsCard>
+          <SettingsSwitchRow
+            title="Show Warm-up Sets"
+            description="Display warm-up sets in workout posts."
+            value={showWarmupSets}
+            onValueChange={handleToggleShowWarmupSets}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Rest Timer">
+        <SettingsCard>
+          <SettingsSwitchRow
+            title="Play Sound"
+            description="Play a sound when your rest timer finishes."
+            value={restTimerSoundEnabled}
+            onValueChange={handleToggleRestTimerSound}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Toolbar Buttons">
+        <SettingsCard>
+          {TOOLBAR_BUTTON_OPTIONS.map((option) => {
+            const isEnabled = toolbarButtons.includes(option.id)
+            return (
               <TouchableOpacity
-                onPress={handleGoBack}
-                style={styles.backButton}
+                key={option.id}
+                style={styles.toolbarOptionRow}
+                onPress={() => handleToggleToolbarButton(option.id)}
+                activeOpacity={0.7}
               >
+                <View style={styles.toolbarOptionLeft}>
+                  <View
+                    style={[
+                      styles.toolbarOptionIconWrap,
+                      isEnabled && styles.toolbarOptionIconWrapActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name={option.icon}
+                      size={18}
+                      color={
+                        isEnabled ? colors.brandPrimary : colors.textSecondary
+                      }
+                    />
+                  </View>
+                  <Text style={styles.settingTitle}>{option.label}</Text>
+                </View>
                 <Ionicons
-                  name="arrow-back"
-                  size={24}
-                  color={colors.textPrimary}
+                  name={isEnabled ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={22}
+                  color={isEnabled ? colors.brandPrimary : colors.border}
                 />
               </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={
-            <Text style={styles.headerTitle}>Workout Settings</Text>
-          }
-        />
-      </BlurredHeader>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + NAVBAR_HEIGHT },
-        ]}
-        scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Create Workout</Text>
-          <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>Warm-up Calculator</Text>
-              </View>
-              <Switch
-                value={warmupCalculatorEnabled}
-                onValueChange={handleToggleWarmupCalculator}
-                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  warmupCalculatorEnabled ? colors.brandPrimary : '#F3F4F6'
-                }
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Workout Display</Text>
-          <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>Show Warm-up Sets</Text>
-                <Text style={styles.settingDescription}>
-                  Display warm-up sets in workout posts.
-                </Text>
-              </View>
-              <Switch
-                value={showWarmupSets}
-                onValueChange={handleToggleShowWarmupSets}
-                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={showWarmupSets ? colors.brandPrimary : '#F3F4F6'}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rest Timer</Text>
-          <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>Play Sound</Text>
-                <Text style={styles.settingDescription}>
-                  Play a sound when your rest timer finishes.
-                </Text>
-              </View>
-              <Switch
-                value={restTimerSoundEnabled}
-                onValueChange={handleToggleRestTimerSound}
-                trackColor={{ false: '#D1D5DB', true: colors.brandPrimarySoft }}
-                thumbColor={
-                  restTimerSoundEnabled ? colors.brandPrimary : '#F3F4F6'
-                }
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Toolbar Buttons</Text>
-          <View style={styles.card}>
-            {TOOLBAR_BUTTON_OPTIONS.map((option, index) => {
-              const isEnabled = toolbarButtons.includes(option.id)
-              const isLast = index === TOOLBAR_BUTTON_OPTIONS.length - 1
-              return (
-                <View key={option.id}>
-                  <TouchableOpacity
-                    style={[
-                      styles.toolbarOptionRow,
-                      !isLast && styles.toolbarOptionDivider,
-                    ]}
-                    onPress={() => handleToggleToolbarButton(option.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.toolbarOptionLeft}>
-                      <View
-                        style={[
-                          styles.toolbarOptionIconWrap,
-                          isEnabled && styles.toolbarOptionIconWrapActive,
-                        ]}
-                      >
-                        <Ionicons
-                          name={option.icon}
-                          size={18}
-                          color={
-                            isEnabled ? colors.brandPrimary : colors.textSecondary
-                          }
-                        />
-                      </View>
-                      <Text style={styles.settingTitle}>{option.label}</Text>
-                    </View>
-                    <Ionicons
-                      name={isEnabled ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={22}
-                      color={isEnabled ? colors.brandPrimary : colors.border}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )
-            })}
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+            )
+          })}
+        </SettingsCard>
+      </SettingsSection>
+    </SettingsScreen>
   )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.bg,
-    },
-    backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-    content: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: 40,
-    },
-    section: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 16,
-      paddingVertical: 18,
-    },
-    settingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    settingTextContainer: {
-      flex: 1,
-      paddingRight: 4,
-    },
-    settingTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
-    settingDescription: {
-      fontSize: 13,
-      lineHeight: 18,
-      color: colors.textSecondary,
-    },
-    sectionDescription: {
-      fontSize: 13,
-      lineHeight: 18,
-      color: colors.textSecondary,
-      marginBottom: 8,
-    },
     toolbarOptionRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 12,
-    },
-    toolbarOptionDivider: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.md,
     },
     toolbarOptionLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: Spacing.md,
     },
     toolbarOptionIconWrap: {
       width: 34,
       height: 34,
-      borderRadius: 10,
+      borderRadius: Radius.md - 2,
       backgroundColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
@@ -357,5 +206,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     toolbarOptionIconWrapActive: {
       backgroundColor: colors.brandPrimarySoft,
       borderColor: colors.brandPrimary,
+    },
+    settingTitle: {
+      ...Typography.bodyLargeSemibold,
+      fontWeight: FontWeight.semibold,
+      color: colors.textPrimary,
     },
   })

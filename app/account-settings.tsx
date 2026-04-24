@@ -1,8 +1,7 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { BlurredHeader } from '@/components/blurred-header'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import {
   FontSize,
+  FontWeight,
   IconSize,
   Layout,
   Opacity,
@@ -10,6 +9,12 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme'
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsScreen,
+  SettingsSection,
+} from '@/components/ui/settings'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -21,23 +26,19 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Linking,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-export default function SettingsScreen() {
+export default function SettingsScreenRoute() {
   const { user, signOut, isAnonymous } = useAuth()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>()
   const colors = useThemedColors()
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
-  const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = Layout.navbarHeight
   const resolvedReturnTo =
     Array.isArray(returnTo) && returnTo.length > 0 ? returnTo[0] : returnTo
 
@@ -253,303 +254,134 @@ export default function SettingsScreen() {
 
   const styles = createStyles(colors)
 
-  const SettingsItem = ({
-    icon,
-    title,
-    description,
-    onPress,
-    rightContent,
-    isDestructive,
-  }: {
-    icon: keyof typeof Ionicons.glyphMap
-    title: string
-    description?: string
-    onPress?: () => void
-    rightContent?: React.ReactNode
-    isDestructive?: boolean
-  }) => (
-    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <View style={styles.actionButtonContent}>
-        <Ionicons
-          name={icon}
-          size={IconSize.lg}
-          color={isDestructive ? colors.statusError : colors.textSecondary}
-        />
-        <View style={styles.actionTextContainer}>
-          <Text
-            style={
-              isDestructive
-                ? styles.dangerButtonText
-                : styles.actionButtonTextNeutral
-            }
-          >
-            {title}
-          </Text>
-          {description && (
-            <Text style={styles.actionButtonSubtext}>{description}</Text>
-          )}
-        </View>
-      </View>
-      {rightContent || <Ionicons name="chevron-forward" size={IconSize.md} color={colors.textMuted} />}
-    </TouchableOpacity>
-  )
-
   return (
-    <View style={styles.container}>
-      <BlurredHeader>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={IconSize.xl} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={<Text style={styles.headerTitle}>Settings</Text>}
-        />
-      </BlurredHeader>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + NAVBAR_HEIGHT },
-        ]}
-        scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
-        showsVerticalScrollIndicator={false}
-      >
-        {isAnonymous && (
-          <TouchableOpacity
-            style={styles.guestBanner}
-            onPress={() => router.push('/(auth)/create-account')}
-            activeOpacity={Opacity.pressed}
-          >
-            <View style={styles.guestBannerContent}>
-              <View style={styles.guestBannerIconContainer}>
-                <Ionicons name="cloud-upload" size={IconSize.xl} color={colors.brandPrimary} />
-              </View>
-              <View style={styles.guestBannerText}>
-                <Text style={styles.guestBannerTitle}>Create an Account</Text>
-                <Text style={styles.guestBannerSubtitle}>
-                  Sync your data across devices and never lose your progress
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={IconSize.md} color={colors.brandPrimary} />
+    <SettingsScreen title="Settings" onBack={handleGoBack}>
+      {isAnonymous && (
+        <TouchableOpacity
+          style={styles.guestBanner}
+          onPress={() => router.push('/(auth)/create-account')}
+          activeOpacity={Opacity.pressed}
+        >
+          <View style={styles.guestBannerContent}>
+            <View style={styles.guestBannerIconContainer}>
+              <Ionicons name="cloud-upload" size={IconSize.xl} color={colors.brandPrimary} />
             </View>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General</Text>
-          <View style={styles.card}>
-            <SettingsItem
-              icon="person-outline"
-              title="Account Information"
-              description="User tag and email settings"
-              onPress={() => router.push('/account-info-settings')}
-            />
-            <View style={styles.cardDivider} />
-            <SettingsItem
-              icon="star-outline"
-              title="Subscription"
-              description="Manage your Pro membership"
-              onPress={() => router.push('/subscription-settings')}
-            />
-            <View style={styles.cardDivider} />
-            <SettingsItem
-              icon="options-outline"
-              title="Preferences"
-              description="Theme, units, and privacy"
-              onPress={() => router.push('/preferences-settings')}
-            />
-            <View style={styles.cardDivider} />
-            <SettingsItem
-              icon="notifications-outline"
-              title="Notifications"
-              description="Workout reminders and streak protection"
-              onPress={() => router.push('/notification-settings')}
-            />
+            <View style={styles.guestBannerText}>
+              <Text style={styles.guestBannerTitle}>Create an Account</Text>
+              <Text style={styles.guestBannerSubtitle}>
+                Sync your data across devices and never lose your progress
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={IconSize.md} color={colors.brandPrimary} />
           </View>
-        </View>
+        </TouchableOpacity>
+      )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Community & Support</Text>
-          <View style={styles.card}>
-            <SettingsItem
-              icon="people-outline"
-              title="Follow Requests"
-              description="Approve new followers or cancel invites"
-              onPress={() => router.push('/follow-requests')}
-              rightContent={
-                <View style={styles.followRequestRight}>
-                  {pendingRequestCount > 0 && (
-                    <View style={styles.pendingBadge}>
-                      <Text style={styles.pendingBadgeText}>
-                        {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
-                      </Text>
-                    </View>
-                  )}
-                  <Ionicons name="chevron-forward" size={IconSize.md} color={colors.textMuted} />
-                </View>
-              }
-            />
-            <View style={styles.cardDivider} />
-            <SettingsItem
-              icon="mail-outline"
-              title="Contact Support"
-              description="support@repaifit.app"
-              onPress={handleContactSupport}
-            />
-          </View>
-        </View>
+      <SettingsSection title="General">
+        <SettingsCard>
+          <SettingsRow
+            icon="person-outline"
+            title="Account Information"
+            description="User tag and email settings"
+            onPress={() => router.push('/account-info-settings')}
+          />
+          <SettingsRow
+            icon="star-outline"
+            title="Subscription"
+            description="Manage your Pro membership"
+            onPress={() => router.push('/subscription-settings')}
+          />
+          <SettingsRow
+            icon="options-outline"
+            title="Preferences"
+            description="Theme, units, and privacy"
+            onPress={() => router.push('/preferences-settings')}
+          />
+          <SettingsRow
+            icon="notifications-outline"
+            title="Notifications"
+            description="Workout reminders and streak protection"
+            onPress={() => router.push('/notification-settings')}
+          />
+        </SettingsCard>
+      </SettingsSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal</Text>
-          <View style={styles.card}>
-            <SettingsItem
-              icon="shield-outline"
-              title="Privacy Policy"
-              description="Read our privacy policy"
-              onPress={handleOpenPrivacyPolicy}
-            />
-            <View style={styles.cardDivider} />
-            <SettingsItem
-              icon="document-text-outline"
-              title="Terms of Use"
-              description="Read our terms of service"
-              onPress={handleOpenTermsOfUse}
-            />
-          </View>
-        </View>
+      <SettingsSection title="Community & Support">
+        <SettingsCard>
+          <SettingsRow
+            icon="people-outline"
+            title="Follow Requests"
+            description="Approve new followers or cancel invites"
+            onPress={() => router.push('/follow-requests')}
+            rightContent={
+              <View style={styles.followRequestRight}>
+                {pendingRequestCount > 0 && (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>
+                      {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
+                    </Text>
+                  </View>
+                )}
+                <Ionicons name="chevron-forward" size={IconSize.md} color={colors.textMuted} />
+              </View>
+            }
+          />
+          <SettingsRow
+            icon="mail-outline"
+            title="Contact Support"
+            description="support@repaifit.app"
+            onPress={handleContactSupport}
+          />
+        </SettingsCard>
+      </SettingsSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          <View style={styles.card}>
-            <SettingsItem
-              icon="log-out-outline"
-              title="Sign Out"
-              description="Log out of your account on this device"
-              onPress={handleSignOut}
-              rightContent={<View />}
-            />
-          </View>
-        </View>
+      <SettingsSection title="Legal">
+        <SettingsCard>
+          <SettingsRow
+            icon="shield-outline"
+            title="Privacy Policy"
+            description="Read our privacy policy"
+            onPress={handleOpenPrivacyPolicy}
+          />
+          <SettingsRow
+            icon="document-text-outline"
+            title="Terms of Use"
+            description="Read our terms of service"
+            onPress={handleOpenTermsOfUse}
+          />
+        </SettingsCard>
+      </SettingsSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Danger Zone</Text>
-          <View style={[styles.card, { borderColor: colors.statusError + '40' }]}>
-            <SettingsItem
-              icon="trash-outline"
-              title="Delete Account"
-              description="Permanently delete your data"
-              onPress={handleDeleteAccount}
-              isDestructive
-              rightContent={<View />}
-            />
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+      <SettingsSection title="Actions">
+        <SettingsCard>
+          <SettingsRow
+            icon="log-out-outline"
+            title="Sign Out"
+            description="Log out of your account on this device"
+            onPress={handleSignOut}
+            rightContent={null}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Danger Zone">
+        <SettingsCard tone="destructive">
+          <SettingsRow
+            icon="trash-outline"
+            title="Delete Account"
+            description="Permanently delete your data"
+            onPress={handleDeleteAccount}
+            destructive
+            rightContent={null}
+          />
+        </SettingsCard>
+      </SettingsSection>
+    </SettingsScreen>
   )
 }
 
-/** Row divider inset: aligns divider with text after the icon + gap. */
-const ROW_DIVIDER_INSET = 50
-
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.bg,
-    },
-    headerTitle: {
-      ...Typography.headerTitle,
-      color: colors.textPrimary,
-    },
-    backButton: {
-      width: Layout.tapTarget,
-      height: Layout.tapTarget,
-      borderRadius: Radius.pill,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    content: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: Spacing.xxxl,
-    },
-    section: {
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Spacing.lg,
-    },
-    sectionTitle: {
-      ...Typography.overline,
-      color: colors.textSecondary,
-      marginBottom: Spacing.sm,
-      marginLeft: Spacing.xs,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: Radius.lg,
-      borderWidth: Layout.hairline,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    cardDivider: {
-      height: Layout.hairline,
-      backgroundColor: colors.border,
-      marginLeft: ROW_DIVIDER_INSET,
-    },
-    actionButton: {
-      paddingHorizontal: Spacing.base,
-      paddingVertical: Spacing.base,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    actionButtonContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.base,
-      flex: 1,
-    },
-    actionTextContainer: {
-      flex: 1,
-    },
-    actionButtonTextNeutral: {
-      ...Typography.bodyLargeSemibold,
-      color: colors.textPrimary,
-    },
-    actionButtonSubtext: {
-      ...Typography.caption,
-      color: colors.textSecondary,
-      marginTop: Spacing.xxs,
-    },
-    dangerButtonText: {
-      fontSize: Typography.bodyLarge.fontSize,
-      fontWeight: '700',
-      color: colors.statusError,
-    },
-    followRequestRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-    },
-    pendingBadge: {
-      minWidth: 28,
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.pill,
-      backgroundColor: colors.brandPrimary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    pendingBadgeText: {
-      fontSize: FontSize.tiny,
-      fontWeight: '700',
-      color: colors.surface,
-    },
     guestBanner: {
       marginHorizontal: Spacing.lg,
       marginTop: Spacing.lg,
@@ -585,5 +417,24 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     guestBannerSubtitle: {
       ...Typography.caption,
       color: colors.textSecondary,
+    },
+    followRequestRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    pendingBadge: {
+      minWidth: 28,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.pill,
+      backgroundColor: colors.brandPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pendingBadgeText: {
+      fontSize: FontSize.tiny,
+      fontWeight: FontWeight.bold,
+      color: colors.surface,
     },
   })

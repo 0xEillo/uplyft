@@ -1,7 +1,17 @@
-import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
-import { BlurredHeader } from '@/components/blurred-header'
-import { AnalyticsEvents } from '@/constants/analytics-events'
-import { Layout } from '@/constants/theme'
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsScreen,
+  SettingsSection,
+} from '@/components/ui/settings'
+import {
+  FontSize,
+  FontWeight,
+  IconSize,
+  Radius,
+  Spacing,
+  Typography,
+} from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -13,13 +23,10 @@ import {
   Alert,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function SubscriptionSettingsScreen() {
   const { trackEvent } = useAnalytics()
@@ -27,8 +34,6 @@ export default function SubscriptionSettingsScreen() {
   const colors = useThemedColors()
   const { isProMember, customerInfo, restorePurchases } = useSubscription()
   const [isRestoring, setIsRestoring] = useState(false)
-  const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = Layout.navbarHeight
 
   useEffect(() => {
     trackEvent('subscription_settings_viewed')
@@ -98,22 +103,14 @@ export default function SubscriptionSettingsScreen() {
 
   const getSubscriptionStatus = () => {
     if (!customerInfo) return 'loading'
-
     const proEntitlement = customerInfo.entitlements.active['Pro']
-    if (!proEntitlement) {
-      return 'free'
-    }
-
-    if (proEntitlement.periodType === 'trial') {
-      return 'trial'
-    }
-
+    if (!proEntitlement) return 'free'
+    if (proEntitlement.periodType === 'trial') return 'trial'
     return 'active'
   }
 
   const getNextBillingDate = () => {
     if (!customerInfo) return null
-
     const proEntitlement = customerInfo.entitlements.active['Pro']
     if (proEntitlement && proEntitlement.expirationDate) {
       const date = new Date(proEntitlement.expirationDate)
@@ -123,200 +120,87 @@ export default function SubscriptionSettingsScreen() {
         year: 'numeric',
       })
     }
-
     return null
   }
 
   const styles = createStyles(colors)
+  const status = getSubscriptionStatus()
+  const nextBillingDate = getNextBillingDate()
 
   return (
-    <View style={styles.container}>
-      <BlurredHeader>
-        <BaseNavbar
-          leftContent={
-            <NavbarIsland>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </NavbarIsland>
-          }
-          centerContent={<Text style={styles.headerTitle}>Subscription</Text>}
-        />
-      </BlurredHeader>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + NAVBAR_HEIGHT },
-        ]}
-        scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subscription Details</Text>
-          <View style={styles.card}>
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="star-outline" size={22} color={colors.brandPrimary} />
-                <View style={styles.actionTextContainer}>
-                  <Text style={styles.actionButtonTextNeutral}>Status</Text>
-                  <Text style={styles.actionButtonSubtext}>Your current tier</Text>
-                </View>
-              </View>
+    <SettingsScreen title="Subscription" onBack={() => router.back()}>
+      <SettingsSection title="Subscription Details">
+        <SettingsCard>
+          <SettingsRow
+            icon="star-outline"
+            title="Status"
+            description="Your current tier"
+            rightContent={
               <View style={styles.statusBadge}>
                 <Text style={[styles.statusText, isProMember && styles.statusTextActive]}>
-                  {getSubscriptionStatus()}
+                  {status}
                 </Text>
               </View>
-            </View>
-
-            {isProMember && getNextBillingDate() && (
-              <>
-                <View style={styles.cardDivider} />
-                <View style={styles.actionButton}>
-                  <View style={styles.actionButtonContent}>
-                    <Ionicons name="calendar-outline" size={22} color={colors.textSecondary} />
-                    <View style={styles.actionTextContainer}>
-                      <Text style={styles.actionButtonTextNeutral}>
-                        {getSubscriptionStatus() === 'trial' ? 'Trial Ends' : 'Renews'}
-                      </Text>
-                      <Text style={styles.actionButtonSubtext}>Next billing date</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.valueText}>{getNextBillingDate()}</Text>
-                </View>
-              </>
-            )}
-
-            <View style={styles.cardDivider} />
-
-            <TouchableOpacity style={styles.actionButton} onPress={handleRestorePurchases} disabled={isRestoring}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="refresh-outline" size={22} color={colors.textSecondary} />
-                <View style={styles.actionTextContainer}>
-                  <Text style={styles.actionButtonTextNeutral}>Restore Purchases</Text>
-                  <Text style={styles.actionButtonSubtext}>Restore a previous purchase</Text>
-                </View>
-              </View>
-              {isRestoring ? (
+            }
+          />
+          {isProMember && nextBillingDate ? (
+            <SettingsRow
+              icon="calendar-outline"
+              title={status === 'trial' ? 'Trial Ends' : 'Renews'}
+              description="Next billing date"
+              rightContent={
+                <Text style={styles.valueText}>{nextBillingDate}</Text>
+              }
+            />
+          ) : null}
+          <SettingsRow
+            icon="refresh-outline"
+            title="Restore Purchases"
+            description="Restore a previous purchase"
+            onPress={handleRestorePurchases}
+            disabled={isRestoring}
+            rightContent={
+              isRestoring ? (
                 <ActivityIndicator size="small" color={colors.brandPrimary} />
               ) : (
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              )}
-            </TouchableOpacity>
-
-            {isProMember && (
-              <>
-                <View style={styles.cardDivider} />
-                <TouchableOpacity style={styles.actionButton} onPress={handleManageSubscription}>
-                  <View style={styles.actionButtonContent}>
-                    <Ionicons name="open-outline" size={22} color={colors.textSecondary} />
-                    <View style={styles.actionTextContainer}>
-                      <Text style={styles.actionButtonTextNeutral}>Manage Subscription</Text>
-                      <Text style={styles.actionButtonSubtext}>Change or cancel plans</Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={IconSize.md}
+                  color={colors.textMuted}
+                />
+              )
+            }
+          />
+          {isProMember ? (
+            <SettingsRow
+              icon="open-outline"
+              title="Manage Subscription"
+              description="Change or cancel plans"
+              onPress={handleManageSubscription}
+            />
+          ) : null}
+        </SettingsCard>
+      </SettingsSection>
+    </SettingsScreen>
   )
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.bg,
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    },
-    backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    content: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingBottom: 40,
-    },
-    section: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-      marginLeft: 4,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    cardDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginLeft: 50,
-    },
-    actionButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    actionButtonContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      flex: 1,
-      marginRight: 16,
-    },
-    actionTextContainer: {
-      flex: 1,
-    },
-    actionButtonTextNeutral: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-    actionButtonSubtext: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
     valueText: {
-      fontSize: 15,
-      fontWeight: '600',
+      ...Typography.body,
+      fontWeight: FontWeight.semibold,
       color: colors.textSecondary,
     },
     statusBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs + 2,
+      borderRadius: Radius.lg,
       backgroundColor: colors.surfaceSubtle,
     },
     statusText: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: FontSize.sm + 1,
+      fontWeight: FontWeight.semibold,
       color: colors.textSecondary,
       textTransform: 'capitalize',
     },

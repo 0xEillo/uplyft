@@ -40,6 +40,10 @@ const lightColors = {
   iconDefault: '#8e8e93',
   rowTint: 'rgba(0,0,0,0.02)', // Subtle tint for exercise rows
 
+  // Form controls (Switch track/thumb when off — RN's iOS default doesn't adapt to theme)
+  switchTrackOff: '#D1D5DB',
+  switchThumbOff: '#F3F4F6',
+
   // Shareable widgets
   shareableHighlight: '#ff4444',
   shareableCardBg: '#ffffff',
@@ -81,6 +85,10 @@ const darkColors = {
   // Misc
   iconDefault: '#A8A8A8',
   rowTint: 'rgba(255,255,255,0.03)', // Subtle tint for exercise rows
+
+  // Form controls — darker off-track, pale thumb for contrast on black surfaces
+  switchTrackOff: '#3A3A3C',
+  switchThumbOff: '#F5F5F5',
 
   // Shareable widgets
   shareableHighlight: '#FF5252',
