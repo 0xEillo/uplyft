@@ -330,6 +330,7 @@ export default function CreatePostScreen() {
     createExerciseWithHistory,
     createEmptySet,
     fetchSetHistory,
+    fetchExerciseHistoricalBests,
   } = useExerciseHistory()
 
   // =============================================================================
@@ -2240,6 +2241,7 @@ export default function CreatePostScreen() {
                   onFocusedInputFrame={ensureStructuredInputVisible}
                   onKeypadStateChange={handleStructuredKeypadStateChange}
                   onFetchSetHistory={fetchSetHistory}
+                  onFetchExerciseHistoricalBests={fetchExerciseHistoricalBests}
                   onExerciseNamePress={handleExerciseNamePress}
                   onReplaceExercise={handleManualReplaceExercise}
                   warmupCalculatorEnabled={warmupCalculatorEnabled}

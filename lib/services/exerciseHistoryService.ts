@@ -10,6 +10,7 @@
  * - Match by exercise name (case-insensitive) for robustness
  */
 
+import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import { supabase } from '@/lib/supabase'
 
 // =============================================================================
@@ -26,6 +27,20 @@ export interface ExerciseLastPerformance {
   exerciseName: string
   date: string
   sets: SetPerformance[]
+}
+
+/**
+ * All-time historical bests for an exercise, scanned across every logged set
+ * (warm-ups excluded). Weights are in kg (raw DB units); conversion to the
+ * user's preferred unit happens at the UI layer.
+ *
+ * Used to power live in-workout PR detection — the three categories mirror
+ * `PrService` exactly so the in-workout trophy matches the post-workout PR.
+ */
+export interface ExerciseHistoricalBests {
+  best1RMKg: number
+  maxWeightKg: number
+  maxSetVolumeKg: number
 }
 
 /** Supabase query result shape for workout sets */
@@ -60,6 +75,9 @@ interface WorkoutSessionRow {
  * - The app is restarted
  */
 const performanceCache = new Map<string, ExerciseLastPerformance | null>()
+
+/** Cache for historical-bests lookups. */
+const historicalBestsCache = new Map<string, ExerciseHistoricalBests | null>()
 
 // =============================================================================
 // PRIVATE HELPERS
@@ -260,6 +278,7 @@ export async function getLastPerformanceForExercises(
  */
 export function clearExerciseHistoryCache(): void {
   performanceCache.clear()
+  historicalBestsCache.clear()
 }
 
 /**
@@ -275,6 +294,107 @@ export function clearExerciseCacheEntry(
 ): void {
   const cacheKey = getCacheKey(userId, exerciseName)
   performanceCache.delete(cacheKey)
+  historicalBestsCache.delete(cacheKey)
+}
+
+/**
+ * Fetch the user's all-time historical bests for an exercise: best estimated
+ * 1RM, heaviest single weight, and best single-set volume. Warm-up sets are
+ * excluded (they should never count toward PRs).
+ *
+ * Mirrors the three PR categories in `PrService` so the in-workout trophy
+ * agrees with the post-workout PR badges. Cached in-memory for the session.
+ */
+export async function getHistoricalBestsForExercise(
+  userId: string,
+  exerciseName: string,
+  skipCache = false,
+): Promise<ExerciseHistoricalBests | null> {
+  const cacheKey = getCacheKey(userId, exerciseName)
+
+  if (!skipCache && historicalBestsCache.has(cacheKey)) {
+    return historicalBestsCache.get(cacheKey) ?? null
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('workout_sessions')
+      .select(
+        `
+        workout_exercises!inner (
+          exercise:exercises!inner (name),
+          sets (
+            weight,
+            reps,
+            is_warmup
+          )
+        )
+      `,
+      )
+      .eq('user_id', userId)
+      .ilike('workout_exercises.exercise.name', exerciseName.trim())
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        historicalBestsCache.set(cacheKey, null)
+        return null
+      }
+      throw error
+    }
+
+    interface BestsRow {
+      workout_exercises?: {
+        // Supabase can sometimes resolve joined single-rows as arrays; we
+        // don't read `exercise` here, but the nested sets are what we need.
+        sets?: {
+          weight: number | null
+          reps: number | null
+          is_warmup?: boolean | null
+        }[]
+      }[]
+    }
+
+    let best1RMKg = 0
+    let maxWeightKg = 0
+    let maxSetVolumeKg = 0
+
+    ;(data as unknown as BestsRow[] | null)?.forEach((session) => {
+      session.workout_exercises?.forEach((we) => {
+        we.sets?.forEach((s) => {
+          if (s.is_warmup === true) return
+          if (typeof s.weight !== 'number' || s.weight <= 0) return
+          if (typeof s.reps !== 'number' || s.reps <= 0) return
+
+          const oneRm = estimateOneRepMaxKg(s.weight, s.reps)
+          if (oneRm > best1RMKg) best1RMKg = oneRm
+
+          if (s.weight > maxWeightKg) maxWeightKg = s.weight
+
+          const volume = s.weight * s.reps
+          if (volume > maxSetVolumeKg) maxSetVolumeKg = volume
+        })
+      })
+    })
+
+    if (best1RMKg <= 0 && maxWeightKg <= 0 && maxSetVolumeKg <= 0) {
+      historicalBestsCache.set(cacheKey, null)
+      return null
+    }
+
+    const result: ExerciseHistoricalBests = {
+      best1RMKg,
+      maxWeightKg,
+      maxSetVolumeKg,
+    }
+    historicalBestsCache.set(cacheKey, result)
+    return result
+  } catch (err) {
+    console.error(
+      '[exerciseHistoryService] Error fetching historical bests:',
+      err,
+    )
+    return null
+  }
 }
 
 /**

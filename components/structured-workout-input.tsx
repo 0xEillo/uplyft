@@ -1,10 +1,12 @@
 import { type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { type ExerciseHistoricalBests } from '@/lib/services/exerciseHistoryService'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
+import { estimateOneRepMaxKg } from '@/lib/strength-progress'
 import {
     WorkoutRoutineWithDetails,
     WorkoutSessionWithDetails,
@@ -94,6 +96,7 @@ interface WorkoutSetRowProps {
   compactPreview: boolean
   inputsEnabled: boolean
   unitDisplay: string
+  isPr: boolean
   colors: ReturnType<typeof useThemedColors>
   styles: ReturnType<typeof createStyles>
   onToggleSetType: (exerciseIndex: number, setIndex: number) => void
@@ -125,6 +128,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   compactPreview,
   inputsEnabled,
   unitDisplay,
+  isPr,
   colors,
   styles,
   onToggleSetType,
@@ -167,27 +171,34 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       <View style={{ backgroundColor: colors.bg, borderRadius: 6 }}>
         <View style={[styles.setRow, set.isCompleted && styles.setRowCompleted]}>
           <View style={styles.setColSet}>
-        <LiquidGlassSurface
-          style={styles.setNumberBadge}
-          fallbackStyle={styles.setNumberBadgeFallback}
-          isInteractive
-        >
-          <TouchableOpacity
-            style={styles.setNumberBadgeTouch}
-            onPress={() => onToggleSetType(exerciseIndex, setIndex)}
-            activeOpacity={0.7}
+        <View style={styles.setNumberBadgeWrapper}>
+          <LiquidGlassSurface
+            style={styles.setNumberBadge}
+            fallbackStyle={styles.setNumberBadgeFallback}
+            isInteractive
           >
-            <Text
-              style={[
-                styles.setNumberText,
-                isWarmup && styles.warmupText,
-                isBodyWeight && styles.bodyWeightText,
-              ]}
+            <TouchableOpacity
+              style={styles.setNumberBadgeTouch}
+              onPress={() => onToggleSetType(exerciseIndex, setIndex)}
+              activeOpacity={0.7}
             >
-              {displayLabel}
-            </Text>
-          </TouchableOpacity>
-        </LiquidGlassSurface>
+              <Text
+                style={[
+                  styles.setNumberText,
+                  isWarmup && styles.warmupText,
+                  isBodyWeight && styles.bodyWeightText,
+                ]}
+              >
+                {displayLabel}
+              </Text>
+            </TouchableOpacity>
+          </LiquidGlassSurface>
+          {isPr && (
+            <View style={styles.prTrophyBadge} pointerEvents="none">
+              <Ionicons name="trophy" size={10} color="#FFD54A" />
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.setColPrev}>
@@ -466,6 +477,14 @@ interface StructuredWorkoutInputProps {
     setNumber: number,
   ) => Promise<{ weight: string | null; reps: string | null } | null>
   /**
+   * Callback to fetch the user's all-time historical bests for an exercise.
+   * Used to award a PR trophy on completed sets that beat an all-time record.
+   * Weights in the returned data are in kg; component converts as needed.
+   */
+  onFetchExerciseHistoricalBests?: (
+    exerciseName: string,
+  ) => Promise<ExerciseHistoricalBests | null>
+  /**
    * Callback when an exercise name is pressed.
    * Parent can use this to navigate to exercise details if it exists in the database.
    */
@@ -489,6 +508,7 @@ export function StructuredWorkoutInput({
   onFocusedInputFrame,
   onKeypadStateChange,
   onFetchSetHistory,
+  onFetchExerciseHistoricalBests,
   onExerciseNamePress,
   onReplaceExercise,
   warmupCalculatorEnabled = false,
@@ -521,7 +541,7 @@ export function StructuredWorkoutInput({
   }, [])
 
   const colors = useThemedColors()
-  const { weightUnit, convertToPreferred } = useWeightUnits()
+  const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
   const styles = createStyles(colors, compactPreview)
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
@@ -559,6 +579,13 @@ export function StructuredWorkoutInput({
 
   // Exercise GIF lookup cache (exercise id -> gifUrl) for display
   const [exerciseGifUrls, setExerciseGifUrls] = useState<Record<string, string | null>>({})
+
+  // All-time historical bests keyed by lowercased exercise name. `null`
+  // means "queried, no history" so we don't re-fetch; `undefined` means
+  // "not yet queried".
+  const [historicalBests, setHistoricalBests] = useState<
+    Record<string, ExerciseHistoricalBests | null>
+  >({})
 
   // Get the display unit text (kg or lbs)
   const unitDisplay = weightUnit === 'kg' ? 'kg' : 'lbs'
@@ -657,6 +684,51 @@ export function StructuredWorkoutInput({
       cancelled = true
     }
   }, [exercises])
+
+  // Fetch historical bests for every exercise we haven't queried yet.
+  // Feeds live PR detection on completed sets.
+  useEffect(() => {
+    if (!onFetchExerciseHistoricalBests || compactPreview) return
+    let cancelled = false
+
+    const namesToFetch = Array.from(
+      new Set(
+        exercises
+          .map((ex) => ex.name.trim())
+          .filter((name) => name.length > 0)
+          .filter((name) => !(name.toLowerCase() in historicalBests)),
+      ),
+    )
+    if (namesToFetch.length === 0) return
+
+    void Promise.all(
+      namesToFetch.map(async (name) => {
+        try {
+          const bests = await onFetchExerciseHistoricalBests(name)
+          return { key: name.toLowerCase(), value: bests }
+        } catch {
+          return { key: name.toLowerCase(), value: null }
+        }
+      }),
+    ).then((results) => {
+      if (cancelled) return
+      setHistoricalBests((prev) => {
+        const next = { ...prev }
+        for (const { key, value } of results) {
+          next[key] = value
+        }
+        return next
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+    // historicalBests intentionally omitted: we derive the "need to fetch"
+    // set synchronously from the latest value, and only want to re-run when
+    // the exercise list itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercises, onFetchExerciseHistoricalBests, compactPreview])
 
   const commitExercises = useCallback(
     (nextExercises: ExerciseData[]) => {
@@ -1807,6 +1879,56 @@ export function StructuredWorkoutInput({
                   </View>
                 )}
                 {(() => {
+                  // Compute which completed working set(s) in this exercise
+                  // produce an all-time PR vs historical bests. We pick the
+                  // single best set within this session for each of the 3
+                  // categories (heaviest weight / best 1RM / best set volume)
+                  // and award the trophy only to those sets — matching the
+                  // behavior of PrService on the server so in-workout trophies
+                  // agree with post-workout PR badges.
+                  const prSetIndices = new Set<number>()
+                  const bests = historicalBests[exercise.name.trim().toLowerCase()]
+                  if (bests && !compactPreview) {
+                    type Candidate = { index: number; value: number }
+                    let bestWeightSet: Candidate | null = null
+                    let bestOneRmSet: Candidate | null = null
+                    let bestVolumeSet: Candidate | null = null
+
+                    exercise.sets.forEach((s, idx) => {
+                      if (!s.isCompleted) return
+                      if (s.isWarmup || s.isBodyWeight) return
+                      const w = convertInputToKg(parseFloat(s.weight.replace(',', '.')))
+                      const r = parseInt(s.reps, 10)
+                      if (w === null || !Number.isFinite(w) || w <= 0) return
+                      if (!Number.isFinite(r) || r <= 0) return
+
+                      if (!bestWeightSet || w > bestWeightSet.value) {
+                        bestWeightSet = { index: idx, value: w }
+                      }
+                      const oneRm = estimateOneRepMaxKg(w, r)
+                      if (!bestOneRmSet || oneRm > bestOneRmSet.value) {
+                        bestOneRmSet = { index: idx, value: oneRm }
+                      }
+                      const volume = w * r
+                      if (!bestVolumeSet || volume > bestVolumeSet.value) {
+                        bestVolumeSet = { index: idx, value: volume }
+                      }
+                    })
+
+                    const weightBest = bestWeightSet as Candidate | null
+                    const oneRmBest = bestOneRmSet as Candidate | null
+                    const volumeBest = bestVolumeSet as Candidate | null
+                    if (weightBest && weightBest.value > bests.maxWeightKg) {
+                      prSetIndices.add(weightBest.index)
+                    }
+                    if (oneRmBest && oneRmBest.value > bests.best1RMKg) {
+                      prSetIndices.add(oneRmBest.index)
+                    }
+                    if (volumeBest && volumeBest.value > bests.maxSetVolumeKg) {
+                      prSetIndices.add(volumeBest.index)
+                    }
+                  }
+
                   let workingSetNumber = 0
                   return exercise.sets.map((set, setIndex) => {
                     const isWarmup = set.isWarmup === true
@@ -1847,6 +1969,7 @@ export function StructuredWorkoutInput({
                         compactPreview={compactPreview ?? false}
                         inputsEnabled={inputsEnabled}
                         unitDisplay={unitDisplay}
+                        isPr={prSetIndices.has(setIndex)}
                         colors={colors}
                         styles={styles}
                         onToggleSetType={handleToggleSetType}
@@ -2056,6 +2179,25 @@ const createStyles = (
     },
     checkmarkButtonCompleted: {
       backgroundColor: colors.statusSuccess || '#34C759',
+    },
+    setNumberBadgeWrapper: {
+      width: compactPreview ? 24 : 28,
+      height: compactPreview ? 24 : 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    prTrophyBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -6,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: colors.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     setNumberBadge: {
       width: compactPreview ? 24 : 28,

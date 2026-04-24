@@ -25,6 +25,9 @@ ios/build/
 android/.gradle/
 android/app/build/
 *.ipa
+build-*.tar.gz
+*.tgz
+*.tar.gz
 *.o
 *.a
 *.so
@@ -38,7 +41,6 @@ android/app/build/
 
 # Git
 .git/
-.gitignore
 
 # Logs
 logs/

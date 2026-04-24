@@ -3,6 +3,8 @@ import { useCallback } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
+    ExerciseHistoricalBests,
+    getHistoricalBestsForExercise,
     getLastPerformanceForExercise,
     getSetPerformance,
     SetPerformance,
@@ -157,10 +159,31 @@ export function useExerciseHistory() {
     [user?.id, formatSetHistoryForDisplay],
   )
 
+  /**
+   * Fetch the user's all-time historical bests for an exercise (best 1RM,
+   * heaviest weight, best set volume). Used in live workout entry to award
+   * a PR trophy the instant a completed set beats an all-time record.
+   *
+   * Weights are returned in kg; UI converts at render time as needed.
+   */
+  const fetchExerciseHistoricalBests = useCallback(
+    async (exerciseName: string): Promise<ExerciseHistoricalBests | null> => {
+      if (!user?.id) return null
+      try {
+        return await getHistoricalBestsForExercise(user.id, exerciseName)
+      } catch (error) {
+        console.error('[fetchExerciseHistoricalBests] Error:', error)
+        return null
+      }
+    },
+    [user?.id],
+  )
+
   return {
     createExerciseWithHistory,
     createEmptySet,
     fetchSetHistory,
+    fetchExerciseHistoricalBests,
     formatSetHistoryForDisplay,
   }
 }
