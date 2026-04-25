@@ -54,11 +54,11 @@ export function LogMeasuresModal({
     if (isSaving) return
     setIsSaving(true)
     try {
-      const weightNum = weight ? parseFloat(weight) : undefined
-      const bfNum = bodyFat ? parseFloat(bodyFat) : undefined
+      const weightNum = weight ? parseFloat(weight.replace(',', '.')) : undefined
+      const bfNum = bodyFat ? parseFloat(bodyFat.replace(',', '.')) : undefined
       
       const weightKg = weightNum
-        ? weightUnit === 'lbs'
+        ? weightUnit === 'lb'
           ? weightNum / 2.20462
           : weightNum
         : undefined
