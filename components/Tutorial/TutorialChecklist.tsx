@@ -233,16 +233,28 @@ export const TutorialChecklist = memo(
 
     const handleStepPress = useCallback(
       (step: TutorialStep) => {
-        if (step.route) {
-          // Tab routes need TabActions.jumpTo instead of router.push
-          // to avoid glitching the native tab bar
-          if (step.route.startsWith('/(tabs)/')) {
-            const tabName = step.route.replace('/(tabs)/', '')
+        if (!step.route) return
+
+        if (step.route.startsWith('/(tabs)/')) {
+          const tabName = step.route.replace('/(tabs)/', '')
+          // When the checklist is rendered inside a tab screen (e.g. home tab),
+          // useNavigation() returns the tab navigator and TabActions.jumpTo
+          // avoids glitching the native tab bar. When rendered on a stack
+          // screen above the tabs (e.g. /tutorial), the dispatch is a no-op,
+          // so we fall back to router.replace to swap the current screen for
+          // the tab route.
+          const navState = navigation.getState?.()
+          const isInTabNavigator = navState?.type === 'tab'
+
+          if (isInTabNavigator) {
             navigation.dispatch(TabActions.jumpTo(tabName))
           } else {
-            router.push(step.route as any)
+            router.replace(step.route as any)
           }
+          return
         }
+
+        router.push(step.route as any)
       },
       [router, navigation],
     )

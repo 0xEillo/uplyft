@@ -25,6 +25,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useTutorial } from '@/contexts/tutorial-context'
+import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -563,6 +564,14 @@ export interface WorkoutContext {
   exercises: WorkoutContextExercise[]
   stats?: WorkoutContextStats
   prs?: WorkoutContextPr[]
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function getPersistedWorkoutSessionId(sessionId?: string): string | undefined {
+  const trimmed = sessionId?.trim()
+  return trimmed && UUID_PATTERN.test(trimmed) ? trimmed : undefined
 }
 
 // Custom suggestions config
@@ -1375,6 +1384,7 @@ export function WorkoutChat({
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isProMember } = useSubscription()
   const { canUseTrial, consumeTrial, completeStep } = useTutorial()
+  const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { trackEvent } = useAnalytics()
   const themedColors = useThemedColors()
   const colors = useMemo(
@@ -3010,7 +3020,9 @@ export function WorkoutChat({
         // Include current workout context so AI knows what workout is in progress
         workoutContext: effectiveWorkoutContext
           ? {
-              sessionId: effectiveWorkoutContext.sessionId,
+              sessionId: getPersistedWorkoutSessionId(
+                effectiveWorkoutContext.sessionId,
+              ),
               mode: effectiveWorkoutContext.mode,
               title: effectiveWorkoutContext.title,
               notes: effectiveWorkoutContext.notes,
@@ -3755,108 +3767,129 @@ export function WorkoutChat({
       return
     }
 
-    setIsLoading(true)
-    haptic('medium')
+    const runStart = async () => {
+      setIsLoading(true)
+      haptic('medium')
 
-    try {
-      let workoutData
+      try {
+        let workoutData
 
-      if (parsedWorkout) {
-        // Use parsed JSON directly without calling AI again
-        workoutData = {
-          title: parsedWorkout.title,
-          description: parsedWorkout.description,
-          exercises: parsedWorkout.exercises.map((ex) => ({
-            name: ex.name,
-            sets: ex.sets.map((s) => {
-              // Parse reps range string to min/max
-              let repsMin: number | undefined
-              let repsMax: number | undefined
-              const rangeMatch = s.reps.match(/(\d+)[-–](\d+)/)
-              if (rangeMatch) {
-                repsMin = parseInt(rangeMatch[1])
-                repsMax = parseInt(rangeMatch[2])
-              } else {
-                const singleRep = parseInt(s.reps)
-                if (!isNaN(singleRep)) {
-                  repsMin = singleRep
-                  repsMax = singleRep
+        if (parsedWorkout) {
+          // Use parsed JSON directly without calling AI again
+          workoutData = {
+            title: parsedWorkout.title,
+            description: parsedWorkout.description,
+            exercises: parsedWorkout.exercises.map((ex) => ({
+              name: ex.name,
+              sets: ex.sets.map((s) => {
+                // Parse reps range string to min/max
+                let repsMin: number | undefined
+                let repsMax: number | undefined
+                const rangeMatch = s.reps.match(/(\d+)[-–](\d+)/)
+                if (rangeMatch) {
+                  repsMin = parseInt(rangeMatch[1])
+                  repsMax = parseInt(rangeMatch[2])
+                } else {
+                  const singleRep = parseInt(s.reps)
+                  if (!isNaN(singleRep)) {
+                    repsMin = singleRep
+                    repsMax = singleRep
+                  }
                 }
-              }
 
-              return {
-                type: s.type,
-                reps: s.reps,
-                weight: s.weight,
-                repsMin,
-                repsMax,
-                restSeconds: s.rest,
-              }
-            }),
-          })),
+                return {
+                  type: s.type,
+                  reps: s.reps,
+                  weight: s.weight,
+                  repsMin,
+                  repsMax,
+                  restSeconds: s.rest,
+                }
+              }),
+            })),
+          }
+        } else {
+          // Fallback to text conversion
+          workoutData = await convertAiPlanToWorkout({
+            text: lastAssistantMessage.content,
+            userId: user?.id,
+            weightUnit,
+            token: session?.access_token,
+          })
         }
-      } else {
-        // Fallback to text conversion
-        workoutData = await convertAiPlanToWorkout({
-          text: lastAssistantMessage.content,
-          userId: user?.id,
-          weightUnit,
-          token: session?.access_token,
+
+        // Convert to StructuredExerciseDraft format
+        const generateId = () =>
+          Date.now().toString(36) + Math.random().toString(36).substr(2)
+
+        type WorkoutExercise = AiWorkoutConversionResult['exercises'][number]
+        type WorkoutSet = WorkoutExercise['sets'][number] & {
+          restSeconds?: number
+          type?: 'warmup' | 'working'
+        }
+
+        const structuredData = workoutData.exercises.map(
+          (ex: WorkoutExercise) => ({
+            id: generateId(),
+            name: ex.name,
+            sets: ex.sets.map((s: WorkoutSet) => ({
+              weight: s.weight || '',
+              reps: '', // Actual reps should be empty for user to fill
+              isWarmup: s.type === 'warmup',
+              lastWorkoutWeight: null,
+              lastWorkoutReps: null,
+              targetRepsMin: s.repsMin || null,
+              targetRepsMax: s.repsMax || null,
+              targetRestSeconds: s.restSeconds || null,
+            })),
+          }),
+        )
+
+        // Seed the in-memory workout composer so create-post prefills with
+        // these exercises. saveDraft alone only writes the legacy snapshot,
+        // which the composer ignores after initial hydration.
+        seedRoutine({
+          title: workoutData.title || 'AI Generated Workout',
+          structuredData,
+          selectedRoutineId: null,
+          routineSource: null,
         })
+
+        // Close the sheet first (if in sheet mode)
+        onClose?.()
+
+        // Navigate to create-post
+        router.push('/(tabs)/create-post')
+      } catch (error) {
+        console.error('Error starting workout:', error)
+        Alert.alert(
+          'Error',
+          'Failed to create workout from chat. Please try again.',
+        )
+      } finally {
+        setIsLoading(false)
       }
-
-      // Convert to StructuredExerciseDraft format
-      const generateId = () =>
-        Date.now().toString(36) + Math.random().toString(36).substr(2)
-
-      type WorkoutExercise = AiWorkoutConversionResult['exercises'][number]
-      type WorkoutSet = WorkoutExercise['sets'][number] & {
-        restSeconds?: number
-        type?: 'warmup' | 'working'
-      }
-
-      const structuredData = workoutData.exercises.map(
-        (ex: WorkoutExercise) => ({
-          id: generateId(),
-          name: ex.name,
-          sets: ex.sets.map((s: WorkoutSet) => ({
-            weight: s.weight || '',
-            reps: '', // Actual reps should be empty for user to fill
-            isWarmup: s.type === 'warmup',
-            lastWorkoutWeight: null,
-            lastWorkoutReps: null,
-            targetRepsMin: s.repsMin || null,
-            targetRepsMax: s.repsMax || null,
-            targetRestSeconds: s.restSeconds || null,
-          })),
-        }),
-      )
-
-      // Save draft
-      await saveDraft({
-        title: workoutData.title || 'AI Generated Workout',
-        notes: '', // Don't prefill notes with AI description
-        structuredData,
-        isStructuredMode: true,
-      })
-
-      // Close the sheet first (if in sheet mode)
-      onClose?.()
-
-      // Navigate to create-post
-      router.push({
-        pathname: '/(tabs)/create-post',
-        params: { refresh: Date.now().toString() },
-      })
-    } catch (error) {
-      console.error('Error starting workout:', error)
-      Alert.alert(
-        'Error',
-        'Failed to create workout from chat. Please try again.',
-      )
-    } finally {
-      setIsLoading(false)
     }
+
+    if (hasActiveSession) {
+      Alert.alert(
+        'Existing Workout',
+        'Starting this workout will clear your current workout in progress. Do you want to continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue',
+            style: 'destructive',
+            onPress: () => {
+              void runStart()
+            },
+          },
+        ],
+      )
+      return
+    }
+
+    await runStart()
   }
 
   const handleSaveRoutine = async () => {

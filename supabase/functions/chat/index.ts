@@ -5,6 +5,7 @@ import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { generateText, streamText, tool } from 'npm:ai'
 import { trimChatMessagesForRequest } from '../../../lib/ai/chat-history.ts'
 import {
+  GEMINI_FLASH_LATEST_MODEL,
   GEMINI_FALLBACK_MODEL,
   GEMINI_MODEL,
   openrouter,
@@ -49,6 +50,13 @@ const messagesSchema = z.object({
 
 type Message = z.infer<typeof messagesSchema>
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function isUuid(value: string | undefined): value is string {
+  return Boolean(value && UUID_PATTERN.test(value))
+}
+
 const imageSchema = z.object({
   type: z.literal('image_url'),
   image_url: z.object({
@@ -70,7 +78,7 @@ type ChatImagePart =
 
 const workoutContextSchema = z
   .object({
-    sessionId: z.string().uuid().optional(),
+    sessionId: z.string().optional(),
     mode: z.enum(['planning', 'analysis']).optional(),
     title: z.string().optional(),
     notes: z.string().optional(),
@@ -209,7 +217,7 @@ type BodyLogRecord = {
   file_path?: string | null
 }
 
-const STABLE_TEXT_CHAT_MODEL = GEMINI_FALLBACK_MODEL
+const STABLE_TEXT_CHAT_MODEL = GEMINI_FLASH_LATEST_MODEL
 const TEXT_CHAT_FALLBACK_LABEL = 'openai:gpt-4o'
 
 function createCorrelationId(): string {
@@ -247,6 +255,45 @@ function getChatExecutionConfig(options: {
     modelLabel: `openrouter:${STABLE_TEXT_CHAT_MODEL}`,
     fallbackModel: openai('gpt-4o'),
     fallbackLabel: TEXT_CHAT_FALLBACK_LABEL,
+  }
+}
+
+function summarizeAiError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return { error }
+  }
+
+  const retryError = error as Error & {
+    reason?: unknown
+    lastError?: unknown
+    errors?: unknown[]
+  }
+  const nestedError =
+    retryError.lastError ??
+    retryError.errors?.[retryError.errors.length - 1] ??
+    error
+  const apiError = nestedError as Error & {
+    statusCode?: unknown
+    isRetryable?: unknown
+    data?: {
+      error?: {
+        code?: unknown
+        metadata?: {
+          provider_name?: unknown
+          raw?: unknown
+        }
+      }
+    }
+  }
+
+  return {
+    name: error.name,
+    reason: retryError.reason,
+    statusCode: apiError.statusCode,
+    isRetryable: apiError.isRetryable,
+    provider: apiError.data?.error?.metadata?.provider_name,
+    providerCode: apiError.data?.error?.code,
+    providerMessage: apiError.data?.error?.metadata?.raw ?? error.message,
   }
 }
 
@@ -349,15 +396,18 @@ serve(async (req) => {
     // GPT-4o for other image messages, stable Gemini for text-only.
     const isFoodLabelScan = payload.scanMode === 'food_label'
     const hasImages = Boolean(payload.images && payload.images.length > 0)
-    const prefersNoStream = req.headers.get('x-no-stream') === '1'
+    const requestedNoStream = req.headers.get('x-no-stream') === '1'
     const chatExecution = getChatExecutionConfig({
       hasImages,
       isFoodLabelScan,
     })
+    const prefersNoStream =
+      requestedNoStream || Boolean(chatExecution.fallbackModel)
     console.log(`[chat-edge][${correlationId}] Model selected:`, {
       model: chatExecution.modelLabel,
       fallbackModel: chatExecution.fallbackLabel ?? null,
       prefersNoStream,
+      requestedNoStream,
     })
 
     const latestUserMessage = [...trimmedMessages]
@@ -404,14 +454,18 @@ serve(async (req) => {
           },
         })
       } catch (primaryError) {
-        console.error(
-          `[chat-edge][${correlationId}] Primary generateText failed:`,
-          primaryError,
-        )
-
         if (!chatExecution.fallbackModel || !chatExecution.fallbackLabel) {
+          console.error(
+            `[chat-edge][${correlationId}] Primary generateText failed with no fallback:`,
+            summarizeAiError(primaryError),
+          )
           throw primaryError
         }
+
+        console.warn(
+          `[chat-edge][${correlationId}] Primary generateText failed; trying fallback:`,
+          summarizeAiError(primaryError),
+        )
 
         const fallbackResult = await generateText({
           model: chatExecution.fallbackModel,
@@ -2435,7 +2489,7 @@ CONVERSATIONAL RULES (HIGHEST PRIORITY):
     'When data is available, make recommendations concrete: name the lift, muscle group, nutrition target, recovery issue, or cadence issue that matters most, and say what to do next.',
     'Use the recent training-pattern context to judge how the user actually trains: exercise count, working sets, rep ranges, and per-muscle session volume. This is especially important for advice about too much volume, too little volume, poor exercise selection, or inappropriate rep ranges.',
     'If the user asks about their current training, recent workouts, recent exercise choices, whether their split/program makes sense, why a lift is or is not moving, or wants feedback on what they have been doing lately, use getWorkoutSlice.',
-    'If the current workout context includes a sessionId and the user is asking for workout analysis or feedback on the workout they just logged, call getWorkoutAnalysisSnapshot first.',
+    'If the current workout context includes a persisted workout session UUID and the user is asking for workout analysis or feedback on the workout they just logged, call getWorkoutAnalysisSnapshot first.',
     'Use getWorkoutSessionById only as a fallback or if you specifically need the raw session after inspecting the workout-analysis snapshot.',
     'For post-workout analysis of the just-finished session, combine getWorkoutAnalysisSnapshot with getPersonalRecords or getStrengthProgress only when that adds meaningful exercise-specific detail.',
     'If the user asks how to train better, whether they are doing too many exercises or sets, whether their rep ranges make sense, whether they are overdoing a muscle group like chest, or how their programming structure looks, call getTrainingPatterns.',
@@ -2564,7 +2618,7 @@ function buildWorkoutInProgressSection(
     lines.push('Context Mode: Workout planning or in-progress editing.')
   }
 
-  if (workoutContext.sessionId) {
+  if (isUuid(workoutContext.sessionId)) {
     lines.push(`Session ID: ${workoutContext.sessionId}`)
   }
 
