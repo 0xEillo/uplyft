@@ -262,6 +262,11 @@ export interface WorkoutSessionWithDetails extends WorkoutSession {
     id: string
     name: string
   }
+  feed_preview?: {
+    totalExerciseCount: number
+    totalSetCount: number
+    totalVolumeKg: number
+  }
   isPending?: boolean // Flag for placeholder workouts being processed
   profile?: Profile // Profile of the user who created the workout (for social feed)
 }

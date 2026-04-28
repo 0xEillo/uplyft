@@ -124,6 +124,25 @@ type RoutineWithNullableExerciseRelations = {
   }[] | null
 }
 
+export interface WeeklyProgressStatsRow {
+  period: 'current' | 'previous'
+  workout_count: number
+  duration_seconds: number
+  volume_kg: number
+}
+
+type SocialFeedPreviewRow = Omit<
+  FeedWorkout,
+  'date' | 'created_at' | 'workout_exercises'
+> & {
+  date: string
+  created_at: string
+  workout_exercises: unknown
+  profile: Profile | null
+  social: FeedWorkout['social']
+  feed_preview: FeedWorkout['feed_preview']
+}
+
 // Body log entry from Supabase before transformation
 type BodyLogEntryQueryResult = {
   id: string
@@ -515,38 +534,6 @@ const hydrateMissingWorkoutExerciseRelations = async <
 
   return workouts
 }
-
-const SOCIAL_FEED_WORKOUT_SELECT = `
-  id,
-  user_id,
-  date,
-  raw_text,
-  notes,
-  type,
-  image_url,
-  song,
-  routine_id,
-  duration,
-  record_count,
-  created_at,
-  routine:workout_routines (id, name),
-  workout_exercises!inner (
-    id,
-    exercise_id,
-    order_index,
-    exercise:exercises (
-      id,
-      name,
-      created_by,
-      gif_url
-    ),
-    sets!inner (
-      reps,
-      weight,
-      is_warmup
-    )
-  )
-`
 
 const hydrateMissingWorkoutRoutineExerciseRelations = async <
   T extends RoutineWithNullableExerciseRelations,
@@ -2164,80 +2151,39 @@ export const database = {
     },
 
     async getSocialFeed(userId: string, limit = 10, offset = 0) {
-      // First, get the list of users whose workouts we want to see:
-      // 1. The authenticated user
-      // 2. Users they follow
-      const { data: followData, error: followError } = await supabase
-        .from('follows')
-        .select('followee_id')
-        .eq('follower_id', userId)
-
-      if (followError) throw followError
-
-      // Build array of user IDs to fetch workouts from
-      const followeeIds = followData?.map((f) => f.followee_id) || []
-      const authorIds = [userId, ...followeeIds]
-
-      // Fetch workouts from all these users
-      const { data: workouts, error } = await supabase
-        .from('workout_sessions')
-        .select(SOCIAL_FEED_WORKOUT_SELECT)
-        .in('user_id', authorIds)
-        .eq('is_processing', false)
-        .order('created_at', { ascending: false })
-        .order('date', { ascending: false })
-        .range(offset, offset + limit - 1)
+      const { data, error } = await supabase.rpc('get_social_feed_preview', {
+        p_user_id: userId,
+        p_limit: limit,
+        p_offset: offset,
+      })
 
       if (error) {
         throwIfPrivacyViolation(error)
       }
-      if (!workouts || workouts.length === 0) {
+      if (!data || data.length === 0) {
         return []
       }
 
-      const typedWorkouts =
-        workouts as unknown as WorkoutSessionWithDetails[]
-
-      await hydrateMissingWorkoutExerciseRelations(typedWorkouts)
-
-      const uniqueUserIds = [...new Set(typedWorkouts.map((w) => w.user_id))]
-      const workoutIds = typedWorkouts.map((workout) => workout.id)
-
-      const [
-        profilesResult,
-        socialStats,
-        likedWorkoutIds,
-      ] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select(PROFILE_FEED_SELECT)
-          .in('id', uniqueUserIds),
-        database.workoutSocial.getStatsForWorkouts(workoutIds),
-        database.workoutLikes.getLikedWorkoutIds(workoutIds, userId),
-      ])
-
-      if (profilesResult.error) throw profilesResult.error
-
-      const profileMap = new Map(
-        (profilesResult.data || []).map((profile) => [profile.id, profile]),
-      )
-      const socialStatsMap = new Map(
-        socialStats.map((stat) => [stat.workout_id, stat]),
-      )
-      const likedWorkoutIdSet = new Set(likedWorkoutIds)
-
-      return typedWorkouts.map((workout) => {
-        const social = socialStatsMap.get(workout.id)
-        return {
-          ...workout,
-          profile: profileMap.get(workout.user_id),
-          social: {
-            likeCount: social?.like_count ?? 0,
-            commentCount: social?.comment_count ?? 0,
-            isLiked: likedWorkoutIdSet.has(workout.id),
-          },
-        }
-      }) as FeedWorkout[]
+      return (data as unknown as SocialFeedPreviewRow[]).map((workout) => ({
+        ...workout,
+        workout_exercises: Array.isArray(workout.workout_exercises)
+          ? workout.workout_exercises
+          : [],
+        profile: workout.profile ?? undefined,
+        feed_preview: workout.feed_preview
+          ? {
+              totalExerciseCount:
+                Number(workout.feed_preview.totalExerciseCount) || 0,
+              totalSetCount: Number(workout.feed_preview.totalSetCount) || 0,
+              totalVolumeKg: Number(workout.feed_preview.totalVolumeKg) || 0,
+            }
+          : undefined,
+        social: {
+          likeCount: Number(workout.social?.likeCount) || 0,
+          commentCount: Number(workout.social?.commentCount) || 0,
+          isLiked: Boolean(workout.social?.isLiked),
+        },
+      })) as FeedWorkout[]
     },
 
     async getWorkoutsByDateRange(userId: string, startDate: Date, endDate: Date) {
@@ -2271,6 +2217,28 @@ export const database = {
       await hydrateMissingWorkoutExerciseRelations(data)
 
       return data as WorkoutSessionWithDetails[]
+    },
+
+    async getWeeklyProgressStats(
+      userId: string,
+      previousWeekStart: Date,
+      currentWeekStart: Date,
+      endDate: Date,
+    ): Promise<WeeklyProgressStatsRow[]> {
+      const { data, error } = await supabase.rpc('get_weekly_progress_stats', {
+        p_user_id: userId,
+        p_previous_week_start: previousWeekStart.toISOString(),
+        p_current_week_start: currentWeekStart.toISOString(),
+        p_end: endDate.toISOString(),
+      })
+
+      if (error) throw error
+      return ((data || []) as WeeklyProgressStatsRow[]).map((row) => ({
+        period: row.period,
+        workout_count: Number(row.workout_count) || 0,
+        duration_seconds: Number(row.duration_seconds) || 0,
+        volume_kg: Number(row.volume_kg) || 0,
+      }))
     },
 
     async getThisWeekCount(userId: string, startOfWeek: Date) {

@@ -1201,8 +1201,11 @@ export default function FeedScreen() {
       </BlurredHeader>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.brandPrimary} />
+        <View style={[styles.loadingContent, { paddingTop: headerTotalHeight }]}>
+          <WeeklySnapshot refreshToken={userWorkoutCount} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.brandPrimary} />
+          </View>
         </View>
       ) : (
         <FlashList<FeedItem>
@@ -1260,7 +1263,6 @@ export default function FeedScreen() {
             // 1. Tutorial is dismissed/loading OR we're offline, AND
             // 2. Feed is not loading
             (isTutorialDismissed || isTutorialLoading || isOffline) &&
-            !isLoading &&
             feedItems.length === 0 ? (
               isOffline ? (
                 <EmptyState
@@ -1390,6 +1392,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     feed: {
       paddingTop: 2,
       paddingBottom: 90,
+    },
+    loadingContent: {
+      flex: 1,
     },
     loadingContainer: {
       flex: 1,

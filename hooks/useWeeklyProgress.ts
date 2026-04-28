@@ -1,6 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
-import { calculateWorkoutStats } from '@/lib/utils/workout-stats'
 import { LayoutAnimation } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 
@@ -60,41 +59,25 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
         const startOfLastWeek = new Date(startOfCurrentWeek)
         startOfLastWeek.setDate(startOfCurrentWeek.getDate() - 7)
 
-        // Fetch all workouts from start of last week to now
-        const workouts = await database.workoutSessions.getWorkoutsByDateRange(
+        const weeklyRows = await database.workoutSessions.getWeeklyProgressStats(
           activeUserId,
           startOfLastWeek,
+          startOfCurrentWeek,
           now,
         )
 
-        // Split workouts into current and previous week
-        const currentWeekWorkouts = workouts.filter((w) => {
-          const wDate = new Date(w.date)
-          return wDate >= startOfCurrentWeek
-        })
-
-        const previousWeekWorkouts = workouts.filter((w) => {
-          const wDate = new Date(w.date)
-          return wDate >= startOfLastWeek && wDate < startOfCurrentWeek
-        })
-
-        // Calculate stats for current week
-        let currentDuration = 0
-        let currentVolume = 0
-        currentWeekWorkouts.forEach((w) => {
-          const wStats = calculateWorkoutStats(w, 'kg')
-          currentDuration += wStats.durationSeconds
-          currentVolume += wStats.totalVolume
-        })
-
-        // Calculate stats for previous week
-        let previousDuration = 0
-        let previousVolume = 0
-        previousWeekWorkouts.forEach((w) => {
-          const wStats = calculateWorkoutStats(w, 'kg')
-          previousDuration += wStats.durationSeconds
-          previousVolume += wStats.totalVolume
-        })
+        const currentWeekStats = weeklyRows.find(
+          (row) => row.period === 'current',
+        )
+        const previousWeekStats = weeklyRows.find(
+          (row) => row.period === 'previous',
+        )
+        const currentWorkouts = currentWeekStats?.workout_count ?? 0
+        const previousWorkouts = previousWeekStats?.workout_count ?? 0
+        const currentDuration = currentWeekStats?.duration_seconds ?? 0
+        const previousDuration = previousWeekStats?.duration_seconds ?? 0
+        const currentVolume = currentWeekStats?.volume_kg ?? 0
+        const previousVolume = previousWeekStats?.volume_kg ?? 0
 
         if (!isActive || requestId !== requestIdRef.current) {
           return
@@ -106,9 +89,9 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
 
         setStats({
           workouts: {
-            current: currentWeekWorkouts.length,
-            previous: previousWeekWorkouts.length,
-            diff: currentWeekWorkouts.length - previousWeekWorkouts.length,
+            current: currentWorkouts,
+            previous: previousWorkouts,
+            diff: currentWorkouts - previousWorkouts,
           },
           durationSeconds: {
             current: currentDuration,

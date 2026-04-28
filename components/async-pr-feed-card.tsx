@@ -272,11 +272,13 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
 
   const totalSetCount = useMemo(
     () =>
+      workout.feed_preview?.totalSetCount ??
       workout.workout_exercises?.reduce(
         (sum, exercise) => sum + (exercise.sets?.length || 0),
         0,
-      ) || 0,
-    [workout],
+      ) ??
+      0,
+    [workout.feed_preview?.totalSetCount, workout.workout_exercises],
   )
 
   const feedStats = useMemo(
@@ -285,9 +287,11 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       records:
         typeof workout.record_count === 'number' ? workout.record_count : 0,
       durationSeconds: workout.duration ?? undefined,
-      volume: calculateTotalVolume(workout, 'kg'),
+      volume:
+        workout.feed_preview?.totalVolumeKg ??
+        calculateTotalVolume(workout, 'kg'),
     }),
-    [totalSetCount, workout.duration, workout.record_count, workout],
+    [totalSetCount, workout],
   )
 
   const handleUserPress = useCallback(() => {
@@ -490,7 +494,11 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       }
       workoutSong={workout.song ?? null}
       exercises={exercises}
-      totalExerciseCount={workout.workout_exercises?.length || 0}
+      totalExerciseCount={
+        workout.feed_preview?.totalExerciseCount ||
+        workout.workout_exercises?.length ||
+        0
+      }
       stats={feedStats}
       userId={workout.user_id}
       workoutId={workout.id}
