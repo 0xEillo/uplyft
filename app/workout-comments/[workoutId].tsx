@@ -747,62 +747,64 @@ export default function WorkoutCommentsScreen() {
               styles.inputContainer,
               {
                 paddingBottom: isKeyboardVisible
-                  ? 6
+                  ? 20
                   : Math.max(insets.bottom, 14),
               },
             ]}
           >
             <View style={styles.inputWrapper}>
-              <LiquidGlassSurface
-                style={styles.textInputGlass}
-                debugLabel="comments-input"
-              >
-                <View style={styles.textInputContainer}>
-                  <View style={styles.inputInnerWrapper}>
-                    <TextInput
-                      ref={inputRef}
-                      style={styles.inputField}
-                      value={commentText}
-                      onChangeText={handleCommentTextChange}
-                      placeholder="Add a comment..."
-                      placeholderTextColor={colors.textPlaceholder}
-                      multiline
-                      maxLength={500}
-                      returnKeyType="send"
-                      onSubmitEditing={handlePostComment}
-                      blurOnSubmit={false}
-                      editable={!isPosting}
-                      onContentSizeChange={(event) => {
-                        const height = event.nativeEvent.contentSize.height
-                        setInputHeight(Math.min(Math.max(height, 22), 120))
-                      }}
-                      scrollEnabled={inputHeight >= 120}
-                    />
+              <View style={styles.shadowWrapper}>
+                <LiquidGlassSurface
+                  style={styles.textInputGlass}
+                  debugLabel="comments-input"
+                >
+                  <View style={styles.textInputContainer}>
+                    <View style={styles.inputInnerWrapper}>
+                      <TextInput
+                        ref={inputRef}
+                        style={styles.inputField}
+                        value={commentText}
+                        onChangeText={handleCommentTextChange}
+                        placeholder="Add a comment..."
+                        placeholderTextColor={colors.textPlaceholder}
+                        multiline
+                        maxLength={500}
+                        returnKeyType="send"
+                        onSubmitEditing={handlePostComment}
+                        blurOnSubmit={false}
+                        editable={!isPosting}
+                        onContentSizeChange={(event) => {
+                          const height = event.nativeEvent.contentSize.height
+                          setInputHeight(Math.min(Math.max(height, 22), 120))
+                        }}
+                        scrollEnabled={inputHeight >= 120}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        (!commentText.trim() || isPosting) &&
+                          styles.sendButtonDisabled,
+                      ]}
+                      onPress={handlePostComment}
+                      disabled={!commentText.trim() || isPosting}
+                    >
+                      {isPosting ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.textPlaceholder}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="arrow-up"
+                          size={17}
+                          color={colors.surface}
+                        />
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.sendButton,
-                      (!commentText.trim() || isPosting) &&
-                        styles.sendButtonDisabled,
-                    ]}
-                    onPress={handlePostComment}
-                    disabled={!commentText.trim() || isPosting}
-                  >
-                    {isPosting ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.textPlaceholder}
-                      />
-                    ) : (
-                      <Ionicons
-                        name="arrow-up"
-                        size={17}
-                        color={colors.surface}
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </LiquidGlassSurface>
+                </LiquidGlassSurface>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -938,6 +940,15 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'flex-end',
       gap: 8,
+    },
+    shadowWrapper: {
+      flex: 1,
+      borderRadius: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
     textInputGlass: {
       flex: 1,

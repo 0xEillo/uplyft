@@ -5404,9 +5404,9 @@ export function WorkoutChat({
                   paddingBottom:
                     mode === 'sheet'
                       ? Math.max(bottomSafeInset, 16) +
-                        (isKeyboardVisible ? 10 : 0)
+                        (isKeyboardVisible ? 20 : 0)
                       : isKeyboardVisible
-                      ? Math.max(bottomSafeInset, 12)
+                      ? 20
                       : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
                 },
               ]}
@@ -5453,55 +5453,60 @@ export function WorkoutChat({
               <View style={styles.inputWrapper}>
                 {/* Left button: cancel during recording or image picker otherwise */}
                 {isRecording || isTranscribing ? (
-                  <LiquidGlassSurface
-                    key={`plan-cancel-glass-${composerGlassKey}`}
-                    style={styles.addImageButtonGlass}
-                    debugLabel="plan-cancel-button"
-                  >
-                    <TouchableOpacity
-                      style={styles.addImageButton}
-                      onPress={stopRecording}
-                      disabled={isTranscribing}
-                    >
-                      <Ionicons
-                        name="square"
-                        size={14}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  </LiquidGlassSurface>
-                ) : (
-                  !hideImagePicker && (
+                  <View style={styles.addImageShadowWrapper}>
                     <LiquidGlassSurface
-                      key={`plan-image-button-glass-${composerGlassKey}`}
+                      key={`plan-cancel-glass-${composerGlassKey}`}
                       style={styles.addImageButtonGlass}
-                      debugLabel="plan-image-button"
+                      debugLabel="plan-cancel-button"
                     >
                       <TouchableOpacity
                         style={styles.addImageButton}
-                        onPress={showImagePickerActionSheet}
-                        disabled={isLoading}
+                        onPress={stopRecording}
+                        disabled={isTranscribing}
                       >
                         <Ionicons
-                          name="add"
-                          size={22}
-                          color={
-                            isLoading
-                              ? colors.textPlaceholder
-                              : colors.textPrimary
-                          }
+                          name="square"
+                          size={14}
+                          color={colors.textSecondary}
                         />
                       </TouchableOpacity>
                     </LiquidGlassSurface>
+                  </View>
+                ) : (
+                  !hideImagePicker && (
+                    <View style={styles.addImageShadowWrapper}>
+                      <LiquidGlassSurface
+                        key={`plan-image-button-glass-${composerGlassKey}`}
+                        style={styles.addImageButtonGlass}
+                        debugLabel="plan-image-button"
+                      >
+                        <TouchableOpacity
+                          style={styles.addImageButton}
+                          onPress={showImagePickerActionSheet}
+                          disabled={isLoading}
+                        >
+                          <Ionicons
+                            name="add"
+                            size={22}
+                            color={
+                              isLoading
+                                ? colors.textPlaceholder
+                                : colors.textPrimary
+                            }
+                          />
+                        </TouchableOpacity>
+                      </LiquidGlassSurface>
+                    </View>
                   )
                 )}
 
                 {/* Main input pill — always LiquidGlassSurface */}
-                <LiquidGlassSurface
-                  key={`plan-chat-input-glass-${composerGlassKey}`}
-                  style={styles.textInputGlass}
-                  debugLabel="plan-chat-input"
-                >
+                <View style={styles.shadowWrapper}>
+                  <LiquidGlassSurface
+                    key={`plan-chat-input-glass-${composerGlassKey}`}
+                    style={styles.textInputGlass}
+                    debugLabel="plan-chat-input"
+                  >
                   <View
                     style={[
                       styles.textInputContainer,
@@ -5629,6 +5634,7 @@ export function WorkoutChat({
                     )}
                   </View>
                 </LiquidGlassSurface>
+                </View>
               </View>
             </View>
 
@@ -6451,6 +6457,15 @@ function createStyles(
       alignItems: 'flex-end',
       gap: 8,
     },
+    shadowWrapper: {
+      flex: 1,
+      borderRadius: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
     textInputGlass: {
       flex: 1,
       borderRadius: 20,
@@ -6632,6 +6647,18 @@ function createStyles(
       fontSize: 13,
       fontWeight: '600',
       color: colors.textSecondary,
+    },
+    addImageShadowWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
     },
     addImageButtonGlass: {
       width: 40,
