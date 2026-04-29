@@ -15,10 +15,15 @@ import {
   type MuscleGroupData,
 } from "@/hooks/useStrengthData";
 import { useBodyDiagramGender } from "@/hooks/useBodyDiagramGender";
+import {
+  getRecoveryColorFromPercentage,
+  useRecoveryData,
+} from "@/hooks/useRecoveryData";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useWeightUnits } from "@/hooks/useWeightUnits";
 import {
   BODY_PART_TO_DATABASE_MUSCLE,
+  findBodyPartSlugForMuscle,
   getBodyPartDisplayName,
   getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
@@ -91,6 +96,7 @@ const DISPLAY_GROUP_BODY_MAPPING: Record<
 
 const MUSCLE_HIGHLIGHT_COLORS = ["#EF4444"];
 const MUSCLE_BORDER_COLOR = "#D1D5DB";
+const RECOVERY_READY_COLOR = "#10B981";
 
 type FocusGroup = "Legs" | "Back" | "Chest" | "Shoulders" | "Arms";
 
@@ -178,6 +184,7 @@ export function StrengthBodyView({
     getStrengthInfo,
     best1RMSnapshotByExerciseId,
   } = useStrengthData();
+  const { muscleRecoveryData } = useRecoveryData();
 
   const [weightGateDraft, setWeightGateDraft] = useState("");
   const [savingWeightGate, setSavingWeightGate] = useState(false);
@@ -703,6 +710,52 @@ export function StrengthBodyView({
     trackedExercisesWithProgress.length,
   ]);
 
+  const recoveringMuscles = useMemo(() => {
+    return Array.from(muscleRecoveryData.values())
+      .filter(
+        (m) => m.recoveryStatus !== "untrained" && m.recoveryPercentage < 100,
+      )
+      .sort((a, b) => a.recoveryPercentage - b.recoveryPercentage);
+  }, [muscleRecoveryData]);
+
+  const hasAnyTrainedMuscle = useMemo(() => {
+    for (const m of muscleRecoveryData.values()) {
+      if (m.recoveryStatus !== "untrained") return true;
+    }
+    return false;
+  }, [muscleRecoveryData]);
+
+  const showRecoverySection = hasAnyTrainedMuscle;
+
+  const handleRecoveryMusclePress = useCallback(
+    (muscleGroup: string) => {
+      const slug = findBodyPartSlugForMuscle(muscleGroup);
+      if (!slug) return;
+      const dbMuscleName = getPrimaryMuscleForBodyPart(slug);
+      if (!dbMuscleName) return;
+
+      const recoveryData = muscleRecoveryData.get(dbMuscleName);
+      const displayName = getBodyPartDisplayName(slug) || slug;
+
+      router.push({
+        pathname: "/recovery-detail",
+        params: {
+          muscleGroup: displayName,
+          recoveryStatus: recoveryData?.recoveryStatus || "untrained",
+          recoveryPercentage:
+            recoveryData?.recoveryPercentage?.toString() || "100",
+          hoursSinceLastWorkout:
+            recoveryData?.hoursSinceLastWorkout?.toString() || "",
+          lastWorkedDate: recoveryData?.lastWorkedDate?.toISOString() || "",
+          intensity: recoveryData?.intensity || "",
+          recoveryTimeHours:
+            recoveryData?.recoveryTimeHours?.toString() || "",
+        },
+      });
+    },
+    [muscleRecoveryData, router],
+  );
+
   const showOverallProgressDelta = useMemo(() => {
     if (!overallLevel) return false;
     const now = Date.now();
@@ -999,6 +1052,78 @@ export function StrengthBodyView({
             </View>
           </View>
         </View>
+
+        {showRecoverySection && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>Recovery</Text>
+            </View>
+
+            <View style={styles.recoveryCard}>
+              {recoveringMuscles.length > 0 ? (
+                <View style={styles.recoveryChips}>
+                  {recoveringMuscles.map((m) => {
+                    const recoveryColor = getRecoveryColorFromPercentage(
+                      m.recoveryPercentage,
+                    );
+                    const hoursLeft = Math.max(
+                      0,
+                      (m.recoveryTimeHours || 0) -
+                        (m.hoursSinceLastWorkout || 0),
+                    );
+                    const days = Math.floor(hoursLeft / 24);
+                    const hours = Math.ceil(hoursLeft % 24);
+                    const timeLeftStr =
+                      days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+
+                    return (
+                      <TouchableOpacity
+                        key={m.muscleGroup}
+                        style={[
+                          styles.recoveryChip,
+                          {
+                            borderColor: recoveryColor,
+                            backgroundColor: `${recoveryColor}1A`,
+                          },
+                        ]}
+                        onPress={() => handleRecoveryMusclePress(m.muscleGroup)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.recoveryChipText,
+                            { color: recoveryColor },
+                          ]}
+                        >
+                          {m.muscleGroup}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.recoveryChipMeta,
+                            { color: recoveryColor },
+                          ]}
+                        >
+                          {timeLeftStr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.recoveryAllReadyRow}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={16}
+                    color={RECOVERY_READY_COLOR}
+                  />
+                  <Text style={styles.recoveryAllReadyText}>
+                    Fully recovered
+                  </Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
 
         {shouldShowPrioritySection && (
           <>
@@ -1774,6 +1899,57 @@ const createStyles = (
       fontSize: 10,
       fontWeight: "700",
       letterSpacing: 0.1,
+    },
+
+    // Recovery Section
+    recoveryCard: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    recoveryAllReadyRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 4,
+    },
+    recoveryAllReadyText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: RECOVERY_READY_COLOR,
+      letterSpacing: -0.1,
+    },
+    recoveryChips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    recoveryChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    recoveryChipText: {
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: -0.1,
+    },
+    recoveryChipMeta: {
+      fontSize: 11,
+      fontWeight: "600",
+      opacity: 0.85,
+      fontVariant: ["tabular-nums"] as any,
     },
 
     // Exercise Cards Section
