@@ -289,9 +289,16 @@ export function RankCalculator() {
   )
 
   const styles = StyleSheet.create({
-    container: {
+    calculatorCard: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 16,
+      paddingHorizontal: 14,
       paddingVertical: 16,
-      backgroundColor: colors.bg,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
     },
     carouselContainer: {
       marginBottom: 16,
@@ -334,17 +341,24 @@ export function RankCalculator() {
     exerciseThumbnail: {
       width: 64,
       height: 64,
-      borderRadius: 12,
+      borderRadius: 14,
       backgroundColor: 'transparent',
     },
     getRankButton: {
-      backgroundColor: colors.surfaceCard,
+      backgroundColor: colors.bg,
       paddingVertical: 16,
+      paddingHorizontal: 14,
       borderRadius: 16,
       alignItems: 'center',
+      alignSelf: 'stretch',
     },
     getRankButtonActive: {
       backgroundColor: colors.brandPrimary,
+      shadowColor: colors.brandPrimary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
     },
     getRankButtonText: {
       fontSize: 18,
@@ -361,7 +375,7 @@ export function RankCalculator() {
     : ''
 
   return (
-    <View style={styles.container}>
+    <View style={styles.calculatorCard}>
       <View style={styles.carouselContainer}>
         <FlatList
           ref={carouselRef}

@@ -942,56 +942,49 @@ export function StrengthBodyView({
           </TouchableOpacity>
         </View>
 
-        <View
-          style={[
-            styles.heroCard,
-            { borderColor: `${priorityPointsColor}${isDark ? "55" : "66"}` },
-          ]}
-        >
-          <View
-            style={[
-              StyleSheet.absoluteFillObject,
-              { backgroundColor: `${priorityPointsColor}${isDark ? '06' : '12'}` },
-            ]}
-            pointerEvents="none"
-          />
+        <View style={styles.heroCard}>
           {/* Level header */}
           <View style={styles.heroPadded}>
             <View style={styles.heroTopRow}>
               <View style={styles.heroLevelLeft}>
-                <Text
-                  style={[
-                    styles.heroLevelName,
-                    { color: priorityPointsColor },
-                  ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {overallLevel?.balancedLevel ?? "Unranked"}
-                </Text>
-                <View style={styles.heroXpRow}>
+                <View style={styles.heroScoreBlock}>
                   <Text
                     style={[
-                      styles.heroXpCurrent,
+                      styles.heroLevelName,
                       { color: priorityPointsColor },
                     ]}
+                    numberOfLines={2}
                   >
-                    {overallLevel ? Math.round(overallLevel.score) : "—"}
+                    {overallLevel?.balancedLevel ?? "Unranked"}
                   </Text>
-                  {overallLevel?.balancedNextLevel ? (
-                    <Text style={styles.heroXpTotal}>
-                      {"  /  "}
-                      {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]} pts
+                  <View style={styles.heroXpRow}>
+                    <Text
+                      style={[
+                        styles.heroXpCurrent,
+                        { color: priorityPointsColor },
+                      ]}
+                    >
+                      {overallLevel ? Math.round(overallLevel.score) : "—"}
                     </Text>
-                  ) : (
-                    <Text style={styles.heroXpTotal}> pts</Text>
-                  )}
-                  {showOverallProgressDelta && (
-                    <Text style={styles.heroXpDelta}>
-                      {"  +"}
-                      {overallLevel!.progressDelta}
-                    </Text>
-                  )}
+                    {overallLevel?.balancedNextLevel ? (
+                      <Text style={styles.heroXpTotal}>
+                        {" / "}
+                        {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}{" "}
+                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                      </Text>
+                    ) : (
+                      <Text style={styles.heroXpTotal}>
+                        {" "}
+                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                      </Text>
+                    )}
+                    {showOverallProgressDelta && (
+                      <Text style={styles.heroXpDelta}>
+                        {"  +"}
+                        {overallLevel!.progressDelta}
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <View style={styles.heroProgressTrack}>
                   <View
@@ -1738,63 +1731,73 @@ const createStyles = (
       fontWeight: "800",
     },
 
-    // ── Hero Card (Gamified top section) ──
+    // ── Hero Card (Gamified top section) — matches recovery / priority surface
     heroCard: {
-      borderRadius: 22,
-      borderWidth: 1.5,
+      borderRadius: 16,
       overflow: "hidden",
-      backgroundColor: isDark ? "#0D0D1A" : colors.surfaceCard,
+      backgroundColor: colors.surfaceCard,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: isDark ? 10 : 4 },
-      shadowOpacity: isDark ? 0.4 : 0.08,
-      shadowRadius: isDark ? 22 : 12,
-      elevation: isDark ? 12 : 4,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
       marginBottom: 0,
     },
     heroPadded: {
-      paddingHorizontal: 18,
+      paddingHorizontal: 14,
     },
     heroTopRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      paddingTop: 16,
-      paddingBottom: 12,
+      paddingTop: 18,
+      paddingBottom: 14,
     },
     heroLevelLeft: {
       flex: 1,
+      minWidth: 0,
       paddingRight: 12,
     },
+    heroScoreBlock: {
+      marginBottom: 14,
+      gap: 6,
+    },
     heroLevelName: {
-      fontSize: 30,
-      fontWeight: "900",
-      letterSpacing: -1,
-      lineHeight: 38,
-      marginBottom: 8,
+      fontSize: 26,
+      fontWeight: "800",
+      letterSpacing: -0.65,
+      lineHeight: 30,
     },
     heroXpRow: {
       flexDirection: "row",
       alignItems: "baseline",
-      marginBottom: 10,
+      flexWrap: "wrap",
     },
     heroXpCurrent: {
-      fontSize: 19,
+      fontSize: 20,
       fontWeight: "800",
+      letterSpacing: -0.45,
       fontVariant: ["tabular-nums"] as any,
     },
     heroXpTotal: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: "600",
       color: isDark ? "rgba(255,255,255,0.38)" : colors.textSecondary,
       fontVariant: ["tabular-nums"] as any,
     },
+    heroXpTotalSuffix: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: isDark ? "rgba(255,255,255,0.38)" : colors.textSecondary,
+    },
     heroXpDelta: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
       color: "#10B981",
+      marginLeft: 4,
     },
     heroProgressTrack: {
-      height: 7,
+      height: 6,
       backgroundColor: isDark ? "rgba(255,255,255,0.1)" : colors.border,
       borderRadius: 999,
       overflow: "hidden",
@@ -1905,8 +1908,7 @@ const createStyles = (
     recoveryCard: {
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
+      padding: 14,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
@@ -1959,8 +1961,8 @@ const createStyles = (
     exerciseCard: {
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
-      padding: 16,
-      gap: 10,
+      padding: 14,
+      gap: 12,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
@@ -2041,8 +2043,7 @@ const createStyles = (
       gap: 12,
       backgroundColor: colors.surfaceCard,
       borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
+      padding: 14,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
@@ -2116,7 +2117,6 @@ const createStyles = (
       justifyContent: "center",
       marginTop: 24,
       marginBottom: 8,
-      paddingHorizontal: 14,
       gap: 12,
     },
     shareImage: {
@@ -2130,7 +2130,6 @@ const createStyles = (
       color: colors.textPrimary,
       textAlign: "center",
       letterSpacing: -0.4,
-      marginBottom: 4,
     },
     shareButton: {
       flexDirection: "row",
