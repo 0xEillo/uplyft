@@ -129,10 +129,11 @@ export default function NotificationsScreen() {
             },
           })
         } else if (
-          notification.type === 'workout_like' &&
+          (notification.type === 'workout_like' ||
+            notification.type === 'followed_workout_post') &&
           notification.workout_id
         ) {
-          // Navigate to the workout detail view for likes
+          // Navigate to the workout detail view for workout-related social updates
           router.push({
             pathname: '/workout/[workoutId]',
             params: {

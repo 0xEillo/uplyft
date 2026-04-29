@@ -26,6 +26,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 type RetentionToggleKey =
   | 'enabled'
+  | 'followed_workout_posts_enabled'
   | 'scheduled_reminders_enabled'
   | 'streak_protection_enabled'
   | 'inactivity_enabled'
@@ -177,11 +178,21 @@ export default function NotificationSettingsScreen() {
         <SettingsCard>
           <SettingsSwitchRow
             icon="notifications-outline"
-            title="Workout Reminders"
-            description="Off-app reminders to help you stay consistent"
+            title="Push Notifications"
+            description="Off-app updates for social activity and training reminders"
             value={notificationsEnabled}
             onValueChange={(v) => handleToggleRetention('enabled', v)}
             switchDisabled={toggleDisabled}
+          />
+          <SettingsSwitchRow
+            icon="people-outline"
+            title="Followed Workouts"
+            description="Push when someone you follow posts a workout"
+            value={retentionPrefs?.followed_workout_posts_enabled ?? false}
+            onValueChange={(v) =>
+              handleToggleRetention('followed_workout_posts_enabled', v)
+            }
+            switchDisabled={childToggleDisabled}
           />
           <SettingsSwitchRow
             icon="time-outline"

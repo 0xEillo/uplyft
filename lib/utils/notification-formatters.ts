@@ -59,6 +59,14 @@ export function formatNotificationText(
           ? `${firstActor} liked your comment`
           : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} liked your comment`,
     }
+  } else if (type === 'followed_workout_post') {
+    return {
+      title: 'New Workout',
+      body:
+        actorCount === 1
+          ? `${firstActor} posted a workout`
+          : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} posted workouts`,
+    }
   } else if (type === 'follow_request_received') {
     return {
       title: 'Follow Request',
@@ -136,6 +144,8 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'chatbubbles'
     case 'workout_comment_like':
       return 'heart'
+    case 'followed_workout_post':
+      return 'barbell'
     case 'follow_request_received':
       return 'person-add'
     case 'follow_request_approved':

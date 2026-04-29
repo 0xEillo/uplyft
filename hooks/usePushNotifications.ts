@@ -96,7 +96,10 @@ export function usePushNotifications() {
               returnTo: lastPathnameRef.current,
             },
           } as any)
-        } else if (type === 'workout_like' && workoutId) {
+        } else if (
+          (type === 'workout_like' || type === 'followed_workout_post') &&
+          workoutId
+        ) {
           router.push(buildWorkoutHref(workoutId) as any)
         } else if (type === 'trial_reminder') {
           router.push('/(tabs)/profile')

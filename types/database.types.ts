@@ -60,6 +60,7 @@ export interface Profile {
 export interface RetentionPushPreferences {
   user_id: string
   enabled: boolean
+  followed_workout_posts_enabled: boolean
   scheduled_reminders_enabled: boolean
   streak_protection_enabled: boolean
   inactivity_enabled: boolean
@@ -382,6 +383,7 @@ export type NotificationType =
   | 'workout_comment'
   | 'workout_comment_reply'
   | 'workout_comment_like'
+  | 'followed_workout_post'
   | 'follow_request_received'
   | 'follow_request_approved'
   | 'follow_request_declined'

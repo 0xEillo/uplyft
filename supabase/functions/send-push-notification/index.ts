@@ -11,6 +11,7 @@ interface NotificationPayload {
       | 'workout_comment'
       | 'workout_comment_reply'
       | 'workout_comment_like'
+      | 'followed_workout_post'
       | 'follow_request_received'
       | 'follow_request_approved'
       | 'follow_request_declined'
@@ -179,6 +180,15 @@ Deno.serve(async (req) => {
           actorCount > 2 ? 's' : ''
         } liked your comment`
       }
+    } else if (notification.type === 'followed_workout_post') {
+      title = 'New Workout'
+      if (actorCount === 1) {
+        body = `${firstActor} posted a workout`
+      } else {
+        body = `${firstActor} and ${actorCount - 1} other${
+          actorCount > 2 ? 's' : ''
+        } posted workouts`
+      }
     } else if (notification.type === 'follow_request_received') {
       title = 'Follow Request'
       body = `${firstActor} wants to follow you`
@@ -255,6 +265,7 @@ Deno.serve(async (req) => {
       workout_comment: 'social',
       workout_comment_reply: 'social',
       workout_comment_like: 'social',
+      followed_workout_post: 'social',
       follow_request_received: 'social',
       follow_request_approved: 'social',
       follow_request_declined: 'social',
