@@ -20,6 +20,7 @@ type PreferenceRow = {
   inactivity_enabled: boolean
   weekly_recaps_enabled: boolean
   milestones_enabled: boolean
+  proactive_coach_enabled?: boolean
   preferred_reminder_hour: number
   quiet_hours_start: string
   quiet_hours_end: string
@@ -72,6 +73,13 @@ const RETENTION_TYPES: RetentionNotificationType[] = [
   'retention_weekly_recap',
   'retention_milestone',
 ]
+const PROACTIVE_COACH_TYPES = [
+  'proactive_coach_workout_day_morning',
+  'proactive_coach_missed_workout',
+  'proactive_coach_comeback',
+  'proactive_coach_post_workout_followup',
+]
+const PUSH_LIMIT_TYPES = [...RETENTION_TYPES, ...PROACTIVE_COACH_TYPES]
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const LOOKBACK_WORKOUT_DAYS = 45
@@ -305,6 +313,7 @@ function pickMessage(input: {
 
   if (
     pref.scheduled_reminders_enabled &&
+    !pref.proactive_coach_enabled &&
     localHour === pref.preferred_reminder_hour &&
     scheduledReminderPlan.shouldSendScheduledReminderToday &&
     !hasRecentType('retention_scheduled_workout', 20)
@@ -388,6 +397,7 @@ function pickMessage(input: {
 
   if (
     pref.inactivity_enabled &&
+    !pref.proactive_coach_enabled &&
     localHour === INACTIVITY_REMINDER_HOUR &&
     daysSinceLastWorkout !== null &&
     daysSinceLastWorkout >= 3 &&
@@ -524,6 +534,7 @@ Deno.serve(async (req) => {
           inactivity_enabled,
           weekly_recaps_enabled,
           milestones_enabled,
+          proactive_coach_enabled,
           preferred_reminder_hour,
           quiet_hours_start,
           quiet_hours_end,
@@ -620,7 +631,7 @@ Deno.serve(async (req) => {
         .from('notifications')
         .select('recipient_id, type, created_at')
         .in('recipient_id', userIds)
-        .in('type', RETENTION_TYPES)
+        .in('type', PUSH_LIMIT_TYPES)
         .gte('created_at', historyLookback.toISOString()),
     ])
 

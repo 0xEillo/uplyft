@@ -18,7 +18,13 @@ export function formatNotificationText(
   const metadataBody =
     metadata && typeof metadata.body === 'string' ? metadata.body : null
 
-  if ((type === 'trial_reminder' || type.startsWith('retention_')) && metadataTitle && metadataBody) {
+  if (
+    (type === 'trial_reminder' ||
+      type.startsWith('retention_') ||
+      type.startsWith('proactive_coach_')) &&
+    metadataTitle &&
+    metadataBody
+  ) {
     return {
       title: metadataTitle,
       body: metadataBody,
@@ -120,6 +126,11 @@ export function formatNotificationText(
       title: 'Milestone unlocked 🎉',
       body: 'You hit a new training milestone.',
     }
+  } else if (type.startsWith('proactive_coach_')) {
+    return {
+      title: metadataTitle || 'Coach',
+      body: metadataBody || 'Your coach sent you a message.',
+    }
   }
 
   // Fallback for unknown types
@@ -166,6 +177,11 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'stats-chart'
     case 'retention_milestone':
       return 'trophy'
+    case 'proactive_coach_workout_day_morning':
+    case 'proactive_coach_missed_workout':
+    case 'proactive_coach_comeback':
+    case 'proactive_coach_post_workout_followup':
+      return 'chatbubble-ellipses'
     default:
       return 'notifications'
   }

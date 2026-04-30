@@ -6,15 +6,18 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { COACH_OPTIONS, CoachId } from '@/lib/coaches'
 import { clearAllCoachChatSnapshots } from '@/lib/utils/coach-chat-storage'
+import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
+import { RetentionPushPreferences } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   Image,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -36,8 +39,31 @@ export default function ChatSettingsScreen() {
   const insets = useSafeAreaInsets()
 
   const [isUpdating, setIsUpdating] = useState(false)
+  const [retentionPrefs, setRetentionPrefs] =
+    useState<RetentionPushPreferences | null>(null)
+  const [isProactiveUpdating, setIsProactiveUpdating] = useState(false)
   const [contextText, setContextText] = useState(profile?.bio ?? '')
   const contextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    let cancelled = false
+    void database.retentionPushPreferences
+      .get(user.id)
+      .then((prefs) => {
+        if (!cancelled) {
+          setRetentionPrefs(prefs)
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading proactive coach setting:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   const saveContext = useCallback(
     async (text: string) => {
@@ -94,6 +120,27 @@ export default function ChatSettingsScreen() {
       ],
     )
   }, [user?.id])
+
+  const handleToggleProactiveCoach = useCallback(
+    async (value: boolean) => {
+      if (!user?.id || !retentionPrefs) return
+      haptic('light')
+
+      try {
+        setIsProactiveUpdating(true)
+        const updated = await database.retentionPushPreferences.update(user.id, {
+          proactive_coach_enabled: value,
+        })
+        setRetentionPrefs(updated)
+      } catch (error) {
+        console.error('Error updating proactive coach setting:', error)
+        Alert.alert('Error', 'Unable to update proactive coach messages.')
+      } finally {
+        setIsProactiveUpdating(false)
+      }
+    },
+    [retentionPrefs, user?.id],
+  )
 
   const styles = createStyles(colors, isDark)
 
@@ -179,6 +226,28 @@ export default function ChatSettingsScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Coach Messages</Text>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleCopy}>
+              <Text style={styles.toggleTitle}>Proactive coach</Text>
+              <Text style={styles.sectionDescription}>
+                Let your selected coach start the chat around training moments.
+              </Text>
+            </View>
+            <Switch
+              value={retentionPrefs?.proactive_coach_enabled ?? true}
+              onValueChange={handleToggleProactiveCoach}
+              disabled={!retentionPrefs || isProactiveUpdating}
+              trackColor={{
+                false: isDark ? 'rgba(255,255,255,0.16)' : '#D9D9DE',
+                true: colors.brandPrimary,
+              }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>History</Text>
           <TouchableOpacity
             style={styles.clearChatsButton}
@@ -251,6 +320,22 @@ const createStyles = (
       fontWeight: '500',
       color: colors.textTertiary,
       textAlign: 'right',
+    },
+    toggleRow: {
+      minHeight: 58,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      paddingVertical: 4,
+    },
+    toggleCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    toggleTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
     },
     clearChatsButton: {
       minHeight: 52,

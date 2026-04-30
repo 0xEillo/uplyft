@@ -150,6 +150,28 @@ export function sanitizeCoachChatSnapshot(
   }
 }
 
+export function mergeExternalMessages(
+  existing: CoachChatMessage[],
+  incoming: CoachChatMessage[],
+): CoachChatMessage[] {
+  if (incoming.length === 0) return existing
+
+  const seen = new Set(existing.map((message) => message.id))
+  const next = [...existing]
+
+  for (const message of incoming) {
+    if (seen.has(message.id)) continue
+    seen.add(message.id)
+    next.push(message)
+  }
+
+  return next.sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return aTime - bTime
+  })
+}
+
 function readCollection(userId: string): PersistedCoachChatCollection | null {
   const raw = storage.getString(getStorageKey(userId))
   if (!raw) return null

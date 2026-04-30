@@ -110,6 +110,13 @@ export function usePushNotifications() {
         ) {
           router.push('/(tabs)/create-post')
         } else if (
+          type === 'proactive_coach_workout_day_morning' ||
+          type === 'proactive_coach_missed_workout' ||
+          type === 'proactive_coach_comeback' ||
+          type === 'proactive_coach_post_workout_followup'
+        ) {
+          router.push('/(tabs)/chat')
+        } else if (
           type === 'retention_weekly_recap' ||
           type === 'retention_milestone'
         ) {
@@ -332,6 +339,13 @@ export async function registerForPushNotifications() {
           },
           retention_milestone: {
             name: 'Milestones',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF6B35',
+            sound: 'default',
+          },
+          proactive_coach: {
+            name: 'Coach Messages',
             importance: Notifications.AndroidImportance.DEFAULT,
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#FF6B35',

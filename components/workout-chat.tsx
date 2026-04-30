@@ -43,6 +43,10 @@ import {
 } from '@/lib/ai/workoutParsing'
 import { callChatFunction, mapChatApiErrorToMessage } from '@/lib/api/chat'
 import {
+  fetchUnconsumedProactiveMessages,
+  markProactiveMessagesConsumed,
+} from '@/lib/api/proactive-coach'
+import {
   buildProgramModificationSuffix,
   buildWorkoutCreationPrompt,
   buildWorkoutModificationSuffix,
@@ -65,6 +69,7 @@ import {
   clearAllCoachChatSnapshots,
   getCoachChatPersistenceScopeKey,
   loadCoachChatSnapshot,
+  mergeExternalMessages,
   migrateCoachChatSnapshot,
   saveCoachChatSnapshot,
   type CoachChatMessage as Message,
@@ -87,6 +92,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Clipboard,
   FlatList,
   Keyboard,
@@ -1300,6 +1306,7 @@ export function WorkoutChat({
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
+  const messagesRef = useRef<Message[]>([])
   const [input, setInput] = useState('')
   const [inputHeight, setInputHeight] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -1409,6 +1416,10 @@ export function WorkoutChat({
     () => getCoachChatPersistenceScopeKey(activePersistence),
     [activePersistence],
   )
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   useEffect(() => {
     const nextPersistenceKey = getCoachChatPersistenceScopeKey(persistence)
@@ -1659,6 +1670,58 @@ export function WorkoutChat({
     messages,
     selectedImages,
     user?.id,
+  ])
+
+  const ingestProactiveCoachMessages = useCallback(async () => {
+    if (!user?.id || activePersistence.kind !== 'main') return
+
+    try {
+      const rows = await fetchUnconsumedProactiveMessages(user.id)
+      if (rows.length === 0) return
+
+      const incoming: Message[] = rows.map((row) => ({
+        id: `proactive_${row.id}`,
+        role: 'assistant',
+        content: row.body,
+        createdAt: row.created_at,
+      }))
+      const merged = mergeExternalMessages(messagesRef.current, incoming)
+      const hasNewMessage = merged.length !== messagesRef.current.length
+
+      if (hasNewMessage) {
+        setMessages(merged)
+        setHasChatStarted(true)
+        setHasLoadedWelcome(true)
+        setIsWelcomeTyping(false)
+        await saveCoachChatSnapshot(user.id, activePersistence, {
+          messages: merged,
+          input,
+          selectedImages,
+        })
+      }
+
+      await markProactiveMessagesConsumed(rows.map((row) => row.id))
+    } catch (error) {
+      console.error('[WorkoutChat] Error ingesting proactive coach messages:', error)
+    }
+  }, [activePersistence, input, selectedImages, user?.id])
+
+  useEffect(() => {
+    if (!hasHydratedPersistedChat || activePersistence.kind !== 'main') return
+
+    void ingestProactiveCoachMessages()
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void ingestProactiveCoachMessages()
+      }
+    })
+
+    return () => subscription.remove()
+  }, [
+    activePersistence.kind,
+    hasHydratedPersistedChat,
+    ingestProactiveCoachMessages,
   ])
 
   // Show welcome message for first-time users (fullscreen mode only)

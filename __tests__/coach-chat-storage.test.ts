@@ -4,6 +4,7 @@ import {
   clearAllCoachChatSnapshots,
   getCoachChatPersistenceScopeKey,
   loadCoachChatSnapshot,
+  mergeExternalMessages,
   migrateCoachChatSnapshot,
   saveCoachChatSnapshot,
   sanitizeCoachChatSnapshot,
@@ -165,5 +166,47 @@ describe('coach chat storage', () => {
     expect(
       await loadCoachChatSnapshot(USER_ID, { kind: 'create_post' }),
     ).toBeNull()
+  })
+
+  test('merges external messages chronologically and de-dupes by id', () => {
+    const merged = mergeExternalMessages(
+      [
+        {
+          id: 'existing',
+          role: 'assistant',
+          content: 'Already here',
+          createdAt: '2026-04-30T10:00:00.000Z',
+        },
+        {
+          id: 'proactive_a',
+          role: 'assistant',
+          content: 'Same proactive message',
+          createdAt: '2026-04-30T10:05:00.000Z',
+        },
+      ],
+      [
+        {
+          id: 'proactive_b',
+          role: 'assistant',
+          content: 'Earlier proactive message',
+          createdAt: '2026-04-30T09:55:00.000Z',
+        },
+        {
+          id: 'proactive_a',
+          role: 'assistant',
+          content: 'Duplicate proactive message',
+          createdAt: '2026-04-30T10:05:00.000Z',
+        },
+      ],
+    )
+
+    expect(merged.map((message) => message.id)).toEqual([
+      'proactive_b',
+      'existing',
+      'proactive_a',
+    ])
+    expect(merged.find((message) => message.id === 'proactive_a')?.content).toBe(
+      'Same proactive message',
+    )
   })
 })

@@ -66,6 +66,7 @@ export interface RetentionPushPreferences {
   inactivity_enabled: boolean
   weekly_recaps_enabled: boolean
   milestones_enabled: boolean
+  proactive_coach_enabled: boolean
   preferred_reminder_hour: number
   quiet_hours_start: string
   quiet_hours_end: string
@@ -394,6 +395,10 @@ export type NotificationType =
   | 'retention_inactivity'
   | 'retention_weekly_recap'
   | 'retention_milestone'
+  | 'proactive_coach_workout_day_morning'
+  | 'proactive_coach_missed_workout'
+  | 'proactive_coach_comeback'
+  | 'proactive_coach_post_workout_followup'
 
 export interface Notification {
   id: string

@@ -22,6 +22,10 @@ interface NotificationPayload {
       | 'retention_inactivity'
       | 'retention_weekly_recap'
       | 'retention_milestone'
+      | 'proactive_coach_workout_day_morning'
+      | 'proactive_coach_missed_workout'
+      | 'proactive_coach_comeback'
+      | 'proactive_coach_post_workout_followup'
     workout_id: string | null
     request_id: string | null
     follow_id: string | null
@@ -142,7 +146,8 @@ Deno.serve(async (req) => {
 
     const isRetentionType =
       notification.type === 'trial_reminder' ||
-      notification.type.startsWith('retention_')
+      notification.type.startsWith('retention_') ||
+      notification.type.startsWith('proactive_coach_')
 
     if (notification.type === 'workout_like') {
       title = 'New Like'
@@ -225,6 +230,9 @@ Deno.serve(async (req) => {
       } else if (notification.type === 'retention_weekly_recap') {
         title = metadataTitle || 'Weekly recap 📈'
         body = metadataBody || 'Check your recent progress and plan your week.'
+      } else if (notification.type.startsWith('proactive_coach_')) {
+        title = metadataTitle || 'Coach'
+        body = metadataBody || 'Your coach sent you a message.'
       } else {
         title = metadataTitle || 'Milestone unlocked 🎉'
         body = metadataBody || 'You hit a new milestone. Keep building.'
@@ -276,6 +284,10 @@ Deno.serve(async (req) => {
       retention_inactivity: 'retention_inactivity',
       retention_weekly_recap: 'retention_weekly',
       retention_milestone: 'retention_milestone',
+      proactive_coach_workout_day_morning: 'proactive_coach',
+      proactive_coach_missed_workout: 'proactive_coach',
+      proactive_coach_comeback: 'proactive_coach',
+      proactive_coach_post_workout_followup: 'proactive_coach',
     }
 
     const channelId = channelIdByType[notification.type] || 'default'
