@@ -8,6 +8,7 @@ import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
@@ -734,6 +735,7 @@ export default function CreatePostScreen() {
   const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
   const { canPostWorkout } = useFreemiumLimits()
@@ -1372,12 +1374,12 @@ export default function CreatePostScreen() {
     if (!canPostWorkout) {
       isSubmittingRef.current = false
       setIsLoading(false)
+      trackPaywallShown(
+        'workout_logging',
+        'create_post',
+        isProMember ? 'active' : 'none',
+      )
       setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'workout_logging',
-        source_screen: 'create_post',
-        subscription_status: isProMember ? 'active' : 'none',
-      })
       return
     }
 
@@ -2412,9 +2414,13 @@ export default function CreatePostScreen() {
         {/* Paywall Modal */}
         <Paywall
           visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => {
+            trackPaywallDismissed('workout_logging', 'create_post')
+            setShowPaywall(false)
+          }}
           title={`Take Your Training to the Next Level!`}
           message={`Unlock ${coachFirstName}'s full coaching suite, unlimited workouts, and advanced progress tracking.`}
+          feature="workout_logging"
         />
 
       </SlideUpView>

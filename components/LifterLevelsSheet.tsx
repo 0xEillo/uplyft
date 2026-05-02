@@ -1,5 +1,7 @@
 import { LevelBadge } from '@/components/LevelBadge'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { ProTease } from '@/components/ProTease'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { LEVEL_COLORS } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -60,6 +62,7 @@ export function LifterLevelsSheet({
   const colors = useThemedColors()
   const { isDark } = useTheme()
   const insets = useSafeAreaInsets()
+  const { isProMember } = useSubscription()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(24)).current
@@ -197,12 +200,20 @@ export function LifterLevelsSheet({
                           gap: 6,
                         }}
                       >
-                        <Text style={styles.currentScoreGray}>{score} pts</Text>
-                        {typeof scoreDelta === 'number' && scoreDelta > 0 ? (
-                          <Text style={styles.scoreDeltaText}>
-                            +{Math.round(scoreDelta)}
-                          </Text>
-                        ) : null}
+                        {isProMember ? (
+                          <>
+                            <Text style={styles.currentScoreGray}>
+                              {score} pts
+                            </Text>
+                            {typeof scoreDelta === 'number' && scoreDelta > 0 ? (
+                              <Text style={styles.scoreDeltaText}>
+                                +{Math.round(scoreDelta)}
+                              </Text>
+                            ) : null}
+                          </>
+                        ) : (
+                          <ProTease size="sm" feature="strength_score" source="lifter_levels_sheet" />
+                        )}
                       </View>
                     )}
                   </View>

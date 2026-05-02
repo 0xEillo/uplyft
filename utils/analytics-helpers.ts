@@ -8,6 +8,7 @@ import {
   AnalyticsEvents,
   type BaseEventProperties,
   type EventPropertiesMap,
+  type PaywallFeature,
 } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useEffect, useRef } from 'react'
@@ -184,24 +185,29 @@ export function withErrorTracking<T extends (...args: any[]) => Promise<any>>(
 // FEATURE GATE TRACKING
 // ============================================================================
 
-export type FeatureGateType = 'workout_logging' | 'voice_logging' | 'body_scan' | 'ai_chat'
+/** @deprecated Use `PaywallFeature` from `constants/analytics-events`. */
+export type FeatureGateType = PaywallFeature
 
 /**
- * Tracks paywall interactions for feature gates
+ * Tracks paywall interactions for feature gates.
+ *
+ * Single helper that every paywall trigger in the app should call so the
+ * `PAYWALL_SHOWN` / `PAYWALL_DISMISSED` / `PAYWALL_PURCHASED` funnel is
+ * consistent. Pair with `<Paywall onClose>` to fire `dismissed`.
  *
  * @example
- * const { trackPaywallShown, trackPaywallDismissed, trackPaywallPurchased } = useFeatureGate()
+ * const { trackPaywallShown } = useFeatureGate()
  *
  * if (!isPro) {
  *   trackPaywallShown('voice_logging', 'create-speech')
- *   router.push('/trial-offer')
+ *   setPaywallVisible(true)
  * }
  */
 export function useFeatureGate() {
   const { trackEvent } = useAnalytics()
 
   const trackPaywallShown = (
-    feature: FeatureGateType,
+    feature: PaywallFeature,
     sourceScreen?: string,
     subscriptionStatus?: 'active' | 'trial' | 'expired' | 'none'
   ) => {
@@ -214,7 +220,10 @@ export function useFeatureGate() {
     })
   }
 
-  const trackPaywallCTATapped = (feature: FeatureGateType, sourceScreen?: string) => {
+  const trackPaywallCTATapped = (
+    feature: PaywallFeature,
+    sourceScreen?: string,
+  ) => {
     trackEvent(AnalyticsEvents.PAYWALL_CTA_TAPPED, {
       feature,
       source_screen: sourceScreen,
@@ -223,7 +232,10 @@ export function useFeatureGate() {
     })
   }
 
-  const trackPaywallDismissed = (feature: FeatureGateType, sourceScreen?: string) => {
+  const trackPaywallDismissed = (
+    feature: PaywallFeature,
+    sourceScreen?: string,
+  ) => {
     trackEvent(AnalyticsEvents.PAYWALL_DISMISSED, {
       feature,
       source_screen: sourceScreen,
@@ -232,7 +244,10 @@ export function useFeatureGate() {
     })
   }
 
-  const trackPaywallPurchased = (feature: FeatureGateType, sourceScreen?: string) => {
+  const trackPaywallPurchased = (
+    feature: PaywallFeature,
+    sourceScreen?: string,
+  ) => {
     trackEvent(AnalyticsEvents.PAYWALL_PURCHASED, {
       feature,
       source_screen: sourceScreen,

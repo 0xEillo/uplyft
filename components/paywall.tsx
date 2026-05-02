@@ -1,8 +1,12 @@
-import { AnalyticsEvents } from '@/constants/analytics-events'
+import {
+  AnalyticsEvents,
+  type PaywallFeature,
+} from '@/constants/analytics-events'
 import { AppColors } from '@/constants/colors'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useRevenueCatPackages } from '@/hooks/useRevenueCatPackages'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
@@ -28,6 +32,12 @@ type PaywallProps = {
   title?: string
   message?: string
   allowClose?: boolean
+  /**
+   * Tag for analytics attribution. Used to fire PAYWALL_PURCHASED with the
+   * feature that drove the conversion. Optional; if omitted the purchase
+   * funnel just won't be attributed to a specific feature.
+   */
+  feature?: PaywallFeature
 }
 
 export function Paywall({
@@ -36,6 +46,7 @@ export function Paywall({
   title = 'Unlock your full potential',
   message = 'Get full access to all premium features',
   allowClose = true,
+  feature,
 }: PaywallProps) {
   const colors = AppColors
   const insets = useSafeAreaInsets()
@@ -43,6 +54,7 @@ export function Paywall({
   const styles = createStyles(colors, screenHeight)
 
   const { trackEvent } = useAnalytics()
+  const { trackPaywallPurchased } = useFeatureGate()
   const { purchasePackage, restorePurchases, offerings, isLoading } =
     useSubscription()
 
@@ -61,15 +73,9 @@ export function Paywall({
   const displayYearlyPrice =
     (offerings?.metadata?.['displayYearlyPrice'] as boolean | undefined) !== false
 
-  // Track paywall shown when modal becomes visible
-  useEffect(() => {
-    if (visible) {
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        source_screen: 'paywall',
-        default_plan: 'yearly',
-      })
-    }
-  }, [visible, trackEvent])
+  // PAYWALL_SHOWN is fired by each call site (via `useFeatureGate`) so we get
+  // accurate per-feature attribution. Avoid double-counting from inside this
+  // component.
 
   // Plans array matching trial-offer layout
   const plans = useMemo(() => {
@@ -219,6 +225,12 @@ export function Paywall({
             reminder_enabled: isReminderEnabled,
             source_screen: 'paywall',
           })
+        }
+
+        // Funnel: PAYWALL_SHOWN → PAYWALL_PURCHASED. Tagged with the feature
+        // that triggered this paywall so we can compute per-feature CVR.
+        if (feature) {
+          trackPaywallPurchased(feature, 'paywall')
         }
 
         // Purchase successful and entitlement verified - close the paywall
@@ -565,7 +577,11 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
   const toggleHeight = isSmallScreen ? 42 : isMediumScreen ? 46 : 50
   const mainButtonHeight = isSmallScreen ? 46 : isMediumScreen ? 50 : 54
 
-  // Dynamic gaps
+  // Gap between quote and plans — enough to feel like a bottom block, not a huge void.
+  const reviewToPlansGapMin = Math.round(
+    screenHeight * (isSmallScreen ? 0.045 : isMediumScreen ? 0.05 : 0.055),
+  )
+
   const planGap = isSmallScreen ? 10 : isMediumScreen ? 12 : 14
   const bottomMargin = isSmallScreen ? 14 : isMediumScreen ? 18 : 22
 
@@ -691,11 +707,13 @@ function createStyles(colors: typeof AppColors, screenHeight: number) {
       opacity: 1,
     },
     flexSpacer: {
-      flex: 1,
-      minHeight: isSmallScreen ? 8 : 16,
+      flexGrow: 1,
+      flexShrink: 0,
+      minHeight: reviewToPlansGapMin,
     },
     bottomSection: {
       paddingHorizontal: isSmallScreen ? 16 : 20,
+      paddingTop: isSmallScreen ? 4 : 6,
     },
     plansContainer: {
       flexDirection: 'column',

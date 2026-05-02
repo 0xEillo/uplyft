@@ -1,16 +1,12 @@
 import { BaseNavbar } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
-import { Paywall } from '@/components/paywall'
 import { Layout } from '@/constants/theme'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useProfile } from '@/contexts/profile-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import {
@@ -327,14 +323,12 @@ export default function CreateRoutineScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
-  const { canUseTrial, consumeTrial, completeStep } = useTutorial()
+  const { completeStep } = useTutorial()
 
   const isEditMode = !!routineId
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [routineName, setRoutineName] = useState('')
   const [routineNotes, setRoutineNotes] = useState('')
   const [exercises, setExercises] = useState<ExerciseTemplate[]>([])
@@ -373,10 +367,6 @@ export default function CreateRoutineScreen() {
   const handleExitComplete = useCallback(() => {
     router.back()
   }, [router])
-
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
-  const coachFirstName = coach.name.split(' ')[1] || coach.name
 
   // Exercise selection hook
   const { registerCallback } = useExerciseSelection()
@@ -425,15 +415,6 @@ export default function CreateRoutineScreen() {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to create routines')
       handleExit()
-      return
-    }
-
-    // Check if user has Pro membership for routines or is using a tutorial trial
-    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
-
-    if (!canAccessCreateRoutine && !isEditMode) {
-      setShowPaywall(true)
-      setIsLoading(false)
       return
     }
 
@@ -529,8 +510,7 @@ export default function CreateRoutineScreen() {
 
     // Otherwise start with empty routine
     setIsLoading(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- canUseTrial is stable after mount
-  }, [from, routineId, user, router, isProMember, isEditMode, handleExit])
+  }, [from, routineId, user, router, isEditMode, handleExit])
 
   const handleSave = useCallback(async () => {
     if (!routineName.trim()) {
@@ -724,13 +704,8 @@ export default function CreateRoutineScreen() {
         }
       }
 
-      // Consume trial or complete tutorial step for Saving a Routine
       if (!isEditMode) {
-        if (!isProMember) {
-          consumeTrial('create_routine')
-        } else {
-          completeStep('save_routine')
-        }
+        completeStep('save_routine')
       }
 
       Alert.alert(
@@ -755,7 +730,7 @@ export default function CreateRoutineScreen() {
     } finally {
       setIsSaving(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- completeStep/consumeTrial/isProMember are stable after mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- completeStep is stable after mount
   }, [
     routineName,
     routineNotes,
@@ -1198,17 +1173,6 @@ export default function CreateRoutineScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-
-        {/* Paywall Modal */}
-        <Paywall
-          visible={showPaywall}
-          onClose={() => {
-            setShowPaywall(false)
-            handleExit()
-          }}
-          title={`Build Your Perfect Program for FREE!`}
-          message={`Let ${coachFirstName} help you build unlimited custom routines to accelerate your progress.`}
-        />
 
         {/* Rest Time Picker Modal */}
         <Modal

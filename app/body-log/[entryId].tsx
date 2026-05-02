@@ -39,6 +39,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useUnit } from '@/contexts/unit-context'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
     getBMIExplanation,
@@ -272,6 +273,7 @@ export default function BodyLogDetailScreen() {
   const [infoModalVisible, setInfoModalVisible] = useState(false)
   const [weightModalVisible, setWeightModalVisible] = useState(false)
   const [paywallVisible, setPaywallVisible] = useState(false)
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const [isRunningBodyScan, setIsRunningBodyScan] = useState(false)
   const [showTeaserResults, setShowTeaserResults] = useState(false)
   const [showProcessingModal, setShowProcessingModal] = useState(false)
@@ -1144,6 +1146,7 @@ export default function BodyLogDetailScreen() {
   // Handle unlock button press (opens paywall)
   const handleUnlockResults = async () => {
     haptic('light')
+    trackPaywallShown('body_scan', 'body_log_locked_results')
     setPaywallVisible(true)
   }
 
@@ -1634,7 +1637,11 @@ export default function BodyLogDetailScreen() {
         )}
         <Paywall
         visible={paywallVisible}
-        onClose={() => setPaywallVisible(false)}
+        onClose={() => {
+          trackPaywallDismissed('body_scan', 'body_log_locked_results')
+          setPaywallVisible(false)
+        }}
+        feature="body_scan"
       />
         <BodyLogProcessingModal
         visible={showProcessingModal}

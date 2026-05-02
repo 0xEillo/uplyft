@@ -12,6 +12,7 @@ import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { haptic } from '@/lib/haptics'
 import {
   type ExerciseEquipment,
@@ -401,6 +402,7 @@ export default function SelectExerciseScreen() {
   const { callCallback, clearCallback } = useExerciseSelection()
   const { isProMember } = useSubscription()
   const { user } = useAuth()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const isExploreMode = exploreMode === 'true'
 
@@ -640,6 +642,7 @@ export default function SelectExerciseScreen() {
     haptic('light')
 
     if (!isProMember) {
+      trackPaywallShown('custom_exercise_create', 'select_exercise')
       setShowPaywall(true)
       return
     }
@@ -648,7 +651,7 @@ export default function SelectExerciseScreen() {
       pathname: '/create-exercise',
       params: { exerciseName: name },
     })
-  }, [trimmedQuery, router, isProMember])
+  }, [trimmedQuery, router, isProMember, trackPaywallShown])
 
   const handleBack = useCallback(() => {
     haptic('light')
@@ -1232,9 +1235,13 @@ export default function SelectExerciseScreen() {
         {/* Paywall Modal */}
         <Paywall
           visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => {
+            trackPaywallDismissed('custom_exercise_create', 'select_exercise')
+            setShowPaywall(false)
+          }}
           title="Create Custom Exercises"
           message="Creating custom exercises is a PRO feature."
+          feature="custom_exercise_create"
         />
       </View>
     </SlideInView>

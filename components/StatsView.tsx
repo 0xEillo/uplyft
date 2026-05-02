@@ -3,6 +3,7 @@ import { Paywall } from '@/components/paywall'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -102,6 +103,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
 
   // Paywall state
   const [paywallVisible, setPaywallVisible] = useState(false)
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   // Refresh state
   const [refreshing, setRefreshing] = useState(false)
@@ -573,6 +575,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
                 ]}
                 onPress={() => {
                   if (isRestricted) {
+                    trackPaywallShown('extended_history', 'stats_time_range')
                     setPaywallVisible(true)
                   } else {
                     setTimeRange(range)
@@ -1075,9 +1078,13 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
       {/* Paywall Modal */}
       <Paywall
         visible={paywallVisible}
-        onClose={() => setPaywallVisible(false)}
+        onClose={() => {
+          trackPaywallDismissed('extended_history', 'stats_time_range')
+          setPaywallVisible(false)
+        }}
         title="Unlock Volume Analytics"
         message="Track your training volume over time to optimize your progression."
+        feature="extended_history"
       />
 
       {/* Info Modal */}

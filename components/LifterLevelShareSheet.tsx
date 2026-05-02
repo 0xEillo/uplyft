@@ -1,5 +1,6 @@
 import { LifterLevelWidget, type LifterLevelWidgetProps } from '@/components/shareable-widgets/LifterLevelWidget'
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWorkoutShare } from '@/hooks/useWorkoutShare'
 import { Ionicons } from '@expo/vector-icons'
@@ -35,6 +36,7 @@ export function LifterLevelShareSheet({
 }: LifterLevelShareSheetProps) {
   const colors = useThemedColors()
   const { user } = useAuth()
+  const { isProMember } = useSubscription()
   const { shareWorkoutWidget, isSharing } = useWorkoutShare()
   const resolvedUserTag = userTag || displayName || user?.user_metadata?.user_tag || user?.user_metadata?.display_name
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('dark')
@@ -152,6 +154,7 @@ export function LifterLevelShareSheet({
               userTag={resolvedUserTag}
               displayName={undefined}
               backgroundMode={backgroundMode}
+              hideScore={!isProMember}
             />
           </View>
 

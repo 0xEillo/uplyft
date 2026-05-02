@@ -17,6 +17,7 @@ import {
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -1390,9 +1391,10 @@ export function WorkoutChat({
     useState(false)
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isProMember } = useSubscription()
-  const { canUseTrial, consumeTrial, completeStep } = useTutorial()
+  const { completeStep } = useTutorial()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { trackEvent } = useAnalytics()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const themedColors = useThemedColors()
   const colors = useMemo(
     () =>
@@ -2353,11 +2355,6 @@ export function WorkoutChat({
       setParsedWorkout(parsedWorkoutPlan)
       setParsedProgram(null)
 
-      // Complete tutorial step for all users, but only consume trial for non-Pro
-      if (!isProMember) {
-        consumeTrial('ai_workout')
-      }
-
       // Also populate proposedWorkout from the parsed plan if empty?
       // Actually, for the initial plan generation, we might rely on the ParsedWorkoutDisplay.
       // But if we want to support "Add Exercises" after, we should probably track them.
@@ -2384,10 +2381,6 @@ export function WorkoutChat({
       setGeneratedPlanContent(acc)
       setParsedWorkout(null)
       setParsedProgram(parsedProgramPlan)
-
-      if (!isProMember) {
-        consumeTrial('ai_workout')
-      }
     }
 
     // Auto-update proposed workout if it's a direct instruction?
@@ -2882,19 +2875,12 @@ export function WorkoutChat({
 
     setHasChatStarted(true)
 
-    // Check if user is pro member or has tutorial trial available
-    const canAccessAiChat = isProMember || canUseTrial('ai_workout')
-
-    if (!canAccessAiChat) {
+    // AI chat is a Pro-only feature.
+    if (!isProMember) {
+      trackPaywallShown('ai_chat', 'workout_chat_send')
       setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'ai_chat',
-      })
       return
     }
-
-    // Note: Trial will be consumed later when a workout is actually generated
-    // This allows users to chat/explore before using their free workout generation
 
     // Store input and images before clearing
     const imagesToSend = options?.forceImages
@@ -3380,22 +3366,15 @@ export function WorkoutChat({
   }
 
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
-    // Check if user is pro member or has tutorial trial available
-    const canAccessAiChat = isProMember || canUseTrial('ai_workout')
-    console.log(
-      '[WorkoutChat] Wizard complete. canAccessAiChat:',
-      canAccessAiChat,
-      'isProMember:',
-      isProMember,
-      'canUseTrial:',
-      canUseTrial('ai_workout'),
-    )
-
-    if (!canAccessAiChat) {
-      setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'ai_workout_generation',
-      })
+    // AI workout generation is a Pro-only feature.
+    // Close the wizard first so the paywall modal can present on top.
+    if (!isProMember) {
+      closeWizardAndRestoreTabBar()
+      // Small delay so the wizard dismissal animation clears before paywall appears.
+      setTimeout(() => {
+        trackPaywallShown('ai_workout_generation', 'workout_chat_wizard')
+        setShowPaywall(true)
+      }, 350)
       return
     }
 
@@ -3489,13 +3468,6 @@ export function WorkoutChat({
               content: normalizedContent,
             },
           ])
-
-          // Complete tutorial step for all users, but only consume trial for non-Pro
-          if (parsed) {
-            if (!isProMember) {
-              consumeTrial('ai_workout')
-            }
-          }
         }, 0)
       }
 
@@ -3958,16 +3930,6 @@ export function WorkoutChat({
   const handleSaveRoutine = async () => {
     if (isLoading || !generatedPlanContent) return
 
-    // Check if user is pro member or has tutorial trial available
-    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
-    if (!canAccessCreateRoutine) {
-      setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'create_routine_from_chat',
-      })
-      return
-    }
-
     setIsLoading(true)
     haptic('medium')
 
@@ -4006,18 +3968,7 @@ export function WorkoutChat({
 
       const routine = await createRoutineFromTemplate(user.id, routineData)
 
-      // Consume trial or complete tutorial step
-      if (!isProMember) {
-        console.log(
-          '[WorkoutChat] Saving AI routine. Consuming create_routine trial.',
-        )
-        consumeTrial('create_routine')
-      } else {
-        console.log(
-          '[WorkoutChat] Saving AI routine. Completing save_routine tutorial step.',
-        )
-        completeStep('save_routine')
-      }
+      completeStep('save_routine')
 
       // Navigate directly to the routine detail page
       router.push({
@@ -4040,15 +3991,6 @@ export function WorkoutChat({
   ) => {
     const programToSave = programOverride ?? parsedProgram
     if (isSavingProgram || !programToSave) return
-
-    const canAccessCreateRoutine = isProMember || canUseTrial('create_routine')
-    if (!canAccessCreateRoutine) {
-      setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'create_routine_from_chat',
-      })
-      return
-    }
 
     setIsSavingProgram(true)
     haptic('medium')
@@ -4082,11 +4024,7 @@ export function WorkoutChat({
         createdRoutineIds.push(savedRoutine.id)
       }
 
-      if (!isProMember) {
-        consumeTrial('create_routine')
-      } else {
-        completeStep('save_routine')
-      }
+      completeStep('save_routine')
 
       hapticSuccess()
       await new Promise((resolve) => setTimeout(resolve, 450))
@@ -5802,8 +5740,12 @@ export function WorkoutChat({
         {/* Paywall Modal - Rendered outside conditional to appear over wizard */}
         <Paywall
           visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => {
+            trackPaywallDismissed('ai_chat', 'workout_chat')
+            setShowPaywall(false)
+          }}
           message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
+          feature="ai_chat"
         />
       </KeyboardAvoidingView>
 

@@ -3,8 +3,10 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
+import { ProTease, ProUpsellCard } from "@/components/ProTease";
 import { RankCalculator } from "@/components/RankCalculator";
 import { useAuth } from "@/contexts/auth-context";
+import { useSubscription } from "@/contexts/subscription-context";
 import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -172,6 +174,7 @@ export function StrengthBodyView({
   const router = useRouter();
   const { isDark } = useTheme();
   const { user } = useAuth();
+  const { isProMember } = useSubscription();
   const { weightUnit, convertInputToKg } = useWeightUnits();
   const {
     profile,
@@ -958,31 +961,37 @@ export function StrengthBodyView({
                     {overallLevel?.balancedLevel ?? "Unranked"}
                   </Text>
                   <View style={styles.heroXpRow}>
-                    <Text
-                      style={[
-                        styles.heroXpCurrent,
-                        { color: priorityPointsColor },
-                      ]}
-                    >
-                      {overallLevel ? Math.round(overallLevel.score) : "—"}
-                    </Text>
-                    {overallLevel?.balancedNextLevel ? (
-                      <Text style={styles.heroXpTotal}>
-                        {" / "}
-                        {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}{" "}
-                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
-                      </Text>
+                    {isProMember ? (
+                      <>
+                        <Text
+                          style={[
+                            styles.heroXpCurrent,
+                            { color: priorityPointsColor },
+                          ]}
+                        >
+                          {overallLevel ? Math.round(overallLevel.score) : "—"}
+                        </Text>
+                        {overallLevel?.balancedNextLevel ? (
+                          <Text style={styles.heroXpTotal}>
+                            {" / "}
+                            {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}{" "}
+                            <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                          </Text>
+                        ) : (
+                          <Text style={styles.heroXpTotal}>
+                            {" "}
+                            <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                          </Text>
+                        )}
+                        {showOverallProgressDelta && (
+                          <Text style={styles.heroXpDelta}>
+                            {"  +"}
+                            {overallLevel!.progressDelta}
+                          </Text>
+                        )}
+                      </>
                     ) : (
-                      <Text style={styles.heroXpTotal}>
-                        {" "}
-                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
-                      </Text>
-                    )}
-                    {showOverallProgressDelta && (
-                      <Text style={styles.heroXpDelta}>
-                        {"  +"}
-                        {overallLevel!.progressDelta}
-                      </Text>
+                      <ProTease size="md" feature="strength_score" source="strength_body_hero" />
                     )}
                   </View>
                 </View>
@@ -991,7 +1000,7 @@ export function StrengthBodyView({
                     style={[
                       styles.heroProgressFill,
                       {
-                        width: `${levelProgressPct}%` as any,
+                        width: isProMember ? (`${levelProgressPct}%` as any) : "0%",
                         backgroundColor: priorityPointsColor,
                       },
                     ]}
@@ -1118,7 +1127,20 @@ export function StrengthBodyView({
           </>
         )}
 
-        {shouldShowPrioritySection && (
+        {!isProMember && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                <Text style={styles.sectionHeaderText}>Priority</Text>
+              </View>
+            </View>
+            <ProUpsellCard feature="priority_lifts" source="strength_body" />
+          </>
+        )}
+
+        {isProMember && shouldShowPrioritySection && (
           <>
             <View style={styles.sectionHeader}>
               <View
@@ -1384,43 +1406,54 @@ export function StrengthBodyView({
                                           variant="pill"
                                           size="xs"
                                         />
-                                        {exercise.showRecentProgressDelta && (
-                                          <Text
-                                            style={[
-                                              styles.exerciseInlineGainText,
-                                              { color: gainColor },
-                                            ]}
-                                          >
-                                            ▲ {exercise.progressDelta}%
-                                          </Text>
-                                        )}
+                                        {isProMember &&
+                                          exercise.showRecentProgressDelta && (
+                                            <Text
+                                              style={[
+                                                styles.exerciseInlineGainText,
+                                                { color: gainColor },
+                                              ]}
+                                            >
+                                              ▲ {exercise.progressDelta}%
+                                            </Text>
+                                          )}
                                       </View>
                                       <View
                                         style={
                                           styles.exerciseInlineProgressValueRow
                                         }
                                       >
-                                        <Text
-                                          style={[
-                                            styles.exerciseInlineProgressPercent,
-                                            { color: levelColor },
-                                          ]}
-                                        >
-                                          {Math.round(exercise.progress)}%
-                                        </Text>
+                                        {isProMember ? (
+                                          <Text
+                                            style={[
+                                              styles.exerciseInlineProgressPercent,
+                                              { color: levelColor },
+                                            ]}
+                                          >
+                                            {Math.round(exercise.progress)}%
+                                          </Text>
+                                        ) : (
+                                          <ProTease
+                                            size="xs"
+                                            feature="muscle_rank_breakdown"
+                                            source="strength_body_muscle_breakdown"
+                                          />
+                                        )}
                                       </View>
                                     </View>
-                                    <View style={styles.exerciseInlineBarTrack}>
-                                      <View
-                                        style={[
-                                          styles.exerciseInlineBarFill,
-                                          {
-                                            width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
-                                            backgroundColor: levelColor,
-                                          },
-                                        ]}
-                                      />
-                                    </View>
+                                    {isProMember && (
+                                      <View style={styles.exerciseInlineBarTrack}>
+                                        <View
+                                          style={[
+                                            styles.exerciseInlineBarFill,
+                                            {
+                                              width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
+                                              backgroundColor: levelColor,
+                                            },
+                                          ]}
+                                        />
+                                      </View>
+                                    )}
                                   </View>
                                 </View>
                               </View>
@@ -1440,7 +1473,11 @@ export function StrengthBodyView({
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>Rank Calculator</Text>
         </View>
-        <RankCalculator />
+        {isProMember ? (
+          <RankCalculator />
+        ) : (
+          <ProUpsellCard feature="rank_calculator" source="strength_body" />
+        )}
 
         {/* Share/Invite Section */}
         <View style={styles.shareSection}>

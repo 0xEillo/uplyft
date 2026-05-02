@@ -29,6 +29,7 @@ import { EmptyState } from '@/components/EmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { ProfilePicPromptModal } from '@/components/ProfilePicPromptModal'
+import { ProStatusPill } from '@/components/ProStatusPill'
 import { NotificationBadge } from '@/components/notification-badge'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
@@ -1140,14 +1141,7 @@ export default function FeedScreen() {
         <BaseNavbar
           leftContent={
             <View style={styles.headerTitleContainer}>
-              {/* Small title — fades IN when scrolled */}
-              <Text
-                style={styles.navbarSmallTitle}
-                numberOfLines={1}
-                onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
-              >
-                Home
-              </Text>
+              <ProStatusPill />
               {currentStreak > 0 && (
                 <View>
                   <TouchableOpacity
@@ -1317,12 +1311,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-    },
-    navbarSmallTitle: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginLeft: 2,
     },
     largeTitleContainer: {
       paddingHorizontal: 20,

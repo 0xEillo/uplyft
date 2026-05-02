@@ -52,6 +52,12 @@ export interface LifterLevelWidgetProps {
   backgroundMode?: 'light' | 'dark'
   userTag?: string | null
   displayName?: string | null
+  /**
+   * When true, hides numerical score, /1200 pts threshold, delta, and the
+   * progress bar. Used so non-Pro users can still share a level-only image
+   * without leaking gated content.
+   */
+  hideScore?: boolean
 }
 
 export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
@@ -70,6 +76,7 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
       backgroundMode = 'dark',
       userTag,
       displayName,
+      hideScore = false,
     },
     ref,
   ) => {
@@ -128,44 +135,48 @@ export const LifterLevelWidget = React.forwardRef<View, LifterLevelWidgetProps>(
                 >
                   {level}
                 </Text>
-                <View style={styles.xpRow}>
-                  <Text style={[styles.xpCurrent, { color: levelColor }]}>
-                    {Math.round(score)}
-                  </Text>
-                  {nextLevelScore ? (
-                    <Text style={[styles.xpTotal, { color: subTextColor }]}>
-                      {'  /  '}
-                      {nextLevelScore} pts
-                    </Text>
-                  ) : (
-                    <Text style={[styles.xpTotal, { color: subTextColor }]}>
-                      {' '}
-                      pts
-                    </Text>
-                  )}
-                  {showProgressDelta && !!progressDelta && (
-                    <Text style={styles.xpDelta}>
-                      {'  +'}
-                      {progressDelta}
-                    </Text>
-                  )}
-                </View>
-                <View
-                  style={[
-                    styles.progressTrack,
-                    { backgroundColor: progressTrackColor },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${Math.max(0, Math.min(100, levelProgressPct))}%` as any,
-                        backgroundColor: levelColor,
-                      },
-                    ]}
-                  />
-                </View>
+                {!hideScore && (
+                  <>
+                    <View style={styles.xpRow}>
+                      <Text style={[styles.xpCurrent, { color: levelColor }]}>
+                        {Math.round(score)}
+                      </Text>
+                      {nextLevelScore ? (
+                        <Text style={[styles.xpTotal, { color: subTextColor }]}>
+                          {'  /  '}
+                          {nextLevelScore} pts
+                        </Text>
+                      ) : (
+                        <Text style={[styles.xpTotal, { color: subTextColor }]}>
+                          {' '}
+                          pts
+                        </Text>
+                      )}
+                      {showProgressDelta && !!progressDelta && (
+                        <Text style={styles.xpDelta}>
+                          {'  +'}
+                          {progressDelta}
+                        </Text>
+                      )}
+                    </View>
+                    <View
+                      style={[
+                        styles.progressTrack,
+                        { backgroundColor: progressTrackColor },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${Math.max(0, Math.min(100, levelProgressPct))}%` as any,
+                            backgroundColor: levelColor,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </>
+                )}
               </View>
               <LevelBadge
                 level={(level as StrengthLevel) ?? 'Untrained'}

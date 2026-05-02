@@ -10,6 +10,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
@@ -83,6 +84,7 @@ export default function RoutineDetailScreen() {
   const [isStartingRoutine, setIsStartingRoutine] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   useEffect(() => {
     loadRoutine()
@@ -538,7 +540,10 @@ export default function RoutineDetailScreen() {
                   styles.primaryButton,
                   { backgroundColor: colors.brandPrimary },
                 ]}
-                onPress={() => setShowPaywall(true)}
+                onPress={() => {
+                  trackPaywallShown('program_save', 'routine_unlock')
+                  setShowPaywall(true)
+                }}
               >
                 <Ionicons
                   name="lock-closed"
@@ -610,9 +615,13 @@ export default function RoutineDetailScreen() {
       {/* Paywall Modal */}
       <Paywall
         visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
+        onClose={() => {
+          trackPaywallDismissed('program_save', 'routine_unlock')
+          setShowPaywall(false)
+        }}
         title="Unlock PRO Workout Routines"
         message="Access proven training routines with complete exercise details, sets, reps, and rest periods. Transform your workouts with professionally crafted programs."
+        feature="program_save"
       />
     </SlideInView>
   )

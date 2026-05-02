@@ -11,6 +11,7 @@ import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { getColors } from '@/constants/colors'
 import { getBrandedProgramImageSource } from '@/constants/program-images'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
@@ -191,6 +192,7 @@ export default function ProgramDetailScreen() {
   const { user } = useAuth()
   const { isProMember } = useSubscription()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const [program, setProgram] = useState<NormalizedProgram | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -259,6 +261,7 @@ export default function ProgramDetailScreen() {
       return
     }
     if (!isProMember) {
+      trackPaywallShown('program_save', 'explore_program')
       setShowPaywall(true)
       return
     }
@@ -581,9 +584,13 @@ export default function ProgramDetailScreen() {
 
       <Paywall
         visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
+        onClose={() => {
+          trackPaywallDismissed('program_save', 'explore_program')
+          setShowPaywall(false)
+        }}
         title="Unlock PRO training programs"
         message="Get instant access to structured, multi-week training programs designed by experts."
+        feature="program_save"
       />
     </SlideInView>
   )

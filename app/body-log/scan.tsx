@@ -4,6 +4,7 @@ import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
@@ -24,7 +25,6 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -48,7 +48,7 @@ const SCANNING_MESSAGES = [
   'Calculating results',
 ]
 
-type Step = 'intro' | 'capture' | 'weight' | 'processing' | 'teaser'
+type Step = 'intro' | 'capture' | 'weight' | 'processing'
 
 export default function BodyScanFlowScreen() {
   const colors = useThemedColors()
@@ -58,6 +58,7 @@ export default function BodyScanFlowScreen() {
   const { profile } = useProfile()
   const { isProMember } = useSubscription()
   const { weightUnit, convertInputToKg } = useUnit()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const [step, setStep] = useState<Step>('intro')
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null])
@@ -103,18 +104,24 @@ export default function BodyScanFlowScreen() {
       setStep('intro')
     } else if (step === 'weight') {
       setStep('capture')
-    } else if (step === 'teaser') {
-      router.back()
     }
     // processing: no back
   }, [step, router])
 
   // ── Intro ─────────────────────────────────────────────────────────────────
 
+  // AI body scan is Pro-only. Non-Pro users see the marketing intro but
+  // hit the paywall immediately on CTA — no point letting them take photos
+  // they can't analyze.
   const handleGetStarted = useCallback(() => {
     haptic('medium')
+    if (!isProMember) {
+      trackPaywallShown('body_scan', 'body_scan_intro')
+      setPaywallVisible(true)
+      return
+    }
     setStep('capture')
-  }, [])
+  }, [isProMember, trackPaywallShown])
 
   // ── Capture ─────────────────────────────────────────────────────────────────
 
@@ -273,19 +280,6 @@ export default function BodyScanFlowScreen() {
     const photoUris = photos.filter((u): u is string => Boolean(u))
     let createdEntryId: string | null = null
 
-    // Free user: teaser flow
-    if (!isProMember) {
-      const teaserTime = 3500 + Math.random() * 1500
-      const msgInterval = setInterval(() => {
-        setCurrentMessageIndex((i) => (i + 1) % SCANNING_MESSAGES.length)
-      }, 2500)
-      await new Promise((r) => setTimeout(r, teaserTime))
-      clearInterval(msgInterval)
-      progressOpacity.value = withTiming(0, { duration: 300 })
-      setStep('teaser')
-      return
-    }
-
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
@@ -380,7 +374,6 @@ export default function BodyScanFlowScreen() {
     weightKg,
     progressOpacity,
     router,
-    isProMember,
   ])
 
   const handleSkipWeight = useCallback(() => {
@@ -487,7 +480,7 @@ export default function BodyScanFlowScreen() {
             {(['intro', 'capture', 'weight'] as const).map((s, i) => {
               const isActive =
                 (step === 'capture' && i <= 1) ||
-                ((step === 'weight' || step === 'processing' || step === 'teaser') && i <= 2)
+                ((step === 'weight' || step === 'processing') && i <= 2)
               return (
                 <View
                   key={s}
@@ -704,43 +697,13 @@ export default function BodyScanFlowScreen() {
         </KeyboardAvoidingView>
       )}
 
-      {/* Teaser step (free users) */}
-      {step === 'teaser' && (
-        <Reanimated.View
-          entering={FadeIn.duration(300)}
-          style={[styles.stepContent, { paddingBottom: insets.bottom + 24 }]}
-        >
-          <ScrollView
-            contentContainerStyle={styles.teaserScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.teaserLock}>
-              <Ionicons name="lock-closed" size={40} color="rgba(255,255,255,0.5)" />
-            </View>
-            <Text style={styles.teaserTitle}>Upgrade to Pro</Text>
-            <Text style={styles.teaserSubtitle}>
-              Unlock AI body composition analysis with body fat %, lean mass, and physique scores.
-            </Text>
-            <TouchableOpacity
-              style={[styles.captureContinueBtn, { backgroundColor: colors.brandPrimary }]}
-              onPress={() => {
-                haptic('medium')
-                setPaywallVisible(true)
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.captureContinueBtnText, { color: '#fff' }]}>Upgrade to Pro</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleBack} style={styles.skipBtn}>
-              <Text style={styles.skipBtnText}>Close</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </Reanimated.View>
-      )}
-
       <Paywall
         visible={paywallVisible}
-        onClose={() => setPaywallVisible(false)}
+        onClose={() => {
+          trackPaywallDismissed('body_scan', 'body_scan_intro')
+          setPaywallVisible(false)
+        }}
+        feature="body_scan"
       />
 
       {/* Processing step */}
@@ -1061,35 +1024,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 15,
       fontWeight: '600',
       color: 'rgba(255,255,255,0.45)',
-    },
-
-    // ── Teaser ─────────────────────────────────────────────────────────────
-    teaserScroll: {
-      alignItems: 'center',
-      paddingTop: 48,
-      gap: 16,
-    },
-    teaserLock: {
-      width: 88,
-      height: 88,
-      borderRadius: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-    },
-    teaserTitle: {
-      fontSize: 24,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-      textAlign: 'center',
-      color: '#FFFFFF',
-    },
-    teaserSubtitle: {
-      fontSize: 15,
-      lineHeight: 22,
-      textAlign: 'center',
-      maxWidth: 300,
-      color: 'rgba(255,255,255,0.55)',
     },
 
     // ── Processing ─────────────────────────────────────────────────────────

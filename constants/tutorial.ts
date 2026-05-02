@@ -11,8 +11,11 @@ export type TutorialStepId =
   | 'first_exercise_rank'
   | 'save_routine'
 
-// Features that can be trialed once for free during tutorial
-export type TrialFeatureId = 'ai_workout' | 'create_routine'
+// Features that can be trialed once for free during tutorial.
+// No active trial features at the moment — kept as a generic union type so the
+// trial plumbing in tutorial-context can stay in place if we want to bring
+// back a trial for some other premium feature later.
+export type TrialFeatureId = 'ai_workout'
 
 export interface TutorialStepConfig {
   id: TutorialStepId
@@ -64,7 +67,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     description: 'Save a workout as a reusable routine',
     icon: 'albums-outline',
     route: '/create-routine',
-    trialFeature: 'create_routine',
+    trialFeature: null,
   },
 ]
 
@@ -105,5 +108,4 @@ export function isTutorialCompleteForStepIds(
 // Map from trial feature to the step it's associated with
 export const TRIAL_FEATURE_TO_STEP: Partial<Record<TrialFeatureId, TutorialStepId>> = {
   // ai_workout: 'generate_workout', // Removed from tutorial
-  create_routine: 'save_routine',
 }

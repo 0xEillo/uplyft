@@ -387,11 +387,62 @@ export interface NotificationProperties extends BaseEventProperties {
   notification_type?: string
 }
 
+/**
+ * Curated list of paywall-gated features that fire `PAYWALL_SHOWN` (and
+ * friends). Every gated UI surface should pick one of these. Keep granular —
+ * we want to know exactly which gate is converting / leaking.
+ */
+export type PaywallFeature =
+  // Core feature gates
+  | 'workout_logging'
+  | 'voice_logging'
+  | 'body_scan'
+  | 'ai_chat'
+  | 'ai_workout_generation'
+  // Strength / progress gates
+  | 'strength_score'
+  | 'lift_progress'
+  | 'priority_lifts'
+  | 'rank_calculator'
+  | 'muscle_rank_breakdown'
+  | 'extended_history'
+  // Entry-point gates
+  | 'global_paywall' // Periodic re-prompt on app launch
+  | 'upgrade_cta' // Pro pill / Get Pro button in navbar
+  // Saving / library gates
+  | 'program_save'
+  | 'custom_exercise_create'
+  // Legacy / generic
+  | 'create_routine_from_chat'
+
 export interface PaywallProperties extends BaseEventProperties {
-  feature: 'workout_logging' | 'voice_logging' | 'body_scan' | 'ai_chat'
+  feature: PaywallFeature
   source_screen?: string
   subscription_status?: 'active' | 'trial' | 'expired' | 'none'
   action?: 'shown' | 'cta_tapped' | 'dismissed' | 'purchased'
+}
+
+/**
+ * Human-readable labels for each `PaywallFeature`. Used in paywall titles
+ * (e.g., `${label} is part of Pro`). Keep concise.
+ */
+export const PAYWALL_FEATURE_LABELS: Record<PaywallFeature, string> = {
+  workout_logging: 'Workout logging',
+  voice_logging: 'Voice logging',
+  body_scan: 'AI body scan',
+  ai_chat: 'AI Coach',
+  ai_workout_generation: 'AI workout generation',
+  strength_score: 'Strength score',
+  lift_progress: 'Lift progress',
+  priority_lifts: 'Priority Lifts',
+  rank_calculator: 'Rank Calculator',
+  muscle_rank_breakdown: 'Lift ranks',
+  extended_history: 'Extended history',
+  global_paywall: 'Pro',
+  upgrade_cta: 'Pro',
+  program_save: 'Saving programs',
+  custom_exercise_create: 'Custom exercises',
+  create_routine_from_chat: 'Custom routines',
 }
 
 export interface SubscriptionProperties extends BaseEventProperties {

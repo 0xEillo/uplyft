@@ -5,6 +5,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Paywall } from '@/components/paywall'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
@@ -37,6 +38,7 @@ export default function CreateSpeechScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const { user } = useAuth()
   const { isProMember } = useSubscription()
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   useEffect(() => {
     ;(async () => {
@@ -57,12 +59,9 @@ export default function CreateSpeechScreen() {
   }, [trackEvent])
 
   const startRecording = async () => {
-    // Check if user is pro member
     if (!isProMember) {
+      trackPaywallShown('voice_logging', 'create_speech')
       setShowPaywall(true)
-      trackEvent(AnalyticsEvents.PAYWALL_SHOWN, {
-        feature: 'voice_logging',
-      })
       return
     }
 
@@ -257,9 +256,13 @@ export default function CreateSpeechScreen() {
 
       <Paywall
         visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
+        onClose={() => {
+          trackPaywallDismissed('voice_logging', 'create_speech')
+          setShowPaywall(false)
+        }}
         title="Voice Logging is Premium"
         message="Voice logging is a premium feature. Subscribe to log your workouts with your voice."
+        feature="voice_logging"
       />
     </SafeAreaView>
   )
