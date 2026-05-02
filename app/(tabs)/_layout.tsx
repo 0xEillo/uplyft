@@ -80,6 +80,7 @@ function TabLayoutContent() {
   } = useWorkoutComposer()
   const { user, isAnonymous } = useAuth()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
+  const [hasDismissedPaywall, setHasDismissedPaywall] = useState(false)
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
   const [hasUnreadChat, setHasUnreadChat] = useState(false)
 
@@ -133,9 +134,10 @@ function TabLayoutContent() {
     router,
   ])
 
-  // Enforce Hard Paywall
-  // Use the delayed state to allow the user to see the app briefly
-  const showGlobalPaywall = delayedShowPaywall && !isProMember
+  // Freemium paywall: shown on launch for non-pro users, but dismissable.
+  // Specific premium features will gate themselves separately.
+  const showGlobalPaywall =
+    delayedShowPaywall && !isProMember && !hasDismissedPaywall
 
 
   const tabBarVisibility = useTabBarVisibility()
@@ -327,8 +329,7 @@ function TabLayoutContent() {
       <RatingPromptModal />
       <Paywall
         visible={showGlobalPaywall}
-        onClose={() => {}} // No-op, cannot close
-        allowClose={false}
+        onClose={() => setHasDismissedPaywall(true)}
         title={'Unlock your full potential'}
         message="Start your free trial to access Uplyft"
       />
