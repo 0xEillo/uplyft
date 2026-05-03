@@ -7,6 +7,7 @@ import {
   getExerciseRecordWeightKey,
   getExerciseStrengthMetric,
 } from '@/lib/exercise-strength'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import {
   getExerciseNameMap,
   getLeaderboardExercises,
@@ -257,13 +258,16 @@ const hydrateProfileWeightFromDailyLog = async <T extends Profile | null>(
   const latestWeightEntry = await database.dailyLog
     .getLatestWeightEntry(profile.id)
     .catch(() => null)
+  const resolvedWeightKg =
+    coerceBodyweightKg(latestWeightEntry?.weight_kg) ??
+    coerceBodyweightKg(profile.weight_kg)
 
   return {
     ...profile,
     // Preserve the profile value when no daily-log weight is readable.
     // This matters for other users' public views because daily_log_entries
     // are private, while profiles can still be queried for public strength UI.
-    weight_kg: latestWeightEntry?.weight_kg ?? profile.weight_kg ?? null,
+    weight_kg: resolvedWeightKg,
   } as T
 }
 
@@ -271,11 +275,12 @@ const syncProfileWeightCacheFromDailyLog = async (userId: string) => {
   const latestWeightEntry = await database.dailyLog
     .getLatestWeightEntry(userId)
     .catch(() => null)
+  const resolvedWeightKg = coerceBodyweightKg(latestWeightEntry?.weight_kg)
 
   const { error } = await supabase
     .from('profiles')
     .update({
-      weight_kg: latestWeightEntry?.weight_kg ?? null,
+      weight_kg: resolvedWeightKg,
     })
     .eq('id', userId)
 
@@ -297,7 +302,7 @@ const PROFILE_FEED_SELECT =
 const refreshProfileStrengthCache = async (userId: string) => {
   const profile = await database.profiles.getByIdOrNull(userId)
   const strengthGender = getStrengthGender(profile?.gender ?? null)
-  const bodyweightKg = profile?.weight_kg ?? null
+  const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
 
   const cacheBase = {
     overall_strength_score: null,
@@ -382,7 +387,7 @@ const getDailyWeightsByDate = async (
 
   return new Map(
     ((data as { log_date: string; weight_kg: number | null }[] | null) ?? []).map(
-      (entry) => [entry.log_date, entry.weight_kg],
+      (entry) => [entry.log_date, coerceBodyweightKg(entry.weight_kg)],
     ),
   )
 }
@@ -3984,10 +3989,12 @@ export const database = {
      */
     async getWeightHistory(userId: string, daysBack?: number) {
       const history = await database.dailyLog.getWeightHistory(userId, daysBack)
-      return history.map((entry) => ({
-        created_at: `${entry.log_date}T12:00:00`,
-        weight_kg: entry.weight_kg,
-      }))
+      return history
+        .map((entry) => ({
+          created_at: `${entry.log_date}T12:00:00`,
+          weight_kg: coerceBodyweightKg(entry.weight_kg),
+        }))
+        .filter((entry) => entry.weight_kg !== null)
     },
 
     /**
@@ -4027,7 +4034,9 @@ export const database = {
       // Transform body_log_images to images for consistency
       return {
         ...data,
-        weight_kg: weightByDate.get(logDate) ?? data.weight_kg,
+        weight_kg:
+          coerceBodyweightKg(weightByDate.get(logDate)) ??
+          coerceBodyweightKg(data.weight_kg),
         images: data?.body_log_images || [],
       }
     },
@@ -4075,8 +4084,9 @@ export const database = {
           user_id: entry.user_id,
           created_at: entry.created_at,
           weight_kg:
-            weightByDate.get(normalizeDailyLogDate(entry.created_at)) ??
-            entry.weight_kg,
+            coerceBodyweightKg(
+              weightByDate.get(normalizeDailyLogDate(entry.created_at)),
+            ) ?? coerceBodyweightKg(entry.weight_kg),
           body_fat_percentage: entry.body_fat_percentage,
           bmi: entry.bmi,
           muscle_mass_kg: entry.muscle_mass_kg,
@@ -4144,8 +4154,9 @@ export const database = {
           user_id: entry.user_id,
           created_at: entry.created_at,
           weight_kg:
-            weightByDate.get(normalizeDailyLogDate(entry.created_at)) ??
-            entry.weight_kg,
+            coerceBodyweightKg(
+              weightByDate.get(normalizeDailyLogDate(entry.created_at)),
+            ) ?? coerceBodyweightKg(entry.weight_kg),
           body_fat_percentage: entry.body_fat_percentage,
           bmi: entry.bmi,
           muscle_mass_kg: entry.muscle_mass_kg,
@@ -4407,7 +4418,12 @@ export const database = {
         .maybeSingle()
 
       if (error) throw error
-      return (data as DailyLogEntry | null) ?? null
+      return data
+        ? ({
+            ...(data as DailyLogEntry),
+            weight_kg: coerceBodyweightKg((data as DailyLogEntry).weight_kg),
+          } as DailyLogEntry)
+        : null
     },
 
     async getLatestWeightEntry(userId: string): Promise<DailyLogEntry | null> {
@@ -4421,7 +4437,12 @@ export const database = {
         .maybeSingle()
 
       if (error) throw error
-      return (data as DailyLogEntry | null) ?? null
+      return data
+        ? ({
+            ...(data as DailyLogEntry),
+            weight_kg: coerceBodyweightKg((data as DailyLogEntry).weight_kg),
+          } as DailyLogEntry)
+        : null
     },
 
     async getWeightHistory(userId: string, daysBack?: number) {
@@ -4441,7 +4462,15 @@ export const database = {
       const { data, error } = await query
 
       if (error) throw error
-      return (data || []) as { log_date: string; weight_kg: number }[]
+      return ((data || []) as { log_date: string; weight_kg: number | string | null }[])
+        .map((entry) => ({
+          log_date: entry.log_date,
+          weight_kg: coerceBodyweightKg(entry.weight_kg),
+        }))
+        .filter(
+          (entry): entry is { log_date: string; weight_kg: number } =>
+            entry.weight_kg !== null,
+        )
     },
 
     /**

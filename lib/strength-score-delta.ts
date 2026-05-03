@@ -1,4 +1,5 @@
 import { database } from '@/lib/database'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import {
   calculateOverallStrengthScoreDeltaForSession,
   getLatestStrengthIncreaseSession,
@@ -111,12 +112,11 @@ export function calculateStrengthScoreDelta(
   const { semantics, context, postedWorkoutSessionId, now } = input
   const { profile, strengthGender, exercises, best1RMSnapshotByExerciseId } =
     context
+  const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
 
   if (
     !strengthGender ||
-    !profile?.weight_kg ||
-    !Number.isFinite(profile.weight_kg) ||
-    profile.weight_kg <= 0 ||
+    !bodyweightKg ||
     exercises.length === 0
   ) {
     return null
@@ -138,7 +138,7 @@ export function calculateStrengthScoreDelta(
 
   const scoreDelta = calculateOverallStrengthScoreDeltaForSession({
     gender: strengthGender,
-    bodyweightKg: profile.weight_kg,
+    bodyweightKg,
     exercises,
     best1RMSnapshotByExerciseId,
     baselineSessionId,

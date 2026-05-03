@@ -133,6 +133,38 @@ describe('strength score delta service', () => {
     expect(postedDelta?.pointsGained).not.toBe(latestDelta?.pointsGained)
   })
 
+  test('calculates ranks when profile weight is returned as a numeric string', () => {
+    const context = {
+      profile: { gender: 'male', weight_kg: '90' } as any,
+      strengthGender: 'male' as const,
+      exercises: [
+        {
+          exerciseId: 'bench',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: 130,
+          lastTrainedAt: '2026-03-05T10:00:00.000Z',
+        },
+      ],
+      best1RMSnapshotByExerciseId: {
+        bench: {
+          currentBest1RM: 130,
+          previousBest1RM: 120,
+          lastIncreaseAt: '2026-03-05T10:00:00.000Z',
+          lastIncreaseSessionId: 'workout-123',
+        },
+      },
+    }
+
+    const delta = calculateStrengthScoreDelta({
+      semantics: STRENGTH_SCORE_DELTA_SEMANTICS.latestIncreaseSession,
+      context,
+    })
+
+    expect(delta).not.toBeNull()
+    expect(delta?.currentResult.liftsTracked).toBe(1)
+  })
+
   test('loadStrengthScoreDeltaContext uses profile override when provided', async () => {
     mockDatabase.profiles.getByIdOrNull.mockResolvedValue({
       id: 'user-1',

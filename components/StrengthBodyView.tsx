@@ -30,6 +30,7 @@ import {
   getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
 } from "@/lib/body-mapping";
+import { coerceBodyweightKg } from "@/lib/bodyweight";
 import { database } from "@/lib/database";
 import {
   EXERCISE_MUSCLE_MAPPING,
@@ -195,9 +196,7 @@ export function StrengthBodyView({
   const needsBodyweightForStrength = Boolean(
     profile &&
       user?.id &&
-      (typeof profile.weight_kg !== "number" ||
-        !Number.isFinite(profile.weight_kg) ||
-        profile.weight_kg <= 0),
+      !coerceBodyweightKg(profile.weight_kg),
   );
 
   const showWeightGate = !isLoading && needsBodyweightForStrength;
@@ -259,7 +258,8 @@ export function StrengthBodyView({
   const trackedExercisesWithProgress = useMemo<
     TrackedExerciseWithProgress[]
   >(() => {
-    if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg);
+    if (!strengthGender || !bodyweightKg || exerciseData.length === 0) {
       return [];
     }
 
@@ -290,9 +290,9 @@ export function StrengthBodyView({
             const isRepBased = isRepBasedExercise(exercise.exerciseName)
             if (isRepBased) {
               targetWeight = nextLevelStandard.multiplier
-            } else if (profile.weight_kg) {
+            } else {
               targetWeight = Math.ceil(
-                profile.weight_kg * nextLevelStandard.multiplier,
+                bodyweightKg * nextLevelStandard.multiplier,
               )
             }
           }
@@ -395,11 +395,10 @@ export function StrengthBodyView({
   const priorityRecommendations = useMemo<
     PriorityExerciseRecommendation[]
   >(() => {
-    const bodyweightKg = profile?.weight_kg;
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg);
     if (
       !strengthGender ||
-      typeof bodyweightKg !== "number" ||
-      bodyweightKg <= 0 ||
+      !bodyweightKg ||
       trackedExercisesWithProgress.length === 0
     ) {
       return [];

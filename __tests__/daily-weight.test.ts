@@ -39,6 +39,31 @@ describe('daily-weight helper', () => {
     await expect(getLatestDailyWeightKg(client, 'user-1')).resolves.toBe(82.5)
   })
 
+  it('coerces database numeric strings for the latest stored daily weight', async () => {
+    const maybeSingle = jest.fn().mockResolvedValue({
+      data: { weight_kg: '82.5' },
+      error: null,
+    })
+
+    const client: any = {
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            not: jest.fn(() => ({
+              order: jest.fn(() => ({
+                limit: jest.fn(() => ({
+                  maybeSingle,
+                })),
+              })),
+            })),
+          })),
+        })),
+      })),
+    }
+
+    await expect(getLatestDailyWeightKg(client, 'user-1')).resolves.toBe(82.5)
+  })
+
   it('returns null when there is no latest stored daily weight', async () => {
     const maybeSingle = jest.fn().mockResolvedValue({
       data: null,

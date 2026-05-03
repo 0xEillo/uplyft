@@ -1,5 +1,18 @@
 import type { SupabaseClient } from './supabase.ts'
 
+function coerceWeightKg(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? value : null
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  return null
+}
+
 export function normalizeLogDate(value: string): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
@@ -26,7 +39,7 @@ export async function getLatestDailyWeightKg(
     .maybeSingle()
 
   if (error) throw error
-  return typeof data?.weight_kg === 'number' ? data.weight_kg : null
+  return coerceWeightKg(data?.weight_kg)
 }
 
 export async function getDailyWeightsByLogDate(
@@ -62,7 +75,7 @@ export async function getDailyWeightsByLogDate(
 
   return new Map(
     ((data as { log_date: string; weight_kg: number | null }[] | null) ?? []).map(
-      (entry) => [entry.log_date, entry.weight_kg],
+      (entry) => [entry.log_date, coerceWeightKg(entry.weight_kg)],
     ),
   )
 }

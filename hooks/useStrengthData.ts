@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
 import {
   getOnboardingStrengthSnapshot,
@@ -150,7 +151,8 @@ export function useStrengthData() {
   const getStrengthInfo = useCallback(
     (exerciseName: string, max1RM: number) => {
       const strengthGender = getStrengthGender(profile?.gender)
-      if (!strengthGender || !profile?.weight_kg) {
+      const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+      if (!strengthGender || !bodyweightKg) {
         return null
       }
 
@@ -161,7 +163,7 @@ export function useStrengthData() {
       return getStrengthStandard(
         exerciseName,
         strengthGender,
-        profile.weight_kg,
+        bodyweightKg,
         max1RM,
       )
     },
@@ -172,7 +174,7 @@ export function useStrengthData() {
   const groupLevels = useMemo((): Map<ExerciseGroup, GroupLevelData> => {
     const result = new Map<ExerciseGroup, GroupLevelData>()
 
-    if (!profile?.weight_kg || exerciseData.length === 0) {
+    if (!coerceBodyweightKg(profile?.weight_kg) || exerciseData.length === 0) {
       return result
     }
 
@@ -218,7 +220,11 @@ export function useStrengthData() {
   }, [exerciseData, profile, getStrengthInfo])
 
   const overallLevel = useMemo((): OverallLevelData | null => {
-    if (!profile?.weight_kg || exerciseData.length === 0) {
+    if (
+      !profile ||
+      !coerceBodyweightKg(profile.weight_kg) ||
+      exerciseData.length === 0
+    ) {
       return null
     }
 
@@ -268,10 +274,10 @@ export function useStrengthData() {
 
   const muscleGroups = useMemo((): MuscleGroupData[] => {
     const strengthGender = getStrengthGender(profile?.gender)
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
     if (
       !strengthGender ||
-      !profile?.weight_kg ||
-      profile.weight_kg <= 0 ||
+      !bodyweightKg ||
       exerciseData.length === 0
     ) {
       return []
@@ -279,7 +285,7 @@ export function useStrengthData() {
 
     return buildSpecificMuscleGroupData({
       gender: strengthGender,
-      bodyweightKg: profile.weight_kg,
+      bodyweightKg,
       exercises: exerciseData,
     })
   }, [exerciseData, profile?.gender, profile?.weight_kg])
