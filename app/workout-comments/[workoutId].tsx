@@ -951,7 +951,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       elevation: 2,
     },
     textInputGlass: {
-      flex: 1,
       borderRadius: 20,
     },
     textInputContainer: {
