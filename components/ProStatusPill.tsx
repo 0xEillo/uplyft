@@ -2,8 +2,8 @@
  * Pro status pill for the navbar — same liquid-glass capsule treatment as
  * other navbar islands (streak / actions).
  *
- * Non-Pro: filled brand capsule + white label (upgrade CTA). Pro: clear glass
- * + brand text only (manage subscription).
+ * Non-Pro: filled brand capsule + white label (opens paywall on tap). Pro:
+ * clear glass + brand text only (not interactive).
  */
 
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
@@ -14,70 +14,61 @@ import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useFeatureGate } from '@/utils/analytics-helpers'
 import { useState } from 'react'
-import { Linking, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native'
-
-const APPLE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
-const GOOGLE_SUBSCRIPTIONS_URL =
-  'https://play.google.com/store/account/subscriptions'
+import { StyleSheet, Text, TouchableOpacity } from 'react-native'
 
 export function ProStatusPill() {
   const colors = useThemedColors()
   const { isDark } = useTheme()
-  const { isProMember, customerInfo } = useSubscription()
+  const { isProMember } = useSubscription()
   const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const [paywallVisible, setPaywallVisible] = useState(false)
 
-  const handlePress = async () => {
-    if (isProMember) {
-      const url =
-        customerInfo?.managementURL ||
-        (Platform.OS === 'ios'
-          ? APPLE_SUBSCRIPTIONS_URL
-          : GOOGLE_SUBSCRIPTIONS_URL)
-      try {
-        await Linking.openURL(url)
-      } catch {
-        // No-op; managementURL is best-effort.
-      }
-      return
-    }
+  const handlePress = () => {
     trackPaywallShown('upgrade_cta', 'home_navbar')
     setPaywallVisible(true)
   }
 
+  const pill = (
+    <LiquidGlassSurface
+      isInteractive={!isProMember}
+      glassEffectStyle="regular"
+      tintColor={isProMember ? undefined : colors.brandPrimary}
+      style={[styles.glassCapsule, !isProMember && styles.glassCapsuleCta]}
+      fallbackStyle={
+        isProMember
+          ? {
+              borderWidth: StyleSheet.hairlineWidth * 2,
+              borderColor: isDark
+                ? 'rgba(255,255,255,0.16)'
+                : 'rgba(0,0,0,0.1)',
+            }
+          : { backgroundColor: colors.brandPrimary }
+      }
+    >
+      <Text
+        style={[
+          styles.proLabel,
+          { color: isProMember ? colors.brandPrimary : '#fff' },
+        ]}
+      >
+        {isProMember ? 'PRO' : 'TRY PRO'}
+      </Text>
+    </LiquidGlassSurface>
+  )
+
   return (
     <>
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.75}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <LiquidGlassSurface
-          isInteractive
-          glassEffectStyle="regular"
-          tintColor={isProMember ? undefined : colors.brandPrimary}
-          style={[styles.glassCapsule, !isProMember && styles.glassCapsuleCta]}
-          fallbackStyle={
-            isProMember
-              ? {
-                  borderWidth: StyleSheet.hairlineWidth * 2,
-                  borderColor: isDark
-                    ? 'rgba(255,255,255,0.16)'
-                    : 'rgba(0,0,0,0.1)',
-                }
-              : { backgroundColor: colors.brandPrimary }
-          }
+      {isProMember ? (
+        pill
+      ) : (
+        <TouchableOpacity
+          onPress={handlePress}
+          activeOpacity={0.75}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text
-            style={[
-              styles.proLabel,
-              { color: isProMember ? colors.brandPrimary : '#fff' },
-            ]}
-          >
-            {isProMember ? 'PRO' : 'TRY PRO'}
-          </Text>
-        </LiquidGlassSurface>
-      </TouchableOpacity>
+          {pill}
+        </TouchableOpacity>
+      )}
       <Paywall
         visible={paywallVisible}
         onClose={() => {
