@@ -33,6 +33,7 @@ import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { database } from '@/lib/database'
 import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
@@ -367,7 +368,8 @@ export default function ExerciseDetailScreen() {
 
   const getStrengthInfo = useCallback(() => {
     const strengthGender = getStrengthGender(profile?.gender)
-    if (!strengthGender || !profile?.weight_kg || !exercise?.name) {
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+    if (!strengthGender || !bodyweightKg || !exercise?.name) {
       return null
     }
 
@@ -378,7 +380,7 @@ export default function ExerciseDetailScreen() {
     return getStrengthStandard(
       exercise.name,
       strengthGender,
-      profile.weight_kg,
+      bodyweightKg,
       max1RM,
     )
   }, [profile, exercise, max1RM])
@@ -621,7 +623,8 @@ export default function ExerciseDetailScreen() {
   const isRepBasedStrengthExercise =
     !!exercise?.name && isRepBasedExercise(exercise.name)
   const exerciseLevelMilestoneLabels = useMemo(() => {
-    if (!exercise?.name || !profile?.weight_kg) return undefined
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+    if (!exercise?.name || !bodyweightKg) return undefined
     const strengthGender = getStrengthGender(profile?.gender)
     if (!strengthGender) return undefined
 
@@ -629,14 +632,13 @@ export default function ExerciseDetailScreen() {
     if (!ladder) return undefined
 
     const labels: Partial<Record<StrengthLevel, string>> = {}
-    const weightKg = profile.weight_kg!
     ladder.forEach((standard) => {
       if (isRepBasedExercise(exercise.name)) {
         labels[standard.level] = `${Math.round(standard.multiplier)} reps`
         return
       }
 
-      const targetWeightKg = Math.ceil(weightKg * standard.multiplier)
+      const targetWeightKg = Math.ceil(bodyweightKg * standard.multiplier)
       const compactWeight = formatWeight(targetWeightKg, {
         maximumFractionDigits: 0,
       }).replace(/\s+/g, '')

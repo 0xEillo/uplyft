@@ -1,3 +1,4 @@
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { database } from '@/lib/database'
 import { applyPendingOnboardingProfile } from '@/lib/pending-onboarding'
 import { Profile } from '@/types/database.types'
@@ -66,9 +67,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         throw new Error('Cannot update profile: no user or profile loaded')
       }
 
-      // Optimistic update
+      // Optimistic update. Coerce weight_kg so the optimistic state never
+      // holds a non-numeric value (e.g. a numeric string from a form input).
+      // Server-side, weight_kg is stripped by sanitizeProfileUpdates and the
+      // canonical write goes through database.dailyLog.updateDay.
       const previousProfile = profile
-      setProfile({ ...profile, ...updates })
+      const optimisticUpdates: Partial<Profile> = { ...updates }
+      if ('weight_kg' in optimisticUpdates) {
+        optimisticUpdates.weight_kg = coerceBodyweightKg(
+          optimisticUpdates.weight_kg,
+        )
+      }
+      setProfile({ ...profile, ...optimisticUpdates })
 
       try {
         const updated = await database.profiles.update(user.id, updates)

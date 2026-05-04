@@ -10,6 +10,7 @@ import {
   exerciseMatchesBodyPart,
   getTrackableExercisesForBodyPart,
 } from '@/lib/body-part-strength'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import {
@@ -66,7 +67,8 @@ export function MuscleGroupDetailSheet({
   const allMuscleExercises = useMemo(() => {
     const getStrengthInfo = (exerciseName: string, max1RM: number) => {
       const strengthGender = getStrengthGender(profile?.gender)
-      if (!strengthGender || !profile?.weight_kg) {
+      const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+      if (!strengthGender || !bodyweightKg) {
         return null
       }
 
@@ -77,7 +79,7 @@ export function MuscleGroupDetailSheet({
       return getStrengthStandard(
         exerciseName,
         strengthGender,
-        profile.weight_kg,
+        bodyweightKg,
         max1RM,
       )
     }

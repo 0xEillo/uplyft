@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useStrengthData'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { isRepBasedExercise } from '@/lib/exercise-standards-config'
 import { getStrengthGender } from '@/lib/strength-progress'
 import { getStandardsLadder, type StrengthStandard } from '@/lib/strength-standards'
@@ -160,7 +161,8 @@ export function StrengthStandardsView() {
 
   // Compute tracked exercises with their level-up progression info
   const trackedExercisesWithProgress = useMemo(() => {
-    if (!strengthGender || !profile?.weight_kg || exerciseData.length === 0) {
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+    if (!strengthGender || !bodyweightKg || exerciseData.length === 0) {
       return []
     }
 
@@ -190,8 +192,8 @@ export function StrengthStandardsView() {
         if (nextLevelStandard) {
           if (isRepBasedExercise(exercise.exerciseName)) {
             targetWeight = nextLevelStandard.multiplier
-          } else if (profile.weight_kg) {
-            targetWeight = Math.ceil(profile.weight_kg * nextLevelStandard.multiplier)
+          } else {
+            targetWeight = Math.ceil(bodyweightKg * nextLevelStandard.multiplier)
           }
         }
       }

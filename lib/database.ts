@@ -255,19 +255,23 @@ const hydrateProfileWeightFromDailyLog = async <T extends Profile | null>(
 ): Promise<T> => {
   if (!profile) return profile
 
+  // Trust the cache when it is a real positive number. profiles.weight_kg is
+  // kept in sync via syncProfileWeightCacheFromDailyLog on every dailyLog
+  // update, and the 20260503 repair migration backfills legacy rows. We only
+  // hit daily_log_entries when the cache is missing or unparsable, which
+  // matches the actual repair scenario for affected users.
+  const cachedWeightKg = coerceBodyweightKg(profile.weight_kg)
+  if (cachedWeightKg !== null) {
+    return { ...profile, weight_kg: cachedWeightKg } as T
+  }
+
   const latestWeightEntry = await database.dailyLog
     .getLatestWeightEntry(profile.id)
     .catch(() => null)
-  const resolvedWeightKg =
-    coerceBodyweightKg(latestWeightEntry?.weight_kg) ??
-    coerceBodyweightKg(profile.weight_kg)
 
   return {
     ...profile,
-    // Preserve the profile value when no daily-log weight is readable.
-    // This matters for other users' public views because daily_log_entries
-    // are private, while profiles can still be queried for public strength UI.
-    weight_kg: resolvedWeightKg,
+    weight_kg: coerceBodyweightKg(latestWeightEntry?.weight_kg),
   } as T
 }
 

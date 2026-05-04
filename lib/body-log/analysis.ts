@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import type { Profile } from '@/types/database.types'
 
 import type { BodyLogMetrics } from './metadata'
@@ -103,8 +104,8 @@ export function buildBodyLogPrompt({
   if (typeof profile?.age === 'number') contextParts.push(`age=${profile.age}`)
   if (typeof profile?.height_cm === 'number')
     contextParts.push(`height_cm=${profile.height_cm}`)
-  if (typeof profile?.weight_kg === 'number')
-    contextParts.push(`weight_kg=${profile.weight_kg}`)
+  const weightKg = coerceBodyweightKg(profile?.weight_kg)
+  if (weightKg !== null) contextParts.push(`weight_kg=${weightKg}`)
 
   lines.push(`Known facts: ${contextParts.join(', ')}`)
 

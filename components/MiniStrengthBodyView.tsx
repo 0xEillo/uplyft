@@ -10,6 +10,7 @@ import {
   getPrimaryMuscleForBodyPart,
   type BodyPartSlug,
 } from '@/lib/body-mapping'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import {
   buildSpecificMuscleGroupData,
 } from '@/lib/strength-display-groups'
@@ -53,11 +54,12 @@ function useMiniStrengthData(userId: string) {
         ) as ExerciseData[]
         setExerciseData(sorted)
 
-        if (ctx.profile?.weight_kg && ctx.strengthGender && sorted.length > 0) {
+        const bodyweightKg = coerceBodyweightKg(ctx.profile?.weight_kg)
+        if (bodyweightKg && ctx.strengthGender && sorted.length > 0) {
           setMuscleGroups(
             buildSpecificMuscleGroupData({
               gender: ctx.strengthGender,
-              bodyweightKg: ctx.profile.weight_kg,
+              bodyweightKg,
               exercises: sorted,
             }),
           )

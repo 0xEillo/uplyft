@@ -8,6 +8,7 @@ import { getColors } from '@/constants/colors'
 import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
 import { useProfile } from '@/contexts/profile-context'
+import { coerceBodyweightKg } from '@/lib/bodyweight'
 import {
   estimateOneRepMaxKg,
   getProgressDeltaPoints,
@@ -117,7 +118,8 @@ export function ExerciseDetailCard({
   const strengthProgress = useMemo(() => {
     if (!exercise || setEntries.length === 0) return null
     const strengthGender = getStrengthGender(profile?.gender)
-    if (!profile?.weight_kg || !strengthGender) return null
+    const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+    if (!bodyweightKg || !strengthGender) return null
     if (!hasStrengthStandards(exercise.name)) return null
 
     let sessionBest1RM = 0
@@ -141,7 +143,7 @@ export function ExerciseDetailCard({
     const currentInfo = getStrengthStandard(
       exercise.name,
       strengthGender,
-      profile.weight_kg,
+      bodyweightKg,
       postWorkoutBest1RM,
     )
 
@@ -152,7 +154,7 @@ export function ExerciseDetailCard({
       ? getStrengthStandard(
           exercise.name,
           strengthGender,
-          profile.weight_kg,
+          bodyweightKg,
           baselineBest1RM,
         )
       : null
