@@ -2103,9 +2103,15 @@ export function WorkoutChat({
   const shouldAutoScrollRef = useRef(true)
   const AUTO_SCROLL_BOTTOM_THRESHOLD = 80
 
+  // Tracks whether we've completed the initial pin-to-bottom after hydration.
+  // The first scroll must be non-animated, otherwise FlashList animates through
+  // the entire history (looks like a fast carousel slide on long chats).
+  const hasInitiallyScrolledRef = useRef(false)
+
   const scrollToBottom = (options?: { force?: boolean; animated?: boolean }) => {
     const force = options?.force ?? false
-    const animated = options?.animated ?? true
+    // Animate only after the initial settle; first scroll snaps instantly.
+    const animated = options?.animated ?? hasInitiallyScrolledRef.current
     if (!force && !shouldAutoScrollRef.current) return
     if (force) shouldAutoScrollRef.current = true
     messagesListRef.current?.scrollToEnd({ animated })
@@ -2128,6 +2134,9 @@ export function WorkoutChat({
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom()
+      // After the first scroll-to-bottom on hydration, allow subsequent scrolls
+      // (e.g. user sending a new message) to animate normally.
+      hasInitiallyScrolledRef.current = true
     }
   }, [messages.length])
 
@@ -5215,7 +5224,13 @@ export function WorkoutChat({
                   (messages.length > 0 || isLoading || isWelcomeTyping) &&
                   shouldAutoScrollRef.current
                 ) {
-                  scrollToBottom()
+                  // Always snap (non-animated) on content size changes:
+                  // - During initial layout, FlashList re-measures items and
+                  //   fires this repeatedly; animating each call produces a
+                  //   jarring carousel slide through the history.
+                  // - During streaming, snap also feels smoother than queueing
+                  //   an animation per token.
+                  scrollToBottom({ animated: false })
                 }
               }}
               onScroll={handleMessagesScroll}
