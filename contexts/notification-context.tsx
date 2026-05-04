@@ -29,6 +29,16 @@ try {
   isNotificationsAvailable = false
 }
 
+const syncApplicationBadge = async (count: number) => {
+  if (!isNotificationsAvailable) return
+
+  try {
+    await Notifications.setBadgeCountAsync(Math.max(0, count))
+  } catch (error) {
+    console.warn('[Notifications] Failed to sync app badge:', error)
+  }
+}
+
 interface NotificationContextType {
   hasPermission: boolean
   requestPermission: () => Promise<boolean>
@@ -58,6 +68,7 @@ export function NotificationProvider({
     if (!user) {
       setNotifications([])
       setUnreadCount(0)
+      void syncApplicationBadge(0)
       return
     }
 
@@ -67,6 +78,7 @@ export function NotificationProvider({
 
       const unread = data.filter((n) => !n.read).length
       setUnreadCount(unread)
+      void syncApplicationBadge(unread)
     } catch (error: unknown) {
       // Silently handle transient server errors (like 502 Bad Gateway) 
       // instead of printing full HTML blobs to the console.
@@ -88,8 +100,16 @@ export function NotificationProvider({
   useEffect(() => {
     if (user) {
       loadNotifications()
+    } else {
+      setNotifications([])
+      setUnreadCount(0)
+      void syncApplicationBadge(0)
     }
   }, [user, loadNotifications])
+
+  useEffect(() => {
+    void syncApplicationBadge(unreadCount)
+  }, [unreadCount])
 
   // Real-time subscription to notifications table
   useEffect(() => {
@@ -203,7 +223,15 @@ export function NotificationProvider({
 
   const markAsRead = useCallback(() => {
     setUnreadCount(0)
-  }, [])
+    void syncApplicationBadge(0)
+
+    if (!user) return
+
+    database.notifications.markAllAsRead(user.id).catch((error) => {
+      console.error('[Notifications] Error marking notifications as read:', error)
+      void loadNotifications()
+    })
+  }, [loadNotifications, user])
 
   const markAllAsReadOptimistically = useCallback(() => {
     // Optimistically update UI immediately
@@ -214,6 +242,7 @@ export function NotificationProvider({
       }))
     )
     setUnreadCount(0)
+    void syncApplicationBadge(0)
   }, [])
 
   const refreshNotifications = useCallback(async () => {

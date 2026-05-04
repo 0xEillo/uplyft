@@ -292,6 +292,19 @@ Deno.serve(async (req) => {
 
     const channelId = channelIdByType[notification.type] || 'default'
 
+    const { count: unreadCount, error: unreadCountError } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', notification.recipient_id)
+      .eq('read', false)
+
+    if (unreadCountError) {
+      console.error(
+        '[send-push-notification] Error fetching unread count:',
+        unreadCountError,
+      )
+    }
+
     const message: ExpoPushMessage = {
       to: profile.expo_push_token,
       sound: 'default',
@@ -299,7 +312,7 @@ Deno.serve(async (req) => {
       body,
       channelId,
       data: messageData,
-      badge: 1, // iOS badge increment
+      badge: Math.max(1, unreadCount || 1),
     }
 
     console.log(
