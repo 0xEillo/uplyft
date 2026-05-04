@@ -1344,7 +1344,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       right: 4,
     },
     streakBadgeText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.textPrimary,
     },

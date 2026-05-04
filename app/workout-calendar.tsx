@@ -708,7 +708,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       includeFontPadding: false,
     },
     streakLabel: {
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: '700',
       color: colors.textPrimary,
       marginTop: -2,

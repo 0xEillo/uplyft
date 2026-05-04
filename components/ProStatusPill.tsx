@@ -2,7 +2,8 @@
  * Pro status pill for the navbar — same liquid-glass capsule treatment as
  * other navbar islands (streak / actions).
  *
- * Pro: brand-tinted glass + white label. Non-Pro: clear glass + brand label.
+ * Non-Pro: filled brand capsule + white label (upgrade CTA). Pro: clear glass
+ * + brand text only (manage subscription).
  */
 
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
@@ -54,26 +55,26 @@ export function ProStatusPill() {
         <LiquidGlassSurface
           isInteractive
           glassEffectStyle="regular"
-          tintColor={isProMember ? colors.brandPrimary : undefined}
-          style={styles.glassCapsule}
+          tintColor={isProMember ? undefined : colors.brandPrimary}
+          style={[styles.glassCapsule, !isProMember && styles.glassCapsuleCta]}
           fallbackStyle={
             isProMember
-              ? { backgroundColor: colors.brandPrimary }
-              : {
+              ? {
                   borderWidth: StyleSheet.hairlineWidth * 2,
                   borderColor: isDark
                     ? 'rgba(255,255,255,0.16)'
                     : 'rgba(0,0,0,0.1)',
                 }
+              : { backgroundColor: colors.brandPrimary }
           }
         >
           <Text
             style={[
               styles.proLabel,
-              { color: isProMember ? '#fff' : colors.brandPrimary },
+              { color: isProMember ? colors.brandPrimary : '#fff' },
             ]}
           >
-            PRO
+            {isProMember ? 'PRO' : 'TRY PRO'}
           </Text>
         </LiquidGlassSurface>
       </TouchableOpacity>
@@ -102,6 +103,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 58,
+  },
+  glassCapsuleCta: {
+    minWidth: 90,
+    paddingHorizontal: 10,
   },
   proLabel: {
     fontSize: 12,
