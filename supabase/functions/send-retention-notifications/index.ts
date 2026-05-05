@@ -88,8 +88,33 @@ const WEEKLY_RECAP_HOUR = 9
 const STREAK_REMINDER_HOUR = 20
 const INACTIVITY_REMINDER_HOUR = 18
 const MILESTONE_REMINDER_HOUR = 10
-const MIN_SPACING_HOURS = 20
+/** Min hours between any two retention/coach tally pushes (~1/day). */
+const MIN_SPACING_HOURS = 22
+/** Duplicate `retention_scheduled_workout` copy within this window — avoid spamming same template. */
+const SCHEDULED_WORKOUT_MESSAGE_COOLDOWN_HOURS = 22
 const MILESTONES = [10, 25, 50, 100, 150, 200]
+
+/** Large `in.(uuid,...)` filters can overflow URL limits and return opaque 400s. */
+const UUID_IN_QUERY_CHUNK = 100
+
+function serializeSupabaseError(error: unknown): Record<string, unknown> {
+  if (error !== null && typeof error === 'object') {
+    const e = error as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const key of ['name', 'message', 'code', 'details', 'hint', 'status']) {
+      if (key in e && e[key] !== undefined) out[key] = e[key]
+    }
+    return Object.keys(out).length ? out : { fallback: String(error) }
+  }
+  return { message: error === undefined ? 'undefined' : String(error) }
+}
+
+function logRetentionError(step: string, error: unknown) {
+  console.error(
+    `[send-retention-notifications] ${step}`,
+    JSON.stringify(serializeSupabaseError(error)),
+  )
+}
 
 function getLocalDateKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -316,7 +341,10 @@ function pickMessage(input: {
     !pref.proactive_coach_enabled &&
     localHour === pref.preferred_reminder_hour &&
     scheduledReminderPlan.shouldSendScheduledReminderToday &&
-    !hasRecentType('retention_scheduled_workout', 20)
+    !hasRecentType(
+      'retention_scheduled_workout',
+      SCHEDULED_WORKOUT_MESSAGE_COOLDOWN_HOURS,
+    )
   ) {
     const name = firstName(pref.profile?.display_name ?? '')
 
@@ -488,6 +516,29 @@ function pickMessage(input: {
     }
   }
 
+  // Soft daily nudge at the user's preferred hour when they did not train today
+  // and no other branch matched (often: weekly commitment already satisfied).
+  if (
+    pref.scheduled_reminders_enabled &&
+    !pref.proactive_coach_enabled &&
+    localHour === pref.preferred_reminder_hour &&
+    !hasRecentType(
+      'retention_scheduled_workout',
+      SCHEDULED_WORKOUT_MESSAGE_COOLDOWN_HOURS,
+    )
+  ) {
+    const name = firstName(pref.profile?.display_name ?? '')
+    return {
+      type: 'retention_scheduled_workout',
+      title: 'Training today?',
+      body: `Hey ${name}, want to log a session while the habit is fresh?`,
+      route: '/(tabs)/create-post',
+      metadata: {
+        category: 'daily_nudge',
+      },
+    }
+  }
+
   return null
 }
 
@@ -553,6 +604,7 @@ Deno.serve(async (req) => {
     const { data: prefRowsRaw, error: prefError } = await prefQuery
 
     if (prefError) {
+      logRetentionError('step=preferences_fetch', prefError)
       throw prefError
     }
 
@@ -572,23 +624,28 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { data: profileRows, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, display_name, commitment, commitment_frequency, expo_push_token')
-      .in(
-        'id',
-        prefRows.map((pref) => pref.user_id),
-      )
+    const prefUserIds = prefRows.map((pref) => pref.user_id)
+    const profileRowsAccum: ProfileRow[] = []
 
-    if (profileError) {
-      throw profileError
+    for (let i = 0; i < prefUserIds.length; i += UUID_IN_QUERY_CHUNK) {
+      const chunk = prefUserIds.slice(i, i + UUID_IN_QUERY_CHUNK)
+      const { data: profileChunk, error: profileError } = await supabase
+        .from('profiles')
+        .select(
+          'id, display_name, commitment, commitment_frequency, expo_push_token',
+        )
+        .in('id', chunk)
+
+      if (profileError) {
+        logRetentionError('step=profiles_fetch', profileError)
+        throw profileError
+      }
+
+      profileRowsAccum.push(...((profileChunk || []) as ProfileRow[]))
     }
 
     const profileById = new Map<string, ProfileRow>(
-      ((profileRows || []) as ProfileRow[]).map((profile) => [
-        profile.id,
-        profile,
-      ]),
+      profileRowsAccum.map((profile) => [profile.id, profile]),
     )
 
     const normalizedPrefs = prefRows.map((pref) => ({
@@ -621,37 +678,48 @@ Deno.serve(async (req) => {
     const historyLookback = new Date(now.getTime() - LOOKBACK_HISTORY_DAYS * DAY_MS)
     const weeklyLimitLookback = new Date(now.getTime() - 7 * DAY_MS)
 
-    const [workoutsResult, historyResult] = await Promise.all([
-      supabase
-        .from('workout_sessions')
-        .select('user_id, date')
-        .in('user_id', userIds)
-        .gte('date', workoutLookback.toISOString()),
-      supabase
-        .from('notifications')
-        .select('recipient_id, type, created_at')
-        .in('recipient_id', userIds)
-        .in('type', PUSH_LIMIT_TYPES)
-        .gte('created_at', historyLookback.toISOString()),
-    ])
+    const workoutsFlat: WorkoutRow[] = []
+    const historyFlat: NotificationHistoryRow[] = []
 
-    if (workoutsResult.error) {
-      throw workoutsResult.error
-    }
+    for (let i = 0; i < userIds.length; i += UUID_IN_QUERY_CHUNK) {
+      const chunk = userIds.slice(i, i + UUID_IN_QUERY_CHUNK)
+      const [workoutsResult, historyResult] = await Promise.all([
+        supabase
+          .from('workout_sessions')
+          .select('user_id, date')
+          .in('user_id', chunk)
+          .gte('date', workoutLookback.toISOString()),
+        supabase
+          .from('notifications')
+          .select('recipient_id, type, created_at')
+          .in('recipient_id', chunk)
+          .in('type', PUSH_LIMIT_TYPES)
+          .gte('created_at', historyLookback.toISOString()),
+      ])
 
-    if (historyResult.error) {
-      throw historyResult.error
+      if (workoutsResult.error) {
+        logRetentionError('step=workouts_fetch', workoutsResult.error)
+        throw workoutsResult.error
+      }
+
+      if (historyResult.error) {
+        logRetentionError('step=history_fetch', historyResult.error)
+        throw historyResult.error
+      }
+
+      workoutsFlat.push(...((workoutsResult.data || []) as WorkoutRow[]))
+      historyFlat.push(...((historyResult.data || []) as NotificationHistoryRow[]))
     }
 
     const workoutsByUser = new Map<string, WorkoutRow[]>()
-    for (const workout of (workoutsResult.data || []) as WorkoutRow[]) {
+    for (const workout of workoutsFlat) {
       const list = workoutsByUser.get(workout.user_id) || []
       list.push(workout)
       workoutsByUser.set(workout.user_id, list)
     }
 
     const historyByUser = new Map<string, NotificationHistoryRow[]>()
-    for (const row of (historyResult.data || []) as NotificationHistoryRow[]) {
+    for (const row of historyFlat) {
       const list = historyByUser.get(row.recipient_id) || []
       list.push(row)
       historyByUser.set(row.recipient_id, list)
@@ -669,6 +737,7 @@ Deno.serve(async (req) => {
         .eq('user_id', userId)
 
       if (error) {
+        logRetentionError(`step=workout_count user=${userId}`, error)
         throw error
       }
 
@@ -797,11 +866,7 @@ Deno.serve(async (req) => {
       })
 
       if (insertError) {
-        console.error(
-          '[send-retention-notifications] Failed to insert notification',
-          pref.user_id,
-          insertError,
-        )
+        logRetentionError(`step=notification_insert user=${pref.user_id}`, insertError)
         skipped.push({ userId: pref.user_id, reason: 'insert_failed' })
         continue
       }
@@ -830,7 +895,7 @@ Deno.serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('[send-retention-notifications] Unexpected error:', error)
+    logRetentionError('step=unhandled', error)
     return new Response(
       JSON.stringify({
         success: false,

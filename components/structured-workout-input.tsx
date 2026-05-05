@@ -3,6 +3,7 @@ import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { type ExerciseHistoricalBests } from '@/lib/services/exerciseHistoryService'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
+import { formatWeightInputValue } from '@/lib/utils/weight-input-format'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
@@ -643,9 +644,7 @@ export function StructuredWorkoutInput({
             return {
               weight: '', // Start empty so placeholder shows
               reps: '', // Start empty so placeholder shows
-              lastWorkoutWeight: weightInPreferredUnit
-                ? Math.round(weightInPreferredUnit).toString()
-                : null,
+              lastWorkoutWeight: formatWeightInputValue(weightInPreferredUnit),
               lastWorkoutReps: lastSet?.reps?.toString() || null,
               targetRepsMin: routineSet?.reps_min ?? null,
               targetRepsMax: routineSet?.reps_max ?? null,
@@ -845,9 +844,7 @@ export function StructuredWorkoutInput({
               return {
                 weight: '',
                 reps: '',
-                lastWorkoutWeight: weightInPreferredUnit
-                  ? Math.round(weightInPreferredUnit).toString()
-                  : null,
+                lastWorkoutWeight: formatWeightInputValue(weightInPreferredUnit),
                 lastWorkoutReps: lastSet?.reps?.toString() || null,
                 targetRepsMin: routineSet?.reps_min ?? null,
                 targetRepsMax: routineSet?.reps_max ?? null,

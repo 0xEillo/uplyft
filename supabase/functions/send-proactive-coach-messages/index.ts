@@ -77,7 +77,7 @@ const LOOKBACK_WORKOUT_DAYS = 45
 const LOOKBACK_HISTORY_DAYS = 35
 const INACTIVITY_REMINDER_HOUR = 18
 const POST_WORKOUT_FOLLOWUP_HOUR = 9
-const MIN_SPACING_HOURS = 20
+const MIN_SPACING_HOURS = 22
 const RETENTION_NOTIFICATION_TYPES = [
   'retention_scheduled_workout',
   'retention_streak_protection',

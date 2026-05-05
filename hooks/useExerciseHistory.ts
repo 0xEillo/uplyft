@@ -9,6 +9,7 @@ import {
     getSetPerformance,
     SetPerformance,
 } from '@/lib/services/exerciseHistoryService'
+import { formatWeightInputValue } from '@/lib/utils/weight-input-format'
 import type { StructuredExerciseDraft, StructuredSetDraft } from '@/lib/utils/workout-draft'
 
 /**
@@ -34,9 +35,7 @@ export function useExerciseHistory() {
         : null
 
       return {
-        weight: weightInPreferredUnit
-          ? Math.round(weightInPreferredUnit).toString()
-          : null,
+        weight: formatWeightInputValue(weightInPreferredUnit),
         reps: historySet.reps?.toString() ?? null,
       }
     },
