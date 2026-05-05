@@ -3,10 +3,10 @@
 -- Required Vault secrets (create in Supabase SQL editor before/after this migration):
 --   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
 --   select vault.create_secret('<service-role-key>', 'service_role_key');
---   select vault.create_secret('<random-shared-secret>', 'retention_scheduler_secret');
 --
--- The same retention_scheduler_secret must be set as an Edge Function env var:
---   RETENTION_SCHEDULER_SECRET
+-- Schedulers authenticate with the service role JWT only (see migration
+-- 20260505143000_scheduler_service_role_only.sql). Do not set
+-- retention_scheduler_secret / RETENTION_SCHEDULER_SECRET for new projects.
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;

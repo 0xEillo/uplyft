@@ -287,17 +287,6 @@ function buildProactiveInstruction(input: {
 
 Deno.serve(async (req) => {
   try {
-    const secret = Deno.env.get('RETENTION_SCHEDULER_SECRET')
-    if (secret && req.headers.get('x-retention-secret') !== secret) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'unauthorized' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
     const url = new URL(req.url)
     const queryDryRun = url.searchParams.get('dryRun') === 'true'
     const queryUserId = url.searchParams.get('userId')
