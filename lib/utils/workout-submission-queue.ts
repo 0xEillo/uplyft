@@ -100,7 +100,7 @@ function buildStructuredStats(structuredData?: StructuredExerciseDraft[]) {
   exercises.forEach((exercise) => {
     ;(exercise.sets ?? []).forEach((set) => {
       sets += 1
-      if (set.weight?.trim() || set.reps?.trim()) {
+      if (set.weight?.trim() || set.reps?.trim() || set.duration?.trim()) {
         setsWithData += 1
       }
     })

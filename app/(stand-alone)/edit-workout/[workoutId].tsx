@@ -65,6 +65,8 @@ const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   allowsEditing: false,
   quality: IMAGE_QUALITY,
 }
+const TIMED_EXERCISE_NAME_PATTERN =
+  /\b(plank|hold|wall sit|dead hang|hang|sprint|run|walk|jog|bike|cycle|row|ski|swim|carry|farmer|battle rope)\b/i
 
 function formatDurationCompact(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -75,6 +77,36 @@ function formatDurationCompact(seconds: number): string {
     return `${hours}h ${mins}m`
   }
   return `${mins}min`
+}
+
+function formatSetDurationInput(seconds: number | null): string {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
+    return ''
+  }
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function parseSetDurationInput(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  if (trimmed.includes(':')) {
+    const [minutesText, secondsText = '0'] = trimmed.split(':')
+    const minutes = Number.parseInt(minutesText || '0', 10)
+    const seconds = Number.parseInt(secondsText || '0', 10)
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null
+    const total = minutes * 60 + seconds
+    return total > 0 ? total : null
+  }
+
+  const digits = trimmed.replace(/\D/g, '')
+  if (!digits) return null
+  const seconds = Number.parseInt(digits.slice(-2), 10) || 0
+  const minutes = Number.parseInt(digits.slice(0, -2) || '0', 10) || 0
+  const total = minutes * 60 + seconds
+  return total > 0 ? total : null
 }
 
 export default function EditWorkoutScreen() {
@@ -94,9 +126,9 @@ export default function EditWorkoutScreen() {
     new Set(),
   )
 
-  // Track edited sets: { setId: { reps, weight } } - store as strings to allow typing
+  // Track edited sets: store as strings to allow typing
   const [editedSets, setEditedSets] = useState<
-    Record<string, { reps?: string; weight?: string }>
+    Record<string, { reps?: string; weight?: string; duration_seconds?: string }>
   >({})
   const [deletedSetIds, setDeletedSetIds] = useState<Set<string>>(new Set())
   const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(
@@ -646,7 +678,11 @@ export default function EditWorkoutScreen() {
         ([setId, values]) => {
           // Only update if the set hasn't been deleted
           if (!deletedSetIds.has(setId)) {
-            const updates: { reps?: number; weight?: number | null } = {}
+            const updates: {
+              reps?: number | null
+              weight?: number | null
+              duration_seconds?: number | null
+            } = {}
 
             // Parse reps if it was edited
             if (values.reps !== undefined) {
@@ -669,6 +705,16 @@ export default function EditWorkoutScreen() {
                 // Convert from preferred unit back to kg
                 updates.weight =
                   weight !== null ? convertInputToKg(weight) : null
+              }
+            }
+
+            // Parse duration if it was edited
+            if (values.duration_seconds !== undefined) {
+              const duration = parseSetDurationInput(values.duration_seconds)
+              updates.duration_seconds = duration
+              if (duration !== null) {
+                updates.reps = null
+                updates.weight = null
               }
             }
 
@@ -736,7 +782,7 @@ export default function EditWorkoutScreen() {
 
   const getSetValue = (
     setId: string,
-    field: 'reps' | 'weight',
+    field: 'reps' | 'weight' | 'duration_seconds',
     originalValue: number | null,
   ): string => {
     // Check if this set has been edited
@@ -750,12 +796,15 @@ export default function EditWorkoutScreen() {
         ? converted.toFixed(weightUnit === 'kg' ? 1 : 0)
         : ''
     }
+    if (field === 'duration_seconds') {
+      return formatSetDurationInput(originalValue)
+    }
     return originalValue !== null ? String(originalValue) : ''
   }
 
   const updateSet = (
     setId: string,
-    field: 'reps' | 'weight',
+    field: 'reps' | 'weight' | 'duration_seconds',
     value: string,
   ) => {
     setEditedSets((prev) => {
@@ -821,12 +870,30 @@ export default function EditWorkoutScreen() {
       const lastSet = activeSets[activeSets.length - 1]
       const defaultReps = lastSet?.reps ?? null
       const defaultWeight = lastSet?.weight || null
+      const defaultDuration = lastSet?.duration_seconds ?? null
+      const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(
+        workoutExercise.exercise?.name ||
+          workoutExercise.exercise_name ||
+          '',
+      )
+      const isTimedExercise =
+        isTimedExerciseName ||
+        (activeSets.some(
+          (set) =>
+            typeof set.duration_seconds === 'number' && set.duration_seconds > 0,
+        ) &&
+          activeSets.every(
+            (set) =>
+              (typeof set.duration_seconds === 'number' && set.duration_seconds > 0) ||
+              (!set.reps && !set.weight),
+          ))
 
       // Create the new set
       const newSet = await database.sets.create(workoutExerciseId, {
         set_number: nextSetNumber,
-        reps: defaultReps ?? undefined,
-        weight: defaultWeight,
+        reps: isTimedExercise ? null : (defaultReps ?? undefined),
+        weight: isTimedExercise ? null : defaultWeight,
+        duration_seconds: isTimedExercise ? defaultDuration : null,
       })
 
       // Smooth animation for set addition
@@ -1168,6 +1235,24 @@ export default function EditWorkoutScreen() {
                   const activeSets = workoutExercise.sets?.filter(
                     (s) => !deletedSetIds.has(s.id),
                   )
+                  const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(
+                    workoutExercise.exercise?.name ||
+                      workoutExercise.exercise_name ||
+                      '',
+                  )
+                  const isTimedExercise =
+                    isTimedExerciseName ||
+                    ((activeSets ?? []).some(
+                      (set) =>
+                        typeof set.duration_seconds === 'number' &&
+                        set.duration_seconds > 0,
+                    ) &&
+                      (activeSets ?? []).every(
+                        (set) =>
+                          (typeof set.duration_seconds === 'number' &&
+                            set.duration_seconds > 0) ||
+                          (!set.reps && !set.weight),
+                      ))
                   return (
                     <AnimatedReanimated.View
                       key={workoutExercise.id}
@@ -1302,14 +1387,22 @@ export default function EditWorkoutScreen() {
                             <View style={styles.setHeaderSetCol}>
                               <Text style={styles.setHeaderText}>Set</Text>
                             </View>
-                            <View style={styles.setHeaderInputCol}>
-                              <Text style={styles.setHeaderText}>
-                                Weight ({weightUnit})
-                              </Text>
-                            </View>
-                            <View style={styles.setHeaderInputCol}>
-                              <Text style={styles.setHeaderText}>Reps</Text>
-                            </View>
+                            {isTimedExercise ? (
+                              <View style={styles.setHeaderWideInputCol}>
+                                <Text style={styles.setHeaderText}>Time</Text>
+                              </View>
+                            ) : (
+                              <>
+                                <View style={styles.setHeaderInputCol}>
+                                  <Text style={styles.setHeaderText}>
+                                    Weight ({weightUnit})
+                                  </Text>
+                                </View>
+                                <View style={styles.setHeaderInputCol}>
+                                  <Text style={styles.setHeaderText}>Reps</Text>
+                                </View>
+                              </>
+                            )}
                             <View style={styles.setHeaderDeleteCol} />
                           </View>
 
@@ -1327,6 +1420,11 @@ export default function EditWorkoutScreen() {
                                   set.id,
                                   'weight',
                                   set.weight,
+                                )
+                                const durationValue = getSetValue(
+                                  set.id,
+                                  'duration_seconds',
+                                  set.duration_seconds,
                                 )
 
                                 const isWarmup = set.is_warmup === true
@@ -1356,30 +1454,47 @@ export default function EditWorkoutScreen() {
                                         </Text>
                                       </View>
                                     </View>
-                                    <TextInput
-                                      style={styles.setInput}
-                                      value={weightValue}
-                                      onChangeText={(val) =>
-                                        updateSet(set.id, 'weight', val)
-                                      }
-                                      keyboardType="decimal-pad"
-                                      placeholder="BW"
-                                      placeholderTextColor={
-                                        colors.textPlaceholder
-                                      }
-                                    />
-                                    <TextInput
-                                      style={styles.setInput}
-                                      value={repsValue}
-                                      onChangeText={(val) =>
-                                        updateSet(set.id, 'reps', val)
-                                      }
-                                      keyboardType="decimal-pad"
-                                      placeholder="--"
-                                      placeholderTextColor={
-                                        colors.textPlaceholder
-                                      }
-                                    />
+                                    {isTimedExercise ? (
+                                      <TextInput
+                                        style={[styles.setInput, styles.setDurationInput]}
+                                        value={durationValue}
+                                        onChangeText={(val) =>
+                                          updateSet(set.id, 'duration_seconds', val)
+                                        }
+                                        keyboardType="numbers-and-punctuation"
+                                        placeholder="mm:ss"
+                                        placeholderTextColor={
+                                          colors.textPlaceholder
+                                        }
+                                      />
+                                    ) : (
+                                      <>
+                                        <TextInput
+                                          style={styles.setInput}
+                                          value={weightValue}
+                                          onChangeText={(val) =>
+                                            updateSet(set.id, 'weight', val)
+                                          }
+                                          keyboardType="decimal-pad"
+                                          placeholder="BW"
+                                          placeholderTextColor={
+                                            colors.textPlaceholder
+                                          }
+                                        />
+                                        <TextInput
+                                          style={styles.setInput}
+                                          value={repsValue}
+                                          onChangeText={(val) =>
+                                            updateSet(set.id, 'reps', val)
+                                          }
+                                          keyboardType="decimal-pad"
+                                          placeholder="--"
+                                          placeholderTextColor={
+                                            colors.textPlaceholder
+                                          }
+                                        />
+                                      </>
+                                    )}
                                     <TouchableOpacity
                                       onPress={() => deleteSet(set.id)}
                                       style={styles.deleteSetButton}
@@ -1719,6 +1834,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       alignItems: 'center',
     },
+    setHeaderWideInputCol: {
+      flex: 2,
+      alignItems: 'center',
+    },
     setHeaderDeleteCol: {
       width: 30,
     },
@@ -1768,6 +1887,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       textAlign: 'center',
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    setDurationInput: {
+      flex: 2,
     },
     deleteSetButton: {
       width: 30,

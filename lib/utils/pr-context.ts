@@ -3,6 +3,7 @@ import type { PrContextSet } from '@/lib/pr'
 interface WorkoutSetLike {
   reps?: number | null
   weight?: number | null
+  duration_seconds?: number | null
   is_warmup?: boolean | null
 }
 
@@ -24,10 +25,16 @@ export function resolvePrContextUserId(
 export function mapSetsToPrContext(
   sets: WorkoutSetLike[] | null | undefined,
 ): PrContextSet[] {
-  return (sets || []).map((set, originalIndex) => ({
-    reps: set.reps ?? null,
-    weight: set.weight ?? null,
-    isWarmup: set.is_warmup === true,
-    originalIndex,
-  }))
+  return (sets || [])
+    .map((set, originalIndex) => ({
+      set,
+      originalIndex,
+    }))
+    .filter(({ set }) => !set.duration_seconds || set.duration_seconds <= 0)
+    .map(({ set, originalIndex }) => ({
+      reps: set.reps ?? null,
+      weight: set.weight ?? null,
+      isWarmup: set.is_warmup === true,
+      originalIndex,
+    }))
 }

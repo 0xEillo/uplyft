@@ -143,6 +143,7 @@ export interface Set {
   set_number: number
   reps: number | null
   weight: number | null
+  duration_seconds: number | null
   rpe: number | null
   notes: string | null
   is_warmup: boolean
@@ -373,6 +374,7 @@ export interface ParsedSet {
   set_number: number
   reps: number | null
   weight?: number
+  duration_seconds?: number | null
   rpe?: number
   notes?: string
   is_warmup?: boolean

@@ -15,6 +15,7 @@ export const workoutSchema = z.object({
             set_number: z.number().optional(),
             reps: z.number().int().min(1).nullable().optional(),
             weight: z.number().nullable().optional(),
+            duration_seconds: z.number().int().min(1).nullable().optional(),
             rpe: z.number().nullable().optional(),
             notes: z.string().nullish(),
             is_warmup: z.boolean().optional(),
@@ -36,6 +37,7 @@ export const songSchema = z.object({
 const structuredSetSchema = z.object({
   weight: z.union([z.string(), z.number(), z.null()]).optional(),
   reps: z.union([z.string(), z.number(), z.null()]).optional(),
+  duration: z.union([z.string(), z.number(), z.null()]).optional(),
   isWarmup: z.boolean().optional(),
   isBodyWeight: z.boolean().optional(),
 })
@@ -43,6 +45,7 @@ const structuredSetSchema = z.object({
 const structuredExerciseSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
+  loggingType: z.enum(['reps', 'duration']).optional(),
   sets: z.array(structuredSetSchema).optional(),
 })
 
@@ -76,6 +79,7 @@ export interface NormalizedSet {
   set_number: number
   reps: number | null
   weight?: number | null
+  duration_seconds?: number | null
   rpe?: number | null
   notes?: string | null
   is_warmup?: boolean

@@ -24,7 +24,9 @@ interface WorkoutExerciseMenuBottomSheetProps {
   onClose: () => void
   onReorder: () => void
   onReplace: () => void
+  onToggleLoggingType: () => void
   onRemove: () => void
+  loggingType?: 'reps' | 'duration'
 }
 
 export function WorkoutExerciseMenuBottomSheet({
@@ -32,7 +34,9 @@ export function WorkoutExerciseMenuBottomSheet({
   onClose,
   onReorder,
   onReplace,
+  onToggleLoggingType,
   onRemove,
+  loggingType = 'reps',
 }: WorkoutExerciseMenuBottomSheetProps) {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -102,6 +106,25 @@ export function WorkoutExerciseMenuBottomSheet({
               >
                 <Ionicons name="swap-vertical" size={24} color={colors.textPrimary} />
                 <Text style={styles.menuItemText}>Reorder Exercises</Text>
+              </TouchableOpacity>
+
+              <View style={styles.divider} />
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  onClose()
+                  onToggleLoggingType()
+                }}
+              >
+                <Ionicons
+                  name={loggingType === 'duration' ? 'barbell-outline' : 'timer-outline'}
+                  size={24}
+                  color={colors.textPrimary}
+                />
+                <Text style={styles.menuItemText}>
+                  {loggingType === 'duration' ? 'Log Weight & Reps' : 'Log Time'}
+                </Text>
               </TouchableOpacity>
 
               <View style={styles.divider} />

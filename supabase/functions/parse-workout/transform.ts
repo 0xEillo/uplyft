@@ -159,11 +159,22 @@ function normalizeSet(
 
   const normalizedWeight = normalizeWeightToKg(set.weight, weightUnit, setContext)
   const normalizedRpe = normalizeRpe(set.rpe, setContext)
+  const durationSeconds = coerceNumber(set.duration_seconds, `${setContext}-duration`)
 
   const result = {
     set_number: typeof set.set_number === 'number' ? set.set_number : index + 1,
-    reps: normalizeReps(set.reps, setContext),
-    weight: normalizedWeight ?? undefined,
+    reps:
+      durationSeconds !== null && durationSeconds > 0
+        ? null
+        : normalizeReps(set.reps, setContext),
+    weight:
+      durationSeconds !== null && durationSeconds > 0
+        ? undefined
+        : (normalizedWeight ?? undefined),
+    duration_seconds:
+      durationSeconds !== null && durationSeconds > 0
+        ? Math.round(durationSeconds)
+        : undefined,
     rpe: normalizedRpe ?? undefined,
     notes: (set.notes as string | null | undefined) ?? undefined,
     is_warmup: set.is_warmup === true,
@@ -174,6 +185,7 @@ function normalizeSet(
     exerciseName,
     normalizedWeight: result.weight,
     normalizedReps: result.reps,
+    normalizedDurationSeconds: result.duration_seconds,
   })
 
   return result

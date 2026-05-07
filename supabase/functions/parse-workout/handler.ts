@@ -267,12 +267,28 @@ function inferError(error: unknown): ApiError | undefined {
 // Type for structured exercise input
 interface StructuredExerciseInput {
   name?: string
+  loggingType?: 'reps' | 'duration'
   sets?: Array<{
     weight?: string | number | null
     reps?: string | number | null
+    duration?: string | number | null
     isWarmup?: boolean
     isBodyWeight?: boolean
   }>
+}
+
+function parseDurationSeconds(value: string | number | null | undefined): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : null
+  }
+
+  const digits = String(value ?? '').replace(/\D/g, '')
+  if (!digits) return null
+
+  const seconds = Number.parseInt(digits.slice(-2), 10) || 0
+  const minutes = Number.parseInt(digits.slice(0, -2) || '0', 10) || 0
+  const totalSeconds = minutes * 60 + seconds
+  return totalSeconds > 0 ? totalSeconds : null
 }
 
 function buildStructuredParsedWorkout(
@@ -304,6 +320,8 @@ function buildStructuredParsedWorkout(
                 : null,
             reps: set.reps,
             repsType: typeof set.reps,
+            duration: set.duration,
+            durationType: typeof set.duration,
             isWarmup: set.isWarmup,
           })),
         }),
@@ -319,16 +337,28 @@ function buildStructuredParsedWorkout(
       const setsInput = Array.isArray(exercise.sets) ? exercise.sets : []
       const sets = setsInput
         .filter((set) => {
+          if (exercise.loggingType === 'duration') {
+            return parseDurationSeconds(set.duration) !== null
+          }
           const weight =
             typeof set.weight === 'string' ? set.weight.trim() : set.weight
           const reps = typeof set.reps === 'string' ? set.reps.trim() : set.reps
           return Boolean(weight) || Boolean(reps)
         })
         .map((set, setIndex) => {
+          const durationSeconds =
+            exercise.loggingType === 'duration'
+              ? parseDurationSeconds(set.duration)
+              : null
           const result = {
             set_number: setIndex + 1,
-            reps: set.reps ?? null,
-            weight: set.isBodyWeight === true ? null : (set.weight ?? null),
+            reps: durationSeconds ? null : (set.reps ?? null),
+            weight: durationSeconds
+              ? null
+              : set.isBodyWeight === true
+              ? null
+              : (set.weight ?? null),
+            duration_seconds: durationSeconds,
             rpe: null,
             notes: null,
             is_warmup: set.isWarmup === true,
@@ -344,6 +374,7 @@ function buildStructuredParsedWorkout(
                 weightType: typeof set.weight,
                 builtWeight: result.weight,
                 builtReps: result.reps,
+                builtDurationSeconds: result.duration_seconds,
               },
             )
           }
@@ -391,7 +422,9 @@ function summarizeStructuredPayload(payload: WorkoutRequest) {
       const weight =
         typeof set.weight === 'string' ? set.weight.trim() : set.weight
       const reps = typeof set.reps === 'string' ? set.reps.trim() : set.reps
-      if (weight || reps) {
+      const duration =
+        typeof set.duration === 'string' ? set.duration.trim() : set.duration
+      if (weight || reps || duration) {
         setsWithDataCount += 1
       }
     })

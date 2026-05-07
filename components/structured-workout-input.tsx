@@ -58,10 +58,12 @@ const DEFAULT_WARMUP_TEMPLATE = [
 interface SetData {
   weight: string
   reps: string
+  duration?: string
   isWarmup?: boolean
   isBodyWeight?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
+  lastWorkoutDuration?: string | null
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
@@ -71,13 +73,14 @@ interface SetData {
 interface ExerciseData {
   id: string
   name: string
+  loggingType?: 'reps' | 'duration'
   sets: SetData[]
 }
 
 type FocusedInputState = {
   exerciseIndex: number
   setIndex: number
-  field: 'weight' | 'reps'
+  field: 'weight' | 'reps' | 'duration'
 }
 
 type KeypadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'dot' | 'backspace'
@@ -89,6 +92,7 @@ interface WorkoutSetRowProps {
   workingSetNumber: number
   isWarmup: boolean
   isBodyWeight: boolean
+  isDurationMode: boolean
   displayLabel: string | number
   targetText: string
   isWeightFocused: boolean
@@ -104,15 +108,57 @@ interface WorkoutSetRowProps {
   onToggleComplete: (exerciseIndex: number, setIndex: number) => void
   onWeightChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
-  onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
-  onBlur: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
-  onPressIn: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => void
+  onDurationChange: (exerciseIndex: number, setIndex: number, value: string) => void
+  onFocus: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => void
+  onBlur: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => void
+  onPressIn: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => void
   onDeleteSet: (exerciseIndex: number, setIndex: number) => void
   onSelectionWeightChange?: (start: number, end: number, valueLength: number) => void
   onSelectionRepsChange?: (start: number, end: number, valueLength: number) => void
   registerWeightRef: (ref: TextInput | null) => void
   registerRepsRef: (ref: TextInput | null) => void
+  registerDurationRef: (ref: TextInput | null) => void
   canDelete: boolean
+}
+
+const TIMED_EXERCISE_PATTERN =
+  /\b(plank|hold|wall sit|dead hang|hang|sprint|run|walk|jog|bike|cycle|row|ski|swim|carry|farmer|battle rope)\b/i
+
+function getExerciseLoggingType(exercise: Pick<ExerciseData, 'name' | 'loggingType'>): 'reps' | 'duration' {
+  if (exercise.loggingType === 'duration') return 'duration'
+  if (exercise.loggingType === 'reps') return 'reps'
+  return TIMED_EXERCISE_PATTERN.test(exercise.name) ? 'duration' : 'reps'
+}
+
+function formatDurationInputValue(value?: string | null): string {
+  const digits = (value ?? '').replace(/\D/g, '')
+  if (!digits) return ''
+  const seconds = Number.parseInt(digits.slice(-2), 10) || 0
+  const minutes = Number.parseInt(digits.slice(0, -2) || '0', 10) || 0
+  const totalSeconds = minutes * 60 + seconds
+  const displayMinutes = Math.floor(totalSeconds / 60)
+  const displaySeconds = totalSeconds % 60
+  return `${displayMinutes}:${displaySeconds.toString().padStart(2, '0')}`
+}
+
+function secondsToDurationDigits(seconds?: number | null): string | null {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
+    return null
+  }
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}${secs.toString().padStart(2, '0')}`
+}
+
+function normalizeExerciseLoggingTypes(exercises: ExerciseData[]): ExerciseData[] {
+  return exercises.map((exercise) => ({
+    ...exercise,
+    loggingType: getExerciseLoggingType(exercise),
+  }))
+}
+
+function areExerciseDataArraysEqual(a: ExerciseData[], b: ExerciseData[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 const WorkoutSetRow = React.memo(function WorkoutSetRow({
@@ -121,6 +167,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   set,
   isWarmup,
   isBodyWeight,
+  isDurationMode,
   displayLabel,
   targetText,
   isWeightFocused,
@@ -136,6 +183,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   onToggleComplete,
   onWeightChange,
   onRepsChange,
+  onDurationChange,
   onFocus,
   onBlur,
   onPressIn,
@@ -144,6 +192,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   onSelectionRepsChange,
   registerWeightRef,
   registerRepsRef,
+  registerDurationRef,
   canDelete,
 }: WorkoutSetRowProps) {
   const renderRightActions = useCallback(() => {
@@ -203,7 +252,20 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       </View>
 
       <View style={styles.setColPrev}>
-        {set.lastWorkoutWeight && set.lastWorkoutReps ? (
+        {isDurationMode && set.lastWorkoutDuration ? (
+          <TouchableOpacity
+            style={styles.previousTouchable}
+            onPress={() => {
+              hapticAsync()
+              onDurationChange(exerciseIndex, setIndex, set.lastWorkoutDuration!)
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.previousText} numberOfLines={1}>
+              {formatDurationInputValue(set.lastWorkoutDuration)}
+            </Text>
+          </TouchableOpacity>
+        ) : !isDurationMode && set.lastWorkoutWeight && set.lastWorkoutReps ? (
           <TouchableOpacity
             style={styles.previousTouchable}
             onPress={() => {
@@ -226,6 +288,43 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
         )}
       </View>
 
+      {isDurationMode ? (
+        <View style={styles.setColDurationInput}>
+          <View pointerEvents={inputsEnabled ? 'auto' : 'none'}>
+            <TextInput
+              ref={registerDurationRef}
+              style={[
+                styles.boxInput,
+                styles.durationBoxInput,
+                isRepsFocused && styles.boxInputFocused,
+              ]}
+              placeholder={set.lastWorkoutDuration ? formatDurationInputValue(set.lastWorkoutDuration) : 'mm:ss'}
+              placeholderTextColor={colors.textPlaceholder}
+              showSoftInputOnFocus={false}
+              keyboardType="number-pad"
+              contextMenuHidden
+              caretHidden={false}
+              editable={inputsEnabled}
+              value={formatDurationInputValue(set.duration)}
+              selection={
+                isRepsFocused
+                  ? {
+                      start: formatDurationInputValue(set.duration).length,
+                      end: formatDurationInputValue(set.duration).length,
+                    }
+                  : undefined
+              }
+              onChangeText={(value) => onDurationChange(exerciseIndex, setIndex, value)}
+              cursorColor={colors.brandPrimary}
+              selectionColor={colors.brandPrimary}
+              onPressIn={() => onPressIn(exerciseIndex, setIndex, 'duration')}
+              onFocus={() => onFocus(exerciseIndex, setIndex, 'duration')}
+              onBlur={() => onBlur(exerciseIndex, setIndex, 'duration')}
+            />
+          </View>
+        </View>
+      ) : (
+        <>
       <View style={styles.setColInput}>
         {isBodyWeight ? (
           <View style={styles.boxInputPlaceholder} />
@@ -306,6 +405,8 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
           />
         </View>
       </View>
+      </>
+      )}
 
       <View style={styles.setColCheckmark}>
         {!compactPreview && (
@@ -605,7 +706,7 @@ export function StructuredWorkoutInput({
   const [exercises, setExercises] = useState<ExerciseData[]>(() => {
     // If initialExercises provided, use those
     if (initialExercises && initialExercises.length > 0) {
-      return initialExercises
+      return normalizeExerciseLoggingTypes(initialExercises)
     }
 
     // Otherwise, initialize from routine
@@ -630,6 +731,9 @@ export function StructuredWorkoutInput({
         return {
           id: exercise.id,
           name: exercise.exercise?.name || 'Exercise',
+          loggingType: getExerciseLoggingType({
+            name: exercise.exercise?.name || 'Exercise',
+          }),
           sets: sets.map((routineSet, index) => {
             // Try to find matching set from last workout
             const lastSet = lastWorkoutExercise?.sets?.find(
@@ -646,6 +750,7 @@ export function StructuredWorkoutInput({
               reps: '', // Start empty so placeholder shows
               lastWorkoutWeight: formatWeightInputValue(weightInPreferredUnit),
               lastWorkoutReps: lastSet?.reps?.toString() || null,
+              lastWorkoutDuration: secondsToDurationDigits(lastSet?.duration_seconds),
               targetRepsMin: routineSet?.reps_min ?? null,
               targetRepsMax: routineSet?.reps_max ?? null,
               targetRestSeconds: routineSet?.rest_seconds ?? null,
@@ -785,11 +890,18 @@ export function StructuredWorkoutInput({
   // Update exercises when initialExercises changes
   useEffect(() => {
     if (initialExercises && initialExercises.length > 0) {
-      exercisesRef.current = initialExercises
-      setExercises(initialExercises)
+      const normalizedInitialExercises = normalizeExerciseLoggingTypes(initialExercises)
+      const hasChanged = !areExerciseDataArraysEqual(
+        exercisesRef.current,
+        normalizedInitialExercises,
+      )
+      if (hasChanged) {
+        exercisesRef.current = normalizedInitialExercises
+        setExercises(normalizedInitialExercises)
+      }
       // Don't call onDataChange on initial mount - parent already has the data
-      if (!isInitialMount.current) {
-        onDataChange(initialExercises)
+      if (!isInitialMount.current && hasChanged) {
+        onDataChange(normalizedInitialExercises)
       }
       isInitialMount.current = false
     } else if (
@@ -832,6 +944,9 @@ export function StructuredWorkoutInput({
           return {
             id: exercise.id,
             name: exercise.exercise?.name || 'Exercise',
+            loggingType: getExerciseLoggingType({
+              name: exercise.exercise?.name || 'Exercise',
+            }),
             sets: sets.map((routineSet, index) => {
               const lastSet = lastWorkoutExercise?.sets?.find(
                 (s) => s.set_number === index + 1,
@@ -846,6 +961,7 @@ export function StructuredWorkoutInput({
                 reps: '',
                 lastWorkoutWeight: formatWeightInputValue(weightInPreferredUnit),
                 lastWorkoutReps: lastSet?.reps?.toString() || null,
+                lastWorkoutDuration: secondsToDurationDigits(lastSet?.duration_seconds),
                 targetRepsMin: routineSet?.reps_min ?? null,
                 targetRepsMax: routineSet?.reps_max ?? null,
                 targetRestSeconds: routineSet?.rest_seconds ?? null,
@@ -882,6 +998,18 @@ export function StructuredWorkoutInput({
       set.reps = value
       const repsNowHasData = Boolean(set.reps.trim())
 
+      commitExercises(newExercises)
+    },
+    [commitExercises],
+  )
+
+  const handleDurationChange = useCallback(
+    (exerciseIndex: number, setIndex: number, value: string) => {
+      const newExercises = [...exercisesRef.current]
+      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      if (!set) return
+
+      set.duration = value.replace(/\D/g, '').slice(0, 4)
       commitExercises(newExercises)
     },
     [commitExercises],
@@ -925,8 +1053,10 @@ export function StructuredWorkoutInput({
       const newSet: SetData = {
         weight: '',
         reps: '',
+        duration: '',
         lastWorkoutWeight: historyWeight,
         lastWorkoutReps: historyReps,
+        lastWorkoutDuration: null,
         targetRepsMin: previousSet?.targetRepsMin ?? null,
         targetRepsMax: previousSet?.targetRepsMax ?? null,
         targetRestSeconds: previousSet?.targetRestSeconds ?? null,
@@ -966,8 +1096,15 @@ export function StructuredWorkoutInput({
   ) => {
     await hapticAsync('light')
     const newExercises = [...exercisesRef.current]
-    const set = newExercises[exerciseIndex]?.sets[setIndex]
+    const exercise = newExercises[exerciseIndex]
+    const set = exercise?.sets[setIndex]
     if (!set) return
+    if (getExerciseLoggingType(exercise!) === 'duration') {
+      set.isWarmup = !set.isWarmup
+      set.isBodyWeight = false
+      commitExercises(newExercises)
+      return
+    }
     // Cycle: normal → warmup (W) → body weight (B) → normal
     if (set.isWarmup) {
       set.isWarmup = false
@@ -1123,6 +1260,26 @@ export function StructuredWorkoutInput({
     Keyboard.dismiss()
   }, [endFocusTransition, onInputBlur, onKeypadStateChange, setFocusedInputState])
 
+  const handleToggleExerciseLoggingType = useCallback(
+    async (exerciseIndex: number) => {
+      await hapticAsync('light')
+      closeStructuredInput()
+      const newExercises = [...exercisesRef.current]
+      const exercise = newExercises[exerciseIndex]
+      if (!exercise) return
+
+      const currentLoggingType = getExerciseLoggingType(exercise)
+      exercise.loggingType = currentLoggingType === 'duration' ? 'reps' : 'duration'
+      exercise.sets = exercise.sets.map((set) =>
+        exercise.loggingType === 'duration'
+          ? { ...set, weight: '', reps: '', isBodyWeight: false }
+          : { ...set, duration: '' },
+      )
+      commitExercises(newExercises)
+    },
+    [closeStructuredInput, commitExercises],
+  )
+
   const handleInsertWarmupSets = useCallback(
     async (exerciseIndex: number) => {
       await hapticAsync('light')
@@ -1237,7 +1394,7 @@ export function StructuredWorkoutInput({
     (
       exerciseIndex: number,
       setIndex: number,
-      field: 'weight' | 'reps',
+      field: 'weight' | 'reps' | 'duration',
       reason: 'programmatic' | 'new-set' | 'modal-ready',
     ) => {
       const key = `${exerciseIndex}-${setIndex}-${field}`
@@ -1267,6 +1424,10 @@ export function StructuredWorkoutInput({
         const value =
           field === 'weight'
             ? exercisesRef.current[exerciseIndex]?.sets?.[setIndex]?.weight ?? ''
+            : field === 'duration'
+            ? formatDurationInputValue(
+                exercisesRef.current[exerciseIndex]?.sets?.[setIndex]?.duration ?? '',
+              )
             : exercisesRef.current[exerciseIndex]?.sets?.[setIndex]?.reps ?? ''
         const cursorPosition = value.length
 
@@ -1294,7 +1455,7 @@ export function StructuredWorkoutInput({
   )
 
   const focusInput = useCallback(
-    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => {
       focusInputWithCursor(exerciseIndex, setIndex, field, 'programmatic')
     },
     [focusInputWithCursor],
@@ -1304,7 +1465,7 @@ export function StructuredWorkoutInput({
     (
       exerciseIndex: number,
       setIndex: number,
-      field: 'weight' | 'reps',
+      field: 'weight' | 'reps' | 'duration',
       attempt = 0,
     ) => {
       const key = `${exerciseIndex}-${setIndex}-${field}`
@@ -1334,9 +1495,12 @@ export function StructuredWorkoutInput({
   )
 
   const handleNextInput = useCallback(
-    async (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    async (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => {
       debugNext('handleNextInput:start', { exerciseIndex, setIndex, field })
       const latestExercises = exercisesRef.current
+
+      const isDurationMode =
+        getExerciseLoggingType(latestExercises[exerciseIndex]) === 'duration'
 
       if (field === 'weight') {
         startFocusTransition()
@@ -1346,7 +1510,7 @@ export function StructuredWorkoutInput({
         return
       }
 
-      // When moving from Reps, auto-validate the current set (mark as completed)
+      // When moving from Reps/Duration, auto-validate the current set (mark as completed)
       const newExercises = [...exercisesRef.current]
       const currentSet = newExercises[exerciseIndex]?.sets[setIndex]
       if (currentSet && !currentSet.isCompleted) {
@@ -1372,9 +1536,9 @@ export function StructuredWorkoutInput({
         setFocusedInputState({
           exerciseIndex,
           setIndex: nextSetIndex,
-          field: 'weight',
+          field: isDurationMode ? 'duration' : 'weight',
         })
-        focusInput(exerciseIndex, nextSetIndex, 'weight')
+        focusInput(exerciseIndex, nextSetIndex, isDurationMode ? 'duration' : 'weight')
         return
       }
 
@@ -1391,9 +1555,13 @@ export function StructuredWorkoutInput({
           setFocusedInputState({
             exerciseIndex,
             setIndex: addedSetIndex,
-            field: 'weight',
+            field: isDurationMode ? 'duration' : 'weight',
           })
-          focusInputWhenReady(exerciseIndex, addedSetIndex, 'weight')
+          focusInputWhenReady(
+            exerciseIndex,
+            addedSetIndex,
+            isDurationMode ? 'duration' : 'weight',
+          )
           return
         }
         debugNext('handleNextInput:autoAddSet:failed', { exerciseIndex, setIndex })
@@ -1406,9 +1574,18 @@ export function StructuredWorkoutInput({
         setFocusedInputState({
           exerciseIndex: nextExerciseIndex,
           setIndex: 0,
-          field: 'weight',
+          field:
+            getExerciseLoggingType(latestExercises[nextExerciseIndex]) === 'duration'
+              ? 'duration'
+              : 'weight',
         })
-        focusInput(nextExerciseIndex, 0, 'weight')
+        focusInput(
+          nextExerciseIndex,
+          0,
+          getExerciseLoggingType(latestExercises[nextExerciseIndex]) === 'duration'
+            ? 'duration'
+            : 'weight',
+        )
         return
       }
 
@@ -1438,7 +1615,12 @@ export function StructuredWorkoutInput({
       const set = exercise?.sets?.[current.setIndex]
       if (!set) return
 
-      const existingValue = current.field === 'weight' ? set.weight : set.reps
+      const existingValue =
+        current.field === 'weight'
+          ? set.weight
+          : current.field === 'duration'
+          ? set.duration ?? ''
+          : set.reps
       let nextValue = existingValue ?? ''
 
       if (key === 'backspace') {
@@ -1452,6 +1634,8 @@ export function StructuredWorkoutInput({
 
       if (current.field === 'weight') {
         handleWeightChange(current.exerciseIndex, current.setIndex, nextValue)
+      } else if (current.field === 'duration') {
+        handleDurationChange(current.exerciseIndex, current.setIndex, nextValue)
       } else {
         handleRepsChange(current.exerciseIndex, current.setIndex, nextValue)
       }
@@ -1464,7 +1648,7 @@ export function StructuredWorkoutInput({
         nextValue,
       })
     },
-    [debugKeypad, handleRepsChange, handleWeightChange],
+    [debugKeypad, handleDurationChange, handleRepsChange, handleWeightChange],
   )
 
   const handleKeypadNext = useCallback(() => {
@@ -1518,7 +1702,7 @@ export function StructuredWorkoutInput({
     (
       exerciseIndex: number,
       setIndex: number,
-      field: 'weight' | 'reps',
+      field: 'weight' | 'reps' | 'duration',
       attempt = 0,
     ) => {
       const input = inputRefs.current[`${exerciseIndex}-${setIndex}-${field}`]
@@ -1603,7 +1787,7 @@ export function StructuredWorkoutInput({
   }, [focusedInput, compactPreview, debugKeypad, debugFocusTransfer, onKeypadStateChange, focusInputWithCursor, reportFocusedInputFrame])
 
   const handleFocus = useCallback(
-    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => {
       const hadBlurPending = Boolean(blurTimeoutRef.current)
       const prevFocused = focusedInputRef.current
       debugFocusTransfer('handleFocus ENTER', {
@@ -1687,7 +1871,7 @@ export function StructuredWorkoutInput({
   )
 
   const handleBlur = useCallback(
-    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps' | 'duration') => {
       debugFocusTransfer('handleBlur ENTER (scheduling 300ms timeout)', {
         exerciseIndex,
         setIndex,
@@ -1832,6 +2016,8 @@ export function StructuredWorkoutInput({
       <View style={styles.container}>
         {exercises.map((exercise, exerciseIndex) => {
           const isDragging = draggingIndex === exerciseIndex
+          const loggingType = getExerciseLoggingType(exercise)
+          const isDurationMode = loggingType === 'duration'
 
           return (
             <Animated.View
@@ -1868,10 +2054,18 @@ export function StructuredWorkoutInput({
                   <View style={styles.setHeaderRow}>
                     <Text style={[styles.setHeaderText, styles.setColSet]}>SET</Text>
                     <Text style={[styles.setHeaderText, styles.setColPrev]}>PREVIOUS</Text>
-                    <Text style={[styles.setHeaderText, styles.setColInput]}>
-                      {unitDisplay.toUpperCase()}
-                    </Text>
-                    <Text style={[styles.setHeaderText, styles.setColInput]}>REPS</Text>
+                    {isDurationMode ? (
+                      <Text style={[styles.setHeaderText, styles.setColDurationInput]}>
+                        TIME
+                      </Text>
+                    ) : (
+                      <>
+                        <Text style={[styles.setHeaderText, styles.setColInput]}>
+                          {unitDisplay.toUpperCase()}
+                        </Text>
+                        <Text style={[styles.setHeaderText, styles.setColInput]}>REPS</Text>
+                      </>
+                    )}
                     <View style={styles.setColCheckmark} />
                   </View>
                 )}
@@ -1958,10 +2152,11 @@ export function StructuredWorkoutInput({
                         workingSetNumber={workingSetNumber}
                         isWarmup={isWarmup}
                         isBodyWeight={isBodyWeight}
+                        isDurationMode={isDurationMode}
                         displayLabel={displayLabel}
                         targetText={targetText}
                         isWeightFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'weight'}
-                        isRepsFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && focusedInput?.field === 'reps'}
+                        isRepsFocused={focusedInput?.exerciseIndex === exerciseIndex && focusedInput?.setIndex === setIndex && (focusedInput?.field === 'reps' || focusedInput?.field === 'duration')}
                         isWeightSuspicious={isWeightSuspicious(set.weight)}
                         compactPreview={compactPreview ?? false}
                         inputsEnabled={inputsEnabled}
@@ -1973,6 +2168,7 @@ export function StructuredWorkoutInput({
                         onToggleComplete={handleToggleComplete}
                         onWeightChange={handleWeightChange}
                         onRepsChange={handleRepsChange}
+                        onDurationChange={handleDurationChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         onPressIn={(exIdx, setIdx, fld) => {
@@ -1993,6 +2189,7 @@ export function StructuredWorkoutInput({
                         onSelectionRepsChange={undefined}
                         registerWeightRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref }}
                         registerRepsRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref }}
+                        registerDurationRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-duration`] = ref }}
                         canDelete={true}
                       />
                     )
@@ -2015,6 +2212,7 @@ export function StructuredWorkoutInput({
                     </TouchableOpacity>
 
                     {warmupCalculatorEnabled &&
+                      !isDurationMode &&
                       !exercise.sets.some((s) => s.isWarmup) &&
                       !(exercise.sets[0]?.reps.trim()) && (
                       <TouchableOpacity
@@ -2062,11 +2260,21 @@ export function StructuredWorkoutInput({
             onReplaceExercise(menuExerciseIndex)
           }
         }}
+        onToggleLoggingType={() => {
+          if (menuExerciseIndex !== null) {
+            void handleToggleExerciseLoggingType(menuExerciseIndex)
+          }
+        }}
         onRemove={() => {
           if (menuExerciseIndex !== null) {
             handleDeleteExercise(menuExerciseIndex)
           }
         }}
+        loggingType={
+          menuExerciseIndex !== null
+            ? getExerciseLoggingType(exercises[menuExerciseIndex])
+            : 'reps'
+        }
       />
     </>
   )
@@ -2146,6 +2354,11 @@ const createStyles = (
     },
     setColInput: {
       width: 68,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    setColDurationInput: {
+      width: compactPreview ? 96 : 112,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -2250,6 +2463,9 @@ const createStyles = (
       textAlign: 'center',
       paddingVertical: 0,
       paddingHorizontal: 4,
+    },
+    durationBoxInput: {
+      width: compactPreview ? 84 : 96,
     },
     boxInputFocused: {
       borderColor: colors.brandPrimary,

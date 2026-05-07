@@ -235,6 +235,10 @@ const sanitizeProfileUpdates = (updates: Partial<Profile>) => {
     delete sanitized.weight_kg
   }
 
+  if ('gender' in sanitized && sanitized.gender == null) {
+    sanitized.gender = 'male'
+  }
+
   if ('profile_description' in sanitized) {
     const raw = sanitized.profile_description
     if (raw === undefined) {
@@ -671,6 +675,7 @@ export const database = {
             id: userId,
             user_tag: tryTag,
             display_name: displayName,
+            gender: 'male',
           })
           .select()
           .single()
@@ -2081,6 +2086,7 @@ export const database = {
             set_number: set.set_number,
             reps: set.reps ?? null,
             weight: set.weight ?? null,
+            duration_seconds: set.duration_seconds ?? null,
             rpe: set.rpe ?? null,
             notes: set.notes ?? null,
             is_warmup: set.is_warmup === true,
@@ -2528,11 +2534,12 @@ export const database = {
   sets: {
     async create(
       workoutExerciseId: string,
-      setData: {
-        set_number: number
-        reps?: number | null
-        weight?: number | null
-      },
+        setData: {
+          set_number: number
+          reps?: number | null
+          weight?: number | null
+          duration_seconds?: number | null
+        },
     ) {
       const { data, error } = await supabase
         .from('sets')
@@ -2541,6 +2548,7 @@ export const database = {
           set_number: setData.set_number,
           reps: setData.reps ?? null,
           weight: setData.weight ?? null,
+          duration_seconds: setData.duration_seconds ?? null,
         })
         .select()
         .single()
@@ -2551,7 +2559,7 @@ export const database = {
 
     async update(
       setId: string,
-      updates: { reps?: number | null; weight?: number | null },
+      updates: { reps?: number | null; weight?: number | null; duration_seconds?: number | null },
     ) {
       const { data, error } = await supabase
         .from('sets')

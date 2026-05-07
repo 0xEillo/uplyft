@@ -54,11 +54,25 @@ interface ExerciseDetailCardProps {
   workoutUserId?: string | null
 }
 
+const TIMED_EXERCISE_NAME_PATTERN =
+  /\b(plank|hold|wall sit|dead hang|hang|sprint|run|walk|jog|bike|cycle|row|ski|swim|carry|farmer|battle rope)\b/i
+
 function formatWeightRepsText(
   weightKg: number | null,
   reps: number | null,
+  durationSeconds: number | null | undefined,
   weightUnit: 'kg' | 'lb',
 ): string {
+  if (
+    typeof durationSeconds === 'number' &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds > 0
+  ) {
+    const mins = Math.floor(durationSeconds / 60)
+    const secs = Math.floor(durationSeconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   const hasWeight =
     typeof weightKg === 'number' && !Number.isNaN(weightKg) && weightKg > 0
   const hasReps = typeof reps === 'number' && !Number.isNaN(reps)
@@ -114,6 +128,21 @@ export function ExerciseDetailCard({
       : 'Custom Exercise'
   const exerciseName = exercise?.name || fallbackExerciseName
   const exercisePressId = exercise?.id || workoutExercise.exercise_id || null
+  const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(exerciseName)
+  const isTimedExercise =
+    isTimedExerciseName ||
+    (setEntries.some(
+      ({ set }) =>
+        typeof set.duration_seconds === 'number' && set.duration_seconds > 0,
+    ) &&
+      setEntries.every(({ set }) => {
+        const hasDuration =
+          typeof set.duration_seconds === 'number' && set.duration_seconds > 0
+        const hasStrengthData =
+          (typeof set.weight === 'number' && set.weight > 0) ||
+          (typeof set.reps === 'number' && set.reps > 0)
+        return hasDuration || !hasStrengthData
+      }))
 
   const strengthProgress = useMemo(() => {
     if (!exercise || setEntries.length === 0) return null
@@ -125,6 +154,7 @@ export function ExerciseDetailCard({
     let sessionBest1RM = 0
     setEntries.forEach(({ set }) => {
       if (set.is_warmup === true) return
+      if (set.duration_seconds && set.duration_seconds > 0) return
       if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) return
 
       const estimated = estimateOneRepMaxKg(set.weight, set.reps)
@@ -181,7 +211,7 @@ export function ExerciseDetailCard({
     setEntries,
   ])
 
-  const hasPr = (prInfo?.prSetIndices.size ?? 0) > 0
+  const hasPr = !isTimedExercise && (prInfo?.prSetIndices.size ?? 0) > 0
   const setPrLabelsByIndex = useMemo(() => {
     const mapping = new Map<number, string[]>()
     if (!prInfo) return mapping
@@ -216,6 +246,7 @@ export function ExerciseDetailCard({
   const setRows = setEntries.map(({ set, originalIndex }, index) => {
     const weight = set.weight
     const reps = set.reps
+    const durationSeconds = set.duration_seconds
     const setHasPr = prInfo?.prSetIndices.has(originalIndex) === true
     const setPrLabels = setPrLabelsByIndex.get(originalIndex) || []
 
@@ -225,7 +256,12 @@ export function ExerciseDetailCard({
     }
     const setLabel = isWarmup ? 'W' : String(workingSetNumber)
 
-    const weightRepsText = formatWeightRepsText(weight, reps, weightUnit)
+    const weightRepsText = formatWeightRepsText(
+      weight,
+      reps,
+      durationSeconds,
+      weightUnit,
+    )
 
     return (
       <View
@@ -397,7 +433,7 @@ export function ExerciseDetailCard({
               { color: colors.textSecondary },
             ]}
           >
-            WEIGHT & REPS
+            {isTimedExercise ? 'TIME' : 'WEIGHT & REPS'}
           </Text>
           {hasPr && (
             <Text
@@ -415,7 +451,7 @@ export function ExerciseDetailCard({
       </View>
 
       {/* Compare Button */}
-      {isCommonExercise && workoutUserId && (
+      {!isTimedExercise && isCommonExercise && workoutUserId && (
         <TouchableOpacity
           style={[styles.compareButton, { borderTopColor: colors.border }]}
           onPress={() => {

@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-type KeypadInputField = 'weight' | 'reps'
+type KeypadInputField = 'weight' | 'reps' | 'duration'
 type KeypadKey =
   | '0'
   | '1'

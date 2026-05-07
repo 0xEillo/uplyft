@@ -28,6 +28,7 @@ export function calculateMuscleSplit(
 
     // Calculate volume for this exercise
     const exerciseVolume = workoutExercise.sets.reduce((sum, set) => {
+      if (set.duration_seconds && set.duration_seconds > 0) return sum
       const reps = set.reps || 0
       if (!reps) return sum
 

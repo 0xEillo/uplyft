@@ -35,6 +35,7 @@ export function calculateTotalVolume(
 
   workout.workout_exercises.forEach((exercise) => {
     exercise.sets?.forEach((set) => {
+      if (set.duration_seconds && set.duration_seconds > 0) return
       const reps = set.reps || 0
       if (!reps) return
 
@@ -72,6 +73,7 @@ export function calculateWorkoutStats(
     // Count sets and reps
     exercise.sets?.forEach((set) => {
       totalSets++
+      if (set.duration_seconds && set.duration_seconds > 0) return
       totalReps += set.reps || 0
 
       // Track top weight

@@ -1943,7 +1943,7 @@ export default function OnboardingScreen() {
               id: currentUserId,
               user_tag: userTag,
               display_name: data.name || 'Guest',
-              gender: data.gender,
+              gender: data.gender ?? 'male',
               height_cm: heightCm,
               age: age,
               goals: data.goal.length > 0 ? data.goal : null,

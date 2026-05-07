@@ -535,10 +535,12 @@ function TypingDot({
 export interface WorkoutContextSet {
   weight?: string
   reps?: string
+  duration?: string
 }
 
 export interface WorkoutContextExercise {
   name: string
+  loggingType?: 'reps' | 'duration'
   setsCount: number
   sets?: WorkoutContextSet[]
 }
@@ -1830,19 +1832,23 @@ export function WorkoutChat({
               notes: draft.notes || '',
               exercises: (draft.structuredData || []).map((e) => ({
                 name: e.name,
+                loggingType: e.loggingType,
                 setsCount: e.sets?.length || 0,
                 sets:
                   e.sets
                     ?.map((set) => ({
                       weight: set.weight || undefined,
                       reps: set.reps || undefined,
+                      duration: set.duration || undefined,
                     }))
-                    .filter((set) => set.weight || set.reps) || [],
+                    .filter((set) => set.weight || set.reps || set.duration) || [],
               })),
             }
-            setLoadedDraftContext(context)
+            setLoadedDraftContext((prev) =>
+              JSON.stringify(prev) === JSON.stringify(context) ? prev : context,
+            )
           } else {
-            setLoadedDraftContext(null)
+            setLoadedDraftContext((prev) => (prev === null ? prev : null))
           }
         } catch {
           // console.error('[WorkoutChat] Failed to load workout draft:', error)

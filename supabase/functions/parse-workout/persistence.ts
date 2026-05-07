@@ -204,6 +204,7 @@ export async function createWorkoutSession(
         set_number: set.set_number,
         reps: set.reps,
         weight: set.weight ?? null,
+        duration_seconds: set.duration_seconds ?? null,
         rpe: set.rpe ?? null,
         notes: set.notes ?? null,
         is_warmup: set.is_warmup === true,

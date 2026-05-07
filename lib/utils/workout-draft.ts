@@ -23,10 +23,12 @@ export type WeightUnit = 'kg' | 'lb'
 export interface StructuredSetDraft {
   weight: string
   reps: string
+  duration?: string
   isWarmup?: boolean
   isBodyWeight?: boolean
   lastWorkoutWeight?: string | null
   lastWorkoutReps?: string | null
+  lastWorkoutDuration?: string | null
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
@@ -36,6 +38,7 @@ export interface StructuredSetDraft {
 export interface StructuredExerciseDraft {
   id: string
   name: string
+  loggingType?: 'reps' | 'duration'
   sets: StructuredSetDraft[]
 }
 

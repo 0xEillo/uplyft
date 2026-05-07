@@ -1,18 +1,15 @@
 import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components/custom-numeric-keypad'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
-import { Paywall } from '@/components/paywall'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTutorial } from '@/contexts/tutorial-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
@@ -24,7 +21,6 @@ import {
 } from '@/hooks/useExerciseAutocomplete'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
-import { useFreemiumLimits } from '@/hooks/useFreemiumLimits'
 import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -373,7 +369,6 @@ export default function CreatePostScreen() {
     useState(true)
   const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
   const [keypadTapShield, setKeypadTapShield] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [showCoachSheet, setShowCoachSheet] = useState(false)
   const [isFirstCoachOpen, setIsFirstCoachOpen] = useState(false)
   const [isCoachSheetFirstOpen, setIsCoachSheetFirstOpen] = useState(false)
@@ -457,13 +452,15 @@ export default function CreatePostScreen() {
       notes,
       exercises: structuredData.map((e) => ({
         name: e.name,
+        loggingType: e.loggingType,
         setsCount: e.sets.length,
         sets: e.sets
           .map((set) => ({
             weight: set.weight || undefined,
             reps: set.reps || undefined,
+            duration: set.duration || undefined,
           }))
-          .filter((set) => set.weight || set.reps),
+          .filter((set) => set.weight || set.reps || set.duration),
       })),
     }),
     [notes, session.meta.sessionId, structuredData, workoutTitle],
@@ -495,7 +492,9 @@ export default function CreatePostScreen() {
               : BODYWEIGHT_FALLBACK_KG
           volumeKg += weightKg * r
         }
-        if (set.weight?.trim() || set.reps?.trim()) setsCount += 1
+        if (set.weight?.trim() || set.reps?.trim() || set.duration?.trim()) {
+          setsCount += 1
+        }
       })
     })
     return {
@@ -735,10 +734,7 @@ export default function CreatePostScreen() {
   const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
-  const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
-  const { canPostWorkout } = useFreemiumLimits()
 
   // Complete tutorial step when user actually starts a workout (has content)
   useEffect(() => {
@@ -1369,19 +1365,6 @@ export default function CreatePostScreen() {
 
     // Dismiss keyboard
     blurInputs()
-
-    // Check freemium workout limit
-    if (!canPostWorkout) {
-      isSubmittingRef.current = false
-      setIsLoading(false)
-      trackPaywallShown(
-        'workout_logging',
-        'create_post',
-        isProMember ? 'active' : 'none',
-      )
-      setShowPaywall(true)
-      return
-    }
 
     if (!canReview) {
       isSubmittingRef.current = false
@@ -2410,18 +2393,6 @@ export default function CreatePostScreen() {
             <Text style={styles.submissionOverlayText}>Saving workout...</Text>
           </View>
         )}
-
-        {/* Paywall Modal */}
-        <Paywall
-          visible={showPaywall}
-          onClose={() => {
-            trackPaywallDismissed('workout_logging', 'create_post')
-            setShowPaywall(false)
-          }}
-          title={`Take Your Training to the Next Level!`}
-          message={`Unlock ${coachFirstName}'s full coaching suite, unlimited workouts, and advanced progress tracking.`}
-          feature="workout_logging"
-        />
 
       </SlideUpView>
 
