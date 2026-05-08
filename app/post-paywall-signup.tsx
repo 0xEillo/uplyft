@@ -2,7 +2,10 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
-import { syncLinkedProfile } from '@/lib/account-linking'
+import {
+  captureLinkedProfileSnapshot,
+  syncLinkedProfile,
+} from '@/lib/account-linking'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
@@ -57,8 +60,9 @@ export default function PostPaywallSignupScreen() {
     setIsAppleLoading(true)
     try {
       const previousUserId = user?.id
+      const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
       await linkWithApple()
-      await syncLinkedProfile(previousUserId)
+      await syncLinkedProfile(previousUserId, profileSnapshot)
       await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {
@@ -77,8 +81,9 @@ export default function PostPaywallSignupScreen() {
     setIsGoogleLoading(true)
     try {
       const previousUserId = user?.id
+      const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
       await linkWithGoogle()
-      await syncLinkedProfile(previousUserId)
+      await syncLinkedProfile(previousUserId, profileSnapshot)
       await schedulePostSignupPushPrompt()
       router.replace('/(tabs)')
     } catch (error) {

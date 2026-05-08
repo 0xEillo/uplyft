@@ -1,15 +1,45 @@
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
+import type { Profile } from '@/types/database.types'
 
-export async function syncLinkedProfile(sourceUserId: string | null | undefined) {
+export type LinkedProfileSnapshot = Pick<
+  Profile,
+  | 'display_name'
+  | 'user_tag'
+  | 'gender'
+  | 'height_cm'
+  | 'age'
+  | 'goals'
+  | 'commitment'
+  | 'commitment_frequency'
+  | 'experience_level'
+  | 'bio'
+  | 'coach'
+>
+
+export async function captureLinkedProfileSnapshot(
+  sourceUserId: string | null | undefined,
+): Promise<LinkedProfileSnapshot | null> {
   if (!sourceUserId) return null
 
-  const previousProfile = await database.profiles
-    .getByIdOrNull(sourceUserId)
-    .catch((error) => {
+  return database.profiles.getByIdOrNull(sourceUserId).catch((error) => {
+    console.warn('[AccountLinking] Could not capture existing profile:', error)
+    return null
+  })
+}
+
+export async function syncLinkedProfile(
+  sourceUserId: string | null | undefined,
+  profileSnapshot?: LinkedProfileSnapshot | null,
+) {
+  if (!sourceUserId) return null
+
+  const previousProfile =
+    profileSnapshot ??
+    (await database.profiles.getByIdOrNull(sourceUserId).catch((error) => {
       console.warn('[AccountLinking] Could not load existing profile:', error)
       return null
-    })
+    }))
 
   const {
     data: { user: currentUser },
@@ -40,7 +70,7 @@ export async function syncLinkedProfile(sourceUserId: string | null | undefined)
       return null
     })
 
-  let userTag = currentProfile?.user_tag ?? null
+  let userTag = previousProfile?.user_tag ?? currentProfile?.user_tag ?? null
   if (!userTag) {
     const displayNameBase = previousProfile?.display_name?.trim() || 'Athlete'
     userTag = await database.profiles.generateUniqueUserTag(displayNameBase)

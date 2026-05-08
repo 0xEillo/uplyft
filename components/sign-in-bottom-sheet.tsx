@@ -3,7 +3,10 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
-import { syncLinkedProfile } from '@/lib/account-linking'
+import {
+  captureLinkedProfileSnapshot,
+  syncLinkedProfile,
+} from '@/lib/account-linking'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -86,8 +89,12 @@ export function SignInBottomSheet({
     try {
       if (isAnonymous) {
         const previousUserId = user?.id
+        const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
         await linkWithApple()
-        const linkedUserId = await syncLinkedProfile(previousUserId)
+        const linkedUserId = await syncLinkedProfile(
+          previousUserId,
+          profileSnapshot,
+        )
         if (linkedUserId) {
           schedulePushNotificationPrompt({
             userId: linkedUserId,
@@ -118,8 +125,12 @@ export function SignInBottomSheet({
     try {
       if (isAnonymous) {
         const previousUserId = user?.id
+        const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
         await linkWithGoogle()
-        const linkedUserId = await syncLinkedProfile(previousUserId)
+        const linkedUserId = await syncLinkedProfile(
+          previousUserId,
+          profileSnapshot,
+        )
         if (linkedUserId) {
           schedulePushNotificationPrompt({
             userId: linkedUserId,

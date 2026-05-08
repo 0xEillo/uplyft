@@ -2,7 +2,10 @@ import { HapticButton } from '@/components/haptic-button'
 import { useAuth } from '@/contexts/auth-context'
 import { schedulePushNotificationPrompt } from '@/hooks/usePushNotifications'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { syncLinkedProfile } from '@/lib/account-linking'
+import {
+  captureLinkedProfileSnapshot,
+  syncLinkedProfile,
+} from '@/lib/account-linking'
 import { haptic } from '@/lib/haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -43,8 +46,12 @@ export default function CreateAccountScreen() {
     setIsAppleLoading(true)
     try {
       const previousUserId = user?.id
+      const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
       await linkWithApple()
-      const linkedUserId = await syncLinkedProfile(previousUserId)
+      const linkedUserId = await syncLinkedProfile(
+        previousUserId,
+        profileSnapshot,
+      )
 
       Alert.alert(
         'Account Created!',
@@ -84,8 +91,12 @@ export default function CreateAccountScreen() {
     setIsGoogleLoading(true)
     try {
       const previousUserId = user?.id
+      const profileSnapshot = await captureLinkedProfileSnapshot(previousUserId)
       await linkWithGoogle()
-      const linkedUserId = await syncLinkedProfile(previousUserId)
+      const linkedUserId = await syncLinkedProfile(
+        previousUserId,
+        profileSnapshot,
+      )
 
       Alert.alert(
         'Account Created!',
