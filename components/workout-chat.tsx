@@ -1392,6 +1392,23 @@ export function WorkoutChat({
   const [hasHydratedPersistedChat, setHasHydratedPersistedChat] =
     useState(false)
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const copyToastVisibleHideTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const copyToastUnmountTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const [copyToastMounted, setCopyToastMounted] = useState(false)
+  const copyToastOpacity = useSharedValue(0)
+  const copyToastScale = useSharedValue(0.85)
+  const copyToastTranslateY = useSharedValue(8)
+  const copyToastAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: copyToastOpacity.value,
+    transform: [
+      { scale: copyToastScale.value },
+      { translateY: copyToastTranslateY.value },
+    ],
+  }))
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
