@@ -10,7 +10,6 @@ import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
-import { useTutorial } from '@/contexts/tutorial-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
@@ -734,19 +733,11 @@ export default function CreatePostScreen() {
   const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
   const { user } = useAuth()
   const { trackEvent } = useAnalytics()
-  const { completeStep } = useTutorial()
 
-  // Complete tutorial step when user actually starts a workout (has content)
   useEffect(() => {
     notesForFocusRef.current = notes
     workoutTitleForFocusRef.current = workoutTitle
   }, [notes, workoutTitle])
-
-  useEffect(() => {
-    if (hasHydrated && hasWorkoutDraftContent) {
-      completeStep('create_workout')
-    }
-  }, [completeStep, hasHydrated, hasWorkoutDraftContent])
 
   // Check if this is the user's first time opening the coach sheet
   const COACH_SHEET_SEEN_KEY = user?.id

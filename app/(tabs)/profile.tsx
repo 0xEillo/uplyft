@@ -1,7 +1,7 @@
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
-import { EmptyState } from '@/components/EmptyState'
+import { FeedEmptyState } from '@/components/FeedEmptyState'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { ProfileDashboard } from '@/components/Profile/ProfileDashboard'
@@ -351,7 +351,7 @@ export default function ProfileScreen() {
           isNew={false}
           isDeleting={workout.id === deletingWorkoutId}
           isFirst={index === 0}
-          onDelete={() => {
+          onDeleteWorkout={() => {
             if (workout.id === deletingWorkoutId) {
               setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
               setDeletingWorkoutId(null)
@@ -376,14 +376,7 @@ export default function ProfileScreen() {
 
   const renderEmptyState = useCallback(() => {
     if (isLoading) return null
-    return (
-      <EmptyState
-        style={{ paddingTop: 40 }}
-        title="No workouts yet"
-        buttonText="Log Your First Workout"
-        onPress={() => router.push('/(tabs)/create-post')}
-      />
-    )
+    return <FeedEmptyState />
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
   }, [isLoading, colors, styles])
 

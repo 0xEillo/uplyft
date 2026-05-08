@@ -158,10 +158,6 @@ export const AnalyticsEvents = {
   REST_TIMER_STARTED: 'Rest Timer Started',
   REST_TIMER_COMPLETED: 'Rest Timer Completed',
 
-  // Tutorial
-  TUTORIAL_STEP_COMPLETED: 'Tutorial Step Completed',
-  TUTORIAL_DISMISSED: 'Tutorial Dismissed',
-
   // Explore
   EXPLORE_CARD_TAPPED: 'Explore Card Tapped',
 
@@ -176,7 +172,6 @@ export const AnalyticsEvents = {
   STRENGTH_STATS_VIEWED: 'Strength Stats Viewed',
   VOLUME_STATS_VIEWED: 'Volume Stats Viewed',
   RECOVERY_DETAIL_VIEWED: 'Recovery Detail Viewed',
-  TUTORIAL_VIEWED: 'Tutorial Viewed',
 
   // Errors & Performance
   API_ERROR: 'API Error',
@@ -511,11 +506,6 @@ export interface RestTimerProperties extends BaseEventProperties {
   completed?: boolean
 }
 
-export interface TutorialProperties extends BaseEventProperties {
-  step_id?: string
-  step_name?: string
-}
-
 export interface ExploreCardProperties extends BaseEventProperties {
   card_type?: string
   destination?: string
@@ -614,8 +604,6 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.EXERCISE_ADDED]: ExerciseAddedProperties
   [AnalyticsEvents.REST_TIMER_STARTED]: RestTimerProperties
   [AnalyticsEvents.REST_TIMER_COMPLETED]: RestTimerProperties
-  [AnalyticsEvents.TUTORIAL_STEP_COMPLETED]: TutorialProperties
-  [AnalyticsEvents.TUTORIAL_DISMISSED]: TutorialProperties
   [AnalyticsEvents.EXPLORE_CARD_TAPPED]: ExploreCardProperties
   [AnalyticsEvents.FOOD_LOGGED]: FoodLoggedProperties
   [AnalyticsEvents.BODY_LOG_VIEWED]: BaseEventProperties
@@ -632,5 +620,4 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.STRENGTH_STATS_VIEWED]: BaseEventProperties
   [AnalyticsEvents.VOLUME_STATS_VIEWED]: BaseEventProperties
   [AnalyticsEvents.RECOVERY_DETAIL_VIEWED]: BaseEventProperties
-  [AnalyticsEvents.TUTORIAL_VIEWED]: BaseEventProperties
 }

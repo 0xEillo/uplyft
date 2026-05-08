@@ -25,7 +25,6 @@ import { useProfile } from '@/contexts/profile-context'
 import { useSubscription } from '@/contexts/subscription-context'
 import { useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
-import { useTutorial } from '@/contexts/tutorial-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -1421,7 +1420,6 @@ export function WorkoutChat({
     }
   }, [])
   const { isProMember } = useSubscription()
-  const { completeStep } = useTutorial()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { trackEvent } = useAnalytics()
   const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
@@ -4034,9 +4032,6 @@ export function WorkoutChat({
 
       const routine = await createRoutineFromTemplate(user.id, routineData)
 
-      completeStep('save_routine')
-
-      // Navigate directly to the routine detail page
       router.push({
         pathname: '/routine/[routineId]',
         params: { routineId: routine.id },
@@ -4089,8 +4084,6 @@ export function WorkoutChat({
         )
         createdRoutineIds.push(savedRoutine.id)
       }
-
-      completeStep('save_routine')
 
       hapticSuccess()
       await new Promise((resolve) => setTimeout(resolve, 450))

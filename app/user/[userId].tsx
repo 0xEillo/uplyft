@@ -849,7 +849,7 @@ export default function UserProfileScreen() {
                     )}
                     <AsyncPrFeedCard
                       workout={workout}
-                      onDelete={() => {
+                      onDeleteWorkout={() => {
                         setWorkouts((prev) =>
                           prev.filter((w) => w.id !== workout.id),
                         )

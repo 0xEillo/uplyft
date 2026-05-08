@@ -4,7 +4,6 @@ import { Layout } from '@/constants/theme'
 import { RoutineImagePickerSheet } from '@/components/RoutineImagePickerSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useTutorial } from '@/contexts/tutorial-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
@@ -323,7 +322,6 @@ export default function CreateRoutineScreen() {
   const router = useRouter()
   const colors = useThemedColors()
   const { user } = useAuth()
-  const { completeStep } = useTutorial()
 
   const isEditMode = !!routineId
 
@@ -704,10 +702,6 @@ export default function CreateRoutineScreen() {
         }
       }
 
-      if (!isEditMode) {
-        completeStep('save_routine')
-      }
-
       Alert.alert(
         'Success',
         isEditMode
@@ -730,7 +724,6 @@ export default function CreateRoutineScreen() {
     } finally {
       setIsSaving(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- completeStep is stable after mount
   }, [
     routineName,
     routineNotes,

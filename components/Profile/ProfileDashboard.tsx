@@ -1,7 +1,5 @@
-import { useTutorial } from '@/contexts/tutorial-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { haptic } from '@/lib/haptics'
-import { getCompletedTutorialStepCount } from '@/constants/tutorial'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { memo } from 'react'
@@ -16,14 +14,6 @@ export const ProfileDashboard = memo(
   ({ activeRoutineName, latestWeight }: ProfileDashboardProps) => {
     const colors = useThemedColors()
     const router = useRouter()
-    const {
-      tutorialSteps,
-      completedSteps,
-      isTutorialComplete,
-      isTutorialDismissed,
-    } = useTutorial()
-
-    const isTrialActive = !isTutorialDismissed && !isTutorialComplete
 
     const DashboardButton = ({
       title,
@@ -78,56 +68,9 @@ export const ProfileDashboard = memo(
       </TouchableOpacity>
     )
 
-    const TrialButton = () => {
-      const completedCount = getCompletedTutorialStepCount(completedSteps)
-      const totalSteps = tutorialSteps.length
-
-      return (
-        <TouchableOpacity
-          onPress={() => {
-            haptic('light')
-            router.push('/tutorial')
-          }}
-          activeOpacity={0.7}
-          style={[
-            styles.button,
-            {
-              backgroundColor: colors.surfaceCard,
-              borderColor: colors.brandPrimary + '66',
-              borderWidth: 1,
-              width: '100%',
-              marginBottom: 10,
-              justifyContent: 'space-between',
-            },
-          ]}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={styles.buttonIconContainer}>
-              <Ionicons name="school" size={24} color={colors.textSecondary} />
-            </View>
-            <Text style={[styles.buttonTitle, { color: colors.textPrimary }]}>
-              Tutorial
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.stepsBadge,
-              { backgroundColor: colors.brandPrimary + '15' },
-            ]}
-          >
-            <Text style={[styles.stepsText, { color: colors.brandPrimary }]}>
-              {completedCount}/{totalSteps} steps
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )
-    }
-
     return (
       <View style={styles.container}>
         <View style={styles.grid}>
-          {isTrialActive && <TrialButton />}
           <View style={styles.tabsRow}>
             <DashboardButton
               title="Library"

@@ -25,14 +25,13 @@ import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { Layout } from '@/constants/theme'
 import { BlurredHeader } from '@/components/blurred-header'
-import { EmptyState } from '@/components/EmptyState'
+import { FeedEmptyState } from '@/components/FeedEmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { ProfilePicPromptModal } from '@/components/ProfilePicPromptModal'
 import { ProStatusPill } from '@/components/ProStatusPill'
 import { NotificationBadge } from '@/components/notification-badge'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
-import { TutorialChecklist } from '@/components/Tutorial/TutorialChecklist'
 import { WeeklySnapshot } from '@/components/WeeklySnapshot'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -42,7 +41,6 @@ import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
-import { useTutorial } from '@/contexts/tutorial-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
 import { useInviteFriendsPrompt } from '@/hooks/useInviteFriendsPrompt'
 import { useProfilePicPrompt } from '@/hooks/useProfilePicPrompt'
@@ -218,11 +216,6 @@ export default function FeedScreen() {
     setPendingStreakData,
   } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
-  const {
-    isTutorialDismissed,
-    isLoading: isTutorialLoading,
-    completeStep,
-  } = useTutorial()
   const flatListRef = useRef<FlashListRef<FeedItem>>(null)
   const isPresentingGuestPromptRef = useRef(false)
   const scrollY = useRef(new Animated.Value(0)).current
@@ -841,10 +834,6 @@ export default function FeedScreen() {
           console.error('[Feed] Error computing strength score delta:', err)
         }
 
-        if ((finalExerciseUpgrades?.length ?? 0) > 0) {
-          completeStep('first_exercise_rank')
-        }
-
         if (finalPointsData || (finalExerciseUpgrades?.length ?? 0) > 0) {
           const enrichedCelebrationPayload = buildCelebrationPayload(
             workout,
@@ -922,7 +911,6 @@ export default function FeedScreen() {
     pendingStreakData,
     setPendingStreakData,
     maybeQueueGuestSignInPrompt,
-    completeStep,
     loadHydratedPostedWorkout,
     scrollFeedToTop,
   ])
@@ -1242,39 +1230,11 @@ export default function FeedScreen() {
               ) : (
                 <WeeklySnapshot refreshToken={userWorkoutCount} />
               )}
-              {/* Tutorial checklist (existing) */}
-              {/* Tutorial checklist (existing) */}
-              {!isTutorialDismissed &&
-                !isTutorialLoading &&
-                !isOffline &&
-                workouts.length === 0 ? (
-                <TutorialChecklist />
-              ) : null}
             </>
           }
           ListEmptyComponent={
-            // Show empty state when:
-            // 1. Tutorial is dismissed/loading OR we're offline, AND
-            // 2. Feed is not loading
-            (isTutorialDismissed || isTutorialLoading || isOffline) &&
             feedItems.length === 0 ? (
-              isOffline ? (
-                <EmptyState
-                  icon="cloud-offline-outline"
-                  title="You're offline"
-                  description="Your feed will load when you're back online. You can still log workouts and they'll sync automatically."
-                  buttonText="Log a Workout"
-                  onPress={() => router.push('/(tabs)/create-post')}
-                />
-              ) : (
-                <EmptyState
-                  icon="barbell-outline"
-                  title="Your feed is empty"
-                  description="Follow friends or log your first workout to see activity here."
-                  buttonText="Log Your First Workout"
-                  onPress={() => router.push('/(tabs)/create-post')}
-                />
-              )
+              <FeedEmptyState isOffline={isOffline} />
             ) : null
           }
           ListFooterComponent={renderFooter}

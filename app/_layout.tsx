@@ -24,7 +24,6 @@ import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
-import { TutorialProvider } from '@/contexts/tutorial-context'
 import { UnitProvider } from '@/contexts/unit-context'
 import { WorkoutComposerProvider } from '@/contexts/workout-composer-context'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
@@ -453,15 +452,13 @@ export default function RootLayout() {
                   <SubscriptionProvider>
                     <NotificationProvider>
                       <AnalyticsProvider>
-                        <TutorialProvider>
-                          <PostsProvider>
-                            <LiveActivityProvider>
-                              <WorkoutComposerProvider>
-                                <RootLayoutNav />
-                              </WorkoutComposerProvider>
-                            </LiveActivityProvider>
-                          </PostsProvider>
-                        </TutorialProvider>
+                        <PostsProvider>
+                          <LiveActivityProvider>
+                            <WorkoutComposerProvider>
+                              <RootLayoutNav />
+                            </WorkoutComposerProvider>
+                          </LiveActivityProvider>
+                        </PostsProvider>
                       </AnalyticsProvider>
                     </NotificationProvider>
                   </SubscriptionProvider>
