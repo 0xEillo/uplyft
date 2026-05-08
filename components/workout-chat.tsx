@@ -108,7 +108,6 @@ import {
   Text,
   TextInput,
   TextStyle,
-  ToastAndroid,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -1409,6 +1408,18 @@ export function WorkoutChat({
       { translateY: copyToastTranslateY.value },
     ],
   }))
+  useEffect(() => {
+    return () => {
+      if (copyToastVisibleHideTimeoutRef.current) {
+        clearTimeout(copyToastVisibleHideTimeoutRef.current)
+        copyToastVisibleHideTimeoutRef.current = null
+      }
+      if (copyToastUnmountTimeoutRef.current) {
+        clearTimeout(copyToastUnmountTimeoutRef.current)
+        copyToastUnmountTimeoutRef.current = null
+      }
+    }
+  }, [])
   const { isProMember } = useSubscription()
   const { completeStep } = useTutorial()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
@@ -5808,6 +5819,22 @@ export function WorkoutChat({
           message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
           feature="ai_chat"
         />
+
+        {copyToastMounted && (
+          <View pointerEvents="none" style={styles.copyToastWrapper}>
+            <AnimatedReanimated.View
+              style={[styles.copyToastPill, copyToastAnimatedStyle]}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color="#FFFFFF"
+                style={styles.copyToastIcon}
+              />
+              <Text style={styles.copyToastText}>Copied</Text>
+            </AnimatedReanimated.View>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {NUTRITION_FEATURES_ENABLED && (
@@ -6024,6 +6051,38 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+
+    copyToastWrapper: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 120 + insets.bottom,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    },
+    copyToastPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: 'rgba(20, 20, 22, 0.92)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    copyToastIcon: {
+      marginRight: 6,
+    },
+    copyToastText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '600',
+      letterSpacing: 0.1,
     },
 
     actionButtonsContainer: {
