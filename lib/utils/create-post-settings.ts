@@ -53,10 +53,6 @@ function sanitizeToolbarButtons(value: unknown): ToolbarButtonId[] {
     (button, index) => buttons.indexOf(button) === index,
   )
 
-  if (dedupedButtons.length === 0) {
-    return DEFAULT_TOOLBAR_BUTTONS
-  }
-
   return dedupedButtons
 }
 

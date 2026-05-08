@@ -1,7 +1,10 @@
 import { MMKV } from 'react-native-mmkv'
 
 import {
+  DEFAULT_TOOLBAR_BUTTONS,
+  getToolbarButtons,
   getRestTimerSoundEnabled,
+  setToolbarButtons,
   setRestTimerSoundEnabled,
   subscribeToRestTimerSoundEnabled,
 } from '../lib/utils/create-post-settings'
@@ -37,5 +40,15 @@ describe('create post settings', () => {
     setRestTimerSoundEnabled(false)
 
     expect(values).toEqual([false, true])
+  })
+
+  test('toolbar buttons can all be disabled', () => {
+    setToolbarButtons([])
+
+    expect(getToolbarButtons()).toEqual([])
+  })
+
+  test('toolbar buttons default only when no preference is saved', () => {
+    expect(getToolbarButtons()).toEqual(DEFAULT_TOOLBAR_BUTTONS)
   })
 })
