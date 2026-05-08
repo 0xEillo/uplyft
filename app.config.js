@@ -230,7 +230,7 @@ module.exports = {
         : undefined,
       revenueCatUseTestStore: allowRevenueCatTestStore ? true : false,
       revenueCatUseLocalSimulatorPurchases:
-        process.env.REVENUECAT_USE_LOCAL_SIMULATOR_PURCHASES === 'true',
+        process.env.REVENUECAT_USE_LOCAL_SIMULATOR_PURCHASES !== 'false',
     },
   },
 }

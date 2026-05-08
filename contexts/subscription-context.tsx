@@ -39,6 +39,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
 
 const LOCAL_SIMULATOR_MONTHLY_PACKAGE_ID = '$rc_monthly'
 const LOCAL_SIMULATOR_YEARLY_PACKAGE_ID = '$rc_annual'
+const LOCAL_SIMULATOR_PERIOD_TYPE = 'trial'
 
 const buildLocalSimulatorOffering = (): PurchasesOffering => {
   const presentedOfferingContext = {
@@ -140,7 +141,7 @@ const buildLocalSimulatorCustomerInfo = (
         identifier: 'Pro',
         isActive: true,
         willRenew: true,
-        periodType: 'TRIAL',
+        periodType: LOCAL_SIMULATOR_PERIOD_TYPE,
         latestPurchaseDate: purchaseDate,
         latestPurchaseDateMillis: now.getTime(),
         originalPurchaseDate: purchaseDate,
@@ -172,7 +173,7 @@ const buildLocalSimulatorCustomerInfo = (
           unsubscribeDetectedAt: null,
           billingIssueDetectedAt: null,
           ownershipType: 'PURCHASED',
-          periodType: 'TRIAL',
+          periodType: LOCAL_SIMULATOR_PERIOD_TYPE,
           refundedAt: null,
           storeTransactionId: `local-simulator-${productIdentifier}`,
           isActive: true,
@@ -214,11 +215,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const customerInfoListenerRef = useRef<CustomerInfoUpdateListener | null>(
     null,
   )
+  const localSimulatorPurchasesConfig =
+    Constants.expoConfig?.extra?.revenueCatUseLocalSimulatorPurchases
   const localSimulatorPurchasesEnabled =
-    __DEV__ &&
     Platform.OS === 'ios' &&
-    !Device.isDevice &&
-    Constants.expoConfig?.extra?.revenueCatUseLocalSimulatorPurchases === true
+    (!Device.isDevice || localSimulatorPurchasesConfig !== false)
 
   // Configure RevenueCat SDK once on mount
   useEffect(() => {
@@ -226,9 +227,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     const configureRevenueCat = async () => {
       try {
+        console.warn(
+          `[RevenueCat] purchase mode check: platform=${Platform.OS}, isDevice=${String(Device.isDevice)}, localConfig=${String(localSimulatorPurchasesConfig)}, localEnabled=${String(localSimulatorPurchasesEnabled)}`,
+        )
+
         if (localSimulatorPurchasesEnabled) {
-          console.info(
-            '[RevenueCat] Using local simulator purchase mode. No Apple account is required.',
+          console.warn(
+            `[RevenueCat] Using local iOS purchase mode. No Apple account is required. isDevice=${String(Device.isDevice)}`,
           )
           setOfferings(buildLocalSimulatorOffering())
           setCustomerInfo(
@@ -341,7 +346,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         customerInfoListenerRef.current = null
       }
     }
-  }, [localSimulatorPurchasesEnabled, user?.id]) // Only re-run if local simulator mode context changes
+  }, [
+    localSimulatorPurchasesConfig,
+    localSimulatorPurchasesEnabled,
+    user?.id,
+  ]) // Only re-run if local simulator mode context changes
 
   // Handle user login separately
   useEffect(() => {
