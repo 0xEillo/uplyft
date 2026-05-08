@@ -1885,13 +1885,13 @@ export function WorkoutChat({
     }, [workoutContext]),
   )
 
-  // Recover native glass on focus and then autofocus once recovery has settled.
+  // Recover native glass on focus without forcing the composer to grab focus.
   useFocusEffect(
     useCallback(() => {
       setNavGlassKey((prev) => prev + 1)
       setComposerGlassKey((prev) => prev + 1)
 
-      // Only on first focus: run one extra remount before focusing input.
+      // Only on first focus: run one extra remount after native glass settles.
       const needsInitialComposerRetry = !hasRunInitialComposerRecoveryRef.current
       hasRunInitialComposerRecoveryRef.current = true
 
@@ -1902,16 +1902,8 @@ export function WorkoutChat({
         }, 80)
       }
 
-      const focusTimeout = setTimeout(
-        () => {
-          inputRef.current?.focus()
-        },
-        needsInitialComposerRetry ? 180 : 100,
-      )
-
       return () => {
         if (composerRetryTimeout) clearTimeout(composerRetryTimeout)
-        clearTimeout(focusTimeout)
       }
     }, []),
   )
