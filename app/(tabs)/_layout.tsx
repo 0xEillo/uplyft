@@ -1,7 +1,6 @@
 import { Paywall } from '@/components/paywall'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 import { useAuth } from '@/contexts/auth-context'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
@@ -86,25 +85,11 @@ function TabLayoutContent() {
     elapsedSeconds: workoutElapsedSeconds,
     hasActiveSession,
   } = useWorkoutComposer()
-  const { user, isAnonymous } = useAuth()
+  const { isAnonymous } = useAuth()
   const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasDismissedPaywall, setHasDismissedPaywall] = useState(false)
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
-  const [hasUnreadChat, setHasUnreadChat] = useState(false)
-
-  // Check for unread welcome message
-  useEffect(() => {
-    const checkUnread = async () => {
-      const hasUnread = await hasUnreadWelcomeMessage(user?.id)
-      setHasUnreadChat(hasUnread)
-    }
-    checkUnread()
-
-    // Re-check periodically in case user reads it
-    const interval = setInterval(checkUnread, 2000)
-    return () => clearInterval(interval)
-  }, [user?.id])
 
   useEffect(() => {
     let cancelled = false
@@ -195,12 +180,10 @@ function TabLayoutContent() {
   const showNativeBottomAccessory =
     isIOS26OrNewer &&
     !isTabBarHidden &&
-    currentTab !== 'chat' &&
     (isRestTimerActive || hasActiveSession)
   const showCustomBottomAccessory =
     !isIOS26OrNewer &&
     !isTabBarHidden &&
-    currentTab !== 'chat' &&
     (isRestTimerActive || hasActiveSession)
   const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
     workoutElapsedSeconds,
@@ -269,23 +252,11 @@ function TabLayoutContent() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="analytics">
-          <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Levels</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }}
             md="trending_up"
           />
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name="chat">
-          <NativeTabs.Trigger.Label>Coach</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon
-            sf={{
-              default: 'bubble.left.and.bubble.right',
-              selected: 'bubble.left.and.bubble.right.fill',
-            }}
-            md="chat"
-          />
-          <NativeTabs.Trigger.Badge hidden={!hasUnreadChat} />
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger

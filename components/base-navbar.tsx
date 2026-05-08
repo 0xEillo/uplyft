@@ -12,7 +12,7 @@ interface BaseNavbarProps {
 type NavbarIslandVariant = 'icon'
 
 /**
- * Base navbar component used across Home, Progress, and Profile screens.
+ * Base navbar component used across Home, Levels, and Profile screens.
  * Provides consistent styling and layout for the top navigation bar.
  */
 export function BaseNavbar({

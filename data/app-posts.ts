@@ -163,7 +163,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'coach_chat',
     badge: 'AI',
     ctaText: 'Open coach',
-    ctaRoute: '/(tabs)/chat',
+    ctaRoute: '/chat',
   },
   {
     id: 'offline-queue',

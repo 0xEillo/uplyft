@@ -460,7 +460,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       source: 'feed_workout_analysis',
       workout_id: workout.id,
     })
-    router.push('/(tabs)/chat' as any)
+    router.push('/chat')
   }, [isOwnWorkout, router, trackEvent, totalSetCount, user?.id, workout])
 
   const commentPreviews = useMemo(() => {

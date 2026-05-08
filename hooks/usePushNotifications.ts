@@ -115,7 +115,7 @@ export function usePushNotifications() {
           type === 'proactive_coach_comeback' ||
           type === 'proactive_coach_post_workout_followup'
         ) {
-          router.push('/(tabs)/chat')
+          router.push('/chat')
         } else if (
           type === 'retention_weekly_recap' ||
           type === 'retention_milestone'

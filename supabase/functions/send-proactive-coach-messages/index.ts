@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
           metadata: {
             title: coach.name,
             body: truncatePushBody(body),
-            route: '/(tabs)/chat',
+            route: '/chat',
             source: 'proactive_coach_scheduler',
             proactiveId: proactiveRow.id,
             ...trigger.metadata,

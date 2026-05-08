@@ -621,6 +621,13 @@ export interface WorkoutChatProps {
 
   // Callback when chat has started (has messages) - useful for sheet mode header
   onChatStarted?: (hasMessages: boolean) => void
+
+  // Override the internal keyboardVerticalOffset for the KeyboardAvoidingView.
+  // RN's KAV uses onLayout (parent-relative) for its frame but absolute screen
+  // Y for the keyboard, so callers must pass the screen Y of the KAV's parent
+  // (e.g. insets.top + custom header height) when this component is not the
+  // root of a screen.
+  keyboardVerticalOffsetOverride?: number
 }
 
 function buildDefaultSuggestions(input: {
@@ -1298,6 +1305,7 @@ export function WorkoutChat({
   hidePlanningWizard = false,
   onClose,
   onChatStarted,
+  keyboardVerticalOffsetOverride,
 }: WorkoutChatProps) {
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const suggestionsScrollRef = useRef<ScrollView>(null)
@@ -1605,7 +1613,9 @@ export function WorkoutChat({
         ? closedTabBarTopGap
         : nativeTabBarHeight + closedTabBarTopGap
       : 0
-  const keyboardVerticalOffset = isCompactIOSFullscreen ? 0 : nativeTabBarHeight
+  const keyboardVerticalOffset =
+    keyboardVerticalOffsetOverride ??
+    (isCompactIOSFullscreen ? 0 : nativeTabBarHeight)
 
   // NOTE: currentWorkoutExercises, hasWorkout, and activeSuggestions are computed
   // below using useMemo after effectiveWorkoutContext is defined
@@ -1754,11 +1764,11 @@ export function WorkoutChat({
     ingestProactiveCoachMessages,
   ])
 
-  // Show welcome message for first-time users (fullscreen mode only)
+  // Show welcome message for first-time users (any mode — there is now a single
+  // unified chat, so the welcome should fire regardless of how the chat is presented)
   useEffect(() => {
     // Wait for profile to load before showing welcome message so we have the user's name
     if (
-      mode !== 'fullscreen' ||
       !isFocused ||
       !hasHydratedPersistedChat ||
       hasLoadedWelcome ||
@@ -1814,7 +1824,6 @@ export function WorkoutChat({
       }
     }
   }, [
-    mode,
     isFocused,
     hasHydratedPersistedChat,
     hasLoadedWelcome,
@@ -4288,12 +4297,6 @@ export function WorkoutChat({
                             <View style={styles.assistantMessageContent}>
                               {structuredPlanIntroText ? (
                                 <View style={styles.assistantCoachRow}>
-                                  <View style={styles.messageAvatarContainer}>
-                                    <Image
-                                      source={coach.image}
-                                      style={styles.messageAvatar}
-                                    />
-                                  </View>
                                   <View style={styles.assistantCoachBubbleWrap}>
                                     <TouchableOpacity
                                       activeOpacity={1}
@@ -4473,12 +4476,6 @@ export function WorkoutChat({
                             <View style={styles.assistantMessageContent}>
                               {coachText && (
                                 <View style={styles.assistantCoachRow}>
-                                  <View style={styles.messageAvatarContainer}>
-                                    <Image
-                                      source={coach.image}
-                                      style={styles.messageAvatar}
-                                    />
-                                  </View>
                                   <View style={styles.assistantCoachBubbleWrap}>
                                     <TouchableOpacity
                                       activeOpacity={1}
@@ -5305,12 +5302,6 @@ export function WorkoutChat({
                 <>
                   {(isLoading || isWelcomeTyping) && (
                     <View style={styles.loadingMessageContainer}>
-                      <View style={styles.messageAvatarContainer}>
-                        <Image
-                          source={coach.image}
-                          style={styles.messageAvatar}
-                        />
-                      </View>
                       <View style={styles.typingIndicator}>
                         <TypingDot delay={0} colors={colors} />
                         <TypingDot delay={150} colors={colors} />
@@ -5461,8 +5452,9 @@ export function WorkoutChat({
                 {
                   paddingBottom:
                     mode === 'sheet'
-                      ? Math.max(bottomSafeInset, 16) +
-                        (isKeyboardVisible ? 20 : 0)
+                      ? isKeyboardVisible
+                        ? 10
+                        : Math.max(bottomSafeInset, 16)
                       : isKeyboardVisible
                       ? 20
                       : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
@@ -6162,17 +6154,6 @@ function createStyles(
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
       marginBottom: 16,
-    },
-    messageAvatarContainer: {
-      width: 32,
-      height: 32,
-      flexShrink: 0,
-    },
-    messageAvatar: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.surfaceSubtle,
     },
     userMessageBubble: {
       maxWidth: '80%',

@@ -277,6 +277,14 @@ function RootLayoutNav() {
             options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
+            name="chat"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_bottom',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="invite"
             options={{ presentation: 'card', animation: 'default' }}
           />

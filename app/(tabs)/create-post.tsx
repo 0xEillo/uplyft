@@ -4,7 +4,7 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
-import { WorkoutCoachSheet } from '@/components/WorkoutCoachSheet'
+import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -14,7 +14,6 @@ import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
   getExerciseSuggestion,
-  parseRepRange,
   useExerciseAutocompleteGroup,
   useShowConvertButton,
 } from '@/hooks/useExerciseAutocomplete'
@@ -28,7 +27,6 @@ import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
-import { structuredWorkoutHasLoggedSets } from '@/lib/utils/workout-composer-format'
 import {
   getToolbarButtons,
   getWarmupCalculatorEnabled,
@@ -44,6 +42,7 @@ import {
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import Svg, { Path } from 'react-native-svg'
 import {
   useFocusEffect,
 } from '@react-navigation/native'
@@ -335,7 +334,6 @@ export default function CreatePostScreen() {
   const {
     canReview,
     discardSession,
-    session,
     draft,
     elapsedSeconds: workoutElapsedSeconds,
     enterReview,
@@ -368,9 +366,7 @@ export default function CreatePostScreen() {
     useState(true)
   const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
   const [keypadTapShield, setKeypadTapShield] = useState(false)
-  const [showCoachSheet, setShowCoachSheet] = useState(false)
-  const [isFirstCoachOpen, setIsFirstCoachOpen] = useState(false)
-  const [isCoachSheetFirstOpen, setIsCoachSheetFirstOpen] = useState(false)
+  const [hasUnreadCoachWelcome, setHasUnreadCoachWelcome] = useState(false)
   const chatHandWave = useSharedValue(0)
   const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
     getWarmupCalculatorEnabled(),
@@ -433,43 +429,8 @@ export default function CreatePostScreen() {
     [updateDraft],
   )
 
-  const hasStructuredEntries = useMemo(() => {
-    if (!isStructuredMode || structuredData.length === 0) {
-      return false
-    }
-
-    return structuredWorkoutHasLoggedSets(structuredData)
-  }, [isStructuredMode, structuredData])
-
   const hasWorkoutDraftContent = hasActiveSession
 
-  // Context for the AI coach sheet
-  const workoutContext = useMemo(
-    () => ({
-      sessionId: session.meta.sessionId ?? undefined,
-      title: workoutTitle,
-      notes,
-      exercises: structuredData.map((e) => ({
-        name: e.name,
-        loggingType: e.loggingType,
-        setsCount: e.sets.length,
-        sets: e.sets
-          .map((set) => ({
-            weight: set.weight || undefined,
-            reps: set.reps || undefined,
-            duration: set.duration || undefined,
-          }))
-          .filter((set) => set.weight || set.reps || set.duration),
-      })),
-    }),
-    [notes, session.meta.sessionId, structuredData, workoutTitle],
-  )
-
-  // Check if workout is empty (no notes, no structured workouts)
-  const isWorkoutEmpty = useMemo(
-    () => !notes.trim() && !workoutTitle.trim() && !hasStructuredEntries,
-    [notes, workoutTitle, hasStructuredEntries],
-  )
 
 
   const shouldShowWorkoutTimer =
@@ -739,21 +700,28 @@ export default function CreatePostScreen() {
     workoutTitleForFocusRef.current = workoutTitle
   }, [notes, workoutTitle])
 
-  // Check if this is the user's first time opening the coach sheet
-  const COACH_SHEET_SEEN_KEY = user?.id
-    ? `coach_sheet_seen_${user.id}`
-    : null
-
+  // Track whether the unified coach chat still has an unseen welcome message,
+  // so we can wave the avatar button to draw the user's attention until they
+  // open the chat for the first time.
   useEffect(() => {
-    if (!COACH_SHEET_SEEN_KEY) return
-    AsyncStorage.getItem(COACH_SHEET_SEEN_KEY).then((val) => {
-      if (!val) setIsFirstCoachOpen(true)
-    })
-  }, [COACH_SHEET_SEEN_KEY])
+    let cancelled = false
+    const refresh = async () => {
+      const unread = await hasUnreadWelcomeMessage(user?.id)
+      if (!cancelled) setHasUnreadCoachWelcome(unread)
+    }
+    refresh()
+    // Re-check periodically in case the user opens the chat (which marks the
+    // welcome as seen) and returns here without remounting the screen.
+    const interval = setInterval(refresh, 2000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [user?.id])
 
-  // Wave animation for coach avatar button on first open
+  // Wave animation for coach avatar button when the welcome is still unread.
   useEffect(() => {
-    if (!isFirstCoachOpen) {
+    if (!hasUnreadCoachWelcome) {
       runOnUI(() => {
         'worklet'
         cancelAnimation(chatHandWave)
@@ -765,17 +733,14 @@ export default function CreatePostScreen() {
       'worklet'
       chatHandWave.value = withRepeat(
         withSequence(
-          withTiming(-25, { duration: 180, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
-          withTiming(15, { duration: 180, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
-          withTiming(-20, { duration: 160, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
-          withTiming(10, { duration: 160, easing: ReanimatedEasing.inOut(ReanimatedEasing.ease) }),
-          withTiming(0, { duration: 200, easing: ReanimatedEasing.out(ReanimatedEasing.ease) }),
-          withTiming(0, { duration: 900 }), // pause between waves
+          withTiming(1, { duration: 600, easing: ReanimatedEasing.out(ReanimatedEasing.cubic) }),
+          withTiming(0, { duration: 600, easing: ReanimatedEasing.in(ReanimatedEasing.cubic) }),
+          withTiming(0, { duration: 800 }),
         ),
         -1,
       )
     })()
-  }, [isFirstCoachOpen, chatHandWave])
+  }, [hasUnreadCoachWelcome, chatHandWave])
 
   const startToolbarInsetHandoff = useCallback(() => {
     setIsToolbarInsetLocked(true)
@@ -1742,87 +1707,6 @@ export default function CreatePostScreen() {
     })
   }, [registerCallback, createExerciseWithHistory, createEmptySet])
 
-  // Handler for adding exercise from AI coach suggestions
-  const handleAddExerciseFromCoach = useCallback(
-    async (exercise: { name: string; sets: number; reps: string }) => {
-      const { targetRepsMin, targetRepsMax } = parseRepRange(exercise.reps)
-
-      // Create exercise with history data
-      const newExercise = await createExerciseWithHistory(
-        exercise.name,
-        exercise.sets,
-        targetRepsMin,
-        targetRepsMax,
-      )
-
-      setStructuredData((prev) => [...prev, newExercise])
-      setIsStructuredMode(true)
-    },
-    [createExerciseWithHistory],
-  )
-
-  // Handler for replacing exercise from AI coach suggestions
-  const handleReplaceExerciseFromCoach = useCallback(
-    async (
-      oldExerciseName: string,
-      newExercise: { name: string; sets: number; reps: string },
-    ) => {
-      const { targetRepsMin, targetRepsMax } = parseRepRange(newExercise.reps)
-
-      // First check if the exercise exists
-      const existingIndex = structuredData.findIndex(
-        (ex) => ex.name.toLowerCase() === oldExerciseName.toLowerCase(),
-      )
-
-      if (existingIndex === -1) {
-        // If not found, add as a new exercise with history
-        const newExerciseData = await createExerciseWithHistory(
-          newExercise.name,
-          newExercise.sets,
-          targetRepsMin,
-          targetRepsMax,
-        )
-        setStructuredData((prev) => [...prev, newExerciseData])
-        return
-      }
-
-      // Exercise exists - fetch history for the new exercise to fill any extra sets
-      const newHistory = await createExerciseWithHistory(
-        newExercise.name,
-        newExercise.sets,
-        targetRepsMin,
-        targetRepsMax,
-      )
-
-      setStructuredData((prev) => {
-        const oldExercise = prev[existingIndex]
-        const setCount = Math.max(newExercise.sets, oldExercise.sets.length)
-
-        // Preserve existing set data where available, use history for new sets
-        const sets = Array.from({ length: setCount }, (_, i) => {
-          if (i < oldExercise.sets.length) {
-            // Keep the user's existing data but update target reps
-            return { ...oldExercise.sets[i], targetRepsMin, targetRepsMax }
-          }
-          // Use history data for new sets
-          return (
-            newHistory.sets[i] || createEmptySet(targetRepsMin, targetRepsMax)
-          )
-        })
-
-        const updated = [...prev]
-        updated[existingIndex] = {
-          id: oldExercise.id,
-          name: newExercise.name,
-          sets,
-        }
-        return updated
-      })
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- createEmptySet is stable
-    [createExerciseWithHistory, structuredData],
-  )
-
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
 
@@ -1994,9 +1878,7 @@ export default function CreatePostScreen() {
   }))
 
   const chatHandWaveStyle = useAnimatedStyle(() => ({
-    transform: [
-      { rotate: `${chatHandWave.value}deg` },
-    ],
+    transform: [{ scale: 1 + chatHandWave.value * 0.08 }],
   }))
   const isToolbarVisible =
     toolbarVisibleButtons.length > 0 &&
@@ -2159,38 +2041,42 @@ export default function CreatePostScreen() {
                   onPress={() => {
                     haptic('light')
                     blurInputs()
-                    if (isFirstCoachOpen && COACH_SHEET_SEEN_KEY) {
-                      AsyncStorage.setItem(COACH_SHEET_SEEN_KEY, 'true')
-                      setIsFirstCoachOpen(false)
-                      setIsCoachSheetFirstOpen(true)
-                    }
-                    setShowCoachSheet(true)
+                    router.push('/chat')
                   }}
                   disabled={isLoading || isRecording || isTranscribing}
                   activeOpacity={0.6}
                 >
-                  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                    <Image
-                      source={coach.image}
+                  <Reanimated.View
+                    style={[
+                      {
+                        width: 46,
+                        height: 46,
+                        borderRadius: 23,
+                      },
+                      chatHandWaveStyle,
+                    ]}
+                  >
+                    <LiquidGlassSurface
                       style={{
                         width: 46,
                         height: 46,
                         borderRadius: 23,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
-                    />
-                    <Reanimated.View
-                      style={[
-                        {
-                          position: 'absolute',
-                          bottom: -4,
-                          right: -4,
-                        },
-                        chatHandWaveStyle,
-                      ]}
                     >
-                      <Text style={{ fontSize: 16, lineHeight: 18 }}>👋</Text>
-                    </Reanimated.View>
-                  </View>
+                      <Svg 
+                        width={24} 
+                        height={24} 
+                        viewBox="0 0 24 24" 
+                      >
+                        <Path 
+                          d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68q.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58a12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68q-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96q2.19.93 3.81 2.55t2.55 3.81" 
+                          fill={colors.textPrimary} 
+                        />
+                      </Svg>
+                    </LiquidGlassSurface>
+                  </Reanimated.View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2396,19 +2282,6 @@ export default function CreatePostScreen() {
         onStop={restTimer.stop}
         onAddTime={restTimer.addTime}
         onAutoRestChange={handleAutoRestChange}
-      />
-
-      <WorkoutCoachSheet
-        visible={showCoachSheet}
-        onClose={() => {
-          setShowCoachSheet(false)
-          setIsCoachSheetFirstOpen(false)
-        }}
-        workoutContext={workoutContext}
-        onAddExercise={handleAddExerciseFromCoach}
-        onReplaceExercise={handleReplaceExerciseFromCoach}
-        isWorkoutEmpty={isWorkoutEmpty}
-        isFirstOpen={isCoachSheetFirstOpen}
       />
     </SafeAreaView>
 

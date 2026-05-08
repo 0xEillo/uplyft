@@ -297,9 +297,10 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     topSection: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-end',
       alignItems: 'center',
-      paddingBottom: 40,
+      paddingTop: 28,
+      paddingBottom: 48,
     },
     bottomSection: {
       justifyContent: 'flex-end',
