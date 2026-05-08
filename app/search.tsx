@@ -57,6 +57,7 @@ export default function SearchScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const NAVBAR_HEIGHT = Layout.navbarHeightCompact
+  const SEARCH_INPUT_BLOCK_HEIGHT = 64 // search container minHeight (48) + marginTop (4) + marginBottom (12)
 
   // Block anonymous users from social features
   useEffect(() => {
@@ -308,47 +309,55 @@ export default function SearchScreen() {
           />
         </BlurredHeader>
 
+        {/* Search Input — lifted above BlurredHeader (zIndex 10) so it isn't blurred */}
+        <View
+          style={[
+            styles.searchContainer,
+            { top: insets.top + NAVBAR_HEIGHT },
+          ]}
+        >
+          <Ionicons
+            name="search"
+            size={20}
+            color={colors.textSecondary}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search for friends on Rep AI"
+            placeholderTextColor={colors.textPlaceholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            blurOnSubmit
+            onSubmitEditing={() => Keyboard.dismiss()}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.clearButton}
+            >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View
             style={[
               styles.contentWrapper,
-              { paddingTop: insets.top + NAVBAR_HEIGHT },
+              {
+                paddingTop:
+                  insets.top + NAVBAR_HEIGHT + SEARCH_INPUT_BLOCK_HEIGHT,
+              },
             ]}
           >
-            {/* Search Input */}
-            <View style={styles.searchContainer}>
-              <Ionicons
-                name="search"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.searchIcon}
-              />
-              <TextInput
-                style={styles.searchInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search for friends on Rep AI"
-                placeholderTextColor={colors.textPlaceholder}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="search"
-                blurOnSubmit
-                onSubmitEditing={() => Keyboard.dismiss()}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
-                  style={styles.clearButton}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-
             {/* Results */}
             {isLoading ? (
               <View style={styles.loadingContainer}>
@@ -515,15 +524,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
     },
     searchContainer: {
+      position: 'absolute',
+      left: 14,
+      right: 14,
+      marginTop: 4,
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: 14,
-      marginTop: 4,
-      marginBottom: 12,
       paddingHorizontal: 12,
       backgroundColor: colors.surfaceSubtle,
       borderRadius: 12,
       minHeight: 48,
+      zIndex: 11,
+      elevation: 11,
     },
     searchIcon: {
       marginRight: 8,

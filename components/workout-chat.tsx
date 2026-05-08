@@ -85,6 +85,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
+import * as Clipboard from 'expo-clipboard'
 import * as FileSystem from 'expo-file-system/legacy'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -94,7 +95,6 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  Clipboard,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -2886,7 +2886,7 @@ export function WorkoutChat({
     const copyText = text.trim()
     if (!copyText) return
 
-    Clipboard.setString(copyText)
+    void Clipboard.setStringAsync(copyText)
     haptic('light')
     showCopyToast()
   }
