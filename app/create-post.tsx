@@ -2,7 +2,6 @@ import { CustomNumericKeypad, type CustomNumericKeypadProps } from '@/components
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
-import { SlideUpView } from '@/components/slide-up-view'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -1068,10 +1067,6 @@ export default function CreatePostScreen() {
     }
   }, [user])
 
-  // Track animation state to reset on each focus
-  const [slideKey, setSlideKey] = useState(0)
-  const [shouldExit, setShouldExit] = useState(false)
-
   // Use exercise selection hook for navigation-based exercise search
   const { registerCallback } = useExerciseSelection()
 
@@ -1085,8 +1080,6 @@ export default function CreatePostScreen() {
         return undefined
       }
 
-      setSlideKey((prev) => prev + 1)
-      setShouldExit(false)
       setWarmupCalculatorEnabled(getWarmupCalculatorEnabled())
       setToolbarVisibleButtons(getToolbarButtons())
 
@@ -1151,12 +1144,8 @@ export default function CreatePostScreen() {
     }
 
     blurInputs()
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = useCallback(() => {
     router.back()
-  }, [])
+  }
 
   const handleDiscardWorkout = useCallback(() => {
     haptic('medium')
@@ -1899,17 +1888,7 @@ export default function CreatePostScreen() {
   return (
     <>
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <SlideUpView
-        key={slideKey}
-        style={{ flex: 1 }}
-        backgroundColor={colors.bg}
-        fade={false}
-        duration={200}
-        tension={65}
-        friction={14}
-        shouldExit={shouldExit}
-        onExitComplete={handleExitComplete}
-      >
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <Pressable style={styles.header} onPress={blurInputs}>
           <View style={styles.headerLeftButtons}>
             <LiquidGlassSurface
@@ -2271,7 +2250,7 @@ export default function CreatePostScreen() {
           </View>
         )}
 
-      </SlideUpView>
+      </View>
 
       <RestTimerOverlay
         visible={showRestTimer}

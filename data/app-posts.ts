@@ -77,7 +77,7 @@ export const APP_POSTS: AppPost[] = [
     createdAt: '2026-02-01T18:15:00.000Z',
     preview: 'editor_toolbar',
     ctaText: 'Try it now',
-    ctaRoute: '/(tabs)/create-post',
+    ctaRoute: '/create-post',
   },
   {
     id: 'rest-timer',
@@ -88,7 +88,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'rest_timer',
     badge: 'HIDDEN GEM',
     ctaText: 'Start a timer',
-    ctaRoute: '/(tabs)/create-post',
+    ctaRoute: '/create-post',
   },
   {
     id: 'scan-notes',
@@ -99,7 +99,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'scan_workout',
     badge: 'AI',
     ctaText: 'Scan a workout',
-    ctaRoute: '/(tabs)/create-post',
+    ctaRoute: '/create-post',
   },
   {
     id: 'voice-logging',
@@ -131,7 +131,7 @@ export const APP_POSTS: AppPost[] = [
     preview: 'share_widgets',
     badge: 'SHARE',
     ctaText: 'Log & share',
-    ctaRoute: '/(tabs)/create-post',
+    ctaRoute: '/create-post',
   },
   {
     id: 'body-log',
@@ -174,6 +174,6 @@ export const APP_POSTS: AppPost[] = [
     preview: 'offline_queue',
     badge: 'OFFLINE',
     ctaText: 'Try offline logging',
-    ctaRoute: '/(tabs)/create-post',
+    ctaRoute: '/create-post',
   },
 ]

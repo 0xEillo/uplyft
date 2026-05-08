@@ -5,7 +5,6 @@ import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 import { useAuth } from '@/contexts/auth-context'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
-  RestTimerProvider,
   useRestTimerContext,
 } from '@/contexts/rest-timer-context'
 import {
@@ -167,7 +166,6 @@ function TabLayoutContent() {
   const currentTab = (segments[1] as string | undefined) ?? 'index'
   const isTabBarHidden =
     hideForFullscreenOverlay ||
-    currentTab === 'create-post' ||
     currentTab === 'create-speech'
   const isIOS26OrNewer =
     Platform.OS === 'ios' &&
@@ -177,22 +175,17 @@ function TabLayoutContent() {
   const tabBarMinimizeBehavior = shouldEnableTabBarMinimize
     ? 'onScrollDown'
     : 'never'
-  const showNativeBottomAccessory =
-    isIOS26OrNewer &&
-    !isTabBarHidden &&
-    (isRestTimerActive || hasActiveSession)
-  const showCustomBottomAccessory =
-    !isIOS26OrNewer &&
-    !isTabBarHidden &&
-    (isRestTimerActive || hasActiveSession)
-  const bottomAccessoryTitle = `Workout ${formatAccessoryElapsed(
-    workoutElapsedSeconds,
-  )}`
-  const createActionColor =
-    isRestTimerActive || hasActiveSession
-      ? colors.statusError
-      : colors.brandPrimary
-  const handleOpenCreatePost = () => router.push('/(tabs)/create-post')
+  const isWorkoutLive = isRestTimerActive || hasActiveSession
+  const tabsWithWorkoutAccessory = new Set(['index', 'profile'])
+  const showBottomAccessory =
+    !isTabBarHidden && tabsWithWorkoutAccessory.has(currentTab)
+  const bottomAccessoryTitle = isWorkoutLive
+    ? `Workout ${formatAccessoryElapsed(workoutElapsedSeconds)}`
+    : 'Start New Workout'
+  const createActionColor = isWorkoutLive
+    ? colors.statusError
+    : colors.brandPrimary
+  const handleOpenCreatePost = () => router.push('/create-post')
   const handleDiscardWorkoutProgress = () => {
     Alert.alert(
       'Discard workout?',
@@ -276,54 +269,63 @@ function TabLayoutContent() {
           />
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger name="create-post" role="search">
-          <NativeTabs.Trigger.Label>
-            Start
-          </NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger
+          name="gemini"
+          role="search"
+          listeners={{
+            tabPress: () => {
+              router.push('/chat')
+            },
+          }}
+        >
+          <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'plus', selected: 'plus' }}
-            md="add"
+            src={require('@/assets/images/gemini-tab.png')}
             renderingMode="template"
             selectedColor={createActionColor}
           />
         </NativeTabs.Trigger>
 
-        {showNativeBottomAccessory ? (
-          <NativeTabs.BottomAccessory>
-            <BottomAccessoryAction
-              title={bottomAccessoryTitle}
-              textPrimary={colors.textPrimary}
-              accentColor={colors.statusSuccess}
-              onOpen={handleOpenCreatePost}
-              onDiscard={handleDiscardWorkoutProgress}
-            />
-          </NativeTabs.BottomAccessory>
-        ) : null}
       </NativeTabs>
 
-      {showCustomBottomAccessory ? (
+      {showBottomAccessory ? (
         <BlurView
-          intensity={80}
+          intensity={isWorkoutLive ? 60 : 0}
           tint={isDark ? 'dark' : 'light'}
           style={{
             position: 'absolute',
             bottom: insets.bottom + 49 + 10,
-            left: 16,
+            left: isWorkoutLive ? 16 : undefined,
             right: 16,
+            width: isWorkoutLive ? undefined : 224,
             borderRadius: 999,
             borderWidth: 1,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            borderColor: isWorkoutLive
+              ? isDark
+                ? 'rgba(255, 255, 255, 0.16)'
+                : 'rgba(0, 0, 0, 0.08)'
+              : 'rgba(255, 255, 255, 0.22)',
+            backgroundColor: isWorkoutLive
+              ? isDark
+                ? 'rgba(28, 28, 30, 0.9)'
+                : 'rgba(255, 255, 255, 0.92)'
+              : colors.brandPrimary,
             overflow: 'hidden',
-						zIndex: 50,
+            shadowColor: '#000',
+            shadowOpacity: isWorkoutLive ? (isDark ? 0.28 : 0.14) : 0.18,
+            shadowRadius: isWorkoutLive ? 24 : 18,
+            shadowOffset: { width: 0, height: isWorkoutLive ? 10 : 8 },
+            zIndex: 50,
           }}
         >
           <BaseAccessoryAction
             title={bottomAccessoryTitle}
-            textPrimary={colors.textPrimary}
+            textPrimary={isWorkoutLive ? colors.textPrimary : '#fff'}
             accentColor={colors.statusSuccess}
             onOpen={handleOpenCreatePost}
             onDiscard={handleDiscardWorkoutProgress}
             isInline={false}
+            isLive={isWorkoutLive}
           />
         </BlurView>
       ) : null}
@@ -355,6 +357,7 @@ function BaseAccessoryAction({
   onOpen,
   onDiscard,
   isInline,
+  isLive,
 }: {
   title: string
   textPrimary: string
@@ -362,8 +365,9 @@ function BaseAccessoryAction({
   onOpen: () => void
   onDiscard: () => void
   isInline: boolean
+  isLive: boolean
 }) {
-  const sideSlotWidth = isInline ? 56 : 68
+  const sideSlotWidth = isLive ? (isInline ? 56 : 68) : 16
   const contentTranslateY = isInline ? 3 : -2
 
   return (
@@ -379,7 +383,7 @@ function BaseAccessoryAction({
     >
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel="Resume workout"
+        accessibilityLabel={isLive ? 'Resume workout' : 'Start new workout'}
         activeOpacity={0.85}
         onPress={onOpen}
         style={{
@@ -408,11 +412,13 @@ function BaseAccessoryAction({
               justifyContent: 'center',
             }}
           >
-            <Ionicons
-              name="chevron-up"
-              size={isInline ? 16 : 22}
-              color={textPrimary}
-            />
+            {isLive ? (
+              <Ionicons
+                name="chevron-up"
+                size={isInline ? 16 : 22}
+                color={textPrimary}
+              />
+            ) : null}
           </View>
 
           <View
@@ -421,22 +427,30 @@ function BaseAccessoryAction({
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 10,
+              gap: isLive ? 10 : 6,
             }}
           >
-            <View
-              style={{
-                width: isInline ? 7 : 11,
-                height: isInline ? 7 : 11,
-                borderRadius: 999,
-                backgroundColor: accentColor,
-              }}
-            />
+            {isLive ? (
+              <View
+                style={{
+                  width: isInline ? 7 : 11,
+                  height: isInline ? 7 : 11,
+                  borderRadius: 999,
+                  backgroundColor: accentColor,
+                }}
+              />
+            ) : (
+              <Ionicons
+                name="play"
+                size={isInline ? 14 : 18}
+                color={textPrimary}
+              />
+            )}
             <Text
               numberOfLines={1}
               style={{
                 color: textPrimary,
-                fontSize: isInline ? 15 : 17,
+                fontSize: isInline ? 15 : isLive ? 17 : 15,
                 lineHeight: isInline ? 18 : 21,
                 fontWeight: '700',
                 letterSpacing: -0.2,
@@ -451,58 +465,46 @@ function BaseAccessoryAction({
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityLabel="Discard workout"
-        activeOpacity={0.85}
-        onPress={onDiscard}
-        hitSlop={8}
-        style={{
-          position: 'absolute',
-          right: isInline ? 10 : 12,
-          top: 0,
-          bottom: 0,
-          zIndex: 3,
-          paddingHorizontal: 6,
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: [{ translateY: contentTranslateY }],
-        }}
-      >
-        <Ionicons
-          name="trash-outline"
-          size={isInline ? 16 : 22}
-          color="#ff5a5f"
-        />
-      </TouchableOpacity>
+      {isLive ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Discard workout"
+          activeOpacity={0.85}
+          onPress={onDiscard}
+          hitSlop={8}
+          style={{
+            position: 'absolute',
+            right: isInline ? 10 : 12,
+            top: 0,
+            bottom: 0,
+            zIndex: 3,
+            paddingHorizontal: 6,
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: [{ translateY: contentTranslateY }],
+          }}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={isInline ? 16 : 22}
+            color="#ff5a5f"
+          />
+        </TouchableOpacity>
+      ) : null}
     </View>
   )
 }
 
-function BottomAccessoryAction(props: {
-  title: string
-  textPrimary: string
-  accentColor: string
-  onOpen: () => void
-  onDiscard: () => void
-}) {
-  const placement = NativeTabs.BottomAccessory.usePlacement()
-  const isInline = placement === 'inline'
-  return <BaseAccessoryAction {...props} isInline={isInline} />
-}
-
 export default function TabLayout() {
   return (
-    <RestTimerProvider>
-      <ScrollToTopProvider>
-        <SuccessOverlayProvider>
-          <RatingPromptProvider>
-            <TabBarVisibilityProvider>
-              <TabLayoutContent />
-            </TabBarVisibilityProvider>
-          </RatingPromptProvider>
-        </SuccessOverlayProvider>
-      </ScrollToTopProvider>
-    </RestTimerProvider>
+    <ScrollToTopProvider>
+      <SuccessOverlayProvider>
+        <RatingPromptProvider>
+          <TabBarVisibilityProvider>
+            <TabLayoutContent />
+          </TabBarVisibilityProvider>
+        </RatingPromptProvider>
+      </SuccessOverlayProvider>
+    </ScrollToTopProvider>
   )
 }

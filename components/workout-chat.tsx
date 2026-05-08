@@ -3959,7 +3959,7 @@ export function WorkoutChat({
         onClose?.()
 
         // Navigate to create-post
-        router.push('/(tabs)/create-post')
+        router.push('/create-post')
       } catch (error) {
         console.error('Error starting workout:', error)
         Alert.alert(

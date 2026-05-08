@@ -35,7 +35,7 @@ export function FeedEmptyState({ isOffline }: FeedEmptyStateProps) {
             style={styles.offlineButton}
             onPress={() => {
               haptic('light')
-              router.push('/(tabs)/create-post')
+              router.push('/create-post')
             }}
           >
             <Text style={styles.offlineButtonText}>Log a Workout</Text>
@@ -67,7 +67,7 @@ export function FeedEmptyState({ isOffline }: FeedEmptyStateProps) {
           style={styles.button}
           onPress={() => {
             haptic('light')
-            router.push('/(tabs)/create-post')
+            router.push('/create-post')
           }}
         >
           <Text style={styles.buttonText}>Start my first workout</Text>

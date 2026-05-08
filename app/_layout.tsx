@@ -22,6 +22,7 @@ import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import { NotificationProvider } from '@/contexts/notification-context'
 import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
+import { RestTimerProvider } from '@/contexts/rest-timer-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
 import { ThemeProvider, useTheme } from '@/contexts/theme-context'
 import { UnitProvider } from '@/contexts/unit-context'
@@ -285,6 +286,14 @@ function RootLayoutNav() {
             }}
           />
           <Stack.Screen
+            name="create-post"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_bottom',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="invite"
             options={{ presentation: 'card', animation: 'default' }}
           />
@@ -463,7 +472,9 @@ export default function RootLayout() {
                         <PostsProvider>
                           <LiveActivityProvider>
                             <WorkoutComposerProvider>
-                              <RootLayoutNav />
+                              <RestTimerProvider>
+                                <RootLayoutNav />
+                              </RestTimerProvider>
                             </WorkoutComposerProvider>
                           </LiveActivityProvider>
                         </PostsProvider>

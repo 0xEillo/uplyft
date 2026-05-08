@@ -689,7 +689,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               title="No strength data"
               description="Complete a workout to see your strength progress over time."
               buttonText="Log Your First Workout"
-              onPress={() => router.push('/(tabs)/create-post')}
+              onPress={() => router.push('/create-post')}
             />
           ) : (
             <>
@@ -791,7 +791,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               title="No muscle data"
               description="Complete workouts to see your training balance across muscle groups."
               buttonText="Log Your First Workout"
-              onPress={() => router.push('/(tabs)/create-post')}
+              onPress={() => router.push('/create-post')}
             />
           ) : (
             <View style={styles.barsContainer}>
@@ -892,7 +892,7 @@ export const StatsView = memo(function StatsView({ userId }: StatsViewProps) {
               title="No volume data"
               description="Track your total weight lifted across all sessions."
               buttonText="Log Your First Workout"
-              onPress={() => router.push('/(tabs)/create-post')}
+              onPress={() => router.push('/create-post')}
             />
           ) : (
             <>

@@ -149,7 +149,7 @@ export default function NotificationsScreen() {
           notification.type === 'retention_streak_protection' ||
           notification.type === 'retention_inactivity'
         ) {
-          router.push('/(tabs)/create-post')
+          router.push('/create-post')
         } else if (
           notification.type === 'retention_weekly_recap' ||
           notification.type === 'retention_milestone'

@@ -1343,7 +1343,7 @@ export function StrengthBodyView({
                       {exercises.length === 0 ? (
                         <TouchableOpacity
                           style={[styles.exerciseCard, styles.unrankedCta]}
-                          onPress={() => router.push("/(tabs)/create-post")}
+                          onPress={() => router.push("/create-post")}
                           activeOpacity={0.7}
                         >
                           <Ionicons

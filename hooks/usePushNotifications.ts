@@ -108,7 +108,7 @@ export function usePushNotifications() {
           type === 'retention_streak_protection' ||
           type === 'retention_inactivity'
         ) {
-          router.push('/(tabs)/create-post')
+          router.push('/create-post')
         } else if (
           type === 'proactive_coach_workout_day_morning' ||
           type === 'proactive_coach_missed_workout' ||

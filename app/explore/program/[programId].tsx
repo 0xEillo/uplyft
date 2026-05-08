@@ -304,7 +304,7 @@ export default function ProgramDetailScreen() {
           routineSource: 'route',
         })
 
-        router.replace('/(tabs)/create-post')
+        router.replace('/create-post')
       } catch (e) {
         console.error('Failed to start routine', e)
         Alert.alert('Error', 'Failed to start routine. Please try again.')

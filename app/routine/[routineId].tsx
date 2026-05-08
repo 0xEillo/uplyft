@@ -229,7 +229,7 @@ export default function RoutineDetailScreen() {
           routineSource: 'route',
         })
 
-        router.replace('/(tabs)/create-post')
+        router.replace('/create-post')
       } catch (e) {
         console.error('Failed to pre-seed draft', e)
         Alert.alert('Error', 'Failed to start routine. Please try again.')

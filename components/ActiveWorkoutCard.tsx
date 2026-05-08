@@ -59,7 +59,7 @@ export function ActiveWorkoutCard({
     if (onPress) {
       onPress()
     } else {
-      router.push('/(tabs)/create-post')
+      router.push('/create-post')
     }
   }
 
