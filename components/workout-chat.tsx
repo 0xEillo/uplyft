@@ -2877,9 +2877,32 @@ export function WorkoutChat({
 
     Clipboard.setString(copyText)
     haptic('light')
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('Copied to clipboard', ToastAndroid.SHORT)
+    showCopyToast()
+  }
+
+  const showCopyToast = () => {
+    if (copyToastVisibleHideTimeoutRef.current) {
+      clearTimeout(copyToastVisibleHideTimeoutRef.current)
+      copyToastVisibleHideTimeoutRef.current = null
     }
+    if (copyToastUnmountTimeoutRef.current) {
+      clearTimeout(copyToastUnmountTimeoutRef.current)
+      copyToastUnmountTimeoutRef.current = null
+    }
+
+    setCopyToastMounted(true)
+    copyToastOpacity.value = withTiming(1, { duration: 160 })
+    copyToastScale.value = withSpring(1, { damping: 16, stiffness: 240 })
+    copyToastTranslateY.value = withSpring(0, { damping: 16, stiffness: 240 })
+
+    copyToastVisibleHideTimeoutRef.current = setTimeout(() => {
+      copyToastOpacity.value = withTiming(0, { duration: 220 })
+      copyToastScale.value = withTiming(0.92, { duration: 220 })
+      copyToastTranslateY.value = withTiming(6, { duration: 220 })
+      copyToastUnmountTimeoutRef.current = setTimeout(() => {
+        setCopyToastMounted(false)
+      }, 240)
+    }, 1100)
   }
 
   const handleSendMessage = async (
