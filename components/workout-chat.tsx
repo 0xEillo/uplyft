@@ -541,35 +541,20 @@ function AnimatedUserMessageBubble({
   style?: StyleProp<ViewStyle>
   children: React.ReactNode
 }) {
+  // Subtle opacity-only fade-in. Avoid translate/scale springs because they
+  // compete with the FlashList content-size scroll snap and any keyboard
+  // motion at the moment of send and read as "janky".
   const opacity = useSharedValue(shouldAnimate ? 0 : 1)
-  const translateY = useSharedValue(shouldAnimate ? 14 : 0)
-  const scale = useSharedValue(shouldAnimate ? 0.96 : 1)
 
   useEffect(() => {
     if (!shouldAnimate) return
-    opacity.value = withTiming(1, { duration: 220 })
-    translateY.value = withSpring(0, {
-      damping: 22,
-      stiffness: 260,
-      mass: 0.7,
-      overshootClamping: false,
-    })
-    scale.value = withSpring(1, {
-      damping: 22,
-      stiffness: 260,
-      mass: 0.7,
-      overshootClamping: false,
-    })
+    opacity.value = withTiming(1, { duration: 160 })
     // Run once on mount; ignore later shouldAnimate changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
   }))
 
   return (
@@ -3008,13 +2993,15 @@ export function WorkoutChat({
       ? [...(options?.existingUserImages || [])]
       : [...selectedImages]
 
-    // Clear input immediately after validation if not hidden prompt and not overriding
+    // Clear input immediately after validation if not hidden prompt and not overriding.
+    // NOTE: intentionally do NOT dismiss the keyboard here. Keeping it open
+    // (iMessage/WhatsApp style) avoids a KAV layout shift colliding with the
+    // bubble entrance + FlashList scroll snap, which read as jank.
     if (!hiddenPrompt && !isResend && !options?.overrideInput) {
       setInput('')
       setInputHeight(0)
       setSelectedImages([])
       inputRef.current?.clear()
-      Keyboard.dismiss()
     }
 
     const userMessageId =
@@ -5652,7 +5639,10 @@ export function WorkoutChat({
                           returnKeyType="send"
                           onSubmitEditing={() => handleSendMessage()}
                           blurOnSubmit={false}
-                          editable={!isLoading && !isTranscribing}
+                          // Keep editable while loading so iOS doesn't auto-dismiss
+                          // the keyboard mid-send. Send button is still disabled via
+                          // its own `disabled` prop while `isLoading`.
+                          editable={!isTranscribing}
                           onContentSizeChange={(e) => {
                             const h = e.nativeEvent.contentSize.height
                             setInputHeight(Math.min(Math.max(h, 22), 120))
@@ -5736,18 +5726,15 @@ export function WorkoutChat({
                           isLoading
                         }
                       >
-                        {isLoading ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={colors.surface}
-                          />
-                        ) : (
-                          <Ionicons
-                            name="arrow-up"
-                            size={17}
-                            color={colors.surface}
-                          />
-                        )}
+                        {/* Always render the arrow — no spinner here.
+                            The typing dots in the chat list already signal
+                            "AI is responding"; a second loading state on the
+                            send button reads as jank during the transition. */}
+                        <Ionicons
+                          name="arrow-up"
+                          size={17}
+                          color={colors.surface}
+                        />
                       </TouchableOpacity>
                     )}
                   </View>
