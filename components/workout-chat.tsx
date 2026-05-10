@@ -6,7 +6,6 @@ import {
   ManualFoodLogData,
   ManualFoodLogSheet,
 } from '@/components/manual-food-log-sheet'
-import { Paywall } from '@/components/paywall'
 import { ProgramCard } from '@/components/program-card'
 import { WorkoutCard } from '@/components/workout-card'
 import {
@@ -17,12 +16,10 @@ import {
   WorkoutPlanningWizard,
 } from '@/components/workout-planning-wizard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { NUTRITION_FEATURES_ENABLED } from '@/constants/feature-flags'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTabBarVisibility } from '@/contexts/tab-bar-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
@@ -1359,7 +1356,6 @@ export function WorkoutChat({
   const [inputHeight, setInputHeight] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingProgram, setIsSavingProgram] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [viewerImages, setViewerImages] = useState<string[]>([])
   const [viewerImageIndex, setViewerImageIndex] = useState<number | null>(null)
@@ -1466,10 +1462,8 @@ export function WorkoutChat({
       }
     }
   }, [])
-  const { isProMember } = useSubscription()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { trackEvent } = useAnalytics()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const themedColors = useThemedColors()
   const colors = useMemo(
     () =>
@@ -2979,13 +2973,6 @@ export function WorkoutChat({
 
     setHasChatStarted(true)
 
-    // AI chat is a Pro-only feature.
-    if (!isProMember) {
-      trackPaywallShown('ai_chat', 'workout_chat_send')
-      setShowPaywall(true)
-      return
-    }
-
     // Store input and images before clearing
     const imagesToSend = options?.forceImages
       ? [...options.forceImages]
@@ -3481,19 +3468,6 @@ export function WorkoutChat({
   }
 
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
-    // AI workout generation is a Pro-only feature.
-    // Close the wizard first so the paywall modal can present on top.
-    if (!isProMember) {
-      closeWizardAndRestoreTabBar()
-      // Small delay so the wizard dismissal animation clears before paywall appears.
-      setTimeout(() => {
-        trackPaywallShown('ai_workout_generation', 'workout_chat_wizard')
-        setShowPaywall(true)
-      }, 350)
-      return
-    }
-
-    // Otherwise, this is the final completion, so generate the workout
     closeWizardAndRestoreTabBar()
 
     try {
@@ -5840,17 +5814,6 @@ export function WorkoutChat({
             </Modal>
           </>
         )}
-
-        {/* Paywall Modal - Rendered outside conditional to appear over wizard */}
-        <Paywall
-          visible={showPaywall}
-          onClose={() => {
-            trackPaywallDismissed('ai_chat', 'workout_chat')
-            setShowPaywall(false)
-          }}
-          message={`Get 24/7 expert guidance, custom plan adjustments, and unlimited support.`}
-          feature="ai_chat"
-        />
 
         {copyToastMounted && (
           <View pointerEvents="none" style={styles.copyToastWrapper}>

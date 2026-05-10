@@ -4,9 +4,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { useAnalytics } from '@/contexts/analytics-context'
-import { useSubscription } from '@/contexts/subscription-context'
-import { useFeatureGate } from '@/utils/analytics-helpers'
-import { Paywall } from '@/components/paywall'
 import { database } from '@/lib/database'
 import { Ionicons } from '@expo/vector-icons'
 import {
@@ -35,10 +32,7 @@ export default function CreateSpeechScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   useEffect(() => {
     ;(async () => {
@@ -59,12 +53,6 @@ export default function CreateSpeechScreen() {
   }, [trackEvent])
 
   const startRecording = async () => {
-    if (!isProMember) {
-      trackPaywallShown('voice_logging', 'create_speech')
-      setShowPaywall(true)
-      return
-    }
-
     try {
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
@@ -254,16 +242,6 @@ export default function CreateSpeechScreen() {
         )}
       </View>
 
-      <Paywall
-        visible={showPaywall}
-        onClose={() => {
-          trackPaywallDismissed('voice_logging', 'create_speech')
-          setShowPaywall(false)
-        }}
-        title="Unlock Voice logging"
-        message="Voice logging is a premium feature. Subscribe to log your workouts with your voice."
-        feature="voice_logging"
-      />
     </SafeAreaView>
   )
 }

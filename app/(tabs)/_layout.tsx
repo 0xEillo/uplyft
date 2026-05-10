@@ -1,8 +1,5 @@
-import { Paywall } from '@/components/paywall'
 import { RatingPromptModal } from '@/components/rating-prompt-modal'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
-import { useAuth } from '@/contexts/auth-context'
 import { RatingPromptProvider } from '@/contexts/rating-prompt-context'
 import {
   useRestTimerContext,
@@ -11,7 +8,6 @@ import {
   ScrollToTopProvider,
   useScrollToTop,
 } from '@/contexts/scroll-to-top-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import {
   SuccessOverlayProvider,
   useSuccessOverlay,
@@ -27,11 +23,10 @@ import {
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -45,12 +40,6 @@ import {
 } from 'react-native'
 
 const MINIMIZE_ON_SCROLL_TABS = new Set(['index', 'analytics', 'profile'])
-
-// Re-prompt the freemium paywall at most once every PAYWALL_COOLDOWN_MS for
-// non-Pro users. 3 days is a fairly standard cadence for SaaS freemium apps —
-// frequent enough to remain top of mind without feeling spammy.
-const PAYWALL_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000
-const PAYWALL_LAST_SHOWN_KEY = '@paywall_last_shown'
 
 function formatAccessoryElapsed(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -79,7 +68,6 @@ function TabLayoutContent() {
     celebrationData,
     hideCelebration,
   } = useSuccessOverlay()
-  const { isProMember, isLoading: isSubscriptionLoading } = useSubscription()
   const {
     isActive: isRestTimerActive,
     stop: stopRestTimer,
@@ -89,82 +77,7 @@ function TabLayoutContent() {
     elapsedSeconds: workoutElapsedSeconds,
     hasActiveSession,
   } = useWorkoutComposer()
-  const { isAnonymous } = useAuth()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const bottomAccessoryVisibility = useBottomAccessoryVisibility()
-  const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
-  const [hasDismissedPaywall, setHasDismissedPaywall] = useState(false)
-  const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    if (!isSubscriptionLoading && !isProMember) {
-      ;(async () => {
-        let shouldShow = true
-        try {
-          const stored = await AsyncStorage.getItem(PAYWALL_LAST_SHOWN_KEY)
-          const lastShown = stored ? Number.parseInt(stored, 10) : 0
-          if (Number.isFinite(lastShown) && lastShown > 0) {
-            shouldShow = Date.now() - lastShown >= PAYWALL_COOLDOWN_MS
-          }
-        } catch {
-          // If storage fails, fall through and show — we'd rather over-prompt
-          // than silently never re-engage a user.
-        }
-        if (cancelled || !shouldShow) return
-
-        timer = setTimeout(() => {
-          setDelayedShowPaywall(true)
-          trackPaywallShown('global_paywall', 'app_launch')
-          AsyncStorage.setItem(
-            PAYWALL_LAST_SHOWN_KEY,
-            String(Date.now()),
-          ).catch(() => {})
-        }, 1000)
-      })()
-    } else {
-      setDelayedShowPaywall(false)
-    }
-
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [isSubscriptionLoading, isProMember])
-
-  // Prompt paid guest users to create an account after the paywall flow.
-  // Dismissable: users can close and continue using the app as guest.
-  useEffect(() => {
-    if (
-      isSubscriptionLoading ||
-      !isProMember ||
-      !isAnonymous ||
-      hasShownSignUpPrompt
-    ) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      router.push('/post-paywall-signup')
-      setHasShownSignUpPrompt(true)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [
-    hasShownSignUpPrompt,
-    isAnonymous,
-    isProMember,
-    isSubscriptionLoading,
-    router,
-  ])
-
-  // Freemium paywall: shown on launch for non-pro users, but dismissable.
-  // Specific premium features will gate themselves separately.
-  const showGlobalPaywall =
-    delayedShowPaywall && !isProMember && !hasDismissedPaywall
-
 
   useEffect(() => {
     bottomAccessoryVisibility?.resetVisibility()
@@ -375,16 +288,6 @@ function TabLayoutContent() {
         onClose={hideCelebration}
       />
       <RatingPromptModal />
-      <Paywall
-        visible={showGlobalPaywall}
-        onClose={() => {
-          trackPaywallDismissed('global_paywall', 'app_launch')
-          setHasDismissedPaywall(true)
-        }}
-        title={'Unlock your full potential'}
-        message="Start your free trial to access Uplyft"
-        feature="global_paywall"
-      />
     </>
   )
 }

@@ -2,17 +2,14 @@ import { EmptyState } from '@/components/EmptyState'
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import Body from '@/components/PatchedBodyHighlighter'
-import { Paywall } from '@/components/paywall'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useBodyDiagramGender } from '@/hooks/useBodyDiagramGender'
 import { useExercises } from '@/hooks/useExercises'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useFavoriteExercises } from '@/hooks/useFavoriteExercises'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { haptic } from '@/lib/haptics'
 import {
   type ExerciseEquipment,
@@ -400,9 +397,7 @@ export default function SelectExerciseScreen() {
     exploreMode?: string
   }>()
   const { callCallback, clearCallback } = useExerciseSelection()
-  const { isProMember } = useSubscription()
   const { user } = useAuth()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const isExploreMode = exploreMode === 'true'
 
@@ -439,7 +434,6 @@ export default function SelectExerciseScreen() {
   )
   const [showOnlyMine, setShowOnlyMine] = useState(false)
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
   const insets = useSafeAreaInsets()
   const selectionCommittedRef = useRef(false)
@@ -641,17 +635,11 @@ export default function SelectExerciseScreen() {
     const name = trimmedQuery
     haptic('light')
 
-    if (!isProMember) {
-      trackPaywallShown('custom_exercise_create', 'select_exercise')
-      setShowPaywall(true)
-      return
-    }
-
     router.push({
       pathname: '/create-exercise',
       params: { exerciseName: name },
     })
-  }, [trimmedQuery, router, isProMember, trackPaywallShown])
+  }, [trimmedQuery, router])
 
   const handleBack = useCallback(() => {
     haptic('light')
@@ -1232,17 +1220,6 @@ export default function SelectExerciseScreen() {
           </View>
         )}
 
-        {/* Paywall Modal */}
-        <Paywall
-          visible={showPaywall}
-          onClose={() => {
-            trackPaywallDismissed('custom_exercise_create', 'select_exercise')
-            setShowPaywall(false)
-          }}
-          title="Unlock Custom exercises"
-          message="Creating custom exercises is a PRO feature."
-          feature="custom_exercise_create"
-        />
       </View>
     </SlideInView>
   )

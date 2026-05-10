@@ -1,8 +1,10 @@
+import { StrengthBodyLocked } from '@/components/StrengthBodyLocked'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { StrengthProgressTutorial } from '@/components/StrengthProgressTutorial'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -15,6 +17,7 @@ export default function AnalyticsScreen() {
   const { user } = useAuth()
   const colors = useThemedColors()
   const { trackEvent } = useAnalytics()
+  const { isProMember } = useSubscription()
   const [showStrengthTutorial, setShowStrengthTutorial] = useState(false)
   const [strengthScrollLocked, setStrengthScrollLocked] = useState(false)
 
@@ -28,6 +31,7 @@ export default function AnalyticsScreen() {
         timestamp: Date.now(),
       })
 
+      if (!isProMember) return
       if (!strengthTutorialSeenKey) {
         return
       }
@@ -50,7 +54,7 @@ export default function AnalyticsScreen() {
         interactionHandle.cancel?.()
         if (timeoutId) clearTimeout(timeoutId)
       }
-    }, [strengthTutorialSeenKey, trackEvent]),
+    }, [isProMember, strengthTutorialSeenKey, trackEvent]),
   )
 
   const handleStrengthTutorialComplete = useCallback(() => {
@@ -79,16 +83,22 @@ export default function AnalyticsScreen() {
         scrollIndicatorInsets={{ top: contentTopPadding }}
         scrollEnabled={!strengthScrollLocked}
       >
-        <StrengthBodyView
-          embedded
-          onWeightGateActiveChange={setStrengthScrollLocked}
-        />
+        {isProMember ? (
+          <StrengthBodyView
+            embedded
+            onWeightGateActiveChange={setStrengthScrollLocked}
+          />
+        ) : (
+          <StrengthBodyLocked />
+        )}
       </ScrollView>
 
-      <StrengthProgressTutorial
-        visible={showStrengthTutorial}
-        onComplete={handleStrengthTutorialComplete}
-      />
+      {isProMember && (
+        <StrengthProgressTutorial
+          visible={showStrengthTutorial}
+          onComplete={handleStrengthTutorialComplete}
+        />
+      )}
     </View>
   )
 }

@@ -53,19 +53,6 @@ export default function ProfileScreen() {
     user?.id,
   )
   const [showLevelSheet, setShowLevelSheet] = useState(false)
-  // const params = useLocalSearchParams() // Removed redundant param check
-  // const [showPaywall, setShowPaywall] = useState(false)
-  // const [isPaywallForced, setIsPaywallForced] = useState(false)
-
-  // useEffect(() => {
-  //   if (params.showPaywall === 'true') {
-  //     const timer = setTimeout(() => {
-  //       setShowPaywall(true)
-  //       setIsPaywallForced(true)
-  //     }, 400)
-  //     return () => clearTimeout(timer)
-  //   }
-  // }, [params.showPaywall])
 
   const scrollY = useRef(new Animated.Value(0)).current
   const handleScroll = useCallback(

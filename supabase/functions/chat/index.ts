@@ -37,6 +37,7 @@ import {
   getExerciseStandardsForProfile,
 } from '../_shared/strength.ts'
 import { createUserClient } from '../_shared/supabase.ts'
+import { checkChatRateLimit, rateLimitMessage } from '../_shared/rate-limit.ts'
 import {
   buildUserContextSummary,
   summarizeTrainingPatterns,
@@ -316,6 +317,76 @@ serve(async (req) => {
     const accessToken = bearer?.startsWith('Bearer ')
       ? bearer.slice('Bearer '.length).trim()
       : undefined
+
+    if (!accessToken) {
+      return errorResponse(401, 'Unauthorized')
+    }
+
+    // Resolve the authenticated user from the JWT — never trust payload.userId
+    // for rate limiting, since a client could rotate it to bypass quotas.
+    let authedUserId: string | null = null
+    try {
+      const authClient = createUserClient(accessToken)
+      const { data: userData, error: authError } =
+        await authClient.auth.getUser()
+      if (authError || !userData?.user?.id) {
+        console.warn(
+          `[chat-edge][${correlationId}] Auth resolution failed`,
+          authError,
+        )
+        return errorResponse(401, 'Unauthorized')
+      }
+      authedUserId = userData.user.id
+    } catch (authErr) {
+      console.error(
+        `[chat-edge][${correlationId}] Failed to verify caller`,
+        authErr,
+      )
+      return errorResponse(401, 'Unauthorized')
+    }
+
+    // Rate limit early, before any heavy context build / model call.
+    // Image messages route to GPT-4o which is much pricier than the text
+    // path, so weight them harder against all windows.
+    const requestHasImages = Boolean(payload.images && payload.images.length > 0)
+    const rateWeight = requestHasImages ? 4 : 1
+    const rateResult = await checkChatRateLimit({
+      userId: authedUserId,
+      weight: rateWeight,
+    })
+
+    if (!rateResult.allowed) {
+      console.warn(`[chat-edge][${correlationId}] Rate limited`, {
+        userId: authedUserId,
+        reason: rateResult.reason,
+        retryAfterSeconds: rateResult.retryAfterSeconds,
+        minuteCount: rateResult.minuteCount,
+        hourCount: rateResult.hourCount,
+        dayCount: rateResult.dayCount,
+      })
+
+      return jsonResponse(
+        {
+          error: rateLimitMessage(rateResult.reason),
+          code: 'RATE_LIMITED',
+          details: {
+            reason: rateResult.reason,
+            retryAfterSeconds: rateResult.retryAfterSeconds,
+            minuteCount: rateResult.minuteCount,
+            hourCount: rateResult.hourCount,
+            dayCount: rateResult.dayCount,
+          },
+          correlationId,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateResult.retryAfterSeconds),
+            'x-correlation-id': correlationId,
+          },
+        },
+      )
+    }
 
     let systemPrompt: string | undefined
     let tools: Record<string, ReturnType<typeof tool>> | undefined

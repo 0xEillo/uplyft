@@ -26,7 +26,14 @@ const wait = (ms: number) =>
 function mapStatusToApiErrorCode(status: number): ApiErrorCode {
   if (status === 400) return 'ZOD_INVALID'
   if (status === 401 || status === 403) return 'UNAUTHORIZED'
+  if (status === 429) return 'RATE_LIMITED'
   return 'UNKNOWN'
+}
+
+function readRetryAfterSeconds(details: unknown): number | null {
+  if (!details || typeof details !== 'object') return null
+  const value = (details as { retryAfterSeconds?: unknown }).retryAfterSeconds
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
 async function readChatErrorPayload(
@@ -81,8 +88,16 @@ export async function callChatFunction(
         }),
       )
 
+      // Never retry our own rate-limit responses. Status 429 from upstream
+      // providers is still retried because it represents transient capacity.
+      const isAppRateLimit =
+        response.status === 429 &&
+        (payload?.code === 'RATE_LIMITED' ||
+          lastError.code === 'RATE_LIMITED')
+
       if (
         attempt < retryCount &&
+        !isAppRateLimit &&
         RETRIABLE_CHAT_STATUSES.has(response.status)
       ) {
         await wait(250 * (attempt + 1))
@@ -126,6 +141,18 @@ export function mapChatApiErrorToMessage(error: unknown): string {
 
   if (error.httpStatus === 413) {
     return 'That conversation got too long. Please start a new chat or send a shorter follow-up.'
+  }
+
+  if (error.code === 'RATE_LIMITED') {
+    if (error.message) return error.message
+    const retryAfter = readRetryAfterSeconds(error.details)
+    if (retryAfter && retryAfter >= 3600) {
+      return 'You\u2019ve reached today\u2019s AI chat limit. It resets in 24h.'
+    }
+    if (retryAfter && retryAfter >= 60) {
+      return 'You\u2019ve hit the hourly chat limit. Try again in an hour.'
+    }
+    return 'You\u2019re sending messages a bit too fast. Take a breath and try again in a minute.'
   }
 
   if (error.httpStatus === 429) {

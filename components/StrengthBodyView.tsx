@@ -3,10 +3,8 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
-import { ProTease, ProUpsellCard } from "@/components/ProTease";
 import { RankCalculator } from "@/components/RankCalculator";
 import { useAuth } from "@/contexts/auth-context";
-import { useSubscription } from "@/contexts/subscription-context";
 import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
 import {
@@ -130,8 +128,6 @@ interface PriorityExerciseRecommendation extends TrackedExerciseWithProgress {
   impactScore: number;
 }
 
-type SectionInfoKey = "lifter-level" | "level-up" | "your-exercises";
-
 function mapMuscleToFocusGroup(
   muscleGroup: string | null | undefined,
 ): FocusGroup | null {
@@ -175,7 +171,6 @@ export function StrengthBodyView({
   const router = useRouter();
   const { isDark } = useTheme();
   const { user } = useAuth();
-  const { isProMember } = useSubscription();
   const { weightUnit, convertInputToKg } = useWeightUnits();
   const {
     profile,
@@ -712,6 +707,12 @@ export function StrengthBodyView({
     trackedExercisesWithProgress.length,
   ]);
 
+  const showPriorityCarousel = useMemo(
+    () =>
+      shouldShowPrioritySection && priorityRecommendations.length > 0,
+    [shouldShowPrioritySection, priorityRecommendations.length],
+  );
+
   const recoveringMuscles = useMemo(() => {
     return Array.from(muscleRecoveryData.values())
       .filter(
@@ -799,16 +800,6 @@ export function StrengthBodyView({
       router.push({
         pathname: "/exercise/[exerciseId]",
         params: { exerciseId },
-      });
-    },
-    [router],
-  );
-
-  const openSectionInfo = useCallback(
-    (section: SectionInfoKey) => {
-      router.push({
-        pathname: "/lifter-level-info",
-        params: { section },
       });
     },
     [router],
@@ -919,19 +910,7 @@ export function StrengthBodyView({
       <View style={styles.bodySection}>
         {/* ── SECTION 1: Gamified Hero Card ── */}
         <View style={[styles.sectionHeader, styles.sectionHeaderFirst]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text style={styles.sectionHeaderText}>Lifter Level</Text>
-            <TouchableOpacity
-              onPress={() => openSectionInfo("lifter-level")}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={18}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionHeaderText}>Lifter Level</Text>
           <TouchableOpacity
             onPress={() => setShowShareSheet(true)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -960,37 +939,31 @@ export function StrengthBodyView({
                     {overallLevel?.balancedLevel ?? "Unranked"}
                   </Text>
                   <View style={styles.heroXpRow}>
-                    {isProMember ? (
-                      <>
-                        <Text
-                          style={[
-                            styles.heroXpCurrent,
-                            { color: priorityPointsColor },
-                          ]}
-                        >
-                          {overallLevel ? Math.round(overallLevel.score) : "—"}
-                        </Text>
-                        {overallLevel?.balancedNextLevel ? (
-                          <Text style={styles.heroXpTotal}>
-                            {" / "}
-                            {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}{" "}
-                            <Text style={styles.heroXpTotalSuffix}>pts</Text>
-                          </Text>
-                        ) : (
-                          <Text style={styles.heroXpTotal}>
-                            {" "}
-                            <Text style={styles.heroXpTotalSuffix}>pts</Text>
-                          </Text>
-                        )}
-                        {showOverallProgressDelta && (
-                          <Text style={styles.heroXpDelta}>
-                            {"  +"}
-                            {overallLevel!.progressDelta}
-                          </Text>
-                        )}
-                      </>
+                    <Text
+                      style={[
+                        styles.heroXpCurrent,
+                        { color: priorityPointsColor },
+                      ]}
+                    >
+                      {overallLevel ? Math.round(overallLevel.score) : "—"}
+                    </Text>
+                    {overallLevel?.balancedNextLevel ? (
+                      <Text style={styles.heroXpTotal}>
+                        {" / "}
+                        {LEVEL_POINT_ANCHORS[overallLevel.balancedNextLevel]}{" "}
+                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                      </Text>
                     ) : (
-                      <ProTease size="md" feature="strength_score" source="strength_body_hero" />
+                      <Text style={styles.heroXpTotal}>
+                        {" "}
+                        <Text style={styles.heroXpTotalSuffix}>pts</Text>
+                      </Text>
+                    )}
+                    {showOverallProgressDelta && (
+                      <Text style={styles.heroXpDelta}>
+                        {"  +"}
+                        {overallLevel!.progressDelta}
+                      </Text>
                     )}
                   </View>
                 </View>
@@ -999,7 +972,7 @@ export function StrengthBodyView({
                     style={[
                       styles.heroProgressFill,
                       {
-                        width: isProMember ? (`${levelProgressPct}%` as any) : "0%",
+                        width: `${levelProgressPct}%` as any,
                         backgroundColor: priorityPointsColor,
                       },
                     ]}
@@ -1126,37 +1099,10 @@ export function StrengthBodyView({
           </>
         )}
 
-        {!isProMember && (
+        {showPriorityCarousel && (
           <>
             <View style={styles.sectionHeader}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Text style={styles.sectionHeaderText}>Priority</Text>
-              </View>
-            </View>
-            <ProUpsellCard feature="priority_lifts" source="strength_body" />
-          </>
-        )}
-
-        {isProMember && shouldShowPrioritySection && (
-          <>
-            <View style={styles.sectionHeader}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-              >
-                <Text style={styles.sectionHeaderText}>Priority</Text>
-                <TouchableOpacity
-                  onPress={() => openSectionInfo("level-up")}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={18}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.sectionHeaderText}>Priority</Text>
             </View>
 
             <ScrollView
@@ -1177,57 +1123,59 @@ export function StrengthBodyView({
                 const isUntapped =
                   exercise.max1RM === 0 && exercise.level === "Untrained";
 
+                const cardInner = (
+                  <View style={styles.priorityMainRow}>
+                    <ExerciseMediaThumbnail
+                      gifUrl={exercise.gifUrl}
+                      style={styles.exerciseCardThumbnail}
+                    />
+                    <View style={styles.priorityExerciseTextWrap}>
+                      <Text style={styles.exerciseCardName} numberOfLines={2}>
+                        {exercise.exerciseName}
+                      </Text>
+                      <View style={styles.priorityActionRowInline}>
+                        <Text
+                          style={styles.priorityActionText}
+                          numberOfLines={1}
+                        >
+                          {isUntapped
+                            ? `Unlock ${targetLevel}`
+                            : `Level up to ${targetLevel}`}
+                        </Text>
+                        <View style={styles.priorityPointsLine}>
+                          <Text
+                            style={[
+                              styles.priorityPointsValue,
+                              { color: priorityPointsColor },
+                            ]}
+                          >
+                            +{projectedGain}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.priorityPointsSuffix,
+                              { color: priorityPointsColor },
+                            ]}
+                          >
+                            pts
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                );
+
                 return (
                   <TouchableOpacity
                     key={`priority-${exercise.exerciseId}`}
                     style={[
                       styles.priorityCard,
-                      {
-                        width: recommendationCardWidth,
-                      },
+                      { width: recommendationCardWidth },
                     ]}
                     onPress={() => navigateToExercise(exercise.exerciseId)}
                     activeOpacity={0.85}
                   >
-                    <View style={styles.priorityMainRow}>
-                      <ExerciseMediaThumbnail
-                        gifUrl={exercise.gifUrl}
-                        style={styles.exerciseCardThumbnail}
-                      />
-                      <View style={styles.priorityExerciseTextWrap}>
-                        <Text style={styles.exerciseCardName} numberOfLines={2}>
-                          {exercise.exerciseName}
-                        </Text>
-                        <View style={styles.priorityActionRowInline}>
-                          <Text
-                            style={styles.priorityActionText}
-                            numberOfLines={1}
-                          >
-                            {isUntapped
-                              ? `Unlock ${targetLevel}`
-                              : `Level up to ${targetLevel}`}
-                          </Text>
-                          <View style={styles.priorityPointsLine}>
-                            <Text
-                              style={[
-                                styles.priorityPointsValue,
-                                { color: priorityPointsColor },
-                              ]}
-                            >
-                              +{projectedGain}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.priorityPointsSuffix,
-                                { color: priorityPointsColor },
-                              ]}
-                            >
-                              pts
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
+                    {cardInner}
                   </TouchableOpacity>
                 );
               })}
@@ -1238,21 +1186,7 @@ export function StrengthBodyView({
         {/* Muscle Ranks Section */}
         <>
           <View style={styles.sectionHeader}>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              <Text style={styles.sectionHeaderText}>Muscle Ranks</Text>
-              <TouchableOpacity
-                onPress={() => openSectionInfo("your-exercises")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={18}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sectionHeaderText}>Muscle Ranks</Text>
           </View>
 
           <View style={styles.exerciseCardsContainer}>
@@ -1405,54 +1339,43 @@ export function StrengthBodyView({
                                           variant="pill"
                                           size="xs"
                                         />
-                                        {isProMember &&
-                                          exercise.showRecentProgressDelta && (
-                                            <Text
-                                              style={[
-                                                styles.exerciseInlineGainText,
-                                                { color: gainColor },
-                                              ]}
-                                            >
-                                              ▲ {exercise.progressDelta}%
-                                            </Text>
-                                          )}
+                                        {exercise.showRecentProgressDelta && (
+                                          <Text
+                                            style={[
+                                              styles.exerciseInlineGainText,
+                                              { color: gainColor },
+                                            ]}
+                                          >
+                                            ▲ {exercise.progressDelta}%
+                                          </Text>
+                                        )}
                                       </View>
                                       <View
                                         style={
                                           styles.exerciseInlineProgressValueRow
                                         }
                                       >
-                                        {isProMember ? (
-                                          <Text
-                                            style={[
-                                              styles.exerciseInlineProgressPercent,
-                                              { color: levelColor },
-                                            ]}
-                                          >
-                                            {Math.round(exercise.progress)}%
-                                          </Text>
-                                        ) : (
-                                          <ProTease
-                                            size="xs"
-                                            feature="muscle_rank_breakdown"
-                                            source="strength_body_muscle_breakdown"
-                                          />
-                                        )}
+                                        <Text
+                                          style={[
+                                            styles.exerciseInlineProgressPercent,
+                                            { color: levelColor },
+                                          ]}
+                                        >
+                                          {Math.round(exercise.progress)}%
+                                        </Text>
                                       </View>
                                     </View>
-                                    {isProMember && (
-                                      <View style={styles.exerciseInlineBarTrack}>
-                                        <View
-                                          style={[
-                                            styles.exerciseInlineBarFill,
-                                            {
-                                              width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
-                                              backgroundColor: levelColor,
-                                            },
-                                          ]}
-                                        />
-                                      </View>
-                                    )}
+                                    <View style={styles.exerciseInlineBarTrack}>
+                                      <View
+                                        style={[
+                                          styles.exerciseInlineBarFill,
+                                          {
+                                            width: `${Math.max(0, Math.min(100, exercise.progress))}%`,
+                                            backgroundColor: levelColor,
+                                          },
+                                        ]}
+                                      />
+                                    </View>
                                   </View>
                                 </View>
                               </View>
@@ -1472,11 +1395,7 @@ export function StrengthBodyView({
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>Rank Calculator</Text>
         </View>
-        {isProMember ? (
-          <RankCalculator />
-        ) : (
-          <ProUpsellCard feature="rank_calculator" source="strength_body" />
-        )}
+        <RankCalculator />
 
         {/* Share/Invite Section */}
         <View style={styles.shareSection}>

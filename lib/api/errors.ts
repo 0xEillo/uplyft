@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | 'PARSE_FAILED'
   | 'DB_FAILED'
   | 'NETWORK'
+  | 'RATE_LIMITED'
   | 'UNKNOWN'
 
 export interface ApiErrorShape {

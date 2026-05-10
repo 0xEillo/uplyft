@@ -108,24 +108,7 @@ function RootLayoutNav() {
           },
         }
       : transparentModalFallback
-  const postPaywallSignupOptions =
-    Platform.OS === 'ios'
-      ? {
-          presentation: 'transparentModal' as const,
-          animation: 'fade' as const,
-          contentStyle: { backgroundColor: 'transparent' },
-          headerShown: false,
-          gestureEnabled: false,
-        }
-      : {
-          presentation: 'transparentModal' as const,
-          animation: 'fade' as const,
-          contentStyle: { backgroundColor: 'transparent' },
-          headerShown: false,
-          gestureEnabled: false,
-        }
 
-  // Pre-load exercise cache for faster lookups throughout the app
   useEffect(() => {
     exerciseLookup.initialize().catch((err) => {
       console.warn('[RootLayout] Failed to initialize exercise lookup:', err)
@@ -254,6 +237,14 @@ function RootLayoutNav() {
           <Stack.Screen
             name="strength-stats"
             options={{ presentation: 'card', animation: 'default' }}
+          />
+          <Stack.Screen
+            name="strength-pro-tour"
+            options={{
+              presentation: 'card',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
+            }}
           />
 
 
@@ -431,10 +422,6 @@ function RootLayoutNav() {
                   }
                 : transparentModalFallback
             }
-          />
-          <Stack.Screen
-            name="post-paywall-signup"
-            options={postPaywallSignupOptions}
           />
         </Stack>
       </NavigationThemeProvider>

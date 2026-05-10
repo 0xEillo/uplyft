@@ -2,15 +2,12 @@ import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Layout } from '@/constants/theme'
-import { Paywall } from '@/components/paywall'
 import { RoutineExerciseCard } from '@/components/RoutineExerciseCard'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
@@ -71,7 +68,6 @@ export default function RoutineDetailScreen() {
   const { routineId } = useLocalSearchParams<{ routineId: string }>()
   const router = useRouter()
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
   const { isDark } = useTheme()
   const colors = useThemedColors()
@@ -83,8 +79,6 @@ export default function RoutineDetailScreen() {
   const [isSaving, setIsSaving] = useState(false)
   const [isStartingRoutine, setIsStartingRoutine] = useState(false)
   const [shouldExit, setShouldExit] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   useEffect(() => {
     loadRoutine()
@@ -517,7 +511,6 @@ export default function RoutineDetailScreen() {
               </View>
             </View>
 
-            {/* Action Button - Different for pro vs non-pro */}
             {routine.source === 'user' ? (
               <TouchableOpacity
                 style={[
@@ -533,25 +526,6 @@ export default function RoutineDetailScreen() {
                 ) : (
                   <Text style={styles.primaryButtonText}>Start Routine</Text>
                 )}
-              </TouchableOpacity>
-            ) : routine.source === 'explore' && !isProMember ? (
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: colors.brandPrimary },
-                ]}
-                onPress={() => {
-                  trackPaywallShown('program_save', 'routine_unlock')
-                  setShowPaywall(true)
-                }}
-              >
-                <Ionicons
-                  name="lock-closed"
-                  size={18}
-                  color="#FFF"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={styles.primaryButtonText}>Unlock</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -591,17 +565,11 @@ export default function RoutineDetailScreen() {
                 fallbackStyle={styles.exerciseListFallback}
                 debugLabel="routine-exercise-list"
               >
-                {/* Show exercises - with locked state for non-pro explore routines */}
                 {routine.exercises.map((exercise, index) => (
                   <RoutineExerciseCard
                     key={exercise.id}
                     exercise={exercise}
-                    onExercisePress={
-                      routine.source === 'explore' && !isProMember
-                        ? undefined
-                        : handleExercisePress
-                    }
-                    locked={routine.source === 'explore' && !isProMember}
+                    onExercisePress={handleExercisePress}
                     asRow
                     isLast={index === routine.exercises.length - 1}
                   />
@@ -612,17 +580,6 @@ export default function RoutineDetailScreen() {
         </ScrollView>
       </View>
 
-      {/* Paywall Modal */}
-      <Paywall
-        visible={showPaywall}
-        onClose={() => {
-          trackPaywallDismissed('program_save', 'routine_unlock')
-          setShowPaywall(false)
-        }}
-        title="Unlock PRO Workout Routines"
-        message="Access proven training routines with complete exercise details, sets, reps, and rest periods. Transform your workouts with professionally crafted programs."
-        feature="program_save"
-      />
     </SlideInView>
   )
 }

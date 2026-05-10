@@ -1,17 +1,14 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
-import { Paywall } from '@/components/paywall'
 import { RoutineExerciseCard } from '@/components/RoutineExerciseCard'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { getColors } from '@/constants/colors'
 import { getBrandedProgramImageSource } from '@/constants/program-images'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
@@ -190,14 +187,11 @@ export default function ProgramDetailScreen() {
     windowWidth - BRANDED_COVER_SIDE_INSET * 2,
   )
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
   const { hasActiveSession, seedRoutine } = useWorkoutComposer()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const [program, setProgram] = useState<NormalizedProgram | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [shouldExit, setShouldExit] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
   const [isSavingProgram, setIsSavingProgram] = useState(false)
   const [savedProgramId, setSavedProgramId] = useState<string | null>(null)
   const [startingRoutineId, setStartingRoutineId] = useState<string | null>(null)
@@ -260,11 +254,6 @@ export default function ProgramDetailScreen() {
       Alert.alert('Sign In Required', 'Please create an account to save programs.')
       return
     }
-    if (!isProMember) {
-      trackPaywallShown('program_save', 'explore_program')
-      setShowPaywall(true)
-      return
-    }
     try {
       setIsSavingProgram(true)
       const saved = await database.explore.saveProgramToUser(program.id, user.id)
@@ -277,7 +266,7 @@ export default function ProgramDetailScreen() {
     } finally {
       setIsSavingProgram(false)
     }
-  }, [isProMember, program, user])
+  }, [program, user])
 
   const handleStartRoutine = useCallback(async (routine: NormalizedRoutine) => {
     const applyRoutine = async () => {
@@ -582,16 +571,6 @@ export default function ProgramDetailScreen() {
         </ScrollView>
       </View>
 
-      <Paywall
-        visible={showPaywall}
-        onClose={() => {
-          trackPaywallDismissed('program_save', 'explore_program')
-          setShowPaywall(false)
-        }}
-        title="Unlock PRO training programs"
-        message="Get instant access to structured, multi-week training programs designed by experts."
-        feature="program_save"
-      />
     </SlideInView>
   )
 }
