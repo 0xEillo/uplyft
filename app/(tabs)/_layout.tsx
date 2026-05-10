@@ -20,6 +20,10 @@ import {
   TabBarVisibilityProvider,
   useTabBarVisibility,
 } from '@/contexts/tab-bar-visibility-context'
+import {
+  BottomAccessoryVisibilityProvider,
+  useBottomAccessoryVisibility,
+} from '@/contexts/bottom-accessory-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -32,6 +36,7 @@ import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Alert,
+  Animated,
   Platform,
   StatusBar,
   Text,
@@ -86,6 +91,7 @@ function TabLayoutContent() {
   } = useWorkoutComposer()
   const { isAnonymous } = useAuth()
   const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
+  const bottomAccessoryVisibility = useBottomAccessoryVisibility()
   const [delayedShowPaywall, setDelayedShowPaywall] = useState(false)
   const [hasDismissedPaywall, setHasDismissedPaywall] = useState(false)
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false)
@@ -160,6 +166,10 @@ function TabLayoutContent() {
     delayedShowPaywall && !isProMember && !hasDismissedPaywall
 
 
+  useEffect(() => {
+    bottomAccessoryVisibility?.resetVisibility()
+  }, [segments, bottomAccessoryVisibility])
+
   const tabBarVisibility = useTabBarVisibility()
   const hideForFullscreenOverlay =
     tabBarVisibility?.hideForFullscreenOverlay ?? false
@@ -186,6 +196,12 @@ function TabLayoutContent() {
     ? colors.statusError
     : colors.brandPrimary
   const handleOpenCreatePost = () => router.push('/create-post')
+  const getChatReturnTab = () => {
+    if (currentTab === 'profile' || currentTab === 'analytics') {
+      return currentTab
+    }
+    return 'index'
+  }
   const handleDiscardWorkoutProgress = () => {
     Alert.alert(
       'Discard workout?',
@@ -245,7 +261,7 @@ function TabLayoutContent() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="analytics">
-          <NativeTabs.Trigger.Label>Levels</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }}
             md="trending_up"
@@ -274,13 +290,16 @@ function TabLayoutContent() {
           role="search"
           listeners={{
             tabPress: () => {
-              router.push('/chat')
+              router.push({
+                pathname: '/chat',
+                params: { returnToTab: getChatReturnTab() },
+              })
             },
           }}
         >
           <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            src={require('@/assets/images/gemini-tab.png')}
+            src={require('@/assets/images/ai-chat-tab.png')}
             renderingMode="template"
             selectedColor={createActionColor}
           />
@@ -289,45 +308,65 @@ function TabLayoutContent() {
       </NativeTabs>
 
       {showBottomAccessory ? (
-        <BlurView
-          intensity={isWorkoutLive ? 60 : 0}
-          tint={isDark ? 'dark' : 'light'}
+        <Animated.View
+          pointerEvents="box-none"
           style={{
             position: 'absolute',
             bottom: insets.bottom + 49 + 10,
             left: isWorkoutLive ? 16 : undefined,
             right: 16,
             width: isWorkoutLive ? undefined : 224,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: isWorkoutLive
-              ? isDark
-                ? 'rgba(255, 255, 255, 0.16)'
-                : 'rgba(0, 0, 0, 0.08)'
-              : 'rgba(255, 255, 255, 0.22)',
-            backgroundColor: isWorkoutLive
-              ? isDark
-                ? 'rgba(28, 28, 30, 0.9)'
-                : 'rgba(255, 255, 255, 0.92)'
-              : colors.brandPrimary,
-            overflow: 'hidden',
             shadowColor: '#000',
             shadowOpacity: isWorkoutLive ? (isDark ? 0.28 : 0.14) : 0.18,
             shadowRadius: isWorkoutLive ? 24 : 18,
             shadowOffset: { width: 0, height: isWorkoutLive ? 10 : 8 },
             zIndex: 50,
+            transform: [
+              {
+                translateY:
+                  bottomAccessoryVisibility?.hideProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 140],
+                  }) ?? 0,
+              },
+            ],
+            opacity:
+              bottomAccessoryVisibility?.hideProgress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }) ?? 1,
           }}
         >
-          <BaseAccessoryAction
-            title={bottomAccessoryTitle}
-            textPrimary={isWorkoutLive ? colors.textPrimary : '#fff'}
-            accentColor={colors.statusSuccess}
-            onOpen={handleOpenCreatePost}
-            onDiscard={handleDiscardWorkoutProgress}
-            isInline={false}
-            isLive={isWorkoutLive}
-          />
-        </BlurView>
+          <BlurView
+            intensity={isWorkoutLive ? 60 : 0}
+            tint={isDark ? 'dark' : 'light'}
+            style={{
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: isWorkoutLive
+                ? isDark
+                  ? 'rgba(255, 255, 255, 0.16)'
+                  : 'rgba(0, 0, 0, 0.08)'
+                : 'rgba(255, 255, 255, 0.22)',
+              backgroundColor: isWorkoutLive
+                ? isDark
+                  ? 'rgba(28, 28, 30, 0.9)'
+                  : 'rgba(255, 255, 255, 0.92)'
+                : colors.brandPrimary,
+              overflow: 'hidden',
+            }}
+          >
+            <BaseAccessoryAction
+              title={bottomAccessoryTitle}
+              textPrimary={isWorkoutLive ? colors.textPrimary : '#fff'}
+              accentColor={colors.statusSuccess}
+              onOpen={handleOpenCreatePost}
+              onDiscard={handleDiscardWorkoutProgress}
+              isInline={false}
+              isLive={isWorkoutLive}
+            />
+          </BlurView>
+        </Animated.View>
       ) : null}
 
       <PostWorkoutCelebration
@@ -501,7 +540,9 @@ export default function TabLayout() {
       <SuccessOverlayProvider>
         <RatingPromptProvider>
           <TabBarVisibilityProvider>
-            <TabLayoutContent />
+            <BottomAccessoryVisibilityProvider>
+              <TabLayoutContent />
+            </BottomAccessoryVisibilityProvider>
           </TabBarVisibilityProvider>
         </RatingPromptProvider>
       </SuccessOverlayProvider>

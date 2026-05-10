@@ -39,6 +39,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
+import { useBottomAccessoryVisibility } from '@/contexts/bottom-accessory-visibility-context'
 import type { StrengthScoreData } from '@/contexts/success-overlay-context'
 import { useSuccessOverlay } from '@/contexts/success-overlay-context'
 import { APP_POSTS, type AppPost } from '@/data/app-posts'
@@ -216,14 +217,17 @@ export default function FeedScreen() {
     setPendingStreakData,
   } = useSuccessOverlay()
   const { registerScrollRef } = useScrollToTop()
+  const bottomAccessoryVisibility = useBottomAccessoryVisibility()
   const flatListRef = useRef<FlashListRef<FeedItem>>(null)
   const isPresentingGuestPromptRef = useRef(false)
   const scrollY = useRef(new Animated.Value(0)).current
   const handleFeedScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollY.setValue(event.nativeEvent.contentOffset.y)
+      const y = event.nativeEvent.contentOffset.y
+      scrollY.setValue(y)
+      bottomAccessoryVisibility?.reportScrollY(y)
     },
-    [scrollY],
+    [scrollY, bottomAccessoryVisibility],
   )
   const scrollFeedToTop = useCallback((animated = true) => {
     requestAnimationFrame(() => {

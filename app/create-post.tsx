@@ -2044,14 +2044,22 @@ export default function CreatePostScreen() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Svg 
-                        width={24} 
-                        height={24} 
-                        viewBox="0 0 24 24" 
+                      <Svg
+                        width={24}
+                        height={24}
+                        viewBox="0 0 24 24"
                       >
-                        <Path 
-                          d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68q.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58a12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68q-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96q2.19.93 3.81 2.55t2.55 3.81" 
-                          fill={colors.textPrimary} 
+                        <Path
+                          d="M3.5 9 H12.5 A2.5 2.5 0 0 1 15 11.5 V16.5 A2.5 2.5 0 0 1 12.5 19 H7 L2 22 L3.5 19 A2.5 2.5 0 0 1 1 16.5 V11.5 A2.5 2.5 0 0 1 3.5 9 Z"
+                          fill={colors.textPrimary}
+                        />
+                        <Path
+                          d="M19 1 C19 3 21 5 23 5 C21 5 19 7 19 9 C19 7 17 5 15 5 C17 5 19 3 19 1 Z"
+                          fill={colors.textPrimary}
+                        />
+                        <Path
+                          d="M15 1 C15 1.75 15.75 2.5 16.5 2.5 C15.75 2.5 15 3.25 15 4 C15 3.25 14.25 2.5 13.5 2.5 C14.25 2.5 15 1.75 15 1 Z"
+                          fill={colors.textPrimary}
                         />
                       </Svg>
                     </LiquidGlassSurface>

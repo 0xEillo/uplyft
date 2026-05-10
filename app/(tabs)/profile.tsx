@@ -10,6 +10,7 @@ import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
+import { useBottomAccessoryVisibility } from '@/contexts/bottom-accessory-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useUserLevel } from '@/hooks/useUserLevel'
@@ -30,6 +31,8 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,6 +47,7 @@ export default function ProfileScreen() {
   const colors = useThemedColors()
   const { weightUnit } = useWeightUnits()
   const { registerScrollRef } = useScrollToTop()
+  const bottomAccessoryVisibility = useBottomAccessoryVisibility()
   const flatListRef = useRef<FlashListRef<WorkoutSessionWithDetails>>(null)
   const { level: userLevel, score: userScore, scoreDelta } = useUserLevel(
     user?.id,
@@ -64,6 +68,14 @@ export default function ProfileScreen() {
   // }, [params.showPaywall])
 
   const scrollY = useRef(new Animated.Value(0)).current
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = event.nativeEvent.contentOffset.y
+      scrollY.setValue(y)
+      bottomAccessoryVisibility?.reportScrollY(y)
+    },
+    [scrollY, bottomAccessoryVisibility],
+  )
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
   const [profile, setProfile] = useState<any>(null)
   const [followerCount, setFollowerCount] = useState(0)
@@ -674,10 +686,7 @@ export default function ProfileScreen() {
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           ListEmptyComponent={renderEmptyState}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false },
-          )}
+          onScroll={handleScroll}
           scrollEventThrottle={16}
         />
       )}

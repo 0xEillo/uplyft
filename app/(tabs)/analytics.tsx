@@ -76,7 +76,7 @@ export default function AnalyticsScreen() {
         <BaseNavbar
           leftContent={
             <Text style={styles.headerTitle} numberOfLines={1}>
-              Levels
+              Progress
             </Text>
           }
           rightContent={<View style={styles.navbarSpacer} />}

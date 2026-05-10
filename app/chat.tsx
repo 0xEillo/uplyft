@@ -7,7 +7,7 @@ import { getCoach } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
   Image,
@@ -63,6 +63,7 @@ const WORKOUT_AWARE_SUGGESTIONS: SuggestionsConfig = {
 export default function ChatScreen() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
+  const params = useLocalSearchParams<{ returnToTab?: string }>()
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -199,12 +200,30 @@ export default function ChatScreen() {
   const handleClose = useCallback(() => {
     haptic('light')
     Keyboard.dismiss()
+    const returnToTab = Array.isArray(params.returnToTab)
+      ? params.returnToTab[0]
+      : params.returnToTab
+    if (
+      returnToTab === 'index' ||
+      returnToTab === 'analytics' ||
+      returnToTab === 'profile'
+    ) {
+      if (returnToTab === 'analytics') {
+        router.dismissTo('/(tabs)/analytics')
+      } else if (returnToTab === 'profile') {
+        router.dismissTo('/(tabs)/profile')
+      } else {
+        router.dismissTo('/(tabs)')
+      }
+      return
+    }
+
     if (router.canGoBack()) {
       router.back()
     } else {
       router.replace('/(tabs)')
     }
-  }, [])
+  }, [params.returnToTab])
 
   const handleOpenSettings = useCallback(() => {
     haptic('light')

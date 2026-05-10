@@ -529,6 +529,56 @@ function TypingDot({
   )
 }
 
+// Plays a soft slide-up + fade when a freshly sent user bubble first mounts.
+// `shouldAnimate` is read once on mount; subsequent prop changes are ignored
+// so re-renders (e.g. status updates from 'sending' -> 'sent') don't replay.
+function AnimatedUserMessageBubble({
+  shouldAnimate,
+  style,
+  children,
+}: {
+  shouldAnimate: boolean
+  style?: StyleProp<ViewStyle>
+  children: React.ReactNode
+}) {
+  const opacity = useSharedValue(shouldAnimate ? 0 : 1)
+  const translateY = useSharedValue(shouldAnimate ? 14 : 0)
+  const scale = useSharedValue(shouldAnimate ? 0.96 : 1)
+
+  useEffect(() => {
+    if (!shouldAnimate) return
+    opacity.value = withTiming(1, { duration: 220 })
+    translateY.value = withSpring(0, {
+      damping: 22,
+      stiffness: 260,
+      mass: 0.7,
+      overshootClamping: false,
+    })
+    scale.value = withSpring(1, {
+      damping: 22,
+      stiffness: 260,
+      mass: 0.7,
+      overshootClamping: false,
+    })
+    // Run once on mount; ignore later shouldAnimate changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }))
+
+  return (
+    <AnimatedReanimated.View style={[style, animatedStyle]}>
+      {children}
+    </AnimatedReanimated.View>
+  )
+}
+
 // Workout context passed from create-post
 export interface WorkoutContextSet {
   weight?: string
@@ -1310,6 +1360,10 @@ export function WorkoutChat({
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
+  // Holds the id of the most recently sent user message so its bubble can
+  // play a one-time entrance animation when it first mounts. Cleared shortly
+  // after to avoid re-animating on FlashList recycling.
+  const animateOnMountUserMessageIdRef = useRef<string | null>(null)
   const imageViewerListRef = useRef<FlatList<string>>(null)
   const autoSendMessageRef = useRef<(message: string) => void>(() => {})
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
@@ -2993,6 +3047,15 @@ export function WorkoutChat({
           ),
         )
       } else {
+        // Mark this id as the one to animate in on its first mount, then
+        // clear after the animation window so a recycled cell doesn't replay.
+        animateOnMountUserMessageIdRef.current = userMessage.id
+        const idToClear = userMessage.id
+        setTimeout(() => {
+          if (animateOnMountUserMessageIdRef.current === idToClear) {
+            animateOnMountUserMessageIdRef.current = null
+          }
+        }, 600)
         setMessages((prev) => [...prev, userMessage])
       }
     }
@@ -4206,7 +4269,12 @@ export function WorkoutChat({
                   ]}
                 >
                   {message.role === 'user' ? (
-                    <View style={styles.userMessageBubble}>
+                    <AnimatedUserMessageBubble
+                      shouldAnimate={
+                        animateOnMountUserMessageIdRef.current === message.id
+                      }
+                      style={styles.userMessageBubble}
+                    >
                       <View style={styles.userMessageContent}>
                         {/* Display images for user messages */}
                         {message.images && message.images.length > 0 && (
@@ -4273,7 +4341,7 @@ export function WorkoutChat({
                           </TouchableOpacity>
                         </View>
                       )}
-                    </View>
+                    </AnimatedUserMessageBubble>
                   ) : (
                     <>
                       {/* Check if this message contains a parsed workout/program plan */}
