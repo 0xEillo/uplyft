@@ -75,8 +75,7 @@ function usePaywallControls({ feature, source }: GateProps) {
   }, [feature, source, trackPaywallDismissed])
 
   const label = PAYWALL_FEATURE_LABELS[feature]
-  const title =
-    label === 'Pro' ? 'Unlock with Pro' : `${label} is part of Pro`
+  const title = `Unlock ${label}`
 
   return { visible, open, close, title }
 }

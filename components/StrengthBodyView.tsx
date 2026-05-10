@@ -1877,8 +1877,8 @@ const createStyles = (
       marginTop: 16,
     },
     sectionHeaderText: {
-      fontSize: 17,
-      fontWeight: "700",
+      fontSize: 20,
+      fontWeight: "600",
       color: colors.textPrimary,
       letterSpacing: -0.4,
     },

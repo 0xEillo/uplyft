@@ -1,6 +1,3 @@
-import { BaseNavbar } from '@/components/base-navbar'
-import { BlurredHeader } from '@/components/blurred-header'
-import { Layout } from '@/constants/theme'
 import { StrengthBodyView } from '@/components/StrengthBodyView'
 import { StrengthProgressTutorial } from '@/components/StrengthProgressTutorial'
 import { AnalyticsEvents } from '@/constants/analytics-events'
@@ -11,10 +8,8 @@ import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const NAVBAR_HEIGHT = Layout.navbarHeight
 
 export default function AnalyticsScreen() {
   const { user } = useAuth()
@@ -67,22 +62,10 @@ export default function AnalyticsScreen() {
 
   const styles = createStyles(colors)
   const insets = useSafeAreaInsets()
-  const headerTotalHeight = insets.top + NAVBAR_HEIGHT
-  const contentTopPadding = Math.max(0, headerTotalHeight - 36)
+  const contentTopPadding = insets.top
 
   return (
     <View collapsable={false} style={styles.container}>
-      <BlurredHeader>
-        <BaseNavbar
-          leftContent={
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              Progress
-            </Text>
-          }
-          rightContent={<View style={styles.navbarSpacer} />}
-        />
-      </BlurredHeader>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -115,15 +98,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.bg,
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginLeft: 6,
-    },
-    navbarSpacer: {
-      width: 40,
     },
     scrollView: {
       flex: 1,

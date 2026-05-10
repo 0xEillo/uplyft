@@ -260,7 +260,7 @@ export default function CreateSpeechScreen() {
           trackPaywallDismissed('voice_logging', 'create_speech')
           setShowPaywall(false)
         }}
-        title="Voice Logging is Premium"
+        title="Unlock Voice logging"
         message="Voice logging is a premium feature. Subscribe to log your workouts with your voice."
         feature="voice_logging"
       />

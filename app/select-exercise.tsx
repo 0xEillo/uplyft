@@ -1239,7 +1239,7 @@ export default function SelectExerciseScreen() {
             trackPaywallDismissed('custom_exercise_create', 'select_exercise')
             setShowPaywall(false)
           }}
-          title="Create Custom Exercises"
+          title="Unlock Custom exercises"
           message="Creating custom exercises is a PRO feature."
           feature="custom_exercise_create"
         />
