@@ -315,7 +315,7 @@ function TabLayoutContent() {
             bottom: insets.bottom + 49 + 10,
             left: isWorkoutLive ? 16 : undefined,
             right: 16,
-            width: isWorkoutLive ? undefined : 224,
+            width: isWorkoutLive ? undefined : 196,
             shadowColor: '#000',
             shadowOpacity: isWorkoutLive ? (isDark ? 0.28 : 0.14) : 0.18,
             shadowRadius: isWorkoutLive ? 24 : 18,
