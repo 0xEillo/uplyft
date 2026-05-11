@@ -39,7 +39,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
 
 const LOCAL_SIMULATOR_MONTHLY_PACKAGE_ID = '$rc_monthly'
 const LOCAL_SIMULATOR_YEARLY_PACKAGE_ID = '$rc_annual'
-const LOCAL_SIMULATOR_PERIOD_TYPE = 'trial'
+const LOCAL_SIMULATOR_PERIOD_TYPE = 'TRIAL'
 
 const buildLocalSimulatorOffering = (): PurchasesOffering => {
   const presentedOfferingContext = {
@@ -171,7 +171,8 @@ const buildLocalSimulatorCustomerInfo = (
           store: 'TEST_STORE',
           isSandbox: true,
           unsubscribeDetectedAt: null,
-          billingIssueDetectedAt: null,
+          billingIssuesDetectedAt: null,
+          gracePeriodExpiresDate: null,
           ownershipType: 'PURCHASED',
           periodType: LOCAL_SIMULATOR_PERIOD_TYPE,
           refundedAt: null,
@@ -398,7 +399,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Check if user has Pro entitlement (case-sensitive: must match RevenueCat dashboard)
   const proEntitlement = customerInfo?.entitlements.active['Pro']
-  const isTrialing = proEntitlement?.periodType === 'trial'
+  const isTrialing = proEntitlement?.periodType?.toLowerCase() === 'trial'
   const hasPaidEntitlement = Boolean(proEntitlement && !isTrialing)
   const isProMember = Boolean(proEntitlement)
 
@@ -439,7 +440,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         if (hasPaidEntitlement) return
 
         // Only relevant during trial period
-        const isTrial = proEntitlement?.periodType === 'trial'
+        const isTrial = proEntitlement?.periodType?.toLowerCase() === 'trial'
         if (!isTrial) return
 
         // Check if user opted-in to reminders

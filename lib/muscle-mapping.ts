@@ -40,7 +40,7 @@ export interface MuscleChipRenderData {
   offsetY: number
 }
 
-export const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = EXERCISE_MUSCLE_FILTER_GROUPS.map(
+const muscleChipRenderData = EXERCISE_MUSCLE_FILTER_GROUPS.map(
   (group) => {
     const mapping = MUSCLE_TO_BODY_PARTS[group]
     if (!mapping) return null
@@ -53,4 +53,10 @@ export const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] = EXERCISE_MUSCLE_F
       offsetY: BODY_HALF_CONFIG[mapping.bodyHalf].offsetY,
     }
   },
-).filter((chip): chip is MuscleChipRenderData => chip !== null)
+)
+
+export const MUSCLE_CHIP_RENDER_DATA: MuscleChipRenderData[] =
+  muscleChipRenderData.filter(
+    (chip): chip is NonNullable<(typeof muscleChipRenderData)[number]> =>
+      chip !== null,
+  )
