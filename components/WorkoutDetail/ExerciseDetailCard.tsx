@@ -54,8 +54,11 @@ interface ExerciseDetailCardProps {
   workoutUserId?: string | null
 }
 
+// Note: keep tokens specific. Ambiguous substrings like "row", "hang", "walk",
+// "hold" leak into rep-based lifts (T-bar Row, Hang Clean, Walking Lunge, Pause Hold).
+// Match concrete cardio / static-hold names instead.
 const TIMED_EXERCISE_NAME_PATTERN =
-  /\b(plank|hold|wall sit|dead hang|hang|sprint|run|walk|jog|bike|cycle|row|ski|swim|carry|farmer|battle rope)\b/i
+  /\b(plank|wall sit|dead hang|l-?sit|sprint|run|jog|skip(?:ping)?|cycling|rowing machine|rower|stairmaster|stair climber|elliptical|treadmill|swim(?:ming)?|battle rope|jump rope|ski erg(?:ometer)?|assault bike|air bike|exercise bike|spin bike|farmer'?s? walk|farmer'?s? carry|suitcase carry|overhead carry|waiter walk|waiter carry|isometric hold|bear crawl|crab walk)\b/i
 
 function formatWeightRepsText(
   weightKg: number | null,
