@@ -29,6 +29,7 @@ const TOUR_SOURCE = 'strength_pro_tour'
 
 const PRIORITY_PREVIEW: {
   exerciseName: string
+  displayName?: string
   targetLevel: string
   gain: number
 }[] = [
@@ -38,7 +39,8 @@ const PRIORITY_PREVIEW: {
     gain: 14,
   },
   {
-    exerciseName: 'Back Squat (Barbell)',
+    exerciseName: 'Squat (Barbell)',
+    displayName: 'Back Squat',
     targetLevel: 'Advanced',
     gain: 11,
   },
@@ -268,7 +270,7 @@ export default function StrengthProTourScreen() {
                 />
                 <View style={styles.priorityTextWrap}>
                   <Text style={styles.priorityName} numberOfLines={1}>
-                    {previewName(lift.exerciseName)}
+                    {lift.displayName ?? previewName(lift.exerciseName)}
                   </Text>
                   <Text style={styles.priorityCta} numberOfLines={1}>
                     Level up to {lift.targetLevel}

@@ -26,11 +26,6 @@ export interface CheckChatRateLimitOptions {
 
 /**
  * Atomically check + record an AI chat request against per-user limits.
- *
- * Implementation note: failing open (allowed=true) on infra errors is
- * intentional — a transient DB blip should not block paying users. Budget
- * spikes from such blips are bounded because the next successful call will
- * see the historical rows and start enforcing again.
  */
 export async function checkChatRateLimit(
   options: CheckChatRateLimitOptions,
@@ -54,9 +49,11 @@ export async function checkChatRateLimit(
     })
 
     if (error) {
-      console.error('[rate-limit] RPC error, failing open:', error)
+      console.error('[rate-limit] RPC error, failing closed:', error)
       return {
-        allowed: true,
+        allowed: false,
+        reason: 'unknown',
+        retryAfterSeconds: 60,
         minuteCount: 0,
         hourCount: 0,
         dayCount: 0,
@@ -65,9 +62,11 @@ export async function checkChatRateLimit(
 
     const row = Array.isArray(data) ? data[0] : data
     if (!row) {
-      console.error('[rate-limit] RPC returned no row, failing open')
+      console.error('[rate-limit] RPC returned no row, failing closed')
       return {
-        allowed: true,
+        allowed: false,
+        reason: 'unknown',
+        retryAfterSeconds: 60,
         minuteCount: 0,
         hourCount: 0,
         dayCount: 0,
@@ -101,9 +100,11 @@ export async function checkChatRateLimit(
       dayCount: row.day_count ?? 0,
     }
   } catch (err) {
-    console.error('[rate-limit] Unexpected error, failing open:', err)
+    console.error('[rate-limit] Unexpected error, failing closed:', err)
     return {
-      allowed: true,
+      allowed: false,
+      reason: 'unknown',
+      retryAfterSeconds: 60,
       minuteCount: 0,
       hourCount: 0,
       dayCount: 0,

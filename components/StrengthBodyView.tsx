@@ -1780,7 +1780,7 @@ const createStyles = (
     bodySection: {
       flex: 1,
       paddingHorizontal: 14,
-      marginTop: -35,
+      marginTop: -43,
     },
 
     // Section Header

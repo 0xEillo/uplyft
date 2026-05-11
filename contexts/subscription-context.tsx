@@ -220,7 +220,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     Constants.expoConfig?.extra?.revenueCatUseLocalSimulatorPurchases
   const localSimulatorPurchasesEnabled =
     Platform.OS === 'ios' &&
-    (!Device.isDevice || localSimulatorPurchasesConfig !== false)
+    !Device.isDevice &&
+    localSimulatorPurchasesConfig !== false
 
   // Configure RevenueCat SDK once on mount
   useEffect(() => {
@@ -405,6 +406,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Handle trial notification based on subscription status
   useEffect(() => {
+    if (localSimulatorPurchasesEnabled) return
     if (!user?.id || isLoading) return
 
     const handleNotifications = async () => {
@@ -429,12 +431,19 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     handleNotifications()
-  }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
+  }, [
+    user?.id,
+    isLoading,
+    hasPaidEntitlement,
+    proEntitlement,
+    localSimulatorPurchasesEnabled,
+  ])
 
   // In-app reminder 2 days before trial ends (respects user preference from paywall)
   useEffect(() => {
     const maybeCreateTrialReminderNotification = async () => {
       try {
+        if (localSimulatorPurchasesEnabled) return
         if (!user?.id || isLoading) return
         if (!proEntitlement) return
         if (hasPaidEntitlement) return
@@ -487,7 +496,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
 
     maybeCreateTrialReminderNotification()
-  }, [user?.id, isLoading, hasPaidEntitlement, proEntitlement])
+  }, [
+    user?.id,
+    isLoading,
+    hasPaidEntitlement,
+    proEntitlement,
+    localSimulatorPurchasesEnabled,
+  ])
 
   // Restore purchases
   const restorePurchases = async (): Promise<CustomerInfo> => {

@@ -1,21 +1,5 @@
--- Per-user rate limit log for the AI chat edge function.
--- Goal: protect inference budget against runaway usage / abuse.
--- Strategy: append-only usage rows with a weight, atomic check + insert
--- in a single SECURITY DEFINER function. Older rows are pruned per call.
-
-create table if not exists public.ai_chat_usage (
-  id bigint generated always as identity primary key,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  weight smallint not null default 1 check (weight > 0),
-  created_at timestamptz not null default now()
-);
-
-create index if not exists ai_chat_usage_user_time_idx
-  on public.ai_chat_usage (user_id, created_at desc);
-
-alter table public.ai_chat_usage enable row level security;
-
--- No public policies: only service_role (edge functions) reads/writes this table.
+-- Harden AI chat rate limiting for deployed databases that already ran the
+-- original table/function migration.
 
 create or replace function public.check_ai_chat_rate_limit(
   p_user_id uuid,
@@ -53,7 +37,6 @@ begin
   -- the same pre-insert counts and overshoot the quota.
   perform pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
 
-  -- Opportunistic prune: drop rows older than the longest window we care about.
   delete from public.ai_chat_usage
    where user_id = p_user_id
      and created_at < v_now - interval '1 day';
@@ -79,7 +62,6 @@ begin
   end if;
 
   if v_hour + p_weight > p_hour_limit then
-    -- Suggest waiting until the oldest in-window row falls out, capped at 1h.
     return query select false, 'hour'::text, v_min, v_hour, v_day, 3600;
     return;
   end if;
