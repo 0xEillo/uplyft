@@ -119,7 +119,7 @@ const createStyles = (
     container: {
       flex: 1,
       paddingHorizontal: 14,
-      marginTop: -43,
+      marginTop: -64,
     },
     sectionHeader: {
       flexDirection: "row",
