@@ -105,9 +105,6 @@ function TabLayoutContent() {
   const bottomAccessoryTitle = isWorkoutLive
     ? `Workout ${formatAccessoryElapsed(workoutElapsedSeconds)}`
     : 'Start New Workout'
-  const createActionColor = isWorkoutLive
-    ? colors.statusError
-    : colors.brandPrimary
   const handleOpenCreatePost = () => router.push('/create-post')
   const getChatReturnTab = () => {
     if (currentTab === 'profile' || currentTab === 'analytics') {
@@ -212,9 +209,12 @@ function TabLayoutContent() {
         >
           <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            src={require('@/assets/images/ai-chat-tab.png')}
-            renderingMode="template"
-            selectedColor={createActionColor}
+            src={{
+              default: require('@/assets/images/ai-chat-tab-default.png'),
+              selected: require('@/assets/images/ai-chat-tab-selected.png'),
+            }}
+            md="auto_awesome"
+            renderingMode="original"
           />
         </NativeTabs.Trigger>
 
