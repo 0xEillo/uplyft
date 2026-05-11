@@ -210,7 +210,9 @@ function TabLayoutContent() {
           <NativeTabs.Trigger.Label hidden>Chat</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             src={{
-              default: require('@/assets/images/ai-chat-tab-default.png'),
+              default: isDark
+                ? require('@/assets/images/ai-chat-tab-default-dark.png')
+                : require('@/assets/images/ai-chat-tab-default-light.png'),
               selected: require('@/assets/images/ai-chat-tab-selected.png'),
             }}
             md="auto_awesome"
