@@ -2,6 +2,9 @@ const mockDatabase = {
   profiles: {
     getByIdOrNull: jest.fn(),
   },
+  dailyLog: {
+    getLatestWeightEntry: jest.fn(),
+  },
   stats: {
     getMajorCompoundLiftsData: jest.fn(),
     getExerciseCurrentAndPreviousBest1RMs: jest.fn(),
@@ -20,6 +23,10 @@ import {
 } from '@/lib/strength-score-delta'
 
 describe('strength score delta service', () => {
+  beforeEach(() => {
+    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue(null)
+  })
+
   afterEach(() => {
     jest.clearAllMocks()
   })
@@ -189,6 +196,7 @@ describe('strength score delta service', () => {
         lastIncreaseSessionId: 'workout-1',
       },
     })
+    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue(null)
 
     const overrideProfile = { id: 'override', gender: 'male', weight_kg: 90 } as any
     const context = await loadStrengthScoreDeltaContext('user-1', {
@@ -199,8 +207,47 @@ describe('strength score delta service', () => {
     expect(context.strengthGender).toBe('male')
     expect(context.exercises).toHaveLength(1)
     expect(mockDatabase.profiles.getByIdOrNull).not.toHaveBeenCalled()
+    expect(mockDatabase.dailyLog.getLatestWeightEntry).toHaveBeenCalledWith('user-1')
     expect(mockDatabase.stats.getMajorCompoundLiftsData).toHaveBeenCalledWith('user-1')
     expect(mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs).toHaveBeenCalledWith('user-1')
+  })
+
+  test('loadStrengthScoreDeltaContext resolves profile override weight from latest daily log', async () => {
+    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue({
+      user_id: 'user-1',
+      log_date: '2026-03-05',
+      weight_kg: 95,
+    } as any)
+    mockDatabase.stats.getMajorCompoundLiftsData.mockResolvedValue([
+      {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 120,
+        records: [],
+        lastTrainedAt: '2026-03-05T10:00:00.000Z',
+      },
+    ] as any)
+    mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
+      bench: {
+        currentBest1RM: 120,
+        previousBest1RM: 110,
+        lastIncreaseAt: '2026-03-05T10:00:00.000Z',
+        lastIncreaseSessionId: 'workout-1',
+      },
+    })
+
+    const context = await loadStrengthScoreDeltaContext('user-1', {
+      profileOverride: {
+        id: 'user-1',
+        gender: 'male',
+        weight_kg: 90,
+      } as any,
+    })
+
+    expect(context.profile?.weight_kg).toBe(95)
+    expect(mockDatabase.profiles.getByIdOrNull).not.toHaveBeenCalled()
+    expect(mockDatabase.dailyLog.getLatestWeightEntry).toHaveBeenCalledWith('user-1')
   })
 
   test('loadAndCalculateStrengthScoreDelta keeps posted and latest flows aligned', async () => {

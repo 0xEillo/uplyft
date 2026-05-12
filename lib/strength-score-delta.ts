@@ -44,6 +44,27 @@ interface ResolveBaselineSessionInput {
   best1RMSnapshotByExerciseId: Record<string, OverallStrengthBest1RMSnapshot>
 }
 
+async function resolveProfileForStrengthScore(
+  userId: string,
+  profile: Profile | null,
+): Promise<Profile | null> {
+  if (!profile) return profile
+
+  const latestWeightEntry = await database.dailyLog
+    .getLatestWeightEntry(userId)
+    .catch(() => null)
+  const latestWeightKg = coerceBodyweightKg(latestWeightEntry?.weight_kg)
+
+  if (latestWeightKg === null) {
+    return profile
+  }
+
+  return {
+    ...profile,
+    weight_kg: latestWeightKg,
+  }
+}
+
 function findLatestIncreaseAtForSession(
   snapshots: Record<string, OverallStrengthBest1RMSnapshot>,
   sessionId: string | null,
@@ -170,14 +191,17 @@ export async function loadStrengthScoreDeltaContext<
     ? Promise.resolve(options?.profileOverride ?? null)
     : database.profiles.getByIdOrNull(userId)
 
-  const [profile, exercises, snapshots] = await Promise.all([
+  const [rawProfile, exercises, snapshots] = await Promise.all([
     profilePromise,
     database.stats.getMajorCompoundLiftsData(userId),
     database.stats.getExerciseCurrentAndPreviousBest1RMs(userId),
   ])
+  const profile = hasProfileOverride
+    ? await resolveProfileForStrengthScore(userId, rawProfile ?? null)
+    : rawProfile ?? null
 
   return {
-    profile: profile ?? null,
+    profile,
     strengthGender: getStrengthGender(profile?.gender ?? null),
     exercises: exercises as unknown as TExercise[],
     best1RMSnapshotByExerciseId: snapshots,
