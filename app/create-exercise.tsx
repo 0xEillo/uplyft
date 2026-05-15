@@ -53,6 +53,9 @@ export default function CreateExerciseScreen() {
 
   const [exerciseName, setExerciseName] = useState(initialName || '')
   const [muscleGroup, setMuscleGroup] = useState<string>('')
+  const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>(
+    [],
+  )
   const [exerciseType, setExerciseType] = useState<string>('')
   const [equipment, setEquipment] = useState<string>('')
   const [isCreating, setIsCreating] = useState(false)
@@ -64,6 +67,33 @@ export default function CreateExerciseScreen() {
   const HEADER_ROW_HEIGHT = 68
 
   const styles = createStyles(colors)
+  const isCompoundExercise = exerciseType === 'compound'
+  const secondaryMuscleOptions = EXERCISE_MUSCLE_GROUPS.filter(
+    (group) => group !== muscleGroup && group !== 'Cardio',
+  )
+
+  const handleSelectMuscleGroup = (group: string) => {
+    setMuscleGroup(group)
+    setSecondaryMuscleGroups((current) =>
+      current.filter((selectedGroup) => selectedGroup !== group),
+    )
+  }
+
+  const handleSelectExerciseType = (type: (typeof EXERCISE_TYPES)[number]) => {
+    setExerciseType(type)
+    if (type !== 'compound') {
+      setSecondaryMuscleGroups([])
+    }
+  }
+
+  const toggleSecondaryMuscleGroup = (group: string) => {
+    haptic('light')
+    setSecondaryMuscleGroups((current) =>
+      current.includes(group)
+        ? current.filter((selectedGroup) => selectedGroup !== group)
+        : [...current, group],
+    )
+  }
 
   const showMuscleGroupPicker = () => {
     if (Platform.OS === 'ios') {
@@ -74,7 +104,7 @@ export default function CreateExerciseScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex > 0) {
-            setMuscleGroup(EXERCISE_MUSCLE_GROUPS[buttonIndex - 1])
+            handleSelectMuscleGroup(EXERCISE_MUSCLE_GROUPS[buttonIndex - 1])
           }
         },
       )
@@ -97,7 +127,7 @@ export default function CreateExerciseScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex > 0) {
-            setExerciseType(EXERCISE_TYPES[buttonIndex - 1])
+            handleSelectExerciseType(EXERCISE_TYPES[buttonIndex - 1])
           }
         },
       )
@@ -152,6 +182,8 @@ export default function CreateExerciseScreen() {
         user.id,
         {
           muscle_group: muscleGroup,
+          target_muscles: [muscleGroup],
+          secondary_muscles: isCompoundExercise ? secondaryMuscleGroups : [],
           type: exerciseType,
           equipment: equipment,
         },
@@ -266,6 +298,54 @@ export default function CreateExerciseScreen() {
                   color={colors.textSecondary}
                 />
               </TouchableOpacity>
+              {isCompoundExercise && (
+                <View style={styles.secondaryMusclePanel}>
+                  <View style={styles.secondaryMuscleHeader}>
+                    <Text style={styles.secondaryMuscleTitle}>
+                      Secondary muscles
+                    </Text>
+                    <Text style={styles.secondaryMuscleCount}>
+                      {secondaryMuscleGroups.length} selected
+                    </Text>
+                  </View>
+                  <Text style={styles.secondaryMuscleHelp}>
+                    Add the supporting muscles this lift also trains.
+                  </Text>
+                  <View style={styles.muscleChipGrid}>
+                    {secondaryMuscleOptions.map((group) => {
+                      const isSelected = secondaryMuscleGroups.includes(group)
+
+                      return (
+                        <TouchableOpacity
+                          key={group}
+                          style={[
+                            styles.muscleChip,
+                            isSelected && styles.muscleChipSelected,
+                          ]}
+                          onPress={() => toggleSecondaryMuscleGroup(group)}
+                          activeOpacity={0.8}
+                        >
+                          <Text
+                            style={[
+                              styles.muscleChipText,
+                              isSelected && styles.muscleChipTextSelected,
+                            ]}
+                          >
+                            {group}
+                          </Text>
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={16}
+                              color={colors.brandPrimary}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Exercise Type */}
@@ -365,7 +445,7 @@ export default function CreateExerciseScreen() {
                         key={group}
                         style={styles.modalOption}
                         onPress={() => {
-                          setMuscleGroup(group)
+                          handleSelectMuscleGroup(group)
                           setShowMuscleGroupModal(false)
                         }}
                       >
@@ -403,7 +483,7 @@ export default function CreateExerciseScreen() {
                         key={type}
                         style={styles.modalOption}
                         onPress={() => {
-                          setExerciseType(type)
+                          handleSelectExerciseType(type)
                           setShowTypeModal(false)
                         }}
                       >
@@ -544,6 +624,65 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textTertiary,
       marginTop: 8,
       lineHeight: 16,
+    },
+    secondaryMusclePanel: {
+      marginTop: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+    },
+    secondaryMuscleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    secondaryMuscleTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    secondaryMuscleCount: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textTertiary,
+    },
+    secondaryMuscleHelp: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      lineHeight: 16,
+      marginTop: 6,
+      marginBottom: 12,
+    },
+    muscleChipGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    muscleChip: {
+      minHeight: 36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+    },
+    muscleChipSelected: {
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.brandPrimarySoft,
+    },
+    muscleChipText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    muscleChipTextSelected: {
+      color: colors.brandPrimary,
     },
     createButton: {
       flexDirection: 'row',

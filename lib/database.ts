@@ -1834,6 +1834,8 @@ export const database = {
         muscle_group: string
         type: string
         equipment: string
+        target_muscles?: string[]
+        secondary_muscles?: string[]
       },
     ) {
       // Validate and sanitize name
@@ -1904,6 +1906,8 @@ export const database = {
           name: normalizedName,
           created_by: userId,
           muscle_group: metadata.muscle_group,
+          target_muscles: metadata.target_muscles,
+          secondary_muscles: metadata.secondary_muscles,
           type: metadata.type,
           equipment: metadata.equipment,
         })
