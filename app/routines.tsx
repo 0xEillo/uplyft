@@ -263,6 +263,34 @@ export default function RoutinesScreen() {
     )
   }
 
+  const renderGenerateRow = (
+    label: string,
+    intent: 'routine' | 'program',
+  ) => (
+    <TouchableOpacity
+      style={styles.createRoutineRow}
+      onPress={() => {
+        haptic('light')
+        router.push({ pathname: '/chat', params: { generate: intent } })
+      }}
+    >
+      <View style={styles.generateIconWrapper}>
+        <View style={styles.generateIcon}>
+          <Ionicons name="add" size={22} color={colors.textPrimary} />
+        </View>
+        <View
+          style={[
+            styles.generateSparkleBadge,
+            { backgroundColor: colors.bg, borderColor: colors.bg },
+          ]}
+        >
+          <Ionicons name="sparkles" size={11} color={colors.brandPrimary} />
+        </View>
+      </View>
+      <Text style={styles.createRoutineText}>{label}</Text>
+    </TouchableOpacity>
+  )
+
   const renderProgramsContent = () => {
     const programGroups = programs.map((program) => ({
       program,
@@ -271,6 +299,8 @@ export default function RoutinesScreen() {
 
     return (
       <View style={styles.listContainer}>
+        {renderGenerateRow('Create new program', 'program')}
+
         {/* User Programs */}
         {programGroups.map(({ program, routinesCount }) => {
           const imageSource = program.image_path
@@ -408,18 +438,7 @@ export default function RoutinesScreen() {
     const standaloneRoutines = routines.filter((r) => !r.program_id)
     return (
       <View style={styles.listContainer}>
-        <TouchableOpacity
-          style={styles.createRoutineRow}
-          onPress={() => {
-            haptic('light')
-            router.push('/create-routine')
-          }}
-        >
-          <View style={styles.createRoutineIcon}>
-            <Ionicons name="add" size={24} color={colors.textPrimary} />
-          </View>
-          <Text style={styles.createRoutineText}>Create new routine</Text>
-        </TouchableOpacity>
+        {renderGenerateRow('Create new routine', 'routine')}
 
         {standaloneRoutines.map(renderRoutineCard)}
       </View>
@@ -456,7 +475,11 @@ export default function RoutinesScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     haptic('light')
-                    router.push('/explore')
+                    router.push(
+                      activeTab === 'Programs'
+                        ? '/create-program'
+                        : '/create-routine',
+                    )
                   }}
                   style={styles.navButton}
                 >
@@ -615,6 +638,30 @@ const createStyles = (colors: any, isDark: boolean) =>
       fontSize: 16,
       fontWeight: '600',
       color: colors.textPrimary,
+    },
+    generateIconWrapper: {
+      width: 44,
+      height: 44,
+      position: 'relative',
+    },
+    generateIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surfaceSubtle,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    generateSparkleBadge: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     routineCard: {
       backgroundColor: colors.surfaceCard,

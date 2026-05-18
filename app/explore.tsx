@@ -10,7 +10,6 @@ import { database } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import type { ExploreProgramWithRoutines, ExploreRoutine } from '@/types/database.types'
-import { fuzzySearchPrograms, fuzzySearchExploreRoutines } from '@/lib/utils/fuzzy-search'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -20,10 +19,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   useTransition,
-  useDeferredValue,
 } from 'react'
 import {
     ActivityIndicator,
@@ -32,7 +29,6 @@ import {
     Pressable,
     StyleSheet,
     Text,
-    TextInput,
     View,
     ScrollView,
 } from 'react-native'
@@ -332,13 +328,6 @@ export default function ExploreScreen() {
   const [activeTab, setActiveTab] = useState<ExploreTab>('Programs')
   const [contentTab, setContentTab] = useState<ExploreTab>('Programs')
   const [isTabPending, startTabTransition] = useTransition()
-  const [searchQuery, setSearchQuery] = useState('')
-  const deferredSearchQuery = useDeferredValue(searchQuery)
-  const searchQueryRef = useRef(searchQuery)
-
-  useEffect(() => {
-    searchQueryRef.current = searchQuery
-  }, [searchQuery])
 
   const loadData = useCallback(async () => {
     try {
@@ -407,7 +396,6 @@ export default function ExploreScreen() {
         params: {
           exploreMode: 'true',
           initialMuscleGroup: group,
-          initialSearchQuery: searchQueryRef.current,
         },
       })
     },
@@ -421,25 +409,11 @@ export default function ExploreScreen() {
         params: {
           exploreMode: 'true',
           initialEquipment: equipment,
-          initialSearchQuery: searchQueryRef.current,
         },
       })
     },
     [router],
   )
-
-  const handleExerciseSearchSubmit = useCallback(() => {
-    const trimmedQuery = searchQueryRef.current.trim()
-    if (activeTab !== 'Exercises' || !trimmedQuery) return
-
-    router.push({
-      pathname: '/select-exercise',
-      params: {
-        exploreMode: 'true',
-        initialSearchQuery: trimmedQuery,
-      },
-    })
-  }, [activeTab, router])
 
   const renderProgramCard = useCallback(
     ({ item }: { item: ExploreProgramWithRoutines & { routine_count: number } }) => (
@@ -465,13 +439,8 @@ export default function ExploreScreen() {
     [colors, handleOpenRoutine, styles],
   )
 
-  const filteredPrograms = useMemo(() => {
-    return fuzzySearchPrograms(programs, deferredSearchQuery)
-  }, [programs, deferredSearchQuery])
-
-  const filteredRoutines = useMemo(() => {
-    return fuzzySearchExploreRoutines(routines, deferredSearchQuery)
-  }, [routines, deferredSearchQuery])
+  const filteredPrograms = programs
+  const filteredRoutines = routines
 
   const renderContent = useCallback(() => {
 
@@ -592,27 +561,6 @@ export default function ExploreScreen() {
             paddingTop: insets.top + 68,
           }}
         >
-          {/* Search Bar */}
-          <View style={styles.searchBarContainer}>
-             <View style={[styles.searchBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#f3f3f3' }]}>
-                <Ionicons name="search" size={20} color={colors.textSecondary} />
-                <TextInput 
-                   style={[styles.searchInput, { color: colors.textPrimary }]}
-                   placeholder={`Search for ${activeTab.toLowerCase()}`}
-                   placeholderTextColor={colors.textSecondary} 
-                   value={searchQuery}
-                   onChangeText={setSearchQuery}
-                   onSubmitEditing={handleExerciseSearchSubmit}
-                   autoCapitalize="none"
-                />
-                {searchQuery.length > 0 && (
-                  <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                  </Pressable>
-                )}
-             </View>
-          </View>
-
           <View style={styles.tabHeaderContainer}>
             {TAB_CONFIG.map(({ key, icon }) => (
               <ExploreTabButton
@@ -663,24 +611,6 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  searchBarContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 0,
-    paddingBottom: 20,
-  },
-  searchBarBg: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 48,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '500',
   },
   tabHeaderContainer: {
     flexDirection: 'row',

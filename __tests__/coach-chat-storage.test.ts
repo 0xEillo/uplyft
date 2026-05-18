@@ -31,6 +31,7 @@ describe('coach chat storage', () => {
       ],
       input: 'Need a pull day',
       selectedImages: ['file:///meal.jpg'],
+      savedAssistantMessageIds: [],
     })
 
     const snapshot = await loadCoachChatSnapshot(USER_ID, { kind: 'main' })
@@ -39,6 +40,7 @@ describe('coach chat storage', () => {
       messages: [{ id: '1', role: 'assistant', content: 'Welcome back' }],
       input: 'Need a pull day',
       selectedImages: ['file:///meal.jpg'],
+      savedAssistantMessageIds: [],
     })
   })
 
@@ -47,11 +49,13 @@ describe('coach chat storage', () => {
       messages: [{ id: 'a', role: 'user', content: 'Build legs' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
     await saveCoachChatSnapshot(USER_ID, { kind: 'create_post', sessionId: 'session-b' }, {
       messages: [{ id: 'b', role: 'assistant', content: 'Here is a push day.' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
 
     expect(
@@ -63,6 +67,7 @@ describe('coach chat storage', () => {
       messages: [{ id: 'a', role: 'user', content: 'Build legs' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
     expect(
       await loadCoachChatSnapshot(USER_ID, {
@@ -73,6 +78,7 @@ describe('coach chat storage', () => {
       messages: [{ id: 'b', role: 'assistant', content: 'Here is a push day.' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
   })
 
@@ -81,11 +87,13 @@ describe('coach chat storage', () => {
       messages: [{ id: '1', role: 'user', content: 'Hi' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
     await saveCoachChatSnapshot(USER_ID, { kind: 'create_post', sessionId: 'session-a' }, {
       messages: [{ id: '2', role: 'assistant', content: 'Hello' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
 
     await clearAllCoachChatSnapshots(USER_ID)
@@ -134,6 +142,39 @@ describe('coach chat storage', () => {
       ],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
+    })
+  })
+
+  test('round-trips saved assistant message ids and de-dupes them', async () => {
+    await saveCoachChatSnapshot(USER_ID, { kind: 'main' }, {
+      messages: [
+        { id: 'msg-1', role: 'assistant', content: 'Here is a plan' },
+        { id: 'msg-2', role: 'assistant', content: 'And another plan' },
+      ],
+      input: '',
+      selectedImages: [],
+      savedAssistantMessageIds: ['msg-1', 'msg-1', 'msg-2'],
+    })
+
+    const snapshot = await loadCoachChatSnapshot(USER_ID, { kind: 'main' })
+
+    expect(snapshot?.savedAssistantMessageIds.sort()).toEqual(['msg-1', 'msg-2'])
+  })
+
+  test('returns a snapshot when only saved assistant ids are present', () => {
+    const snapshot = sanitizeCoachChatSnapshot({
+      messages: [],
+      input: '',
+      selectedImages: [],
+      savedAssistantMessageIds: ['msg-1'],
+    })
+
+    expect(snapshot).toEqual({
+      messages: [],
+      input: '',
+      selectedImages: [],
+      savedAssistantMessageIds: ['msg-1'],
     })
   })
 
@@ -142,6 +183,7 @@ describe('coach chat storage', () => {
       messages: [{ id: '1', role: 'assistant', content: 'Draft chat' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
 
     await migrateCoachChatSnapshot(
@@ -159,6 +201,7 @@ describe('coach chat storage', () => {
       messages: [{ id: '1', role: 'assistant', content: 'Draft chat' }],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
     expect(
       getCoachChatPersistenceScopeKey({ kind: 'create_post' }),

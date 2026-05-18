@@ -245,7 +245,7 @@ export default function ChatAttachmentScreen() {
     {
       id: 'generate-workout',
       icon: 'flash-outline' as const,
-      label: 'Generate Workout',
+      label: 'Create Workout',
       subtitle: 'Create a custom workout plan',
       onPress: () => dispatch({ action: 'generate_workout' }),
     },

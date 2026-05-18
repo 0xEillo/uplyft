@@ -10,15 +10,12 @@ import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { hapticSuccess } from '@/lib/haptics'
-import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
 import {
   ExploreRoutineWithExercises,
   WorkoutRoutineWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import { Image } from 'expo-image'
-import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
@@ -305,19 +302,24 @@ export default function RoutineDetailScreen() {
         user.id,
       )
       hapticSuccess()
-      Alert.alert('Success', 'Routine saved to your library!', [
-        {
-          text: 'View Routine',
-          onPress: () => {
-            // Navigate to the saved copy
-            router.replace({
-              pathname: '/routine/[routineId]',
-              params: { routineId: savedRoutine.id },
-            })
-          },
-        },
-        { text: 'OK', style: 'cancel' },
-      ])
+
+      // Flip the in-memory routine to the user's freshly-saved copy so the
+      // primary CTA becomes "Start Routine" immediately — no extra tap needed.
+      setRoutine((prev) =>
+        prev
+          ? {
+              ...prev,
+              id: savedRoutine.id,
+              source: 'user',
+              isOwner: true,
+              userRoutineId: savedRoutine.id,
+            }
+          : prev,
+      )
+
+      // Keep the URL in sync with the saved copy so deep-links / back-nav
+      // resolve correctly without a visible navigation transition.
+      router.setParams({ routineId: savedRoutine.id })
     } catch (error) {
       console.error('Error saving routine:', error)
       Alert.alert('Error', 'Failed to save routine')
@@ -358,8 +360,6 @@ export default function RoutineDetailScreen() {
   }
 
   if (!routine) return null
-
-  const imageUrl = getRoutineImageUrl(routine.imagePath)
 
   return (
     <SlideInView
@@ -417,46 +417,10 @@ export default function RoutineDetailScreen() {
           scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Cover Image Section */}
-          <View style={styles.coverContainer}>
-            {imageUrl ? (
-              <>
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.coverImage}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  priority="high"
-                  transition={200}
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
-                  style={styles.coverOverlay}
-                />
-              </>
-            ) : (
-              <LinearGradient
-                colors={[colors.surfaceSubtle, colors.bg]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.coverGradientOnly}
-              />
-            )}
-          </View>
-
           {/* Routine Info */}
           <View style={styles.infoSection}>
             <Text style={[styles.routineName, { color: colors.textPrimary }]}>
               {routine.name}
-            </Text>
-            <Text
-              style={[styles.creatorLabel, { color: colors.textSecondary }]}
-            >
-              {routine.isOwner
-                ? 'Created by you'
-                : routine.source === 'explore'
-                ? 'Pro Routine'
-                : 'Shared routine'}
             </Text>
 
             {/* Description */}
@@ -612,42 +576,16 @@ const createStyles = (
     scrollView: {
       flex: 1,
     },
-    coverContainer: {
-      height: 180,
-      marginHorizontal: 16,
-      marginTop: 12,
-      marginBottom: 8,
-      borderRadius: 16,
-      overflow: 'hidden',
-      position: 'relative',
-    },
-    coverImage: {
-      width: '100%',
-      height: '100%',
-    },
-    coverOverlay: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    coverGradientOnly: {
-      flex: 1,
-    },
     infoSection: {
       paddingHorizontal: 16,
-      paddingTop: 20,
+      paddingTop: 16,
       marginBottom: 24,
     },
     routineName: {
       fontSize: 32,
       fontWeight: '900',
-      marginBottom: 6,
-      letterSpacing: -1,
-    },
-    creatorLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
       marginBottom: 16,
+      letterSpacing: -1,
     },
     descriptionText: {
       fontSize: 15,

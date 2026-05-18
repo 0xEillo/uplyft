@@ -380,6 +380,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
+  // Incline Bench Press (Smith Machine)
+  {
+    id: 'fe9aecd5-627b-4acd-8aca-47233f7cf5c0',
+    name: 'Incline Bench Press (Smith Machine)',
+    aliases: ['Smith Incline Bench Press'],
+    tier: 3,
+    gifUrl: '5v7KYld.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.55,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.82,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.09,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.64,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.91,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.18,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.41,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.66,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.02,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.43,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.79,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Dumbbell Bench Press
   {
     id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
@@ -1229,6 +1314,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
       {
         level: 'World Class',
         multiplier: 1.0,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
+  // Smith Machine Shoulder Press
+  {
+    id: 'd9591610-0f62-42da-9102-9b9ad347d554',
+    name: 'Shoulder Press (Smith Machine)',
+    aliases: ['Smith Shoulder Press'],
+    tier: 3,
+    gifUrl: '903mzG8.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.38,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.55,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.82,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.09,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.36,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.64,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.31,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.46,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.66,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.81,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.02,
         color: '#EF4444',
         description: 'World record territory',
       },
@@ -6203,11 +6373,13 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Chest Press': 'Chest',
   'Barbell Decline Bench Press': 'Chest',
   'Bench Press (Smith Machine)': 'Chest',
+  'Incline Bench Press (Smith Machine)': 'Chest',
   'Fly (Dumbbell)': 'Chest',
   'Seated Fly (Machine)': 'Chest',
 
   // Shoulders
   'Shoulder Press (Barbell)': 'Shoulders',
+  'Shoulder Press (Smith Machine)': 'Shoulders',
   'Shoulder Press (Machine)': 'Shoulders',
   'Seated Shoulder Press (Dumbbell)': 'Shoulders',
   'Seated Lateral Raise (Dumbbell)': 'Shoulders',
@@ -6315,9 +6487,11 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Chest Press': 'Push',
   'Barbell Decline Bench Press': 'Push',
   'Bench Press (Smith Machine)': 'Push',
+  'Incline Bench Press (Smith Machine)': 'Push',
   'Fly (Dumbbell)': 'Push',
   'Seated Fly (Machine)': 'Push',
   'Shoulder Press (Barbell)': 'Push',
+  'Shoulder Press (Smith Machine)': 'Push',
   'Shoulder Press (Machine)': 'Push',
   'Seated Shoulder Press (Dumbbell)': 'Push',
   'Arnold Press (Dumbbell)': 'Push',

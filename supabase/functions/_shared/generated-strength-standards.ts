@@ -4,9 +4,9 @@
  */
 
 export const GENERATED_EXERCISE_TIER_WEIGHTS = {
-  1: 1.1,
-  2: 0.7,
-  3: 0.4,
+  '1': 1.1,
+  '2': 0.7,
+  '3': 0.4
 } as const
 
 export const GENERATED_EXERCISES_WITH_STANDARDS = [
@@ -20,77 +20,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.3,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'd5b6efa3-2ebe-4eec-9e59-7a2b5ad4aa12',
@@ -102,82 +102,84 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.4,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.65,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'd06c7a2e-f5dd-49e4-a63f-f659d94cded5',
     name: 'Decline Bench Press (Barbell)',
-    aliases: ['Barbell Decline Bench Press'],
+    aliases: [
+      'Barbell Decline Bench Press'
+    ],
     tier: 2,
     gifUrl: 'GrO65fd.gif',
     male: [
@@ -185,100 +187,247 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'dec2873e-0c39-4e88-b05b-247d3cb6b1b3',
     name: 'Bench Press (Smith Machine)',
-    aliases: ['Smith Bench Press'],
+    aliases: [
+      'Smith Bench Press'
+    ],
     tier: 3,
     gifUrl: 'trqKQv2.gif',
     male: [
-      { level: 'Beginner', multiplier: 0.5, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 1, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 1.25, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 1.75, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 2.25, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 2.6, color: '#EF4444', description: 'World record territory' },
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 1,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.25,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.6,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
     ],
     female: [
-      { level: 'Beginner', multiplier: 0.25, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.5, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.75, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 1.25, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 1.5, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.8, color: '#EF4444', description: 'World record territory' },
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.8,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: 'fe9aecd5-627b-4acd-8aca-47233f7cf5c0',
+    name: 'Incline Bench Press (Smith Machine)',
+    aliases: [
+      'Smith Incline Bench Press'
     ],
+    tier: 3,
+    gifUrl: '5v7KYld.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.55,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.82,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.09,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.64,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.91,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.18,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.41,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.66,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.02,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.43,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.79,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '7927cf04-6d4b-4f01-9cd2-441ad398f214',
@@ -290,77 +439,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.3,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.7,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.9,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'f0d9f5c0-0da6-493b-a7d5-64cf793dbdca',
@@ -372,82 +521,84 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.65,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.3,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'd6328434-8f90-40eb-8f27-5cf26033e65d',
     name: 'Chest Press (Machine)',
-    aliases: ['Chest Press'],
+    aliases: [
+      'Chest Press'
+    ],
     tier: 3,
     gifUrl: 'T0yTjgW.gif',
     male: [
@@ -455,123 +606,255 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.3,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.55,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.9,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '80a44d4f-fe01-477a-837d-de22d82e4d4a',
     name: 'Fly (Dumbbell)',
-    aliases: ['Dumbbell Fly', 'Dumbbell Chest Fly', 'Dumbbell Flyes', 'DB Fly', 'Chest Flyes'],
+    aliases: [
+      'Dumbbell Fly',
+      'Dumbbell Chest Fly',
+      'Dumbbell Flyes',
+      'DB Fly',
+      'Chest Flyes'
+    ],
     tier: 2,
     gifUrl: 'yz9nUhF.gif',
     male: [
-      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.15, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.3, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.5, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 0.7, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.85, color: '#EF4444', description: 'World record territory' },
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.7,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.85,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
     ],
     female: [
-      { level: 'Beginner', multiplier: 0.05, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.1, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.2, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.3, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 0.45, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.55, color: '#EF4444', description: 'World record territory' },
-    ],
+      {
+        level: 'Beginner',
+        multiplier: 0.05,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.1,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.45,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.55,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '1995abfe-57e4-4c72-a729-3a574cb1378d',
     name: 'Seated Fly (Machine)',
-    aliases: ['Seated Fly', 'Fly (Machine)', 'Pec Deck', 'Machine Fly', 'Flies (Machine)'],
+    aliases: [
+      'Seated Fly',
+      'Fly (Machine)',
+      'Pec Deck',
+      'Machine Fly',
+      'Flies (Machine)'
+    ],
     tier: 3,
     gifUrl: 'v3xmPAR.gif',
     male: [
-      { level: 'Beginner', multiplier: 0.5, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.75, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 1, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 1.5, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 2, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 2.3, color: '#EF4444', description: 'World record territory' },
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.3,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
     ],
     female: [
-      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.6, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.9, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 1.3, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.55, color: '#EF4444', description: 'World record territory' },
-    ],
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.9,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.3,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.55,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'ec791278-a90a-446a-a853-94e68646416b',
@@ -583,77 +866,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.75,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '50c3ce34-9b80-4f8b-92c4-365183476959',
@@ -665,77 +948,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.6,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.85,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.4,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.6,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.85,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'cbd8a5d7-e51a-4691-8731-65d4dab19db2',
@@ -747,77 +1030,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'c216a0a7-c3a6-458b-b691-a5c6afca0662',
@@ -829,77 +1112,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.75,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'baf05047-e528-47da-adf2-9be58d124278',
@@ -911,77 +1194,248 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.35,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.3,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.45,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.65,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.8,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: 'd9591610-0f62-42da-9102-9b9ad347d554',
+    name: 'Shoulder Press (Smith Machine)',
+    aliases: [
+      'Smith Shoulder Press'
     ],
+    tier: 3,
+    gifUrl: '903mzG8.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.38,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.55,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.82,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.09,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.36,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.64,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.31,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.46,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.66,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.81,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.02,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '81f27422-7611-43e1-859c-076c6241e434',
+    name: 'Arnold Press (Dumbbell)',
+    aliases: [
+      'Dumbbell Arnold Press',
+      'Arnold Press'
+    ],
+    tier: 2,
+    gifUrl: 'Xy4jlWA.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.3,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.45,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.65,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.8,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.15,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.2,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.3,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.35,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.45,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '25050a20-cd9d-4193-b681-dd7c1af27348',
@@ -993,77 +1447,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '674beec1-ce86-401d-980d-8ae5949ec707',
@@ -1075,100 +1529,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.9,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.35,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.65,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-  {
-    id: '81f27422-7611-43e1-859c-076c6241e434',
-    name: 'Arnold Press (Dumbbell)',
-    aliases: ['Dumbbell Arnold Press', 'Arnold Press'],
-    tier: 2,
-    gifUrl: 'Xy4jlWA.gif',
-    male: [
-      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.2, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.3, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.45, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 0.65, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.8, color: '#EF4444', description: 'World record territory' },
-    ],
-    female: [
-      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.15, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.2, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.3, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 0.35, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.45, color: '#EF4444', description: 'World record territory' },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'f87f37bd-dfb9-4f88-a178-82423ab0e6a0',
@@ -1180,77 +1611,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.4,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.65,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.9,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '62de3610-8941-4c87-aff2-31d5da85f82f',
@@ -1262,82 +1693,86 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.3,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.45,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.7,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.95,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '8416f9f6-5500-4412-9cbe-e779f0314511',
     name: 'Weighted Pull-Up',
-    aliases: ['Weighted Pull Up', 'Weighted Pull-Ups', 'Weighted Pullups'],
+    aliases: [
+      'Weighted Pull Up',
+      'Weighted Pull-Ups',
+      'Weighted Pullups'
+    ],
     tier: 1,
     gifUrl: 'HMzLjXx.gif',
     male: [
@@ -1345,77 +1780,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.05,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.15,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.35,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.65,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'f18faaa7-0cb5-4d5f-9474-a1f822c4ed84',
@@ -1427,77 +1862,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.65,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.35,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.7,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '66076631-fbf3-4240-9358-99563893ff90',
@@ -1509,77 +1944,163 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.3,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.65,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.8,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.35,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.45,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '6317e651-21ea-43e1-ace7-8499af8adb6c',
+    name: 'Bicep Curl (Cable)',
+    aliases: [
+      'Cable Curl',
+      'Cable Bicep Curl'
     ],
+    tier: 3,
+    gifUrl: 'G08RZcQ.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.65,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.05,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.85,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.7,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.25,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '82081200-5fb6-4bf4-9341-d2f4b96ecfb6',
@@ -1591,82 +2112,84 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.3,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.3,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '5505819c-2e69-4889-b883-afdf8b20e3e2',
     name: 'Incline Hammer Curl (Dumbbell)',
-    aliases: ['Dumbbell Incline Hammer Curl'],
+    aliases: [
+      'Dumbbell Incline Hammer Curl'
+    ],
     tier: 2,
     gifUrl: 'ByX0WxV.gif',
     male: [
@@ -1674,77 +2197,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.65,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.3,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.45,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '715479a2-4676-4ae1-a94e-b469d7c387e0',
@@ -1756,100 +2279,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.4,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.15,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-  {
-    id: '6317e651-21ea-43e1-ace7-8499af8adb6c',
-    name: 'Bicep Curl (Cable)',
-    aliases: ['Cable Curl', 'Cable Bicep Curl'],
-    tier: 3,
-    gifUrl: 'G08RZcQ.gif',
-    male: [
-      { level: 'Beginner', multiplier: 0.15, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.65, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 1.05, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 1.5, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.85, color: '#EF4444', description: 'World record territory' },
-    ],
-    female: [
-      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.2, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.4, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.7, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 1, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.25, color: '#EF4444', description: 'World record territory' },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
@@ -1861,77 +2361,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 2.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 5.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 6.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 3.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 4.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 5.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '9ae7a12b-0e56-43e1-bb95-3446f0f3c932',
@@ -1943,82 +2443,85 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.8,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.3,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '67d8950c-2c29-44f8-8cdc-43d238b1a9f2',
     name: 'Hip Thrust (Barbell)',
-    aliases: ['Hip Thrust', 'Barbell Hip Thrust'],
+    aliases: [
+      'Hip Thrust',
+      'Barbell Hip Thrust'
+    ],
     tier: 1,
     gifUrl: 'hip-thrust(barbell).png',
     male: [
@@ -2026,77 +2529,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 4.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'ff36b318-02d7-4750-aff3-322046ecb190',
@@ -2108,77 +2611,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.55,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.8,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.05,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.65,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.8,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '0ecd527a-c4ee-476c-9c02-293bfd4f7c46',
@@ -2190,77 +2693,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.3,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.35,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.7,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '4f70d4fe-7eee-4c95-9da7-1c35a78de5c2',
@@ -2270,102 +2773,79 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     male: [
       {
         level: 'Beginner',
-        multiplier: 0.5,
+        multiplier: 0.45,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
-        multiplier: 0.75,
+        multiplier: 0.7,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
-        multiplier: 1.25,
+        multiplier: 1.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
-        multiplier: 1.5,
+        multiplier: 1.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
-        multiplier: 2,
+        multiplier: 1.9,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
-        multiplier: 2.4,
+        multiplier: 2.3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
-        multiplier: 0.3,
+        multiplier: 0.28,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
-        multiplier: 0.5,
+        multiplier: 0.45,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
-        multiplier: 0.75,
+        multiplier: 0.7,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
-        multiplier: 1.05,
+        multiplier: 0.95,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.35,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.6,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
-  },
-  {
-    id: 'b27be848-7788-476a-ae78-19aea566977b',
-    name: 'Skull Crusher (Barbell)',
-    aliases: ['Skullcrusher', 'Skull Crushers', 'Lying Tricep Extension', 'Barbell Lying Triceps Extension'],
-    tier: 2,
-    gifUrl: 'h8LFzo9.gif',
-    male: [
-      { level: 'Beginner', multiplier: 0.2, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.35, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.55, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.8, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 1.1, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 1.35, color: '#EF4444', description: 'World record territory' },
-    ],
-    female: [
-      { level: 'Beginner', multiplier: 0.1, color: '#64748B', description: 'Just starting out' },
-      { level: 'Novice', multiplier: 0.2, color: '#3B82F6', description: 'A few months training' },
-      { level: 'Intermediate', multiplier: 0.35, color: '#10B981', description: '1-2 years consistent training' },
-      { level: 'Advanced', multiplier: 0.55, color: '#8B5CF6', description: '2-5 years dedicated training' },
-      { level: 'Elite', multiplier: 0.75, color: '#F59E0B', description: 'Competitive athlete level' },
-      { level: 'World Class', multiplier: 0.95, color: '#EF4444', description: 'World record territory' },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '37b7c704-b4c1-4745-8ae7-e2cbd9432508',
@@ -2377,82 +2857,174 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.8,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.05,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: 'b27be848-7788-476a-ae78-19aea566977b',
+    name: 'Skull Crusher (Barbell)',
+    aliases: [
+      'Skullcrusher',
+      'Skull Crushers',
+      'Lying Tricep Extension',
+      'Barbell Lying Triceps Extension'
     ],
+    tier: 2,
+    gifUrl: 'h8LFzo9.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.8,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.35,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.35,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.55,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.95,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '591af367-e71d-4ad5-9754-1c3f39a9b434',
     name: 'Rope Pushdown (Cable)',
-    aliases: ['Cable Pushdown (Rope)', 'Rope Pushdown', 'Tricep Rope Pushdown'],
+    aliases: [
+      'Cable Pushdown (Rope)',
+      'Rope Pushdown',
+      'Tricep Rope Pushdown'
+    ],
     tier: 3,
     gifUrl: 'dU605di.gif',
     male: [
@@ -2460,77 +3032,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.9,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.05,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '51f08b8b-34d3-4e8b-bf9d-5d28c071c4ae',
@@ -2542,82 +3114,86 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.3,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.8,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.1,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.9,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'de0aeeaa-8bd0-4c4b-8602-986025dfdc17',
     name: 'Shrug (Barbell)',
-    aliases: ['Shrug', 'Barbell Shrug', 'BB Shrug'],
+    aliases: [
+      'Shrug',
+      'Barbell Shrug',
+      'BB Shrug'
+    ],
     tier: 1,
     gifUrl: 'ZZKbeMw.gif',
     male: [
@@ -2625,82 +3201,86 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
-        multiplier: 4.0,
+        multiplier: 4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
-        multiplier: 1.0,
+        multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '0c92879c-8d2f-47e5-a998-94e079786c7e',
     name: 'Shrug (Dumbbell)',
-    aliases: ['DB Shrug', 'Dumbbell Shrugs', 'Dumbbell Shrug'],
+    aliases: [
+      'DB Shrug',
+      'Dumbbell Shrugs',
+      'Dumbbell Shrug'
+    ],
     tier: 2,
     gifUrl: 'NJzBsGJ.gif',
     male: [
@@ -2708,82 +3288,87 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.9,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.65,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.95,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '2b17a9be-b411-4afe-a351-d21c0fd72d3f',
     name: 'Shrug (Smith Machine)',
-    aliases: ['Smith Shrug', 'smith machine shrug', 'smith shrug', 'smith machine shrugs'],
+    aliases: [
+      'Smith Shrug',
+      'smith machine shrug',
+      'smith shrug',
+      'smith machine shrugs'
+    ],
     tier: 3,
     gifUrl: 'OUQ0ZyW.gif',
     male: [
@@ -2791,160 +3376,165 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.75,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '0f7a856c-3518-4da3-bd01-0ae687ab3615',
     name: 'Rack Pull (Barbell)',
-    aliases: ['rack pulls', 'rack deadlift', 'Rack Pull', 'Barbell Rack Pull'],
+    aliases: [
+      'rack pulls',
+      'rack deadlift',
+      'Rack Pull',
+      'Barbell Rack Pull'
+    ],
     tier: 1,
     gifUrl: 'za9Ni4z.gif',
     male: [
       {
         level: 'Beginner',
-        multiplier: 1.0,
+        multiplier: 1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 2.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
-        multiplier: 3.0,
+        multiplier: 3,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
-        multiplier: 4.0,
+        multiplier: 4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
-        multiplier: 5.0,
+        multiplier: 5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.75,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
-        multiplier: 3.0,
+        multiplier: 3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '00fbaaa6-b29b-4e7c-982e-78978d2f1d3d',
@@ -2957,77 +3547,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 18,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 34,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 52,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 70,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 15,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 28,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 43,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '4502ba9e-c0bc-4ab4-8a8f-9773f64479c8',
@@ -3039,82 +3629,85 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.9,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.02,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.7,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '15cba386-ed64-4c01-afc3-bb64e82d22a9',
     name: 'Hyperextension',
-    aliases: ['Hyperextension (Bodyweight)', 'Hyper Extension'],
+    aliases: [
+      'Hyperextension (Bodyweight)',
+      'Hyper Extension'
+    ],
     tier: 2,
     gifUrl: 'zhMwOwE.gif',
     male: [
@@ -3122,77 +3715,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.3,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.7,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.25,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.12,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '0f69ada8-ed3f-446d-a837-221c501ca826',
@@ -3204,77 +3797,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
-        multiplier: 3.0,
+        multiplier: 3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
-        multiplier: 1.0,
+        multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
-        multiplier: 2.0,
+        multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '9bc822c6-6f3d-45bb-b5fa-994c29eaa5ac',
@@ -3286,77 +3879,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.8,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.55,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.7,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'a3e17c18-6b37-4af6-aceb-98e63dbb62da',
@@ -3369,7 +3962,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'rear delt dumbbell fly',
       'bent over reverse fly',
       'reverse dumbbell fly',
-      'reverse flyes',
+      'reverse flyes'
     ],
     tier: 2,
     gifUrl: 'EAs3xL9.gif',
@@ -3378,77 +3971,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.8,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.15,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'a97d866b-b29e-4b25-914a-ada0d59be96b',
@@ -3460,77 +4053,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.15,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.35,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.45,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.02,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.05,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.15,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.22,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'ce77ea3f-772d-435c-b1ca-05b1e9d6c6fe',
@@ -3542,77 +4135,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.55,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.8,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.55,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.8,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '327409bb-abdd-4008-acdc-09616e3e4656',
@@ -3621,7 +4214,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'reverse wrist curl',
       'reverse barbell wrist curl',
       'barbell reverse wrist curl',
-      'reverse wrist curls barbell',
+      'reverse wrist curls barbell'
     ],
     tier: 2,
     gifUrl: 'LsZkfU6.gif',
@@ -3630,77 +4223,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.35,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.5,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.7,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '89486ed3-0856-4e03-bb56-02ecf25f330d',
@@ -3709,7 +4302,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'reverse dumbbell wrist curl',
       'dumbbell reverse wrist curl',
       'db reverse wrist curl',
-      'reverse wrist curls dumbbell',
+      'reverse wrist curls dumbbell'
     ],
     tier: 2,
     gifUrl: 'BLCvwr2.gif',
@@ -3718,77 +4311,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.3,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'aaa729ff-5681-4241-bda4-dd848afab3ef',
@@ -3800,77 +4393,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.08,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '97ab3978-17bf-4c48-ae37-1683355e694c',
@@ -3882,77 +4475,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
-        multiplier: 1.0,
+        multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
-        multiplier: 2.0,
+        multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.45,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.05,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.45,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.85,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '41571546-3273-4913-b1c8-4717088c8f44',
@@ -3964,77 +4557,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.3,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.8,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.2,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.6,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.8,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '5de336b5-00af-4b0a-b2e9-79a2b11d6b28',
@@ -4046,77 +4639,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.8,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.08,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.4,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.55,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.7,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'cdd2929b-ccc0-4d9f-bea4-6b47d08dca64',
@@ -4128,82 +4721,86 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.15,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.4,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.15,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.45,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '4075e4c0-aeb6-460d-9de7-98064e5fde4c',
     name: 'Hack Squat (Machine)',
-    aliases: ['Hack Squat', 'Sled Hack Squat', 'Machine Hack Squat'],
+    aliases: [
+      'Hack Squat',
+      'Sled Hack Squat',
+      'Machine Hack Squat'
+    ],
     tier: 3,
     gifUrl: 'Qa55kX1.gif',
     male: [
@@ -4211,77 +4808,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.75,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 1.25,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 4,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '49f4eca5-609a-4c85-a482-57a5db72bd33',
@@ -4290,7 +4887,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'Lateral Raise',
       'Dumbbell Lateral Raise',
       'Side Raise',
-      'Side Lateral Raise',
+      'Side Lateral Raise'
     ],
     tier: 2,
     gifUrl: 'DsgkuIt.gif',
@@ -4299,82 +4896,85 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.2,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.3,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.45,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.05,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.15,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.2,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.4,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '10d290b0-ada9-44f9-b52f-dfe13e224bd3',
     name: 'T Bar Row (Machine)',
-    aliases: ['T Bar Row', 'T-Bar Row'],
+    aliases: [
+      'T Bar Row',
+      'T-Bar Row'
+    ],
     tier: 3,
     gifUrl: 'aaXr7ld.gif',
     male: [
@@ -4382,82 +4982,86 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.45,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.75,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.05,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.45,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.85,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'e47e46c4-4e66-4b6d-b808-074c922428bb',
     name: 'Preacher Curl (Barbell)',
-    aliases: ['Preacher Curl', 'Barbell Preacher Curl', 'EZ Bar Preacher Curl'],
+    aliases: [
+      'Preacher Curl',
+      'Barbell Preacher Curl',
+      'EZ Bar Preacher Curl'
+    ],
     tier: 2,
     gifUrl: 'qOgPVf6.gif',
     male: [
@@ -4465,77 +5069,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.1,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.35,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.4,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '67f335db-9176-491f-ad48-bf8c3f8cec4b',
@@ -4543,7 +5147,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     aliases: [
       'Cable Overhead Tricep Extension',
       'Cable High Pulley Overhead Tricep Extension',
-      'Overhead Cable Extension',
+      'Overhead Cable Extension'
     ],
     tier: 3,
     gifUrl: '1xHyxys.gif',
@@ -4552,77 +5156,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.15,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.3,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.55,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.55,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.1,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.2,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.85,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.1,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'f59ce0f6-5118-421e-9010-0074247c9d9f',
@@ -4631,7 +5235,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'Cable Crunch',
       'Kneeling Cable Crunch',
       'Cable Crunches',
-      'Standing Cable Crunch',
+      'Standing Cable Crunch'
     ],
     tier: 3,
     gifUrl: 'cable-crunches(cable).png',
@@ -4640,82 +5244,84 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.5,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '18cb65c2-0992-491e-9af8-afb0e9d05019',
     name: 'Weighted Decline Sit Up',
-    aliases: ['Decline Sit Up'],
+    aliases: [
+      'Decline Sit Up'
+    ],
     tier: 2,
     gifUrl: 'EZeDVzO.gif',
     male: [
@@ -4723,82 +5329,84 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.15,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.35,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.6,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.9,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.2,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.1,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.45,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 0.7,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 0.95,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '6857d2df-0f9a-4b7b-8bb9-d542faa46047',
     name: 'Seated Crunch (Machine)',
-    aliases: ['Machine Seated Crunch'],
+    aliases: [
+      'Machine Seated Crunch'
+    ],
     tier: 3,
     gifUrl: 'Wgaz7pm.gif',
     male: [
@@ -4806,77 +5414,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.2,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.35,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 0.6,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 0.85,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 1.15,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 1.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: '000fe0c2-acf9-41ea-b10f-c62ec2341348',
@@ -4888,77 +5496,77 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.75,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.5,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.25,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.75,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 2.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
   {
     id: 'e3926e7d-c81c-43c5-867d-c2ffc2259d39',
@@ -4970,78 +5578,675 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
         level: 'Beginner',
         multiplier: 0.5,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1.5,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 2.25,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 3,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3.75,
         color: '#EF4444',
-        description: 'World record territory',
-      },
+        description: 'World record territory'
+      }
     ],
     female: [
       {
         level: 'Beginner',
         multiplier: 0.25,
         color: '#64748B',
-        description: 'Just starting out',
+        description: 'Just starting out'
       },
       {
         level: 'Novice',
         multiplier: 0.75,
         color: '#3B82F6',
-        description: 'A few months training',
+        description: 'A few months training'
       },
       {
         level: 'Intermediate',
         multiplier: 1,
         color: '#10B981',
-        description: '1-2 years consistent training',
+        description: '1-2 years consistent training'
       },
       {
         level: 'Advanced',
         multiplier: 1.5,
         color: '#8B5CF6',
-        description: '2-5 years dedicated training',
+        description: '2-5 years dedicated training'
       },
       {
         level: 'Elite',
         multiplier: 2.25,
         color: '#F59E0B',
-        description: 'Competitive athlete level',
+        description: 'Competitive athlete level'
       },
       {
         level: 'World Class',
         multiplier: 3,
         color: '#EF4444',
-        description: 'World record territory',
-      },
-    ],
+        description: 'World record territory'
+      }
+    ]
   },
+  {
+    id: '4aeea47e-f927-42bc-88ac-e96e6bd1add9',
+    name: 'Trap Bar Deadlift (Barbell)',
+    aliases: [
+      'Trap Bar Deadlift',
+      'Hex Bar Deadlift'
+    ],
+    tier: 1,
+    gifUrl: 'jQGwmxN.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.5,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 2,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.75,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 3.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.75,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.75,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 1,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.85,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '2bd134ef-c86b-4a9f-9ce8-67a1209501d9',
+    name: 'Pendlay Row (Barbell)',
+    aliases: [
+      'Barbell Pendlay Row',
+      'Pendlay Row'
+    ],
+    tier: 1,
+    gifUrl: 'r0z6xzQ.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.75,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.4,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.55,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.8,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.05,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.35,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.6,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '225fad0b-547e-4796-8df2-3d083904a758',
+    name: 'Zercher Squat (Barbell)',
+    aliases: [
+      'Barbell Zercher Squat',
+      'Full Zercher Squat (Barbell)',
+      'Barbell Full Zercher Squat',
+      'vR1vold'
+    ],
+    tier: 1,
+    gifUrl: 'LSTChY9.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.5,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 1,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.5,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 3,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.5,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '74a25eb5-7abb-4806-9404-ca3a25cd8fb8',
+    name: 'Goblet Squat (Kettlebell)',
+    aliases: [
+      'Kettlebell Goblet Squat'
+    ],
+    tier: 2,
+    gifUrl: 'ZA8b5hc.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.15,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.25,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.6,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.85,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      }
+    ]
+  },
+  {
+    id: 'a7900f7a-291b-41b1-9ed5-c4e97032ddbc',
+    name: 'Bulgarian Split Squat (Barbell)',
+    aliases: [
+      'gGNQmVt',
+      'Barbell Single Leg Split Squat',
+      'Barbell Bulgarian split squat',
+      'BB Bulgarian Split Squat',
+      'BSS',
+      'Split Squat',
+      'Single Leg Split Squat (Barbell)',
+      'Single Leg Split Squat'
+    ],
+    tier: 2,
+    gifUrl: 'gGNQmVt.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.5,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.75,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.25,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.2,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.3,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.25,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.5,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '95c8ba43-d0a1-486a-b272-44ad1e2639a7',
+    name: 'Bicep Curl (EZ Bar)',
+    aliases: [
+      'Ez Barbell Curl',
+      'EZ Bar Curl'
+    ],
+    tier: 2,
+    gifUrl: '6TG6x2w.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.25,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.4,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.6,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.85,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.3,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.15,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.3,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.4,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.6,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.8,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
+    id: '9db1815a-a6fc-4dc1-a48d-13739ef2fad1',
+    name: 'Skull Crusher (EZ Bar)',
+    aliases: [
+      'Ez Bar Lying Close Grip Triceps Extension Behind Head',
+      'EZ Bar Skull Crusher'
+    ],
+    tier: 2,
+    gifUrl: '6CKUx7o.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.2,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.35,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.55,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.8,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 1.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 1.3,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.1,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.2,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 0.35,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 0.55,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 0.75,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 0.9,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  }
 ] as const
 
 export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
@@ -5054,16 +6259,18 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Chest Press': 'Chest',
   'Barbell Decline Bench Press': 'Chest',
   'Bench Press (Smith Machine)': 'Chest',
+  'Incline Bench Press (Smith Machine)': 'Chest',
   'Fly (Dumbbell)': 'Chest',
   'Seated Fly (Machine)': 'Chest',
   'Shoulder Press (Barbell)': 'Shoulders',
-  'Arnold Press (Dumbbell)': 'Shoulders',
+  'Shoulder Press (Smith Machine)': 'Shoulders',
   'Shoulder Press (Machine)': 'Shoulders',
   'Seated Shoulder Press (Dumbbell)': 'Shoulders',
   'Seated Lateral Raise (Dumbbell)': 'Shoulders',
   'Lateral Raise (Dumbbell)': 'Shoulders',
   'Rope Face Pulls (Cable)': 'Shoulders',
   'Reverse Fly (Dumbbell)': 'Shoulders',
+  'Arnold Press (Dumbbell)': 'Shoulders',
   'Bent Over Row (Barbell)': 'Back',
   'Lat Pulldown (Cable)': 'Back',
   'Weighted Pull-Up': 'Back',
@@ -5083,14 +6290,13 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Bicep Curl (Barbell)': 'Biceps',
   'Rope Hammer Curl (Cable)': 'Biceps',
   'Preacher Curl (Barbell)': 'Biceps',
-  'Bicep Curl (Cable)': 'Biceps',
   'Weighted Dip': 'Chest',
   'Close Grip Bench Press (Barbell)': 'Triceps',
-  'Skull Crusher (Barbell)': 'Triceps',
   'Pushdown (Cable)': 'Triceps',
   'Rope Pushdown (Cable)': 'Triceps',
   'Triceps Extension (Machine)': 'Triceps',
   'Overhead Cable Extension (Cable)': 'Triceps',
+  'Skull Crusher (Barbell)': 'Triceps',
   'Squat (Barbell)': 'Quads',
   'Front Squat (Barbell)': 'Quads',
   'Leg Press (Machine)': 'Quads',
@@ -5117,4 +6323,11 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Wrist Curl (Barbell)': 'Forearms',
   'Reverse Wrist Curl (Barbell)': 'Forearms',
   'Reverse Wrist Curl (Dumbbell)': 'Forearms',
+  'Trap Bar Deadlift (Barbell)': 'Lower Back',
+  'Pendlay Row (Barbell)': 'Back',
+  'Zercher Squat (Barbell)': 'Quads',
+  'Goblet Squat (Kettlebell)': 'Quads',
+  'Bulgarian Split Squat (Barbell)': 'Quads',
+  'Bicep Curl (EZ Bar)': 'Biceps',
+  'Skull Crusher (EZ Bar)': 'Triceps'
 } as const

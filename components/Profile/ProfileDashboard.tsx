@@ -78,12 +78,14 @@ export const ProfileDashboard = memo(
               onPress={() => router.push('/routines')}
               compact
             />
+            {/* Explore intentionally hidden — keep code in place for future re-enable.
             <DashboardButton
               title="Explore"
               icon="compass-outline"
               onPress={() => router.push('/explore')}
               compact
             />
+            */}
             <DashboardButton
               title="Measures"
               icon="body-outline"

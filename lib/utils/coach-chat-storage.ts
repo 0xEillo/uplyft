@@ -24,6 +24,10 @@ export interface CoachChatSnapshot {
   messages: CoachChatMessage[]
   input: string
   selectedImages: string[]
+  // Assistant message IDs whose generated workout/program has been saved by the
+  // user. Persisted so the "Saved" UI in workout/program cards survives chat
+  // reloads and prevents accidental double-saves.
+  savedAssistantMessageIds: string[]
 }
 
 interface PersistedCoachChatSnapshot extends CoachChatSnapshot {
@@ -117,7 +121,8 @@ export function hasMeaningfulCoachChatSnapshot(
   return (
     snapshot.messages.length > 0 ||
     snapshot.input.trim().length > 0 ||
-    snapshot.selectedImages.length > 0
+    snapshot.selectedImages.length > 0 ||
+    snapshot.savedAssistantMessageIds.length > 0
   )
 }
 
@@ -134,11 +139,23 @@ export function sanitizeCoachChatSnapshot(
       )
     : []
   const messages = sanitizeMessages(candidate.messages)
+  const savedAssistantMessageIds = Array.isArray(
+    candidate.savedAssistantMessageIds,
+  )
+    ? Array.from(
+        new Set(
+          candidate.savedAssistantMessageIds.filter(
+            (id): id is string => typeof id === 'string' && id.length > 0,
+          ),
+        ),
+      )
+    : []
 
   if (
     messages.length === 0 &&
     input.trim().length === 0 &&
-    selectedImages.length === 0
+    selectedImages.length === 0 &&
+    savedAssistantMessageIds.length === 0
   ) {
     return null
   }
@@ -147,6 +164,7 @@ export function sanitizeCoachChatSnapshot(
     messages,
     input,
     selectedImages,
+    savedAssistantMessageIds,
   }
 }
 

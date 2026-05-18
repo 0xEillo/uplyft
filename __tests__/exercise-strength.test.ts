@@ -69,4 +69,28 @@ describe('exercise strength helpers', () => {
       expect(standard.multiplier).toBeLessThan(benchFemale![index].multiplier)
     })
   })
+
+  test('smith machine press standards are tracked and ordered', () => {
+    const exercises = [
+      'Bench Press (Smith Machine)',
+      'Incline Bench Press (Smith Machine)',
+      'Shoulder Press (Smith Machine)',
+    ]
+
+    exercises.forEach((exerciseName) => {
+      const male = getStandardsLadder(exerciseName, 'male')
+      const female = getStandardsLadder(exerciseName, 'female')
+
+      expect(male).not.toBeNull()
+      expect(female).not.toBeNull()
+
+      ;[male!, female!].forEach((standards) => {
+        standards.slice(1).forEach((standard, index) => {
+          expect(standard.multiplier).toBeGreaterThan(
+            standards[index].multiplier,
+          )
+        })
+      })
+    })
+  })
 })

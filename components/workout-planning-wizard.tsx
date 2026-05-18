@@ -619,7 +619,7 @@ export function WorkoutPlanningWizard({
           onPress={handleSubmit}
         >
           <Text style={[styles.submitText, { color: colors.bg }]}>
-            Generate Workout
+            Create Workout
           </Text>
         </TouchableOpacity>
       </View>

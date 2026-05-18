@@ -341,6 +341,10 @@ function RootLayoutNav() {
             options={{ presentation: 'card', animation: 'default' }}
           />
           <Stack.Screen
+            name="(stand-alone)/create-program"
+            options={{ presentation: 'card', animation: 'default' }}
+          />
+          <Stack.Screen
             name="(stand-alone)/edit-workout/[workoutId]"
             options={{ presentation: 'card', animation: 'default' }}
           />

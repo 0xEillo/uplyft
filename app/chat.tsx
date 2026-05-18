@@ -22,48 +22,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
   ExerciseSuggestion,
-  SuggestionsConfig,
   WorkoutChat,
   WorkoutContext,
 } from '@/components/workout-chat'
 
-// Workout-aware suggestions, shown only when an active workout exists.
-const WORKOUT_AWARE_SUGGESTIONS: SuggestionsConfig = {
-  main: [
-    {
-      id: 'plan_workout',
-      text: 'Generate Workout',
-      icon: 'flash-outline',
-    },
-    {
-      id: 'add_exercises',
-      text: 'Add Exercises',
-      icon: 'add-circle-outline',
-    },
-    {
-      id: 'replace_exercise_menu',
-      text: 'Replace Exercise',
-      icon: 'swap-horizontal-outline',
-    },
-  ],
-  adjust_workout: [
-    {
-      id: 'add_exercises',
-      text: 'Add Exercises',
-      icon: 'add-circle-outline',
-    },
-    {
-      id: 'replace_exercise_menu',
-      text: 'Replace Exercise',
-      icon: 'swap-horizontal-outline',
-    },
-  ],
-}
 
 export default function ChatScreen() {
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
-  const params = useLocalSearchParams<{ returnToTab?: string }>()
+  const params = useLocalSearchParams<{
+    returnToTab?: string
+    generate?: string
+  }>()
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -231,9 +201,14 @@ export default function ChatScreen() {
     router.push('/chat-settings')
   }, [])
 
-  // Workout-aware suggestions when there's an active workout, otherwise let the
-  // chat use its default suggestion set.
-  const suggestions = hasActiveSession ? WORKOUT_AWARE_SUGGESTIONS : undefined
+  // Quick-action entry from the My Library "Create new" buttons. When this
+  // param is present we auto-open the ✨ Create Workout / Program menu above
+  // the composer.
+  const generateIntent = Array.isArray(params.generate)
+    ? params.generate[0]
+    : params.generate
+  const shouldAutoOpenActions =
+    generateIntent === 'routine' || generateIntent === 'program'
 
   return (
     <View style={styles.page}>
@@ -284,11 +259,11 @@ export default function ChatScreen() {
           persistence={{ kind: 'main' }}
           mode="sheet"
           workoutContext={workoutContext}
-          customSuggestions={suggestions}
           onAddExercise={handleAddExercise}
           onReplaceExercise={handleReplaceExercise}
           onClose={handleClose}
           keyboardVerticalOffsetOverride={chatKeyboardOffset}
+          autoOpenActions={shouldAutoOpenActions}
         />
       </View>
     </View>

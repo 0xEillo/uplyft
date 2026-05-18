@@ -94,7 +94,6 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
-  LayoutChangeEvent,
   Linking,
   Modal,
   Platform,
@@ -103,7 +102,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TextStyle,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -112,6 +110,7 @@ import {
 import 'react-native-get-random-values'
 import Markdown from 'react-native-markdown-display'
 import AnimatedReanimated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -160,15 +159,6 @@ const recordingIndicatorStyles = StyleSheet.create({
     borderRadius: 4,
   },
 })
-
-const GOAL_PROMPT_LABELS: Record<string, string> = {
-  build_muscle: 'building muscle',
-  lose_fat: 'losing fat',
-  gain_strength: 'getting stronger',
-  improve_cardio: 'improving conditioning',
-  become_flexible: 'improving mobility',
-  general_fitness: 'improving overall fitness',
-}
 
 type StreamingResponseResult = {
   content: string
@@ -277,18 +267,6 @@ interface PlanningState {
   step: 'wizard' | 'none'
   data: Partial<WorkoutPlanningData>
   commonMuscles?: string[]
-}
-
-type SuggestionMode =
-  | 'main'
-  | 'tell_me_about'
-  | 'how_to'
-  | 'adjust_workout'
-  | 'replace_exercise'
-
-type SuggestionPromptOption = {
-  text: string
-  prompt: string
 }
 
 // Exercise suggestion for add exercise callback
@@ -410,76 +388,6 @@ function getDefaultWizardMuscles(
   }
 
   return 'Upper, Lower'
-}
-
-// Internal component for animated suggestion buttons
-function AnimatedSuggestion({
-  index,
-  onPress,
-  style,
-  textStyle,
-  icon,
-  text,
-  isBack = false,
-  colors,
-}: {
-  index: number
-  onPress: () => void
-  style?: StyleProp<ViewStyle>
-  textStyle?: StyleProp<TextStyle>
-  icon?: React.ReactNode
-  text?: string
-  isBack?: boolean
-  colors: ReturnType<typeof useThemedColors>
-}) {
-  const translateY = useSharedValue(40)
-  const opacity = useSharedValue(0)
-
-  useEffect(() => {
-    // Reset
-    translateY.value = 40
-    opacity.value = 0
-
-    // Animate in with delay based on index
-    translateY.value = withDelay(
-      index * 60,
-      withSpring(0, {
-        damping: 8,
-        stiffness: 200,
-        mass: 0.8,
-      }),
-    )
-    opacity.value = withDelay(index * 60, withTiming(1, { duration: 300 }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reanimated values are stable
-  }, [index, text, isBack]) // Re-run when text or mode changes
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
-  }))
-
-  if (isBack) {
-    return (
-      <AnimatedReanimated.View style={animatedStyle}>
-        <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.7}>
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-      </AnimatedReanimated.View>
-    )
-  }
-
-  return (
-    <AnimatedReanimated.View style={animatedStyle}>
-      <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.7}>
-        {icon}
-        <Text style={textStyle}>{text}</Text>
-      </TouchableOpacity>
-    </AnimatedReanimated.View>
-  )
 }
 
 // Animated typing dot for loading indicator
@@ -613,24 +521,12 @@ function getPersistedWorkoutSessionId(sessionId?: string): string | undefined {
   return trimmed && UUID_PATTERN.test(trimmed) ? trimmed : undefined
 }
 
-// Custom suggestions config
-export interface SuggestionsConfig {
-  main: { id: string; text: string; icon: string }[]
-  tell_me_about?: SuggestionPromptOption[]
-  how_to?: SuggestionPromptOption[]
-  replace_exercise?: string[]
-  adjust_workout?: { id: string; text: string; icon: string }[]
-}
-
 // Props for WorkoutChat component
 export interface WorkoutChatProps {
   persistence: CoachChatPersistenceDescriptor
 
   // For modal/sheet usage
   mode?: 'fullscreen' | 'sheet'
-
-  // Custom suggestions for create-post context
-  customSuggestions?: SuggestionsConfig
 
   // Workout context for create-post
   workoutContext?: WorkoutContext
@@ -660,111 +556,10 @@ export interface WorkoutChatProps {
   // (e.g. insets.top + custom header height) when this component is not the
   // root of a screen.
   keyboardVerticalOffsetOverride?: number
-}
 
-function buildDefaultSuggestions(input: {
-  primaryGoalLabel: string
-  hasWorkout: boolean
-  currentWorkoutExercises: string[]
-}): SuggestionsConfig {
-  const { primaryGoalLabel, hasWorkout, currentWorkoutExercises } = input
-  const currentWorkoutLabel =
-    hasWorkout && currentWorkoutExercises.length > 0
-      ? currentWorkoutExercises.slice(0, 3).join(', ')
-      : null
-
-  return {
-    main: [
-      {
-        id: 'plan_workout',
-        text: 'Generate Workout',
-        icon: 'flash-outline',
-      },
-      ...(NUTRITION_FEATURES_ENABLED
-        ? [
-            {
-              id: 'log_meal',
-              text: 'Log Meal',
-              icon: 'nutrition',
-            },
-          ]
-        : []),
-      {
-        id: 'view_stats',
-        text: 'Get Stats',
-        icon: 'stats-chart-outline',
-      },
-      {
-        id: 'tell_me_about',
-        text: 'My Progress',
-        icon: 'trending-up-outline',
-      },
-      {
-        id: 'how_to',
-        text: 'My Training',
-        icon: 'barbell-outline',
-      },
-    ],
-    adjust_workout: [
-      {
-        id: 'add_exercises',
-        text: 'Add Exercises',
-        icon: 'add-circle-outline',
-      },
-      {
-        id: 'replace_exercise_menu',
-        text: 'Replace Exercise',
-        icon: 'swap-horizontal-outline',
-      },
-    ],
-    tell_me_about: [
-      {
-        text: 'What to fix?',
-        prompt: 'What should I improve most right now based on my real data?',
-      },
-      {
-        text: 'Am I on track?',
-        prompt: `Am I on track for ${primaryGoalLabel}?`,
-      },
-      {
-        text: 'Next level-up?',
-        prompt: 'Which lift is closest to leveling up next?',
-      },
-      {
-        text: 'Best vs weak',
-        prompt: 'Where am I strongest and weakest right now?',
-      },
-      {
-        text: 'What is holding me back?',
-        prompt: 'What is holding back my progress the most?',
-      },
-    ],
-    how_to: [
-      {
-        text: 'Train better',
-        prompt: currentWorkoutLabel
-          ? `How can I improve the way I'm training right now, especially in workouts like ${currentWorkoutLabel}?`
-          : `How can I train better right now for ${primaryGoalLabel}?`,
-      },
-      {
-        text: 'Too much volume?',
-        prompt:
-          'Am I doing too much volume anywhere, like too many chest exercises or sets?',
-      },
-      {
-        text: 'Rep ranges okay?',
-        prompt: 'Are my rep ranges right for my goal, or should I change them?',
-      },
-      {
-        text: 'Program okay?',
-        prompt: 'Does my recent program structure look balanced and effective?',
-      },
-      {
-        text: 'Biggest change?',
-        prompt: 'What is the biggest training change I should make this week?',
-      },
-    ],
-  }
+  // When true, the ✨ quick-actions menu (Create Workout / Create Program)
+  // is shown automatically on first mount (e.g. deep-link from Library).
+  autoOpenActions?: boolean
 }
 
 const MAX_IMAGES = 10
@@ -772,49 +567,6 @@ const MAX_IMAGES = 10
 const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
 const FOOD_LOG_BLOCK_REGEX = /<food_log>([\s\S]*?)<\/food_log>/i
 const STATS_REPORT_BLOCK_REGEX = /<stats_report>([\s\S]*?)<\/stats_report>/i
-
-const getStatsSnapshotPrompt = (weightUnit: 'kg' | 'lb'): string =>
-  `
-Generate a training stats snapshot for the last 30 days using only my real app data and tool outputs.
-Do not guess. If a metric is unavailable, omit it. Use period_label "Last 30 days".
-Use ${weightUnit === 'lb' ? 'lb' : 'kg'} for weight-based stats.
-Use the stats tools as needed (especially strength progress, strength score, and muscle balance) before finalizing values.
-
-Respond in two parts:
-1) A short coach summary (2-4 lines max, plain language).
-2) Append exactly one machine-readable block at the very end:
-<stats_report>{
-  "version": 1,
-  "title": "Stats Snapshot",
-  "period_label": "Last 30 days",
-  "summary": "One sentence trend summary.",
-  "highlights": [
-    { "id": "strength_score", "label": "Strength Score", "value": "742", "delta": "+28", "trend": "up" },
-    { "id": "workouts", "label": "Workouts", "value": "14", "delta": "+2", "trend": "flat" },
-    { "id": "duration", "label": "Time Trained", "value": "18h 30m", "delta": "+2h", "trend": "up" },
-    { "id": "volume", "label": "Volume", "value": "92,400 lb", "delta": "+12%", "trend": "up" }
-  ],
-  "top_lifts": [
-    { "exercise": "Bench Press", "value": "225 lb", "delta": "+5 lb", "trend": "up" }
-  ],
-  "muscle_balance": [
-    { "muscle_group": "Chest", "percentage": 24 },
-    { "muscle_group": "Back", "percentage": 22 },
-    { "muscle_group": "Shoulders", "percentage": 14 }
-  ],
-  "focus_areas": ["Hamstrings", "Rear Delts"]
-}</stats_report>
-
-Required core stats to include when available (Heavy-style):
-- Strength score trend
-- Workout consistency (workouts count) and total training duration
-- Total training volume trend
-- Top 3 lifts by 1RM (value as plain number + unit only, e.g. "225 lb" or "102 kg")
-- Muscle balance split with percentages
-- Focus areas (lagging muscles based on balance data, e.g., "Back (18% below target) — Add 2-3 extra sets/week")
-
-Deltas: change only (e.g. "+5 lb", "+12%", "+28"); no timeline suffix like "vs 30d" or "vs prior" - period_label defines the timeframe for all stats.
-`.trim()
 
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
@@ -839,12 +591,12 @@ function getWelcomeMessage(coachId: string, userName?: string): string {
 
   switch (coachId) {
     case 'kino':
-      return `Hey${name}. Let's plan your first workout together. Tell me what you want to train, what equipment you have, or how much time you've got, and I'll build the session with you. Tap ⚡ Generate Workout below or just type your goal.`
+      return `Hey${name}. Let's plan your first workout together. Tell me what you want to train, what equipment you have, or how much time you've got, and I'll build the session with you. Tap ✨ beside the input, choose Create Workout, or just type your goal.`
     case 'maya':
-      return `Hey${name}! ✨ Let's plan your first workout together. Tell me what you want to focus on, how long you want to train, or what equipment you have, and I'll map it out with you. Hit ⚡ Generate Workout below or send me a quick goal to get started.`
+      return `Hey${name}! Let's plan your first workout together. Tell me what you want to focus on, how long you want to train, or what equipment you have, and I'll map it out with you. Open ✨ next to the input, tap Create Workout, or send a quick goal to get started.`
     case 'ross':
     default:
-      return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Use ⚡ Generate Workout below or type your goal when you're ready.`
+      return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Use ✨ beside the input → Create Workout, or type your goal when you're ready.`
   }
 }
 
@@ -1025,10 +777,13 @@ function createCoachMarkdownStyle(
       lineHeight: 23,
       color: colors.textPrimary,
       margin: 0,
+      flexDirection: 'column',
+      flexWrap: 'nowrap',
+      gap: 8,
     },
     paragraph: {
       marginTop: 0,
-      marginBottom: 10,
+      marginBottom: 0,
     },
     heading1: {
       fontSize: 22,
@@ -1329,7 +1084,6 @@ const getFoodCardMealLabel = (
 export function WorkoutChat({
   persistence,
   mode = 'fullscreen',
-  customSuggestions,
   workoutContext,
   onAddExercise,
   onReplaceExercise,
@@ -1338,9 +1092,9 @@ export function WorkoutChat({
   onClose,
   onChatStarted,
   keyboardVerticalOffsetOverride,
+  autoOpenActions = false,
 }: WorkoutChatProps) {
   const messagesListRef = useRef<FlashListRef<Message>>(null)
-  const suggestionsScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
   // Holds the id of the most recently sent user message so its bubble can
   // play a one-time entrance animation when it first mounts. Cleared shortly
@@ -1368,6 +1122,17 @@ export function WorkoutChat({
   const [generatedPlanContent, setGeneratedPlanContent] = useState<
     string | null
   >(null)
+  // Assistant message IDs whose workout/program has already been saved to the
+  // user's library. Persisted as part of the chat snapshot so the "Saved" UI on
+  // the workout/program cards survives reloads and prevents double-saves.
+  const [savedAssistantMessageIds, setSavedAssistantMessageIds] = useState<
+    Set<string>
+  >(() => new Set())
+  // Transient: assistant message IDs currently mid-save. Not persisted (saving
+  // is short-lived) and resets on hydration / new chat.
+  const [savingAssistantMessageIds, setSavingAssistantMessageIds] = useState<
+    Set<string>
+  >(() => new Set())
   const [
     parsedWorkout,
     setParsedWorkout,
@@ -1386,7 +1151,6 @@ export function WorkoutChat({
   >({})
   const { coachId, profile, isLoading: isProfileLoading } = useProfile()
   const coach = getCoach(coachId)
-  const [suggestionMode, setSuggestionMode] = useState<SuggestionMode>('main')
   const [hasChatStarted, setHasChatStarted] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
@@ -1400,6 +1164,18 @@ export function WorkoutChat({
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
+  // The actions menu is ALWAYS mounted. Visibility is driven by a shared value
+  // animated on the UI thread, bypassing React's commit phase entirely. The
+  // `showChatActions` state is only used for things that need JS-side awareness
+  // (pointerEvents, accessibility, the auto-close-on-send branch).
+  const [showChatActions, setShowChatActions] = useState(autoOpenActions)
+  const chatActionsIconRotation = useSharedValue(autoOpenActions ? 1 : 0)
+  const chatActionsProgress = useSharedValue(autoOpenActions ? 1 : 0)
+  const hasAutoOpenedActionsRef = useRef(false)
+  /** User closed ✨ via toggle while still in empty chat; don't auto-reopen until they start fresh. */
+  const userDismissedEmptyChatActionsRef = useRef(false)
+  const closeChatActionsRef = useRef<(() => void) | null>(null)
+
   const [pendingAutoSendMessage, setPendingAutoSendMessage] = useState<
     string | null
   >(null)
@@ -1432,6 +1208,73 @@ export function WorkoutChat({
     useState<CoachChatPersistenceDescriptor>(persistence)
   const [hasHydratedPersistedChat, setHasHydratedPersistedChat] =
     useState(false)
+
+  // Deep-link (`autoOpenActions`): snap menu open once after hydrate.
+  useEffect(() => {
+    if (
+      !autoOpenActions ||
+      hasAutoOpenedActionsRef.current ||
+      !hasHydratedPersistedChat
+    )
+      return
+    hasAutoOpenedActionsRef.current = true
+    userDismissedEmptyChatActionsRef.current = false
+    setShowChatActions(true)
+    chatActionsIconRotation.value = withTiming(1, {
+      duration: 120,
+      easing: Easing.out(Easing.cubic),
+    })
+    chatActionsProgress.value = withTiming(1, {
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+    })
+  }, [
+    autoOpenActions,
+    hasHydratedPersistedChat,
+    chatActionsIconRotation,
+    chatActionsProgress,
+  ])
+
+  // Fresh / empty chat: expand ✨ quick actions until the user collapses them
+  // or the conversation leaves the empty state.
+  useEffect(() => {
+    if (!hasHydratedPersistedChat) return
+
+    const inEmptyCoachContext =
+      !hasChatStarted &&
+      !isLoading &&
+      !planningState.isActive &&
+      !generatedPlanContent
+
+    if (!inEmptyCoachContext) return
+    if (userDismissedEmptyChatActionsRef.current) return
+
+    setShowChatActions(true)
+    chatActionsProgress.value = withTiming(1, {
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+    })
+    chatActionsIconRotation.value = withTiming(1, {
+      duration: 120,
+      easing: Easing.out(Easing.cubic),
+    })
+  }, [
+    hasHydratedPersistedChat,
+    hasChatStarted,
+    isLoading,
+    planningState.isActive,
+    generatedPlanContent,
+    chatActionsProgress,
+    chatActionsIconRotation,
+  ])
+
+  // Keeps the messages list invisible while persisted history hydrates, so a
+  // long conversation never paints at the top before the list is anchored.
+  const [messagesListReady, setMessagesListReady] = useState(false)
+  const [messagesListHydrationKey, setMessagesListHydrationKey] = useState(0)
+  const messagesListReadyTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const copyToastVisibleHideTimeoutRef = useRef<ReturnType<
     typeof setTimeout
@@ -1650,21 +1493,7 @@ export function WorkoutChat({
     keyboardVerticalOffsetOverride ??
     (isCompactIOSFullscreen ? 0 : nativeTabBarHeight)
 
-  // NOTE: currentWorkoutExercises, hasWorkout, and activeSuggestions are computed
-  // below using useMemo after effectiveWorkoutContext is defined
-
-  const layoutRef = useRef({
-    root: 0,
-    scrollView: 0,
-    inputContainer: 0,
-  })
-
-  const logLayout = (
-    label: 'root' | 'scrollView' | 'inputContainer',
-    data: { x: number; y: number; width: number; height: number },
-  ) => {
-    layoutRef.current[label] = data.height
-  }
+  // currentWorkoutExercises tracks context + proposed exercises for AI tools.
 
   // Initialize exercise lookup cache on mount
   useEffect(() => {
@@ -1680,6 +1509,11 @@ export function WorkoutChat({
 
     let cancelled = false
     setHasHydratedPersistedChat(false)
+    // Hide the list and reset the "first scroll done" flag so the new chat
+    // (or re-opened chat) hydrates → snaps → reveals, instead of paint-then-
+    // glitch-to-bottom.
+    setMessagesListReady(false)
+    hasInitiallyScrolledRef.current = false
 
     const hydratePersistedChat = async () => {
       const snapshot = await loadCoachChatSnapshot(user?.id, activePersistence)
@@ -1688,6 +1522,7 @@ export function WorkoutChat({
       const restoredMessages = snapshot?.messages ?? []
       const restoredInput = snapshot?.input ?? ''
       const restoredImages = snapshot?.selectedImages ?? []
+      const restoredSavedIds = snapshot?.savedAssistantMessageIds ?? []
       const hasRestoredState =
         restoredMessages.length > 0 ||
         restoredInput.trim().length > 0 ||
@@ -1696,7 +1531,10 @@ export function WorkoutChat({
       setMessages(restoredMessages)
       setInput(restoredInput)
       setSelectedImages(restoredImages)
+      setSavedAssistantMessageIds(new Set(restoredSavedIds))
+      setSavingAssistantMessageIds(new Set())
       setHasChatStarted(hasRestoredState)
+      setMessagesListHydrationKey((key) => key + 1)
 
       if (hasRestoredState) {
         setHasLoadedWelcome(true)
@@ -1704,12 +1542,30 @@ export function WorkoutChat({
       }
 
       setHasHydratedPersistedChat(true)
+
+      // Empty conversation → nothing to scroll past, reveal immediately.
+      if (restoredMessages.length === 0) {
+        setMessagesListReady(true)
+      }
+
+      // Safety net: if FlashList never fires onContentSizeChange (e.g. data
+      // didn't actually change), don't leave the list permanently hidden.
+      if (messagesListReadyTimeoutRef.current) {
+        clearTimeout(messagesListReadyTimeoutRef.current)
+      }
+      messagesListReadyTimeoutRef.current = setTimeout(() => {
+        setMessagesListReady(true)
+      }, 400)
     }
 
     void hydratePersistedChat()
 
     return () => {
       cancelled = true
+      if (messagesListReadyTimeoutRef.current) {
+        clearTimeout(messagesListReadyTimeoutRef.current)
+        messagesListReadyTimeoutRef.current = null
+      }
     }
   }, [activePersistence, isFocused, mode, user?.id])
 
@@ -1727,6 +1583,7 @@ export function WorkoutChat({
         messages,
         input,
         selectedImages,
+        savedAssistantMessageIds: Array.from(savedAssistantMessageIds),
       })
     }, 250)
 
@@ -1741,6 +1598,7 @@ export function WorkoutChat({
     hasHydratedPersistedChat,
     input,
     messages,
+    savedAssistantMessageIds,
     selectedImages,
     user?.id,
   ])
@@ -1762,6 +1620,7 @@ export function WorkoutChat({
       const hasNewMessage = merged.length !== messagesRef.current.length
 
       if (hasNewMessage) {
+        closeChatActionsRef.current?.()
         setMessages(merged)
         setHasChatStarted(true)
         setHasLoadedWelcome(true)
@@ -1770,6 +1629,7 @@ export function WorkoutChat({
           messages: merged,
           input,
           selectedImages,
+          savedAssistantMessageIds: Array.from(savedAssistantMessageIds),
         })
       }
 
@@ -1777,7 +1637,13 @@ export function WorkoutChat({
     } catch (error) {
       console.error('[WorkoutChat] Error ingesting proactive coach messages:', error)
     }
-  }, [activePersistence, input, selectedImages, user?.id])
+  }, [
+    activePersistence,
+    input,
+    savedAssistantMessageIds,
+    selectedImages,
+    user?.id,
+  ])
 
   useEffect(() => {
     if (!hasHydratedPersistedChat || activePersistence.kind !== 'main') return
@@ -2064,73 +1930,10 @@ export function WorkoutChat({
     [effectiveWorkoutContext, proposedWorkout],
   )
 
-  const hasWorkout = currentWorkoutExercises.length > 0
   const hasResettableChatState =
     messages.length > 0 ||
     input.trim().length > 0 ||
     selectedImages.length > 0
-
-  const primaryGoalLabel = useMemo(() => {
-    const primaryGoal = profile?.goals?.[0]
-    if (!primaryGoal) return 'your goal'
-    return GOAL_PROMPT_LABELS[primaryGoal] || primaryGoal.replace(/_/g, ' ')
-  }, [profile?.goals])
-
-  const suggestions: SuggestionsConfig = useMemo(
-    () =>
-      customSuggestions ||
-      buildDefaultSuggestions({
-        primaryGoalLabel,
-        hasWorkout,
-        currentWorkoutExercises,
-      }),
-    [customSuggestions, currentWorkoutExercises, hasWorkout, primaryGoalLabel],
-  )
-
-  // Update suggestions based on state
-  const activeSuggestions = useMemo(
-    () => ({
-      ...suggestions,
-      main: (hasWorkout
-        ? [
-            {
-              id: 'adjust_workout',
-              text: 'Adjust Workout',
-              icon: 'options-outline',
-            },
-            ...suggestions.main.filter((s) => s.id !== 'plan_workout'),
-          ]
-        : suggestions.main
-      ).filter((s) => (s as { id?: string }).id !== 'view_stats'),
-    }),
-    [suggestions, hasWorkout],
-  )
-
-  useEffect(() => {
-    if (
-      generatedPlanContent ||
-      planningState.isActive ||
-      isLoading ||
-      hasChatStarted ||
-      messages.some((m) => m.role === 'user') ||
-      input.trim()
-    ) {
-      return
-    }
-
-    requestAnimationFrame(() => {
-      suggestionsScrollRef.current?.scrollTo({ x: 0, animated: false })
-    })
-  }, [
-    activeSuggestions,
-    generatedPlanContent,
-    hasChatStarted,
-    input,
-    isLoading,
-    messages,
-    planningState.isActive,
-    suggestionMode,
-  ])
 
   useEffect(() => {
     let isMounted = true
@@ -2493,12 +2296,87 @@ export function WorkoutChat({
     }
   }
 
-  // Open native iOS attachment sheet
+  // Toggle the ✨ quick-actions menu (Create Workout / Program) above the composer.
+  // Animation is driven on the UI thread via shared values so the menu opens
+  // and closes instantly regardless of how busy React's commit phase is (the
+  // chat list re-renders, FlashList layout, etc).
   const showImagePickerActionSheet = () => {
     haptic('light')
-    Keyboard.dismiss()
-    router.push('/chat-attachment')
+    const next = chatActionsProgress.value < 0.5
+    if (next) {
+      userDismissedEmptyChatActionsRef.current = false
+    } else if (!hasChatStarted) {
+      userDismissedEmptyChatActionsRef.current = true
+    }
+    chatActionsProgress.value = withTiming(next ? 1 : 0, {
+      duration: next ? 130 : 100,
+      easing: next ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+    })
+    chatActionsIconRotation.value = withTiming(next ? 1 : 0, {
+      duration: 120,
+      easing: Easing.out(Easing.cubic),
+    })
+    setShowChatActions(next)
   }
+
+  const closeChatActions = () => {
+    chatActionsProgress.value = withTiming(0, {
+      duration: 100,
+      easing: Easing.in(Easing.cubic),
+    })
+    chatActionsIconRotation.value = withTiming(0, {
+      duration: 120,
+      easing: Easing.out(Easing.cubic),
+    })
+    setShowChatActions(false)
+  }
+  closeChatActionsRef.current = closeChatActions
+
+  const handleCreateWorkoutAction = () => {
+    haptic('light')
+    closeChatActions()
+    void handleSendMessage(undefined, {
+      overrideInput: 'Create a workout for me',
+      hiddenPromptOverride:
+        'The user tapped the "Create Workout" quick action. Do NOT create the workout yet. First ask 1–2 short clarifying questions to understand exactly what they want — for example which split or muscle groups (push/pull/legs/upper/lower/full body), how much time they have, available equipment, and any specific focus or constraint. Keep the questions brief and conversational, ideally combined into a single message. Only create the actual workout in a later turn, after they reply.',
+    })
+  }
+
+  const handleCreateProgramAction = () => {
+    haptic('light')
+    closeChatActions()
+    void handleSendMessage(undefined, {
+      overrideInput: 'Create a training program for me',
+      hiddenPromptOverride:
+        'The user tapped the "Create Program" quick action. Do NOT draft the program yet. First ask 1–2 short clarifying questions to nail down the program — for example primary goal (build muscle / get stronger / lose fat / general fitness), how many days per week they can train, available equipment, and how many weeks the program should run. Keep the questions brief and conversational, ideally combined into a single message. Only create the actual program in a later turn, after they reply.',
+    })
+  }
+
+  const chatActionsSparklesStyle = useAnimatedStyle(() => ({
+    opacity: 1 - chatActionsIconRotation.value,
+    transform: [
+      { scale: 1 - chatActionsIconRotation.value * 0.15 },
+    ],
+  }))
+
+  const chatActionsCloseStyle = useAnimatedStyle(() => ({
+    opacity: chatActionsIconRotation.value,
+    transform: [
+      { scale: 0.85 + chatActionsIconRotation.value * 0.15 },
+    ],
+  }))
+
+  // Drives both fade/translate AND maxHeight collapse so the slot doesn't
+  // take vertical space when closed (input stays flush against the keyboard).
+  const chatActionsMenuStyle = useAnimatedStyle(() => {
+    const p = chatActionsProgress.value
+    return {
+      opacity: p,
+      transform: [{ translateY: (1 - p) * 4 }],
+      maxHeight: p * 104,
+    }
+  })
+
 
   // Launch camera
   const launchCamera = async () => {
@@ -2957,6 +2835,10 @@ export function WorkoutChat({
       forceImages?: string[] // bypass selectedImages state for immediate sends
       overrideInput?: string // bypass input state for immediate sends
       scanMode?: 'food_label' // routes request to Gemini OCR instead of GPT-4o
+      // When set, the user sees `overrideInput` in chat but the API receives
+      // this longer/richer instruction. Useful for quick-action buttons that
+      // want to bias the AI's response without surfacing the full prompt.
+      hiddenPromptOverride?: string
     },
   ) => {
     const isResend = Boolean(options?.existingUserMessageId)
@@ -2970,6 +2852,10 @@ export function WorkoutChat({
     const messageContent =
       hiddenPrompt || typedInput || (hasImages ? 'Please log this meal.' : '')
     if ((!messageContent && !hasImages) || isLoading) return
+
+    if (showChatActions) {
+      closeChatActions()
+    }
 
     setHasChatStarted(true)
 
@@ -3034,10 +2920,11 @@ export function WorkoutChat({
       }
     }
 
-    let hiddenPromptContent: string | undefined
+    let hiddenPromptContent: string | undefined = options?.hiddenPromptOverride
 
     // We let the AI decide if it should generate a workout plan based on the system prompt.
-    // hiddenPromptContent is only set by specific planning flows (like the wizard).
+    // hiddenPromptContent is only set by specific planning flows (like the wizard) or
+    // quick-action buttons that pass `hiddenPromptOverride` (e.g. Create Workout / Program).
 
     setIsLoading(true)
 
@@ -3352,6 +3239,7 @@ export function WorkoutChat({
   const handleNewChat = () => {
     haptic('light')
     closeWizardAndRestoreTabBar()
+    userDismissedEmptyChatActionsRef.current = false
     setMessages([])
     setHasChatStarted(false)
     setInput('')
@@ -3362,9 +3250,10 @@ export function WorkoutChat({
     setGeneratedPlanContent(null)
     setParsedWorkout(null)
     setParsedProgram(null)
+    setSavedAssistantMessageIds(new Set())
+    setSavingAssistantMessageIds(new Set())
     setHandoffWorkoutContext(null)
     setPendingAutoSendMessage(null)
-    setSuggestionMode('main')
     inputRef.current?.clear()
     Keyboard.dismiss()
 
@@ -3377,94 +3266,8 @@ export function WorkoutChat({
       messages: [],
       input: '',
       selectedImages: [],
+      savedAssistantMessageIds: [],
     })
-  }
-
-  const handleSuggestionPress = (
-    item:
-      | string
-      | SuggestionPromptOption
-      | { id: string; text: string; icon: string },
-  ) => {
-    // 1. Handle object-based menu items (Main, Adjust Workout)
-    if (typeof item === 'object') {
-      if ('prompt' in item) {
-        handleSendMessage(item.prompt)
-        setSuggestionMode('main')
-        return
-      }
-
-      if (item.id === 'plan_workout') {
-        haptic('light')
-        void openWorkoutPlanningWizard()
-        return
-      }
-
-      if (item.id === 'adjust_workout') {
-        haptic('light')
-        setSuggestionMode('adjust_workout')
-        return
-      }
-
-      if (item.id === 'add_exercises') {
-        // Send hidden prompt for adding exercises
-        const prompt = `Suggest 2-3 exercises that would complement my current workout: ${currentWorkoutExercises.join(
-          ', ',
-        )}. Format response as a JSON list: [{"name": "Exercise Name", "sets": 3, "reps": "10-12"}]`
-        handleSendMessage(prompt)
-        setSuggestionMode('main')
-        return
-      }
-
-      if (item.id === 'replace_exercise_menu') {
-        setSuggestionMode('replace_exercise')
-        return
-      }
-
-      if (item.id === 'log_meal') {
-        haptic('light')
-        setIsFoodScannerVisible(true)
-        return
-      }
-
-      if (item.id === 'view_stats') {
-        haptic('light')
-        handleSendMessage(getStatsSnapshotPrompt(weightUnit))
-        setSuggestionMode('main')
-        return
-      }
-
-      if (item.id === 'back_to_main') {
-        setSuggestionMode('main')
-        return
-      }
-
-      if (item.id === 'tell_me_about') {
-        setSuggestionMode('tell_me_about')
-        return
-      }
-
-      if (item.id === 'how_to') {
-        setSuggestionMode('how_to')
-        return
-      } else {
-        setInput((prev) => prev + item)
-        setSuggestionMode('main')
-        inputRef.current?.focus()
-      }
-    } else {
-      // 2. Handle string-based suggestion items (Exercise names)
-      if (suggestionMode === 'replace_exercise') {
-        setExerciseToReplace(item) // Track which exercise we're replacing
-        const prompt = `I want to replace "${item}" in my current workout with a similar exercise. Suggest 3 alternatives. Format response as a JSON list: [{"name": "Exercise Name", "sets": 3, "reps": "10-12"}]`
-        handleSendMessage(prompt)
-        setSuggestionMode('main')
-      } else {
-        // Default: append text to input
-        setInput((prev) => prev + (prev ? ' ' : '') + item)
-        inputRef.current?.focus()
-      }
-    }
   }
 
   const handleWizardComplete = async (data: WorkoutPlanningData) => {
@@ -4016,10 +3819,18 @@ export function WorkoutChat({
     await runStart()
   }
 
-  const handleSaveRoutine = async () => {
-    if (isLoading || !generatedPlanContent) return
+  const handleSaveRoutine = async (savingMessageId?: string) => {
+    if (!generatedPlanContent) return
+    if (savingMessageId && savedAssistantMessageIds.has(savingMessageId)) return
+    if (savingMessageId && savingAssistantMessageIds.has(savingMessageId)) return
 
-    setIsLoading(true)
+    if (savingMessageId) {
+      setSavingAssistantMessageIds((prev) => {
+        const next = new Set(prev)
+        next.add(savingMessageId)
+        return next
+      })
+    }
     haptic('medium')
 
     try {
@@ -4055,12 +3866,22 @@ export function WorkoutChat({
         routineData = converted
       }
 
-      const routine = await createRoutineFromTemplate(user.id, routineData)
+      await createRoutineFromTemplate(user.id, routineData)
 
-      router.push({
-        pathname: '/routine/[routineId]',
-        params: { routineId: routine.id },
-      })
+      if (savingMessageId) {
+        setSavedAssistantMessageIds((prev) => {
+          if (prev.has(savingMessageId)) return prev
+          const next = new Set(prev)
+          next.add(savingMessageId)
+          return next
+        })
+      }
+
+      hapticSuccess()
+      // Keep the "Saved" UI visible briefly before navigating, so the user sees
+      // the success state before the library screen takes over.
+      await new Promise((resolve) => setTimeout(resolve, 650))
+      router.push('/routines')
     } catch (error) {
       console.error('Error creating routine:', error)
 
@@ -4068,17 +3889,33 @@ export function WorkoutChat({
         error instanceof Error ? error.message : 'Failed to create routine'
       Alert.alert('Error', `${errorMessage}. Please try again.`)
     } finally {
-      setIsLoading(false)
+      if (savingMessageId) {
+        setSavingAssistantMessageIds((prev) => {
+          if (!prev.has(savingMessageId)) return prev
+          const next = new Set(prev)
+          next.delete(savingMessageId)
+          return next
+        })
+      }
     }
   }
 
   const handleSaveProgram = async (
     programOverride?: ParsedProgramDisplay | null,
+    savingMessageId?: string,
   ) => {
     const programToSave = programOverride ?? parsedProgram
     if (isSavingProgram || !programToSave) return
+    if (savingMessageId && savedAssistantMessageIds.has(savingMessageId)) return
 
     setIsSavingProgram(true)
+    if (savingMessageId) {
+      setSavingAssistantMessageIds((prev) => {
+        const next = new Set(prev)
+        next.add(savingMessageId)
+        return next
+      })
+    }
     haptic('medium')
 
     let createdProgramId: string | null = null
@@ -4110,8 +3947,19 @@ export function WorkoutChat({
         createdRoutineIds.push(savedRoutine.id)
       }
 
+      if (savingMessageId) {
+        setSavedAssistantMessageIds((prev) => {
+          if (prev.has(savingMessageId)) return prev
+          const next = new Set(prev)
+          next.add(savingMessageId)
+          return next
+        })
+      }
+
       hapticSuccess()
-      await new Promise((resolve) => setTimeout(resolve, 450))
+      // Keep the "Saved" UI visible briefly before navigating, so the user sees
+      // the success state before the library screen takes over.
+      await new Promise((resolve) => setTimeout(resolve, 650))
       router.push('/routines')
     } catch (error) {
       console.error('Error saving program:', error)
@@ -4137,6 +3985,14 @@ export function WorkoutChat({
       Alert.alert('Error', `${errorMessage}. Please try again.`)
     } finally {
       setIsSavingProgram(false)
+      if (savingMessageId) {
+        setSavingAssistantMessageIds((prev) => {
+          if (!prev.has(savingMessageId)) return prev
+          const next = new Set(prev)
+          next.delete(savingMessageId)
+          return next
+        })
+      }
     }
   }
 
@@ -4148,7 +4004,6 @@ export function WorkoutChat({
         style={[styles.container, { backgroundColor: colors.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={keyboardVerticalOffset}
-        onLayout={(e) => logLayout('root', e.nativeEvent.layout)}
       >
         <Modal
           visible={planningState.isActive && planningState.step === 'wizard'}
@@ -4207,9 +4062,21 @@ export function WorkoutChat({
               </>
             )}
             <FlashList<Message>
+              key={`${activePersistenceKey}:${messagesListHydrationKey}`}
               ref={messagesListRef}
-              style={styles.messagesContainer}
+              style={[
+                styles.messagesContainer,
+                !messagesListReady && styles.messagesContainerHidden,
+              ]}
               data={messages}
+              initialScrollIndex={
+                messages.length > 0 ? messages.length - 1 : undefined
+              }
+              maintainVisibleContentPosition={{
+                autoscrollToBottomThreshold: AUTO_SCROLL_BOTTOM_THRESHOLD,
+                animateAutoScrollToBottom: false,
+                startRenderingFromBottom: true,
+              }}
               extraData={{
                 isLoading,
                 isWelcomeTyping,
@@ -4356,14 +4223,19 @@ export function WorkoutChat({
                                 {messageParsedProgram ? (
                                   <ProgramCard
                                     program={messageParsedProgram}
-                                    coachImage={coach.image}
-                                    username={profile?.display_name}
+                                    isSaved={savedAssistantMessageIds.has(
+                                      message.id,
+                                    )}
+                                    isSaving={savingAssistantMessageIds.has(
+                                      message.id,
+                                    )}
                                     onSaveProgram={async () => {
                                       setParsedWorkout(null)
                                       setParsedProgram(messageParsedProgram)
                                       setGeneratedPlanContent(message.content)
                                       await handleSaveProgram(
                                         messageParsedProgram,
+                                        message.id,
                                       )
                                     }}
                                   />
@@ -4372,6 +4244,12 @@ export function WorkoutChat({
                                     workout={messageParsedWorkout}
                                     coachImage={coach.image}
                                     username={profile?.display_name}
+                                    isSaved={savedAssistantMessageIds.has(
+                                      message.id,
+                                    )}
+                                    isSaving={savingAssistantMessageIds.has(
+                                      message.id,
+                                    )}
                                     onStartWorkout={() => {
                                       setParsedProgram(null)
                                       setParsedWorkout(messageParsedWorkout)
@@ -4379,10 +4257,14 @@ export function WorkoutChat({
                                       setTimeout(handleStartWorkout, 0)
                                     }}
                                     onSaveRoutine={() => {
+                                      const savingId = message.id
                                       setParsedProgram(null)
                                       setParsedWorkout(messageParsedWorkout)
                                       setGeneratedPlanContent(message.content)
-                                      setTimeout(handleSaveRoutine, 0)
+                                      setTimeout(
+                                        () => handleSaveRoutine(savingId),
+                                        0,
+                                      )
                                     }}
                                   />
                                 ) : null}
@@ -5284,14 +5166,11 @@ export function WorkoutChat({
                 Platform.OS === 'ios' ? 'interactive' : 'on-drag'
               }
               showsVerticalScrollIndicator={false}
-              onLayout={(e: LayoutChangeEvent) =>
-                logLayout('scrollView', e.nativeEvent.layout)
-              }
               onContentSizeChange={() => {
-                if (
-                  (messages.length > 0 || isLoading || isWelcomeTyping) &&
-                  shouldAutoScrollRef.current
-                ) {
+                const hasContent =
+                  messages.length > 0 || isLoading || isWelcomeTyping
+
+                if (hasContent && shouldAutoScrollRef.current) {
                   // Always snap (non-animated) on content size changes:
                   // - During initial layout, FlashList re-measures items and
                   //   fires this repeatedly; animating each call produces a
@@ -5299,6 +5178,21 @@ export function WorkoutChat({
                   // - During streaming, snap also feels smoother than queueing
                   //   an animation per token.
                   scrollToBottom({ animated: false })
+                }
+
+                // Once the list has actually laid out content, reveal it on
+                // the next frame so the snap above paints first. This is what
+                // prevents the "open near the top, then glitch to the bottom"
+                // jank when re-entering a chat with history.
+                if (!messagesListReady && hasContent) {
+                  if (messagesListReadyTimeoutRef.current) {
+                    clearTimeout(messagesListReadyTimeoutRef.current)
+                    messagesListReadyTimeoutRef.current = null
+                  }
+                  requestAnimationFrame(() => {
+                    hasInitiallyScrolledRef.current = true
+                    setMessagesListReady(true)
+                  })
                 }
               }}
               onScroll={handleMessagesScroll}
@@ -5343,137 +5237,6 @@ export function WorkoutChat({
               }
             />
 
-            {/* Suggestions Row */}
-            {!generatedPlanContent &&
-              !planningState.isActive &&
-              !isLoading &&
-              !isWelcomeTyping &&
-              !hasChatStarted &&
-              !messages.some((m) => m.role === 'user') &&
-              !input.trim() && (
-                <View style={styles.suggestionsContainer}>
-                  <ScrollView
-                    ref={suggestionsScrollRef}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.suggestionsContent}
-                    keyboardShouldPersistTaps="handled"
-                    style={{ overflow: 'visible' }}
-                  >
-                    {suggestionMode !== 'main' && (
-                      <AnimatedSuggestion
-                        index={0}
-                        isBack
-                        colors={colors}
-                        style={styles.suggestionBackBubble}
-                        onPress={() => setSuggestionMode('main')}
-                      />
-                    )}
-
-                    {suggestionMode === 'main'
-                      ? activeSuggestions.main.map((item, idx) => (
-                          <AnimatedSuggestion
-                            key={item.id}
-                            index={idx}
-                            text={item.text}
-                            colors={colors}
-                            style={[
-                              styles.suggestionBubble,
-                              (item.id === 'plan_workout' ||
-                                item.id === 'adjust_workout') &&
-                                styles.planWorkoutBubble,
-                              (item.id === 'tell_me_about' ||
-                                item.id === 'how_to') && {
-                                borderWidth: 0,
-                                borderColor: 'transparent',
-                              },
-                            ]}
-                            textStyle={[
-                              styles.suggestionText,
-                              (item.id === 'plan_workout' ||
-                                item.id === 'adjust_workout') &&
-                                styles.planWorkoutText,
-                            ]}
-                            icon={
-                              item.icon ? (
-                                <Ionicons
-                                  name={
-                                    item.id === 'plan_workout' ||
-                                    item.id === 'adjust_workout'
-                                      ? 'flash'
-                                      : (item.icon as any)
-                                  }
-                                  size={16}
-                                  color={
-                                    item.id === 'plan_workout' ||
-                                    item.id === 'adjust_workout'
-                                      ? colors.brandPrimary
-                                      : colors.textPrimary
-                                  }
-                                  style={{ marginRight: 8 }}
-                                />
-                              ) : null
-                            }
-                            onPress={() => handleSuggestionPress(item)}
-                          />
-                        ))
-                      : suggestionMode === 'replace_exercise'
-                      ? currentWorkoutExercises.map((exerciseName, index) => (
-                          <AnimatedSuggestion
-                            key={index}
-                            index={index + 1}
-                            text={exerciseName}
-                            colors={colors}
-                            style={styles.suggestionBubble}
-                            textStyle={styles.suggestionText}
-                            onPress={() => handleSuggestionPress(exerciseName)}
-                          />
-                        ))
-                      : suggestionMode === 'adjust_workout'
-                      ? (
-                          activeSuggestions.adjust_workout || []
-                        ).map((item, index) => (
-                          <AnimatedSuggestion
-                            key={item.id}
-                            index={index + 1}
-                            text={item.text}
-                            colors={colors}
-                            style={[
-                              styles.suggestionBubble,
-                              styles.planWorkoutBubble,
-                            ]}
-                            textStyle={[
-                              styles.suggestionText,
-                              styles.planWorkoutText,
-                            ]}
-                            icon={
-                              <Ionicons
-                                name={item.icon as any}
-                                size={14}
-                                color={colors.brandPrimary}
-                                style={{ marginRight: 8 }}
-                              />
-                            }
-                            onPress={() => handleSuggestionPress(item)}
-                          />
-                        ))
-                      : (
-                          activeSuggestions[suggestionMode] || []
-                        ).map((item, index) => (
-                          <AnimatedSuggestion
-                            key={typeof item === 'string' ? item : item.text}
-                            index={index + 1}
-                            text={typeof item === 'string' ? item : item.text}
-                            colors={colors}
-                            style={styles.suggestionBubble}
-                            textStyle={styles.suggestionText}
-                            onPress={() => handleSuggestionPress(item)}
-                          />
-                        ))}
-                  </ScrollView>
-                </View>
-              )}
-
             {/* Input Area */}
             <View
               style={[
@@ -5489,10 +5252,91 @@ export function WorkoutChat({
                       : Math.max(bottomSafeInset, 12) + closedTabBarPadding,
                 },
               ]}
-              onLayout={(e) =>
-                logLayout('inputContainer', e.nativeEvent.layout)
-              }
             >
+              {/* Chat quick actions — opens above the composer when the user
+                  taps ✨ (still inside KeyboardAvoidingView with the keyboard). */}
+              {/* Always-mounted ✨ actions menu slot. Visibility is driven
+                  on the UI thread via `chatActionsProgress` so the animation
+                  is independent of React's commit phase (the chat list +
+                  FlashList layout would otherwise stall the commit by 600ms+
+                  on every toggle). When closed, `maxHeight: 0` collapses the
+                  slot so there's no touch target to worry about, hence the
+                  permanent `box-none`. */}
+              <AnimatedReanimated.View
+                style={[styles.chatActionsMenu, chatActionsMenuStyle]}
+                pointerEvents="box-none"
+              >
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleCreateWorkoutAction}
+                  style={[
+                    styles.chatActionSlot,
+                    styles.chatActionShadow,
+                    styles.chatActionPill,
+                  ]}
+                >
+                  <View style={styles.chatActionInner}>
+                    <View style={styles.chatActionIconWrapper}>
+                      <Ionicons
+                        name="flash"
+                        size={16}
+                        color={colors.textPrimary}
+                      />
+                      <View style={styles.chatActionSparkleBadge}>
+                        <Ionicons
+                          name="sparkles"
+                          size={9}
+                          color={colors.brandPrimary}
+                        />
+                      </View>
+                    </View>
+                    <Text
+                      style={styles.chatActionLabel}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      Create Workout
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleCreateProgramAction}
+                  style={[
+                    styles.chatActionSlot,
+                    styles.chatActionShadow,
+                    styles.chatActionPill,
+                  ]}
+                >
+                  <View style={styles.chatActionInner}>
+                    <View style={styles.chatActionIconWrapper}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={16}
+                        color={colors.textPrimary}
+                      />
+                      <View style={styles.chatActionSparkleBadge}>
+                        <Ionicons
+                          name="sparkles"
+                          size={9}
+                          color={colors.brandPrimary}
+                        />
+                      </View>
+                    </View>
+                    <Text
+                      style={styles.chatActionLabel}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      Create Program
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </AnimatedReanimated.View>
+
               {/* Image Thumbnails Preview */}
               {selectedImages.length > 0 && (
                 <ScrollView
@@ -5563,16 +5407,50 @@ export function WorkoutChat({
                           style={styles.addImageButton}
                           onPress={showImagePickerActionSheet}
                           disabled={isLoading}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            showChatActions
+                              ? 'Close chat actions'
+                              : 'Open chat actions'
+                          }
+                          accessibilityState={{ expanded: showChatActions }}
                         >
-                          <Ionicons
-                            name="add"
-                            size={22}
-                            color={
-                              isLoading
-                                ? colors.textPlaceholder
-                                : colors.textPrimary
-                            }
-                          />
+                          <View style={styles.chatActionsTriggerIconStack}>
+                            <AnimatedReanimated.View
+                              style={[
+                                styles.chatActionsTriggerIcon,
+                                chatActionsSparklesStyle,
+                              ]}
+                              pointerEvents="none"
+                            >
+                              <Ionicons
+                                name="sparkles"
+                                size={18}
+                                color={
+                                  isLoading
+                                    ? colors.textPlaceholder
+                                    : colors.brandPrimary
+                                }
+                              />
+                            </AnimatedReanimated.View>
+                            <AnimatedReanimated.View
+                              style={[
+                                styles.chatActionsTriggerIcon,
+                                chatActionsCloseStyle,
+                              ]}
+                              pointerEvents="none"
+                            >
+                              <Ionicons
+                                name="close"
+                                size={20}
+                                color={
+                                  isLoading
+                                    ? colors.textPlaceholder
+                                    : colors.textPrimary
+                                }
+                              />
+                            </AnimatedReanimated.View>
+                          </View>
                         </TouchableOpacity>
                       </LiquidGlassSurface>
                     </View>
@@ -6007,6 +5885,12 @@ function createStyles(
   isDark: boolean,
   mode: 'fullscreen' | 'sheet',
 ) {
+  const chatActionPillBg = isDark
+    ? mode === 'sheet'
+      ? colors.surfaceSubtle
+      : colors.surfaceCard
+    : '#f4f4f5'
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -6122,6 +6006,9 @@ function createStyles(
     },
     messagesContainer: {
       flex: 1,
+    },
+    messagesContainerHidden: {
+      opacity: 0,
     },
     messagesContent: {
       flexGrow: 1,
@@ -6561,6 +6448,69 @@ function createStyles(
       paddingHorizontal: 16,
       paddingTop: 8,
     },
+    chatActionsMenu: {
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'stretch',
+      justifyContent: 'center',
+      gap: 8,
+      paddingTop: 4,
+      paddingBottom: 10,
+      paddingHorizontal: 2,
+      overflow: 'visible',
+    },
+    chatActionSlot: {
+      flex: 1,
+      minWidth: 0,
+    },
+    chatActionShadow: {
+      borderRadius: 100,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    chatActionPill: {
+      borderRadius: 100,
+      overflow: 'visible',
+      backgroundColor: chatActionPillBg,
+      borderWidth: 0,
+    },
+    chatActionInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      gap: 6,
+    },
+    chatActionIconWrapper: {
+      width: 24,
+      height: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    chatActionSparkleBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -4,
+      width: 15,
+      height: 15,
+      borderRadius: 8,
+      borderWidth: 2,
+      backgroundColor: chatActionPillBg,
+      borderColor: chatActionPillBg,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    chatActionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      letterSpacing: -0.15,
+    },
     inputWrapper: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -6656,58 +6606,6 @@ function createStyles(
       color: colors.textSecondary,
       fontStyle: 'italic',
     },
-    // Suggestion bubbles
-    suggestionsContainer: {
-      paddingTop: 20, // Increased to allow for bounce overshoot
-      marginTop: -8, // Compensate for extra padding to keep layout consistent
-      paddingBottom: 12,
-      backgroundColor: colors.bg,
-      overflow: 'visible',
-      zIndex: 10,
-    },
-    suggestionsContent: {
-      paddingHorizontal: 16,
-      gap: 8,
-      overflow: 'visible',
-    },
-    suggestionBubble: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark
-        ? mode === 'sheet'
-          ? colors.surfaceSubtle
-          : colors.surfaceCard
-        : '#f4f4f5',
-      paddingHorizontal: 24,
-      paddingVertical: 16,
-      borderRadius: 100,
-      borderWidth: 0,
-    },
-    planWorkoutBubble: {
-      backgroundColor: `${colors.brandPrimary}15`,
-    },
-    planWorkoutText: {
-      color: colors.brandPrimary,
-      fontWeight: '600',
-    },
-    suggestionBackBubble: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      backgroundColor: isDark
-        ? mode === 'sheet'
-          ? colors.surfaceSubtle
-          : colors.surfaceCard
-        : '#f4f4f5',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 0,
-    },
-    suggestionText: {
-      fontSize: 15,
-      color: colors.textPrimary,
-      fontWeight: '500',
-    },
     // Image preview in input area
     imagePreviewContainer: {
       paddingHorizontal: 16,
@@ -6781,6 +6679,17 @@ function createStyles(
       borderRadius: 20,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    chatActionsTriggerIconStack: {
+      width: 22,
+      height: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chatActionsTriggerIcon: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     // Images in messages
     messageImagesGrid: {

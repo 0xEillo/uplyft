@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
+  ActivityIndicator,
   Image,
   ImageSourcePropType,
   StyleSheet,
@@ -23,6 +24,10 @@ interface WorkoutCardProps {
   username?: string
   onStartWorkout?: () => void
   onSaveRoutine?: () => void
+  /** Parent-controlled: routine has been saved to library (persistent). */
+  isSaved?: boolean
+  /** Parent-controlled: save request currently in flight. */
+  isSaving?: boolean
 }
 
 export function WorkoutCard({
@@ -31,6 +36,8 @@ export function WorkoutCard({
   username,
   onStartWorkout,
   onSaveRoutine,
+  isSaved = false,
+  isSaving = false,
 }: WorkoutCardProps) {
   const { isDark } = useTheme()
   const colors = useThemedColors()
@@ -309,15 +316,38 @@ export function WorkoutCard({
             )}
             {onSaveRoutine && (
               <TouchableOpacity
-                style={styles.saveIconButton}
+                style={[
+                  styles.saveIconButton,
+                  isSaved && styles.saveIconButtonSaved,
+                ]}
                 onPress={onSaveRoutine}
-                activeOpacity={0.7}
+                activeOpacity={isSaved || isSaving ? 1 : 0.7}
+                disabled={isSaved || isSaving}
+                accessibilityLabel={
+                  isSaved
+                    ? 'Workout saved to library'
+                    : isSaving
+                    ? 'Saving workout'
+                    : 'Save workout to library'
+                }
+                accessibilityState={{ disabled: isSaved || isSaving }}
               >
-                <Ionicons
-                  name="bookmark-outline"
-                  size={18}
-                  color={isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary}
-                />
+                {isSaving ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isDark ? 'rgba(255,255,255,0.85)' : colors.textPrimary}
+                  />
+                ) : isSaved ? (
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                ) : (
+                  <Ionicons
+                    name="bookmark-outline"
+                    size={18}
+                    color={
+                      isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary
+                    }
+                  />
+                )}
               </TouchableOpacity>
             )}
           </View>
@@ -593,5 +623,13 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+    },
+    saveIconButtonSaved: {
+      backgroundColor: isDark ? '#1E7A46' : '#17803D',
+      shadowColor: isDark ? '#1E7A46' : '#17803D',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 4,
     },
   })
