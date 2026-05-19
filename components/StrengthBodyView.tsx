@@ -1,4 +1,5 @@
 import { BodyHighlighterDual } from "@/components/BodyHighlighterDual";
+import { FriendLeaderboardPreview } from "@/components/FriendLeaderboardPreview";
 import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
@@ -1026,6 +1027,13 @@ export function StrengthBodyView({
             </View>
           </View>
         </View>
+
+        <FriendLeaderboardPreview
+          currentUserScore={overallLevel?.score ?? null}
+          currentUserLevel={overallLevel?.balancedLevel ?? null}
+          currentUserDisplayName={profile?.display_name ?? null}
+          currentUserAvatarUrl={profile?.avatar_url ?? null}
+        />
 
         {showRecoverySection && (
           <>

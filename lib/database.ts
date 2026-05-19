@@ -1022,6 +1022,40 @@ export const database = {
       })[]
     },
 
+    async listFollowingWithStrength(userId: string, limit = 100) {
+      const { data, error } = await supabase
+        .from('follows')
+        .select(
+          `
+          *,
+          followee:profiles!follows_followee_id_fkey (
+            id,
+            display_name,
+            user_tag,
+            avatar_url,
+            overall_strength_score,
+            overall_strength_level
+          )
+        `,
+        )
+        .eq('follower_id', userId)
+        .order('created_at', { ascending: false })
+        .range(0, limit - 1)
+
+      if (error) throw error
+      return (data || []) as (Follow & {
+        followee: Pick<
+          Profile,
+          | 'id'
+          | 'display_name'
+          | 'user_tag'
+          | 'avatar_url'
+          | 'overall_strength_score'
+          | 'overall_strength_level'
+        >
+      })[]
+    },
+
     async isFollowing(followerId: string, followeeId: string) {
       const { data, error } = await supabase
         .from('follows')

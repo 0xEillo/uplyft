@@ -172,6 +172,9 @@ export const AnalyticsEvents = {
   STRENGTH_STATS_VIEWED: 'Strength Stats Viewed',
   VOLUME_STATS_VIEWED: 'Volume Stats Viewed',
   RECOVERY_DETAIL_VIEWED: 'Recovery Detail Viewed',
+  FRIEND_LEADERBOARD_PREVIEW_SHOWN: 'Friend Leaderboard Preview Shown',
+  FRIEND_LEADERBOARD_EXPANDED: 'Friend Leaderboard Expanded',
+  FRIEND_LEADERBOARD_COLLAPSED: 'Friend Leaderboard Collapsed',
 
   // Errors & Performance
   API_ERROR: 'API Error',
@@ -361,6 +364,11 @@ export interface UserProfileProperties extends BaseEventProperties {
 export interface SocialActionProperties extends BaseEventProperties {
   user_id: string
   action: 'follow' | 'unfollow'
+}
+
+export interface FriendLeaderboardProperties extends BaseEventProperties {
+  rank?: number
+  athlete_count?: number
 }
 
 export interface ProfileEditProperties extends BaseEventProperties {
@@ -620,4 +628,7 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.STRENGTH_STATS_VIEWED]: BaseEventProperties
   [AnalyticsEvents.VOLUME_STATS_VIEWED]: BaseEventProperties
   [AnalyticsEvents.RECOVERY_DETAIL_VIEWED]: BaseEventProperties
+  [AnalyticsEvents.FRIEND_LEADERBOARD_PREVIEW_SHOWN]: FriendLeaderboardProperties
+  [AnalyticsEvents.FRIEND_LEADERBOARD_EXPANDED]: FriendLeaderboardProperties
+  [AnalyticsEvents.FRIEND_LEADERBOARD_COLLAPSED]: FriendLeaderboardProperties
 }
