@@ -10,7 +10,7 @@ import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -27,10 +27,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function CreateProgramScreen() {
+  const { programId } = useLocalSearchParams<{ programId?: string }>()
   const router = useRouter()
   const colors = useThemedColors()
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
+
+  const isEditMode = !!programId
 
   const [programName, setProgramName] = useState('')
   const [programDescription, setProgramDescription] = useState('')
@@ -53,24 +56,42 @@ export default function CreateProgramScreen() {
       setIsLoadingRoutines(false)
       return
     }
+
     let cancelled = false
     ;(async () => {
       try {
         const all = await database.workoutRoutines.getAll(user.id)
         if (cancelled) return
-        // Only routines that aren't already in a program can be added here.
-        // Re-assigning routines from one program to another is handled elsewhere.
-        setAvailableRoutines(all.filter((r) => !r.program_id))
+
+        if (isEditMode && programId) {
+          const program = await database.userPrograms.getById(programId, user.id)
+          if (!program) {
+            Alert.alert('Error', 'Program not found.')
+            router.back()
+            return
+          }
+
+          setProgramName(program.name)
+          setProgramDescription(program.description ?? '')
+
+          const inProgram = all.filter((r) => r.program_id === programId)
+          const standalone = all.filter((r) => !r.program_id)
+          setAvailableRoutines([...inProgram, ...standalone])
+          setSelectedRoutineIds(new Set(inProgram.map((r) => r.id)))
+        } else {
+          setAvailableRoutines(all.filter((r) => !r.program_id))
+        }
       } catch (error) {
         console.error('Error loading routines for program selection:', error)
       } finally {
         if (!cancelled) setIsLoadingRoutines(false)
       }
     })()
+
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [isEditMode, programId, router, user])
 
   const handleCancel = useCallback(() => {
     setShouldExit(true)
@@ -89,6 +110,42 @@ export default function CreateProgramScreen() {
     })
   }, [])
 
+  const syncRoutineAssignments = useCallback(
+    async (targetProgramId: string) => {
+      if (!user) return
+
+      const all = await database.workoutRoutines.getAll(user.id)
+      const currentlyAssigned = all
+        .filter((r) => r.program_id === targetProgramId)
+        .map((r) => r.id)
+
+      const toAssign = [...selectedRoutineIds].filter(
+        (id) => !currentlyAssigned.includes(id),
+      )
+      const toUnassign = currentlyAssigned.filter(
+        (id) => !selectedRoutineIds.has(id),
+      )
+
+      await Promise.all([
+        ...toAssign.map((id) =>
+          database.workoutRoutines
+            .update(id, { program_id: targetProgramId })
+            .catch((e) => {
+              console.error('Failed to assign routine to program', id, e)
+            }),
+        ),
+        ...toUnassign.map((id) =>
+          database.workoutRoutines
+            .update(id, { program_id: null })
+            .catch((e) => {
+              console.error('Failed to unassign routine from program', id, e)
+            }),
+        ),
+      ])
+    },
+    [selectedRoutineIds, user],
+  )
+
   const handleSave = useCallback(async () => {
     if (!user) {
       Alert.alert('Error', 'You need to be signed in to create a program.')
@@ -103,39 +160,42 @@ export default function CreateProgramScreen() {
 
     try {
       setIsSaving(true)
-      const created = await database.userPrograms.create(user.id, trimmedName, {
-        description: programDescription.trim() || undefined,
-      })
 
-      // Assign every selected routine to the new program. Run in parallel —
-      // failures shouldn't block the create (the program already exists).
-      if (selectedRoutineIds.size > 0) {
-        const assignments = Array.from(selectedRoutineIds).map((id) =>
-          database.workoutRoutines
-            .update(id, { program_id: created.id })
-            .catch((e) => {
-              console.error('Failed to assign routine to program', id, e)
-            }),
+      if (isEditMode && programId) {
+        await database.userPrograms.update(programId, {
+          name: trimmedName,
+          description: programDescription.trim() || undefined,
+        })
+        await syncRoutineAssignments(programId)
+      } else {
+        const created = await database.userPrograms.create(
+          user.id,
+          trimmedName,
+          {
+            description: programDescription.trim() || undefined,
+          },
         )
-        await Promise.all(assignments)
+        await syncRoutineAssignments(created.id)
       }
 
       hapticSuccess()
-      router.replace({
-        pathname: '/explore/program/[programId]',
-        params: { programId: created.id },
-      })
+      router.back()
     } catch (error) {
-      console.error('Error creating program:', error)
-      Alert.alert('Error', 'Failed to create program. Please try again.')
+      console.error('Error saving program:', error)
+      Alert.alert(
+        'Error',
+        `Failed to ${isEditMode ? 'update' : 'create'} program. Please try again.`,
+      )
     } finally {
       setIsSaving(false)
     }
   }, [
+    isEditMode,
     programDescription,
+    programId,
     programName,
     router,
-    selectedRoutineIds,
+    syncRoutineAssignments,
     user,
   ])
 
@@ -219,7 +279,9 @@ export default function CreateProgramScreen() {
             }
             centerGlass={false}
             centerContent={
-              <Text style={styles.headerTitle}>Create Program</Text>
+              <Text style={styles.headerTitle}>
+                {isEditMode ? 'Edit Program' : 'Create Program'}
+              </Text>
             }
             rightContent={
               <TouchableOpacity
@@ -266,7 +328,7 @@ export default function CreateProgramScreen() {
                 placeholder="e.g., Push Pull Legs, 4-Day Split"
                 placeholderTextColor={colors.textPlaceholder}
                 autoCapitalize="words"
-                autoFocus
+                autoFocus={!isEditMode}
                 returnKeyType="next"
                 maxLength={80}
               />

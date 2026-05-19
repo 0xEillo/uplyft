@@ -315,9 +315,10 @@ const ExerciseItem = React.memo((props: ExerciseItemProps) => {
 ExerciseItem.displayName = 'ExerciseItem'
 
 export default function CreateRoutineScreen() {
-  const { from, routineId } = useLocalSearchParams<{
+  const { from, routineId, programId } = useLocalSearchParams<{
     from?: string
     routineId?: string
+    programId?: string
   }>()
   const router = useRouter()
   const colors = useThemedColors()
@@ -603,6 +604,7 @@ export default function CreateRoutineScreen() {
             notes: routineNotes.trim() || undefined,
             imagePath: imagePath || undefined,
             tintColor: tintColor,
+            programId: programId || undefined,
           },
         )
         routineIdToUse = routine.id

@@ -26,16 +26,26 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   // Identify user when they sign in and sync profile demographics to Mixpanel People
   useEffect(() => {
     if (user) {
-      const properties: Record<string, any> = {
-        $email: user.email || undefined,
-        $name: user.user_metadata?.name || undefined,
+      try {
+        const properties: Record<string, any> = {
+          $email: user.email || undefined,
+          $name: user.user_metadata?.name || undefined,
+        }
+        const filteredProps = Object.fromEntries(
+          Object.entries(properties).filter(([_, v]) => v !== undefined)
+        )
+        mixpanel.identify(user.id)
+        mixpanel.getPeople().set(filteredProps)
+        initSessionReplay(user.id).catch((error) => {
+          if (__DEV__) {
+            console.warn('[Analytics] Session replay init failed:', error)
+          }
+        })
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[Analytics] User identify failed:', error)
+        }
       }
-      const filteredProps = Object.fromEntries(
-        Object.entries(properties).filter(([_, v]) => v !== undefined)
-      )
-      mixpanel.identify(user.id)
-      mixpanel.getPeople().set(filteredProps)
-      initSessionReplay(user.id)
     }
   }, [user])
 
@@ -50,7 +60,13 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     if (profile.goals?.length) props.goals = profile.goals
     if (profile.experience_level) props.experience_level = profile.experience_level
     if (Object.keys(props).length > 0) {
-      mixpanel.getPeople().set(props)
+      try {
+        mixpanel.getPeople().set(props)
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[Analytics] Profile property sync failed:', error)
+        }
+      }
     }
   }, [user?.id, profile])
 
@@ -65,7 +81,13 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     const filteredProps = Object.fromEntries(
       Object.entries(properties).filter(([_, v]) => v !== undefined)
     )
-    mixpanel.registerSuperProperties(filteredProps)
+    try {
+      mixpanel.registerSuperProperties(filteredProps)
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[Analytics] Super property registration failed:', error)
+      }
+    }
   }, [])
 
   const value: AnalyticsContextValue = {

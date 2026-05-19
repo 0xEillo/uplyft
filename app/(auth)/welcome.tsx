@@ -56,7 +56,9 @@ export default function WelcomeScreen() {
       )
       await Promise.all(imageAssets)
     }
-    preloadCoachImages()
+    preloadCoachImages().catch((error) => {
+      console.warn('[Welcome] Failed to preload coach images:', error)
+    })
   }, [])
 
   useEffect(() => {

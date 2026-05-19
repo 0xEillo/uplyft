@@ -201,7 +201,7 @@ export default function ChatScreen() {
     router.push('/chat-settings')
   }, [])
 
-  // Quick-action entry from the My Library "Create new" buttons. When this
+  // Quick-action entry from the My Library "Create new" button. When this
   // param is present we auto-open the ✨ Create Workout / Program menu above
   // the composer.
   const generateIntent = Array.isArray(params.generate)

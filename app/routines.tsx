@@ -10,14 +10,12 @@ import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
-import { getRoutineImageUrl } from '@/lib/utils/routine-images'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
 import { UserProgram, WorkoutRoutineWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -30,6 +28,137 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+function showOptionMenu({
+  title,
+  options,
+  cancelButtonIndex = 0,
+  destructiveButtonIndex,
+  isDark,
+  onSelect,
+}: {
+  title?: string
+  options: string[]
+  cancelButtonIndex?: number
+  destructiveButtonIndex?: number
+  isDark: boolean
+  onSelect: (index: number) => void
+}) {
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        destructiveButtonIndex,
+        userInterfaceStyle: isDark ? 'dark' : 'light',
+        title,
+      },
+      onSelect,
+    )
+    return
+  }
+
+  Alert.alert(
+    title ?? '',
+    undefined,
+    options.map((text, index) => ({
+      text,
+      style:
+        index === destructiveButtonIndex
+          ? 'destructive'
+          : index === cancelButtonIndex
+          ? 'cancel'
+          : 'default',
+      onPress:
+        index === cancelButtonIndex ? undefined : () => onSelect(index),
+    })),
+  )
+}
+
+interface ProgramSectionProps {
+  program: UserProgram
+  programRoutines: WorkoutRoutineWithDetails[]
+  colors: ReturnType<typeof useThemedColors>
+  isDark: boolean
+  onOpenOptions: (program: UserProgram) => void
+  renderRoutineCard: (
+    routine: WorkoutRoutineWithDetails,
+    nested?: boolean,
+  ) => ReactNode
+}
+
+function ProgramSection({
+  program,
+  programRoutines,
+  colors,
+  isDark,
+  onOpenOptions,
+  renderRoutineCard,
+}: ProgramSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const styles = useMemo(
+    () => createProgramSectionStyles(colors, isDark),
+    [colors, isDark],
+  )
+
+  const routinesLabel =
+    programRoutines.length === 1
+      ? '1 routine'
+      : `${programRoutines.length} routines`
+
+  const toggleExpanded = () => {
+    haptic('light')
+    setIsExpanded((prev) => !prev)
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerMain}
+          activeOpacity={0.85}
+          onPress={toggleExpanded}
+        >
+          <View style={styles.headerText}>
+            <Text style={styles.title} numberOfLines={2}>
+              {program.name}
+            </Text>
+            <Text style={styles.subtitle}>{routinesLabel}</Text>
+          </View>
+
+          <Ionicons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.textTertiary}
+            style={styles.chevron}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => onOpenOptions(program)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.menuButton}
+        >
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={20}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {isExpanded && (
+        <View style={styles.routinesContainer}>
+          {programRoutines.length > 0 ? (
+            programRoutines.map((routine) => renderRoutineCard(routine, true))
+          ) : (
+            <Text style={styles.emptyText}>No routines yet</Text>
+          )}
+        </View>
+      )}
+    </View>
+  )
+}
 
 export default function RoutinesScreen() {
   const colors = useThemedColors()
@@ -45,10 +174,6 @@ export default function RoutinesScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [shouldExit, setShouldExit] = useState(false)
   const [startingRoutineId, setStartingRoutineId] = useState<string | null>(null)
-
-  const [activeTab, setActiveTab] = useState<'Routines' | 'Programs'>(
-    'Routines',
-  )
 
   const { isDark } = useTheme()
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
@@ -199,79 +324,265 @@ export default function RoutinesScreen() {
     [],
   )
 
-  const openRoutineOptions = useCallback(
-    (routine: WorkoutRoutineWithDetails) => {
-      haptic('light')
+  const editProgram = useCallback(
+    (program: UserProgram) => {
+      router.push({
+        pathname: '/create-program',
+        params: { programId: program.id },
+      })
+    },
+    [router],
+  )
 
-      if (Platform.OS !== 'ios') {
-        Alert.alert(routine.name, undefined, [
-          { text: 'Edit Routine', onPress: () => editRoutine(routine) },
-          {
-            text: 'Delete Routine',
-            style: 'destructive',
-            onPress: () => deleteRoutine(routine),
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ])
+  const createRoutineForProgram = useCallback(
+    (program: UserProgram) => {
+      router.push({
+        pathname: '/create-routine',
+        params: { programId: program.id },
+      })
+    },
+    [router],
+  )
+
+  const assignRoutineToProgram = useCallback(
+    async (routineId: string, targetProgramId: string) => {
+      try {
+        await database.workoutRoutines.update(routineId, {
+          program_id: targetProgramId,
+        })
+        hapticSuccess()
+        setRoutines((prev) =>
+          prev.map((r) =>
+            r.id === routineId ? { ...r, program_id: targetProgramId } : r,
+          ),
+        )
+      } catch (error) {
+        console.error('Error assigning routine to program:', error)
+        Alert.alert('Error', 'Failed to add routine to program.')
+      }
+    },
+    [],
+  )
+
+  const removeRoutineFromProgram = useCallback(
+    async (routine: WorkoutRoutineWithDetails) => {
+      try {
+        await database.workoutRoutines.update(routine.id, { program_id: null })
+        hapticSuccess()
+        setRoutines((prev) =>
+          prev.map((r) =>
+            r.id === routine.id ? { ...r, program_id: null } : r,
+          ),
+        )
+      } catch (error) {
+        console.error('Error removing routine from program:', error)
+        Alert.alert('Error', 'Failed to remove routine from program.')
+      }
+    },
+    [],
+  )
+
+  const pickRoutineForProgram = useCallback(
+    (program: UserProgram) => {
+      const standaloneRoutines = routines.filter((r) => !r.program_id)
+      if (standaloneRoutines.length === 0) {
+        Alert.alert(
+          'No Routines Available',
+          'Create a standalone routine first, or add a new one to this program.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'New Routine',
+              onPress: () => createRoutineForProgram(program),
+            },
+          ],
+        )
         return
       }
 
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Edit Routine', 'Delete Routine'],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 2,
-          userInterfaceStyle: isDark ? 'dark' : 'light',
-          title: routine.name,
+      const options = [
+        'Cancel',
+        ...standaloneRoutines.map((r) => r.name),
+      ]
+
+      showOptionMenu({
+        title: `Add to ${program.name}`,
+        options,
+        isDark,
+        onSelect: (index) => {
+          if (index === 0) return
+          const routine = standaloneRoutines[index - 1]
+          if (routine) void assignRoutineToProgram(routine.id, program.id)
         },
-        (buttonIndex) => {
-          if (buttonIndex === 1) editRoutine(routine)
-          if (buttonIndex === 2) deleteRoutine(routine)
-        },
-      )
+      })
     },
-    [deleteRoutine, editRoutine, isDark],
+    [assignRoutineToProgram, createRoutineForProgram, isDark, routines],
   )
 
-  const renderTabHeader = () => {
-    const tabs = ['Routines', 'Programs'] as const
-    return (
-      <View style={styles.tabHeaderContainer}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tabButton,
-              activeTab === tab && styles.tabButtonActive,
-            ]}
-            onPress={() => {
-              haptic('light')
-              setActiveTab(tab)
-            }}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === tab && styles.tabButtonTextActive,
-              ]}
-            >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    )
-  }
+  const pickProgramForRoutine = useCallback(
+    (routine: WorkoutRoutineWithDetails) => {
+      if (programs.length === 0) {
+        Alert.alert(
+          'No Programs',
+          'Create a program first to organize your routines.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Create Program',
+              onPress: () => router.push('/create-program'),
+            },
+          ],
+        )
+        return
+      }
 
-  const renderGenerateRow = (
-    label: string,
-    intent: 'routine' | 'program',
-  ) => (
+      const options = ['Cancel', ...programs.map((p) => p.name)]
+
+      showOptionMenu({
+        title: `Add "${routine.name}" to`,
+        options,
+        isDark,
+        onSelect: (index) => {
+          if (index === 0) return
+          const program = programs[index - 1]
+          if (program) void assignRoutineToProgram(routine.id, program.id)
+        },
+      })
+    },
+    [assignRoutineToProgram, isDark, programs, router],
+  )
+
+  const openCreateOptions = useCallback(() => {
+    haptic('light')
+    showOptionMenu({
+      options: ['Cancel', 'New Routine', 'New Program'],
+      isDark,
+      onSelect: (index) => {
+        if (index === 1) router.push('/create-routine')
+        if (index === 2) router.push('/create-program')
+      },
+    })
+  }, [isDark, router])
+
+  const openRoutineOptions = useCallback(
+    (routine: WorkoutRoutineWithDetails) => {
+      haptic('light')
+      const isInProgram = !!routine.program_id
+
+      if (isInProgram) {
+        showOptionMenu({
+          title: routine.name,
+          options: [
+            'Cancel',
+            'Edit Routine',
+            'Remove from Program',
+            'Delete Routine',
+          ],
+          destructiveButtonIndex: 3,
+          isDark,
+          onSelect: (index) => {
+            if (index === 1) editRoutine(routine)
+            if (index === 2) void removeRoutineFromProgram(routine)
+            if (index === 3) deleteRoutine(routine)
+          },
+        })
+        return
+      }
+
+      showOptionMenu({
+        title: routine.name,
+        options: ['Cancel', 'Edit Routine', 'Add to Program', 'Delete Routine'],
+        destructiveButtonIndex: 3,
+        isDark,
+        onSelect: (index) => {
+          if (index === 1) editRoutine(routine)
+          if (index === 2) pickProgramForRoutine(routine)
+          if (index === 3) deleteRoutine(routine)
+        },
+      })
+    },
+    [
+      deleteRoutine,
+      editRoutine,
+      isDark,
+      pickProgramForRoutine,
+      removeRoutineFromProgram,
+    ],
+  )
+
+  const deleteProgram = useCallback((program: UserProgram) => {
+    Alert.alert(
+      'Delete Program',
+      `Are you sure you want to delete "${program.name}"? Its routines will be kept in your library.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await database.userPrograms.delete(program.id)
+              hapticSuccess()
+              setPrograms((prev) => prev.filter((p) => p.id !== program.id))
+              setRoutines((prev) =>
+                prev.map((r) =>
+                  r.program_id === program.id ? { ...r, program_id: null } : r,
+                ),
+              )
+            } catch (error) {
+              console.error('Error deleting program:', error)
+              Alert.alert('Error', 'Failed to delete program. Please try again.')
+            }
+          },
+        },
+      ],
+    )
+  }, [])
+
+  const openAddRoutineOptions = useCallback(
+    (program: UserProgram) => {
+      showOptionMenu({
+        title: program.name,
+        options: ['Cancel', 'Choose Existing', 'Create New'],
+        isDark,
+        onSelect: (index) => {
+          if (index === 1) pickRoutineForProgram(program)
+          if (index === 2) createRoutineForProgram(program)
+        },
+      })
+    },
+    [createRoutineForProgram, isDark, pickRoutineForProgram],
+  )
+
+  const openProgramOptions = useCallback(
+    (program: UserProgram) => {
+      haptic('light')
+      showOptionMenu({
+        title: program.name,
+        options: ['Cancel', 'Add Routine', 'Edit Program', 'Delete Program'],
+        destructiveButtonIndex: 3,
+        isDark,
+        onSelect: (index) => {
+          if (index === 1) openAddRoutineOptions(program)
+          if (index === 2) editProgram(program)
+          if (index === 3) deleteProgram(program)
+        },
+      })
+    },
+    [
+      deleteProgram,
+      editProgram,
+      isDark,
+      openAddRoutineOptions,
+    ],
+  )
+
+  const renderGenerateRow = () => (
     <TouchableOpacity
       style={styles.createRoutineRow}
       onPress={() => {
         haptic('light')
-        router.push({ pathname: '/chat', params: { generate: intent } })
+        router.push({ pathname: '/chat', params: { generate: 'routine' } })
       }}
     >
       <View style={styles.generateIconWrapper}>
@@ -287,73 +598,14 @@ export default function RoutinesScreen() {
           <Ionicons name="sparkles" size={11} color={colors.brandPrimary} />
         </View>
       </View>
-      <Text style={styles.createRoutineText}>{label}</Text>
+      <Text style={styles.createRoutineText}>Create new</Text>
     </TouchableOpacity>
   )
 
-  const renderProgramsContent = () => {
-    const programGroups = programs.map((program) => ({
-      program,
-      routinesCount: routines.filter((r) => r.program_id === program.id).length,
-    }))
-
-    return (
-      <View style={styles.listContainer}>
-        {renderGenerateRow('Create new program', 'program')}
-
-        {/* User Programs */}
-        {programGroups.map(({ program, routinesCount }) => {
-          const imageSource = program.image_path
-            ? getRoutineImageUrl(program.image_path)
-            : null
-
-          return (
-            <TouchableOpacity
-              key={program.id}
-              style={styles.listItem}
-              onPress={() => {
-                haptic('light')
-                router.push({
-                  pathname: '/explore/program/[programId]',
-                  params: { programId: program.id },
-                })
-              }}
-            >
-              <View style={[styles.listIconContainer, { borderRadius: 8 }]}>
-                {imageSource ? (
-                  <Image
-                    source={{ uri: imageSource as string }}
-                    style={styles.programImage}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Ionicons
-                    name="albums-outline"
-                    size={24}
-                    color={colors.textPrimary}
-                  />
-                )}
-              </View>
-              <View style={styles.listTextContainer}>
-                <Text style={styles.listTitle}>{program.name}</Text>
-                <Text style={styles.listSubtitle}>
-                  {routinesCount} Workouts
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.textTertiary}
-                opacity={0.5}
-              />
-            </TouchableOpacity>
-          )
-        })}
-      </View>
-    )
-  }
-
-  const renderRoutineCard = (routine: WorkoutRoutineWithDetails) => {
+  const renderRoutineCard = (
+    routine: WorkoutRoutineWithDetails,
+    nested = false,
+  ) => {
     const exercises = (routine.workout_routine_exercises || [])
       .slice()
       .sort((a, b) => a.order_index - b.order_index)
@@ -374,7 +626,7 @@ export default function RoutinesScreen() {
     return (
       <TouchableOpacity
         key={routine.id}
-        style={styles.routineCard}
+        style={[styles.routineCard, nested && styles.nestedRoutineCard]}
         activeOpacity={0.85}
         onPress={() => {
           haptic('light')
@@ -434,11 +686,35 @@ export default function RoutinesScreen() {
     )
   }
 
-  const renderRoutinesContent = () => {
+  const renderProgramSection = (program: UserProgram) => {
+    const programRoutines = routines
+      .filter((r) => r.program_id === program.id)
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+
+    return (
+      <ProgramSection
+        key={program.id}
+        program={program}
+        programRoutines={programRoutines}
+        colors={colors}
+        isDark={isDark}
+        onOpenOptions={openProgramOptions}
+        renderRoutineCard={renderRoutineCard}
+      />
+    )
+  }
+
+  const renderLibraryContent = () => {
     const standaloneRoutines = routines.filter((r) => !r.program_id)
+
     return (
       <View style={styles.listContainer}>
-        {renderGenerateRow('Create new routine', 'routine')}
+        {renderGenerateRow()}
+
+        {programs.map(renderProgramSection)}
 
         {standaloneRoutines.map(renderRoutineCard)}
       </View>
@@ -473,14 +749,7 @@ export default function RoutinesScreen() {
             rightContent={
               <NavbarIsland>
                 <TouchableOpacity
-                  onPress={() => {
-                    haptic('light')
-                    router.push(
-                      activeTab === 'Programs'
-                        ? '/create-program'
-                        : '/create-routine',
-                    )
-                  }}
+                  onPress={openCreateOptions}
                   style={styles.navButton}
                 >
                   <Ionicons
@@ -502,17 +771,12 @@ export default function RoutinesScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {renderTabHeader()}
-
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.brandPrimary} />
             </View>
           ) : (
-            <>
-              {activeTab === 'Programs' && renderProgramsContent()}
-              {activeTab === 'Routines' && renderRoutinesContent()}
-            </>
+            renderLibraryContent()
           )}
         </ScrollView>
       </View>
@@ -547,32 +811,6 @@ const createStyles = (colors: any, isDark: boolean) =>
     headerAdd: {
       padding: 4,
     },
-    tabHeaderContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: 16,
-      gap: 24,
-      marginTop: 8,
-      marginBottom: 24,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    tabButton: {
-      paddingBottom: 12,
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
-    },
-    tabButtonActive: {
-      borderBottomColor: colors.textPrimary,
-    },
-    tabButtonText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    tabButtonTextActive: {
-      color: colors.textPrimary,
-      fontWeight: '600',
-    },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -583,40 +821,7 @@ const createStyles = (colors: any, isDark: boolean) =>
     },
     listContainer: {
       paddingHorizontal: 16,
-    },
-    listItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 20,
-      gap: 16,
-    },
-    listIconContainer: {
-      width: 64,
-      height: 64,
-      borderRadius: 8,
-      backgroundColor: colors.surfaceSubtle || 'rgba(150,150,150,0.1)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      overflow: 'hidden',
-    },
-    programImage: {
-      width: '100%',
-      height: '100%',
-    },
-    listTextContainer: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    listTitle: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      marginBottom: 4,
-    },
-    listSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '400',
+      paddingTop: 8,
     },
     createRoutineRow: {
       flexDirection: 'row',
@@ -678,6 +883,11 @@ const createStyles = (colors: any, isDark: boolean) =>
       shadowRadius: 8,
       elevation: 2,
     },
+    nestedRoutineCard: {
+      marginBottom: 8,
+      shadowOpacity: 0,
+      elevation: 0,
+    },
     routineCardHeader: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -720,5 +930,74 @@ const createStyles = (colors: any, isDark: boolean) =>
       fontSize: 15,
       fontWeight: '700',
       letterSpacing: 0.2,
+    },
+  })
+
+const createProgramSectionStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: 12,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceCard,
+      overflow: 'hidden',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.25 : 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingTop: 14,
+      paddingBottom: 14,
+      paddingRight: 8,
+    },
+    headerMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      paddingLeft: 16,
+      minWidth: 0,
+    },
+    headerText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.2,
+      marginBottom: 2,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '400',
+    },
+    chevron: {
+      marginTop: 4,
+    },
+    menuButton: {
+      padding: 4,
+      marginTop: -2,
+      marginRight: 4,
+    },
+    routinesContainer: {
+      paddingHorizontal: 10,
+      paddingBottom: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      fontStyle: 'italic',
+      paddingHorizontal: 6,
+      paddingVertical: 10,
     },
   })
