@@ -300,7 +300,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'dec2873e-0c39-4e88-b05b-247d3cb6b1b3',
     name: 'Bench Press (Smith Machine)',
     aliases: ['Smith Bench Press'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'trqKQv2.gif',
     male: [
       {
@@ -385,7 +385,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'fe9aecd5-627b-4acd-8aca-47233f7cf5c0',
     name: 'Incline Bench Press (Smith Machine)',
     aliases: ['Smith Incline Bench Press'],
-    tier: 3,
+    tier: 2,
     gifUrl: '5v7KYld.gif',
     male: [
       {
@@ -984,6 +984,91 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     ],
   },
 
+  // Smith Machine Squat
+  {
+    id: 'd9286a4c-17e1-425f-a091-8face1f8f357',
+    name: 'Squat (Smith Machine)',
+    aliases: ['Smith Squat'],
+    tier: 2,
+    gifUrl: 'jFtipLl.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.6,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 1.0,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.1,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.8,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.1,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.35,
+        color: '#64748B',
+        description: 'Just starting out',
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.65,
+        color: '#3B82F6',
+        description: 'A few months training',
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.05,
+        color: '#10B981',
+        description: '1-2 years consistent training',
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.55,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training',
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level',
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.35,
+        color: '#EF4444',
+        description: 'World record territory',
+      },
+    ],
+  },
+
   // Front Squat
   {
     id: '50c3ce34-9b80-4f8b-92c4-365183476959',
@@ -1325,7 +1410,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'd9591610-0f62-42da-9102-9b9ad347d554',
     name: 'Shoulder Press (Smith Machine)',
     aliases: ['Smith Shoulder Press'],
-    tier: 3,
+    tier: 2,
     gifUrl: '903mzG8.gif',
     male: [
       {
@@ -6424,6 +6509,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Quads
   'Squat (Barbell)': 'Quads',
+  'Squat (Smith Machine)': 'Quads',
   'Front Squat (Barbell)': 'Quads',
   'Leg Press (Machine)': 'Quads',
   'Bulgarian Split Squat (Dumbbell)': 'Quads',
@@ -6527,6 +6613,7 @@ const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
   'Reverse Wrist Curl (Dumbbell)': 'Pull',
 
   'Squat (Barbell)': 'Lower',
+  'Squat (Smith Machine)': 'Lower',
   'Front Squat (Barbell)': 'Lower',
   'Deadlift (Barbell)': 'Lower',
   'Romanian Deadlift (Barbell)': 'Lower',

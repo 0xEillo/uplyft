@@ -1,5 +1,8 @@
 import { getExerciseStrengthMetric } from '@/lib/exercise-strength'
-import { isRepBasedExercise } from '@/lib/exercise-standards-config'
+import {
+  EXERCISES_WITH_STANDARDS,
+  isRepBasedExercise,
+} from '@/lib/exercise-standards-config'
 import { getStandardsLadder, getStrengthStandard } from '@/lib/strength-standards'
 
 describe('exercise strength helpers', () => {
@@ -70,17 +73,22 @@ describe('exercise strength helpers', () => {
     })
   })
 
-  test('smith machine press standards are tracked and ordered', () => {
+  test('smith machine compound standards are tracked, ordered, and tier 2', () => {
     const exercises = [
       'Bench Press (Smith Machine)',
       'Incline Bench Press (Smith Machine)',
       'Shoulder Press (Smith Machine)',
+      'Squat (Smith Machine)',
     ]
 
     exercises.forEach((exerciseName) => {
+      const config = EXERCISES_WITH_STANDARDS.find(
+        (exercise) => exercise.name === exerciseName,
+      )
       const male = getStandardsLadder(exerciseName, 'male')
       const female = getStandardsLadder(exerciseName, 'female')
 
+      expect(config?.tier).toBe(2)
       expect(male).not.toBeNull()
       expect(female).not.toBeNull()
 

@@ -265,7 +265,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     aliases: [
       'Smith Bench Press'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: 'trqKQv2.gif',
     male: [
       {
@@ -350,7 +350,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     aliases: [
       'Smith Incline Bench Press'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: '5v7KYld.gif',
     male: [
       {
@@ -939,6 +939,91 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     ]
   },
   {
+    id: 'd9286a4c-17e1-425f-a091-8face1f8f357',
+    name: 'Squat (Smith Machine)',
+    aliases: [
+      'Smith Squat'
+    ],
+    tier: 2,
+    gifUrl: 'jFtipLl.gif',
+    male: [
+      {
+        level: 'Beginner',
+        multiplier: 0.6,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 1,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.5,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 2.1,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.8,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 3.1,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ],
+    female: [
+      {
+        level: 'Beginner',
+        multiplier: 0.35,
+        color: '#64748B',
+        description: 'Just starting out'
+      },
+      {
+        level: 'Novice',
+        multiplier: 0.65,
+        color: '#3B82F6',
+        description: 'A few months training'
+      },
+      {
+        level: 'Intermediate',
+        multiplier: 1.05,
+        color: '#10B981',
+        description: '1-2 years consistent training'
+      },
+      {
+        level: 'Advanced',
+        multiplier: 1.55,
+        color: '#8B5CF6',
+        description: '2-5 years dedicated training'
+      },
+      {
+        level: 'Elite',
+        multiplier: 2.1,
+        color: '#F59E0B',
+        description: 'Competitive athlete level'
+      },
+      {
+        level: 'World Class',
+        multiplier: 2.35,
+        color: '#EF4444',
+        description: 'World record territory'
+      }
+    ]
+  },
+  {
     id: '50c3ce34-9b80-4f8b-92c4-365183476959',
     name: 'Front Squat (Barbell)',
     tier: 1,
@@ -1272,7 +1357,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     aliases: [
       'Smith Shoulder Press'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: '903mzG8.gif',
     male: [
       {
@@ -6298,6 +6383,7 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Overhead Cable Extension (Cable)': 'Triceps',
   'Skull Crusher (Barbell)': 'Triceps',
   'Squat (Barbell)': 'Quads',
+  'Squat (Smith Machine)': 'Quads',
   'Front Squat (Barbell)': 'Quads',
   'Leg Press (Machine)': 'Quads',
   'Bulgarian Split Squat (Dumbbell)': 'Quads',
