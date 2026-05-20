@@ -2,7 +2,6 @@ import { createOpenRouter } from 'npm:@openrouter/ai-sdk-provider'
 
 // OpenRouter model identifiers
 export const GEMINI_MODEL = 'google/gemini-3.1-flash-lite-preview'
-export const GEMINI_FLASH_LATEST_MODEL = '~google/gemini-flash-latest'
 export const GEMINI_FALLBACK_MODEL = 'google/gemini-2.0-flash-001'
 
 // Create OpenRouter provider instance
@@ -20,7 +19,7 @@ export function getGeminiModel(): ReturnType<typeof openrouter.chat> {
 
 /**
  * Returns a specific model via OpenRouter by name.
- * @param model - The model identifier (e.g., 'google/gemini-3-flash-preview')
+ * @param model - The model identifier (e.g., GEMINI_MODEL)
  */
 export function getModel(model: string): ReturnType<typeof openrouter.chat> {
   return openrouter.chat(model)

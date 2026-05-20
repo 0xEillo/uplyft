@@ -15,7 +15,7 @@ import {
   parseDateKey,
   toSortedUniqueDateKeys,
 } from '../_shared/retention.ts'
-import { GEMINI_FLASH_LATEST_MODEL, openrouter } from '../_shared/openrouter.ts'
+import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 import { createServiceClient } from '../_shared/supabase.ts'
 import { buildSystemPrompt } from '../chat/system-prompt.ts'
 import { buildUserContextSummary } from '../chat/user-context.ts'
@@ -497,7 +497,7 @@ Deno.serve(async (req) => {
         ? `[dry run] ${trigger.type}`
         : (
             await generateText({
-              model: openrouter.chat(GEMINI_FLASH_LATEST_MODEL),
+              model: openrouter.chat(GEMINI_MODEL),
               system:
                 buildSystemPrompt(
                   await buildUserContextSummary(pref.user_id, supabase),

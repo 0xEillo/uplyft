@@ -4,12 +4,7 @@ import { z } from 'https://esm.sh/zod@3.25.76'
 import { openai } from 'npm:@ai-sdk/openai@2.0.42'
 import { generateText, streamText, tool } from 'npm:ai'
 import { trimChatMessagesForRequest } from '../../../lib/ai/chat-history.ts'
-import {
-  GEMINI_FLASH_LATEST_MODEL,
-  GEMINI_FALLBACK_MODEL,
-  GEMINI_MODEL,
-  openrouter,
-} from '../_shared/openrouter.ts'
+import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 
 import { summarizeBodyLogContext } from '../_shared/body-log-context.ts'
 import {
@@ -211,7 +206,6 @@ type BodyLogRecord = {
   file_path?: string | null
 }
 
-const STABLE_TEXT_CHAT_MODEL = GEMINI_FLASH_LATEST_MODEL
 const TEXT_CHAT_FALLBACK_LABEL = 'openai:gpt-4o'
 
 function createCorrelationId(): string {
@@ -239,14 +233,16 @@ function getChatExecutionConfig(options: {
 
   if (hasImages) {
     return {
-      model: openai('gpt-4o'),
-      modelLabel: 'openai:gpt-4o',
+      model: openrouter.chat(GEMINI_MODEL),
+      modelLabel: `openrouter:${GEMINI_MODEL}`,
+      fallbackModel: openai('gpt-4o'),
+      fallbackLabel: TEXT_CHAT_FALLBACK_LABEL,
     }
   }
 
   return {
-    model: openrouter.chat(STABLE_TEXT_CHAT_MODEL),
-    modelLabel: `openrouter:${STABLE_TEXT_CHAT_MODEL}`,
+    model: openrouter.chat(GEMINI_MODEL),
+    modelLabel: `openrouter:${GEMINI_MODEL}`,
     fallbackModel: openai('gpt-4o'),
     fallbackLabel: TEXT_CHAT_FALLBACK_LABEL,
   }
@@ -456,8 +452,7 @@ serve(async (req) => {
       includesImageParts: Boolean(payload.images && payload.images.length > 0),
     })
 
-    // Route to Gemini for food label scans (better OCR for dense printed text),
-    // GPT-4o for other image messages, stable Gemini for text-only.
+    // All chat paths use GEMINI_MODEL; GPT-4o is only the generateText fallback.
     const isFoodLabelScan = payload.scanMode === 'food_label'
     const hasImages = Boolean(payload.images && payload.images.length > 0)
     const requestedNoStream = req.headers.get('x-no-stream') === '1'
