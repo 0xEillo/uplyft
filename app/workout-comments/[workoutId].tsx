@@ -39,12 +39,35 @@ interface CommentWithProfile extends WorkoutComment {
   profile?: Profile
 }
 
+type MentionableProfile = Pick<
+  Profile,
+  'id' | 'display_name' | 'user_tag' | 'avatar_url'
+>
+
 interface CommentListItem {
   comment: CommentWithProfile
   depth: number
 }
 
+interface ActiveMention {
+  start: number
+  query: string
+}
+
 const MAX_REPLY_DEPTH = 2
+const MAX_MENTION_SUGGESTIONS = 5
+
+function getActiveMention(text: string): ActiveMention | null {
+  const match = /(^|\s)@([a-z0-9_]*)$/i.exec(text)
+  if (!match || match.index === undefined) {
+    return null
+  }
+
+  return {
+    start: match.index + (match[1]?.length || 0),
+    query: (match[2] || '').toLowerCase(),
+  }
+}
 
 function getReplyMentionTag(comment: CommentWithProfile) {
   const preferredTag = comment.profile?.user_tag?.trim()
@@ -168,6 +191,9 @@ export default function WorkoutCommentsScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPosting, setIsPosting] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [mentionableFollowers, setMentionableFollowers] = useState<
+    MentionableProfile[]
+  >([])
   const [inputHeight, setInputHeight] = useState(0)
   const [replyTarget, setReplyTarget] = useState<CommentWithProfile | null>(
     null,
@@ -177,6 +203,24 @@ export default function WorkoutCommentsScreen() {
     () => flattenComments(comments),
     [comments],
   )
+  const activeMention = useMemo(
+    () => getActiveMention(commentText),
+    [commentText],
+  )
+  const mentionSuggestions = useMemo(() => {
+    if (!activeMention) {
+      return []
+    }
+
+    const query = activeMention.query
+    return mentionableFollowers
+      .filter((mentionable) => {
+        const tag = mentionable.user_tag.toLowerCase()
+        const displayName = mentionable.display_name.toLowerCase()
+        return !query || tag.startsWith(query) || displayName.includes(query)
+      })
+      .slice(0, MAX_MENTION_SUGGESTIONS)
+  }, [activeMention, mentionableFollowers])
 
   const styles = createStyles(colors)
 
@@ -365,6 +409,52 @@ export default function WorkoutCommentsScreen() {
     fetchComments()
   }, [workoutId, user?.id])
 
+  useEffect(() => {
+    if (!user?.id) {
+      setMentionableFollowers([])
+      return
+    }
+
+    let isCancelled = false
+
+    const fetchMentionableFollowers = async () => {
+      try {
+        const rows = await database.follows.listFollowers(user.id, 100)
+        if (isCancelled) {
+          return
+        }
+
+        const seen = new Set<string>()
+        const followers = rows
+          .map((row) => row.follower)
+          .filter((follower): follower is MentionableProfile =>
+            Boolean(follower?.id && follower.user_tag),
+          )
+          .filter((follower) => {
+            if (seen.has(follower.id)) {
+              return false
+            }
+
+            seen.add(follower.id)
+            return true
+          })
+
+        setMentionableFollowers(followers)
+      } catch (error) {
+        console.error('Error fetching mentionable followers:', error)
+        if (!isCancelled) {
+          setMentionableFollowers([])
+        }
+      }
+    }
+
+    fetchMentionableFollowers()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [user?.id])
+
   const handleStartReply = useCallback((comment: CommentWithProfile) => {
     const mentionPrefix = `@${getReplyMentionTag(comment)}`
     setReplyTarget(comment)
@@ -397,6 +487,26 @@ export default function WorkoutCommentsScreen() {
       }
     },
     [replyTarget],
+  )
+
+  const handleSelectMention = useCallback(
+    (mentionable: MentionableProfile) => {
+      const currentMention = getActiveMention(commentText)
+      if (!currentMention) {
+        return
+      }
+
+      const nextText = `${commentText.slice(
+        0,
+        currentMention.start,
+      )}@${mentionable.user_tag} `
+      setCommentText(nextText)
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+      })
+    },
+    [commentText],
   )
 
   const handleToggleCommentLike = useCallback(
@@ -624,6 +734,44 @@ export default function WorkoutCommentsScreen() {
     [user, profile, styles],
   )
 
+  const renderMentionSuggestion = useCallback(
+    (mentionable: MentionableProfile) => (
+      <TouchableOpacity
+        key={mentionable.id}
+        style={styles.mentionSuggestionItem}
+        onPress={() => handleSelectMention(mentionable)}
+        activeOpacity={0.75}
+      >
+        {mentionable.avatar_url ? (
+          <Image
+            source={{ uri: mentionable.avatar_url }}
+            style={styles.mentionSuggestionAvatar}
+          />
+        ) : (
+          <View
+            style={[
+              styles.mentionSuggestionAvatar,
+              styles.avatarPlaceholder,
+            ]}
+          >
+            <Text style={styles.mentionSuggestionAvatarText}>
+              {mentionable.display_name?.[0]?.toUpperCase() || '?'}
+            </Text>
+          </View>
+        )}
+        <View style={styles.mentionSuggestionText}>
+          <Text style={styles.mentionSuggestionName} numberOfLines={1}>
+            {mentionable.display_name}
+          </Text>
+          <Text style={styles.mentionSuggestionTag} numberOfLines={1}>
+            @{mentionable.user_tag}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    ),
+    [handleSelectMention, styles],
+  )
+
   const handleBack = useCallback(() => {
     backAttemptRef.current += 1
     const attempt = backAttemptRef.current
@@ -752,6 +900,11 @@ export default function WorkoutCommentsScreen() {
               },
             ]}
           >
+            {mentionSuggestions.length > 0 && (
+              <View style={styles.mentionSuggestionsContainer}>
+                {mentionSuggestions.map(renderMentionSuggestion)}
+              </View>
+            )}
             <View style={styles.inputWrapper}>
               <View style={styles.shadowWrapper}>
                 <LiquidGlassSurface
@@ -935,6 +1088,51 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderTopWidth: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
+    },
+    mentionSuggestionsContainer: {
+      marginBottom: 8,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    mentionSuggestionItem: {
+      minHeight: 54,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 10,
+    },
+    mentionSuggestionAvatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+    },
+    mentionSuggestionAvatarText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.surface,
+    },
+    mentionSuggestionText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    mentionSuggestionName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    mentionSuggestionTag: {
+      marginTop: 2,
+      fontSize: 12,
+      color: colors.textSecondary,
     },
     inputWrapper: {
       flexDirection: 'row',

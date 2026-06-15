@@ -86,7 +86,8 @@ export function usePushNotifications() {
         } else if (
           (type === 'workout_comment' ||
             type === 'workout_comment_reply' ||
-            type === 'workout_comment_like') &&
+            type === 'workout_comment_like' ||
+            type === 'workout_comment_mention') &&
           workoutId
         ) {
           router.push({

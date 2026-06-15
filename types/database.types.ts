@@ -349,6 +349,16 @@ export interface WorkoutCommentLike {
   created_at: string
 }
 
+export interface WorkoutCommentMention {
+  comment_id: string
+  workout_id: string
+  actor_id: string
+  mentioned_user_id: string
+  mentioned_user_tag: string
+  comment_preview: string | null
+  created_at: string
+}
+
 export interface WorkoutSocialStats {
   workout_id: string
   like_count: number
@@ -386,6 +396,7 @@ export type NotificationType =
   | 'workout_comment'
   | 'workout_comment_reply'
   | 'workout_comment_like'
+  | 'workout_comment_mention'
   | 'followed_workout_post'
   | 'follow_request_received'
   | 'follow_request_approved'

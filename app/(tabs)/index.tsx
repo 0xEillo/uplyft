@@ -29,7 +29,6 @@ import { FeedEmptyState } from '@/components/FeedEmptyState'
 import type { ExerciseRankUpgrade } from '@/components/exercise-rank-overlay'
 import { InviteFriendsPrompt } from '@/components/InviteFriendsPrompt'
 import { ProfilePicPromptModal } from '@/components/ProfilePicPromptModal'
-import { ProStatusPill } from '@/components/ProStatusPill'
 import { NotificationBadge } from '@/components/notification-badge'
 import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { WeeklySnapshot } from '@/components/WeeklySnapshot'
@@ -1133,7 +1132,9 @@ export default function FeedScreen() {
         <BaseNavbar
           leftContent={
             <View style={styles.headerTitleContainer}>
-              <ProStatusPill />
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                Home
+              </Text>
               {currentStreak > 0 && (
                 <View>
                   <TouchableOpacity
@@ -1275,6 +1276,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginLeft: 6,
     },
     largeTitleContainer: {
       paddingHorizontal: 20,

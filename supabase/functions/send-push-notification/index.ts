@@ -11,6 +11,7 @@ interface NotificationPayload {
       | 'workout_comment'
       | 'workout_comment_reply'
       | 'workout_comment_like'
+      | 'workout_comment_mention'
       | 'followed_workout_post'
       | 'follow_request_received'
       | 'follow_request_approved'
@@ -184,6 +185,15 @@ Deno.serve(async (req) => {
         body = `${firstActor} and ${actorCount - 1} other${
           actorCount > 2 ? 's' : ''
         } liked your comment`
+      }
+    } else if (notification.type === 'workout_comment_mention') {
+      title = 'New Mention'
+      if (actorCount === 1) {
+        body = `${firstActor} mentioned you in a comment`
+      } else {
+        body = `${firstActor} and ${actorCount - 1} other${
+          actorCount > 2 ? 's' : ''
+        } mentioned you in comments`
       }
     } else if (notification.type === 'followed_workout_post') {
       title = 'New Workout'

@@ -65,6 +65,14 @@ export function formatNotificationText(
           ? `${firstActor} liked your comment`
           : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} liked your comment`,
     }
+  } else if (type === 'workout_comment_mention') {
+    return {
+      title: 'New Mention',
+      body:
+        actorCount === 1
+          ? `${firstActor} mentioned you in a comment`
+          : `${firstActor} and ${actorCount - 1} other${actorCount > 2 ? 's' : ''} mentioned you in comments`,
+    }
   } else if (type === 'followed_workout_post') {
     return {
       title: 'New Workout',
@@ -155,6 +163,8 @@ export function getNotificationIcon(type: NotificationType): string {
       return 'chatbubbles'
     case 'workout_comment_like':
       return 'heart'
+    case 'workout_comment_mention':
+      return 'at'
     case 'followed_workout_post':
       return 'barbell'
     case 'follow_request_received':
