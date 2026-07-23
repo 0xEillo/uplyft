@@ -517,24 +517,14 @@ export default function FinalizeWorkoutScreen() {
               ]}
             >
               <View style={styles.musicSectionHeader}>
-                <View style={styles.musicSectionCopy}>
-                  <Text
-                    style={[
-                      styles.musicSectionTitle,
-                      { color: colors.textPrimary },
-                    ]}
-                  >
-                    Music
-                  </Text>
-                  <Text
-                    style={[
-                      styles.musicSectionSubtitle,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    Add a song that captures the session.
-                  </Text>
-                </View>
+                <Text
+                  style={[
+                    styles.musicSectionTitle,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  Music
+                </Text>
                 {showSongPicker && (
                   <TouchableOpacity
                     onPress={() => setShowSongPicker(false)}
@@ -560,7 +550,6 @@ export default function FinalizeWorkoutScreen() {
                     updateReview({ song: null })
                     setShowSongPicker(false)
                   }}
-                  showAttribution={!showSongPicker}
                   containerStyle={[
                     styles.musicPreviewCard,
                     {
@@ -855,21 +844,13 @@ const styles = StyleSheet.create({
   },
   musicSectionHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-  },
-  musicSectionCopy: {
-    flex: 1,
-    gap: 4,
   },
   musicSectionTitle: {
     fontSize: 17,
     fontWeight: '600',
-  },
-  musicSectionSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   musicSectionAction: {
     paddingVertical: 4,

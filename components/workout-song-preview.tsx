@@ -18,7 +18,6 @@ import {
 interface WorkoutSongPreviewProps {
   song: WorkoutSong
   onRemove?: () => void
-  showAttribution?: boolean
   containerStyle?: StyleProp<ViewStyle>
   artworkSize?: number
 }
@@ -34,7 +33,6 @@ function formatMillis(ms?: number) {
 export function WorkoutSongPreview({
   song,
   onRemove,
-  showAttribution = false,
   containerStyle,
   artworkSize = 42,
 }: WorkoutSongPreviewProps) {
@@ -84,11 +82,6 @@ export function WorkoutSongPreview({
             {song.artistName}
             {duration ? ` • ${duration}` : ''}
           </Text>
-          {showAttribution && (
-            <Text style={[styles.attribution, { color: colors.textTertiary }]}>
-              Preview courtesy of iTunes
-            </Text>
-          )}
         </View>
       </Pressable>
       <Pressable
@@ -140,10 +133,6 @@ const styles = StyleSheet.create({
   artistName: {
     fontSize: 13,
     fontWeight: '400',
-  },
-  attribution: {
-    fontSize: 11,
-    marginTop: 2,
   },
   playButton: {
     width: 32,
