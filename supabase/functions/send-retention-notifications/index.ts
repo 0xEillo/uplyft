@@ -353,7 +353,7 @@ function pickMessage(input: {
         type: 'retention_scheduled_workout',
         title: 'Today keeps your week on track',
         body: `Hey ${name}, you’re at ${scheduledReminderPlan.workoutsThisWeek}/${scheduledReminderPlan.weeklyTarget} this week. A workout today keeps the goal alive.`,
-        route: '/(tabs)/create-post',
+        route: '/create-post',
         metadata: {
           category: 'scheduled',
           weekday: localWeekday,
@@ -372,7 +372,7 @@ function pickMessage(input: {
         type: 'retention_scheduled_workout',
         title: 'Catch-up workout today?',
         body: `Hey ${name}, you’re ${scheduledReminderPlan.behindTargetBy} workout${scheduledReminderPlan.behindTargetBy === 1 ? '' : 's'} behind your weekly goal. Training today puts you back on pace.`,
-        route: '/(tabs)/create-post',
+        route: '/create-post',
         metadata: {
           category: 'scheduled',
           weekday: localWeekday,
@@ -390,7 +390,7 @@ function pickMessage(input: {
       type: 'retention_scheduled_workout',
       title: 'Time to train 💪',
       body: `Hey ${name}, your workout slot is open. Ready to log it?`,
-      route: '/(tabs)/create-post',
+      route: '/create-post',
       metadata: {
         category: 'scheduled',
         weekday: localWeekday,
@@ -415,7 +415,7 @@ function pickMessage(input: {
       type: 'retention_streak_protection',
       title: `🔥 ${streakEndingYesterday}-day streak on the line`,
       body: 'Log today’s workout to keep your streak alive.',
-      route: '/(tabs)/create-post',
+      route: '/create-post',
       metadata: {
         category: 'streak',
         streakDays: streakEndingYesterday,
@@ -436,7 +436,7 @@ function pickMessage(input: {
         type: 'retention_inactivity',
         title: 'Quick reset today? 💪',
         body: 'You’re 3 days out. A short session gets momentum back.',
-        route: '/(tabs)/create-post',
+        route: '/create-post',
         metadata: {
           category: 'inactivity',
           daysSinceLastWorkout,
@@ -450,7 +450,7 @@ function pickMessage(input: {
         type: 'retention_inactivity',
         title: 'One-week check-in',
         body: 'No pressure. Even 20 minutes today is a win.',
-        route: '/(tabs)/create-post',
+        route: '/create-post',
         metadata: {
           category: 'inactivity',
           daysSinceLastWorkout,
@@ -467,7 +467,7 @@ function pickMessage(input: {
         type: 'retention_inactivity',
         title: 'Ready to come back stronger?',
         body: `It’s been ${daysSinceLastWorkout} days. Start light and rebuild momentum.`,
-        route: '/(tabs)/create-post',
+        route: '/create-post',
         metadata: {
           category: 'inactivity',
           daysSinceLastWorkout,
@@ -532,7 +532,7 @@ function pickMessage(input: {
       type: 'retention_scheduled_workout',
       title: 'Training today?',
       body: `Hey ${name}, want to log a session while the habit is fresh?`,
-      route: '/(tabs)/create-post',
+      route: '/create-post',
       metadata: {
         category: 'daily_nudge',
       },

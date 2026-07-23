@@ -46,8 +46,8 @@ export function AnimatedFire({
       // Main flame breathing effect
       mainScale.value = withRepeat(
         withSequence(
-          withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.07, { duration: 880, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.98, { duration: 880, easing: Easing.inOut(Easing.ease) })
         ),
         -1, // infinite
         true // reverse
@@ -55,27 +55,27 @@ export function AnimatedFire({
 
       mainRotate.value = withRepeat(
         withSequence(
-          withTiming(2, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(-2, { duration: 800, easing: Easing.inOut(Easing.ease) })
+          withTiming(3.5, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          withTiming(-3.5, { duration: 700, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
       )
 
-      // Inner flame moves slightly independently
+      // Inner flame moves slightly independently — keep it calm
       innerScale.value = withRepeat(
         withSequence(
-          withTiming(1.05, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.95, { duration: 800, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.02, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.98, { duration: 1100, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
       )
-      
+
       innerTranslateY.value = withRepeat(
         withSequence(
-          withTiming(-2, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0, { duration: 900, easing: Easing.inOut(Easing.ease) })
+          withTiming(-1.5, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
@@ -84,7 +84,7 @@ export function AnimatedFire({
       // Spark 1 loop
       spark1TranslateY.value = withRepeat(
         withSequence(
-          withTiming(-size * 0.4, { duration: 1500, easing: Easing.out(Easing.ease) }),
+          withTiming(-size * 0.48, { duration: 1300, easing: Easing.out(Easing.ease) }),
           withTiming(0, { duration: 0 }) // reset instantly
         ),
         -1,
@@ -92,8 +92,8 @@ export function AnimatedFire({
       )
       spark1Opacity.value = withRepeat(
         withSequence(
-          withTiming(0.8, { duration: 300 }),
-          withTiming(0, { duration: 1200 }),
+          withTiming(0.85, { duration: 260 }),
+          withTiming(0, { duration: 1040 }),
           withTiming(0, { duration: 0 })
         ),
         -1,
@@ -102,10 +102,10 @@ export function AnimatedFire({
 
       // Spark 2 loop (delayed)
       spark2TranslateY.value = withDelay(
-        750,
+        620,
         withRepeat(
           withSequence(
-            withTiming(-size * 0.5, { duration: 1800, easing: Easing.out(Easing.ease) }),
+            withTiming(-size * 0.58, { duration: 1500, easing: Easing.out(Easing.ease) }),
             withTiming(0, { duration: 0 })
           ),
           -1,
@@ -113,11 +113,11 @@ export function AnimatedFire({
         )
       )
       spark2Opacity.value = withDelay(
-        750,
+        620,
         withRepeat(
           withSequence(
-            withTiming(0.6, { duration: 400 }),
-            withTiming(0, { duration: 1400 }),
+            withTiming(0.7, { duration: 320 }),
+            withTiming(0, { duration: 1180 }),
             withTiming(0, { duration: 0 })
           ),
           -1,

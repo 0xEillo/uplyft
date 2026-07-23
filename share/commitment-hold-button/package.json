@@ -1,0 +1,15 @@
+{
+  "name": "@uplyft/commitment-hold-button",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A reusable React Native press-and-hold commitment pledge screen.",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "@expo/vector-icons": "*",
+    "expo-haptics": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-confetti-cannon": "*",
+    "react-native-safe-area-context": "*"
+  }
+}

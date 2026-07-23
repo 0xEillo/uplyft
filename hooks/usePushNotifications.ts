@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
+import { resolvePushNotificationRoute } from '@/lib/utils/notification-routing'
 import type { Profile } from '@/types/database.types'
 import { supabase } from '@/lib/supabase'
 import Constants from 'expo-constants'
@@ -47,13 +48,14 @@ export function usePushNotifications() {
     // Listen for user tapping on notification
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const { workoutId, notificationId, type, route } = response.notification
-          .request.content.data as {
-          workoutId?: string
-          notificationId?: string
-          type?: string
-          route?: string
-        }
+        const { workoutId, notificationId, type, route, actors } =
+          response.notification.request.content.data as {
+            workoutId?: string
+            notificationId?: string
+            type?: string
+            route?: string
+            actors?: string[]
+          }
 
         // Mark notification as read
         if (notificationId) {
@@ -62,70 +64,12 @@ export function usePushNotifications() {
           })
         }
 
-        if (typeof route === 'string' && route.length > 0) {
-          router.push(route as any)
-          return
-        }
-
-        // Navigate based on notification type
-        const buildWorkoutHref = (id: string) => ({
-          pathname: '/workout/[workoutId]' as const,
-          params: {
-            workoutId: id,
-            returnTo: lastPathnameRef.current,
-          },
-        })
-
-        if (
-          type === 'follow_request_received' ||
-          type === 'follow_request_approved' ||
-          type === 'follow_request_declined' ||
-          type === 'follow_received'
-        ) {
-          router.push('/follow-requests')
-        } else if (
-          (type === 'workout_comment' ||
-            type === 'workout_comment_reply' ||
-            type === 'workout_comment_like' ||
-            type === 'workout_comment_mention') &&
-          workoutId
-        ) {
-          router.push({
-            pathname: '/workout-comments/[workoutId]',
-            params: {
-              workoutId,
-              returnTo: lastPathnameRef.current,
-            },
-          } as any)
-        } else if (
-          (type === 'workout_like' || type === 'followed_workout_post') &&
-          workoutId
-        ) {
-          router.push(buildWorkoutHref(workoutId) as any)
-        } else if (type === 'trial_reminder') {
-          router.push('/(tabs)/profile')
-        } else if (
-          type === 'retention_scheduled_workout' ||
-          type === 'retention_streak_protection' ||
-          type === 'retention_inactivity'
-        ) {
-          router.push('/create-post')
-        } else if (
-          type === 'proactive_coach_workout_day_morning' ||
-          type === 'proactive_coach_missed_workout' ||
-          type === 'proactive_coach_comeback' ||
-          type === 'proactive_coach_post_workout_followup'
-        ) {
-          router.push('/chat')
-        } else if (
-          type === 'retention_weekly_recap' ||
-          type === 'retention_milestone'
-        ) {
-          router.push('/(tabs)/profile')
-        } else if (workoutId) {
-          // Fallback to workout detail for any other workout-related notifications
-          router.push(buildWorkoutHref(workoutId) as any)
-        }
+        router.push(
+          resolvePushNotificationRoute(
+            { type, workoutId, route, actors },
+            { returnTo: lastPathnameRef.current },
+          ) as any,
+        )
       },
     )
 

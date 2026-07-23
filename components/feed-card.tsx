@@ -96,6 +96,8 @@ export interface CommentPreview {
   userAvatar?: string | null
   text: string
   timeAgo: string
+  likeCount?: number
+  isLiked?: boolean
 }
 
 export interface FeedCardProps {
@@ -1025,7 +1027,11 @@ export const FeedCard = memo(function FeedCard({
           {comments.length > 0 && (
             <>
               <View style={styles.commentsListContainer}>
-                {comments.map((comment) => (
+                {comments.map((comment) => {
+                  const commentLikeCount = comment.likeCount ?? 0
+                  const commentIsLiked = comment.isLiked ?? false
+
+                  return (
                   <View key={comment.id} style={styles.commentPreviewContainer}>
                     {comment.userAvatar ? (
                       <Image
@@ -1053,15 +1059,34 @@ export const FeedCard = memo(function FeedCard({
                         {comment.text}
                       </Text>
                     </View>
-                    <TouchableOpacity style={styles.commentLikeButton}>
+                    <TouchableOpacity
+                      style={styles.commentLikeButton}
+                      onPress={onComment}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
                       <Ionicons
-                        name="heart-outline"
+                        name={commentIsLiked ? 'heart' : 'heart-outline'}
                         size={14}
-                        color={colors.textSecondary}
+                        color={
+                          commentIsLiked
+                            ? colors.brandPrimary
+                            : colors.textSecondary
+                        }
                       />
+                      {commentLikeCount > 0 && (
+                        <Text
+                          style={[
+                            styles.commentLikeCount,
+                            commentIsLiked && styles.commentLikeCountActive,
+                          ]}
+                        >
+                          {commentLikeCount}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
-                ))}
+                  )
+                })}
               </View>
 
               {/* Add Comment Input */}
@@ -1717,7 +1742,18 @@ function createStyles(
       lineHeight: 18,
     },
     commentLikeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
       padding: 4,
+    },
+    commentLikeCount: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    commentLikeCountActive: {
+      color: colors.brandPrimary,
     },
     addCommentContainer: {
       flexDirection: 'row',

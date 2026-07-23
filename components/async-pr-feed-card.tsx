@@ -106,9 +106,24 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     let isMounted = true
     const fetchComments = async () => {
       try {
-        const fetchedComments = await database.workoutComments.listWithProfilesByWorkout(workout.id, 2)
+        const fetchedComments =
+          await database.workoutComments.listWithProfilesByWorkout(workout.id, 2)
+        const commentIds = fetchedComments.map((c) => c.id)
+        const [likeCounts, likedIds] = await Promise.all([
+          database.workoutCommentLikes.getCounts(commentIds),
+          user?.id
+            ? database.workoutCommentLikes.getLikedCommentIds(commentIds, user.id)
+            : Promise.resolve([] as string[]),
+        ])
+        const likedIdSet = new Set(likedIds)
         if (isMounted) {
-          setComments(fetchedComments)
+          setComments(
+            fetchedComments.map((c) => ({
+              ...c,
+              likeCount: likeCounts[c.id] || 0,
+              isLiked: likedIdSet.has(c.id),
+            })),
+          )
         }
       } catch (error) {
         console.error('Error fetching comments for feed card:', error)
@@ -118,7 +133,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     return () => {
       isMounted = false
     }
-  }, [workout.id, workout.isPending, commentCount])
+  }, [workout.id, workout.isPending, commentCount, user?.id])
 
   const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
     if (!user?.id) return null
@@ -470,6 +485,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       userAvatar: c.profile?.avatar_url,
       text: c.content,
       timeAgo: formatTimeAgo(c.created_at),
+      likeCount: c.likeCount ?? 0,
+      isLiked: c.isLiked ?? false,
     }))
   }, [comments])
 

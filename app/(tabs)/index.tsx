@@ -20,6 +20,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { AnimatedFire } from '@/components/animated-fire'
 import { AnimatedFeedCard } from '@/components/animated-feed-card'
 import { AppPostCard } from '@/components/app-post-card'
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
@@ -966,6 +967,8 @@ export default function FeedScreen() {
               (placeholder as unknown) as WorkoutSessionWithDetails,
             )
           })
+          // Ensure the pending card at the top of the feed is visible
+          scrollFeedToTop()
         }
       }
 
@@ -1141,10 +1144,9 @@ export default function FeedScreen() {
                   >
                     <NavbarIsland style={styles.circleActionIsland}>
                       <View style={styles.streakButton}>
-                        <Ionicons
-                          name="flame"
+                        <AnimatedFire
                           size={24}
-                          color={colors.brandPrimary}
+                          isActive
                           style={{ marginTop: 2 }}
                         />
                       </View>

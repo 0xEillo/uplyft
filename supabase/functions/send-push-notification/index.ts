@@ -51,9 +51,18 @@ interface ExpoPushMessage {
     workoutId?: string
     requestId?: string
     route?: string
+    actors?: string[]
     notificationId: string
   }
   badge?: number
+}
+
+const LEGACY_ROUTE_ALIASES: Record<string, string> = {
+  '/(tabs)/create-post': '/create-post',
+}
+
+function normalizePushRoute(route: string): string {
+  return LEGACY_ROUTE_ALIASES[route] ?? route
 }
 
 Deno.serve(async (req) => {
@@ -143,7 +152,9 @@ Deno.serve(async (req) => {
     const metadataBody =
       typeof metadata.body === 'string' ? metadata.body : undefined
     const metadataRoute =
-      typeof metadata.route === 'string' ? metadata.route : undefined
+      typeof metadata.route === 'string'
+        ? normalizePushRoute(metadata.route)
+        : undefined
 
     const isRetentionType =
       notification.type === 'trial_reminder' ||
@@ -272,6 +283,10 @@ Deno.serve(async (req) => {
     // Add requestId only for follow request notifications
     if (notification.request_id) {
       messageData.requestId = notification.request_id
+    }
+
+    if (notification.actors?.length > 0) {
+      messageData.actors = notification.actors
     }
 
     if (metadataRoute) {

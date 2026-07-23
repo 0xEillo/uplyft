@@ -14,6 +14,7 @@ import {
   getNotificationIcon,
   getNotificationIconColor,
 } from '@/lib/utils/notification-formatters'
+import { resolveNotificationRoute } from '@/lib/utils/notification-routing'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -88,81 +89,23 @@ export default function NotificationsScreen() {
 
   const handleNotificationPress = useCallback(
     async (notification: NotificationWithProfiles) => {
-      try {
-        trackEvent(AnalyticsEvents.NOTIFICATION_TAPPED, {
-          notification_id: notification.id,
-          notification_type: notification.type,
-        })
+      trackEvent(AnalyticsEvents.NOTIFICATION_TAPPED, {
+        notification_id: notification.id,
+        notification_type: notification.type,
+      })
 
+      try {
         await database.notifications.markAsRead(notification.id)
         await refreshNotifications()
-
-        const metadataRoute =
-          notification.metadata &&
-          typeof notification.metadata.route === 'string'
-            ? notification.metadata.route
-            : null
-
-        if (metadataRoute) {
-          router.push(metadataRoute as any)
-          return
-        }
-
-        if (
-          notification.type === 'follow_request_received' ||
-          notification.type === 'follow_request_approved' ||
-          notification.type === 'follow_request_declined'
-        ) {
-          router.push('/follow-requests')
-        } else if (
-          (notification.type === 'workout_comment' ||
-            notification.type === 'workout_comment_reply' ||
-            notification.type === 'workout_comment_like' ||
-            notification.type === 'workout_comment_mention') &&
-          notification.workout_id
-        ) {
-          // Navigate to the comments view for the workout
-          router.push({
-            pathname: '/workout-comments/[workoutId]',
-            params: {
-              workoutId: notification.workout_id,
-              returnTo: pathname,
-            },
-          })
-        } else if (
-          (notification.type === 'workout_like' ||
-            notification.type === 'followed_workout_post') &&
-          notification.workout_id
-        ) {
-          // Navigate to the workout detail view for workout-related social updates
-          router.push({
-            pathname: '/workout/[workoutId]',
-            params: {
-              workoutId: notification.workout_id,
-              returnTo: pathname,
-            },
-          })
-        } else if (notification.type === 'trial_reminder') {
-          // Navigate to profile page where subscription can be managed
-          router.push('/(tabs)/profile')
-        } else if (
-          notification.type === 'retention_scheduled_workout' ||
-          notification.type === 'retention_streak_protection' ||
-          notification.type === 'retention_inactivity'
-        ) {
-          router.push('/create-post')
-        } else if (
-          notification.type === 'retention_weekly_recap' ||
-          notification.type === 'retention_milestone'
-        ) {
-          router.push('/(tabs)/profile')
-        } else {
-          // For other notifications, go to the feed
-          router.push('/(tabs)')
-        }
       } catch (error) {
-        console.error('Error handling notification press:', error)
+        console.error('Error marking notification as read:', error)
       }
+
+      router.push(
+        resolveNotificationRoute(notification, {
+          returnTo: pathname || '/notifications',
+        }) as any,
+      )
     },
     [refreshNotifications, pathname, trackEvent],
   )
