@@ -2,7 +2,11 @@ import {
   getRestTimerSoundEnabled,
   subscribeToRestTimerSoundEnabled,
 } from '@/lib/utils/create-post-settings'
-import { useAudioPlayer } from 'expo-audio'
+import {
+  setAudioModeAsync,
+  setIsAudioActiveAsync,
+  useAudioPlayer,
+} from 'expo-audio'
 import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
 import React, {
@@ -17,9 +21,44 @@ import { AppState, Platform } from 'react-native'
 import { MMKV } from 'react-native-mmkv'
 
 const timerSound = require('../assets/sounds/stopwatch.mp3')
-const REST_TIMER_CHANNEL_ID = 'rest_timer_alarm'
-const REST_TIMER_SILENT_CHANNEL_ID = 'rest_timer_alarm_silent'
+// v2: NOTIFICATION usage instead of ALARM so Spotify/other music isn't seized
+const REST_TIMER_CHANNEL_ID = 'rest_timer_alert_v2'
+const REST_TIMER_SILENT_CHANNEL_ID = 'rest_timer_alert_silent_v2'
 const REST_TIMER_SOUND_FILE = 'stopwatch.mp3'
+
+/**
+ * Configure a non-interrupting session for the rest-timer beep.
+ * On iOS this is critical: a sticky playAndRecord session (from voice logging)
+ * will pause Spotify, and category switches without deactivating first can leave
+ * it stuck. Deactivate with notifyOthers, then set mixWithOthers playback.
+ */
+async function prepareRestTimerSoundSession(): Promise<void> {
+  try {
+    // Releases any prior session (e.g. recording) and asks other apps to resume
+    await setIsAudioActiveAsync(false)
+  } catch {
+    // Session may already be inactive
+  }
+
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    allowsRecording: false,
+    interruptionMode: 'mixWithOthers',
+    shouldPlayInBackground: false,
+  })
+
+  // Android refuses play() while audio is disabled; iOS activate happens on play()
+  await setIsAudioActiveAsync(true)
+}
+
+async function releaseRestTimerSoundSession(): Promise<void> {
+  try {
+    await setIsAudioActiveAsync(false)
+  } catch {
+    // Ignore — best-effort hand-back to Spotify / other music
+  }
+}
+
 const REST_TIMER_VIBRATION_PATTERN = [0, 600, 250, 600]
 const REST_TIMER_STORAGE_KEY = '@rest_timer_state'
 const restTimerStorage = new MMKV({ id: 'rest-timer' })
@@ -131,17 +170,38 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
 
   const player = useAudioPlayer(timerSound)
 
+  useEffect(() => {
+    const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      if (!status.didJustFinish) return
+
+      try {
+        player.pause()
+      } catch {
+        // Ignore — player may already be idle
+      }
+      void releaseRestTimerSoundSession()
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [player])
+
   const playSound = useCallback(() => {
     if (!restTimerSoundEnabledRef.current) {
       return
     }
 
-    try {
-      player.seekTo(0)
-      player.play()
-    } catch (error) {
-      console.log('Error playing sound:', error)
-    }
+    void (async () => {
+      try {
+        await prepareRestTimerSoundSession()
+        await player.seekTo(0)
+        player.play()
+      } catch (error) {
+        console.log('Error playing sound:', error)
+        void releaseRestTimerSoundSession()
+      }
+    })()
   }, [player])
 
   const setInitialDurationValue = useCallback((duration: number) => {
@@ -267,7 +327,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
             Notifications.AndroidNotificationVisibility.PUBLIC,
           audioAttributes: soundEnabled
             ? {
-                usage: Notifications.AndroidAudioUsage.ALARM,
+                usage: Notifications.AndroidAudioUsage.NOTIFICATION,
                 contentType: Notifications.AndroidAudioContentType.SONIFICATION,
               }
             : undefined,
@@ -293,7 +353,7 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
               : 'default'
             : false
           : soundEnabled,
-      interruptionLevel: Platform.OS === 'ios' ? 'active' : undefined,
+      interruptionLevel: Platform.OS === 'ios' ? 'timeSensitive' : undefined,
       priority:
         Platform.OS === 'android'
           ? Notifications.AndroidNotificationPriority.MAX

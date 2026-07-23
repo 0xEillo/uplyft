@@ -1,4 +1,4 @@
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio'
+import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync } from 'expo-audio'
 
 import type { WorkoutSong } from '@/types/music'
 
@@ -63,6 +63,17 @@ export function subscribeMusicPreview(listener: Listener) {
 export async function stopMusicPreview(): Promise<void> {
   activeToken += 1
   await cleanupSound()
+  try {
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      allowsRecording: false,
+      interruptionMode: 'mixWithOthers',
+      shouldPlayInBackground: false,
+    })
+    await setIsAudioActiveAsync(false)
+  } catch {
+    // Ignore mode restore errors
+  }
   if (state.trackId !== null || state.isPlaying || state.isBuffering) {
     setState({ trackId: null, isPlaying: false, isBuffering: false })
   }
@@ -76,7 +87,12 @@ export async function playMusicPreview(song: WorkoutSong): Promise<void> {
   setState({ trackId: song.trackId, isPlaying: false, isBuffering: true })
 
   try {
-    await setAudioModeAsync({ playsInSilentMode: true })
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: 'doNotMix',
+      allowsRecording: false,
+      shouldPlayInBackground: false,
+    })
     const nextPlayer = createAudioPlayer({ uri: song.previewUrl })
 
     if (token !== activeToken) {

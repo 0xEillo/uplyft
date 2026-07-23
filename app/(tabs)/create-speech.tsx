@@ -10,6 +10,7 @@ import {
   AudioModule,
   RecordingPresets,
   setAudioModeAsync,
+  setIsAudioActiveAsync,
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio'
@@ -40,20 +41,36 @@ export default function CreateSpeechScreen() {
       if (!status.granted) {
         Alert.alert('Permission required', 'Please grant microphone access')
       }
-
-      setAudioModeAsync({
-        playsInSilentMode: true,
-        allowsRecording: true,
-      })
     })()
 
     trackEvent(AnalyticsEvents.WORKOUT_CREATE_STARTED, {
       mode: 'speech',
     })
+
+    return () => {
+      void (async () => {
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: false,
+            interruptionMode: 'mixWithOthers',
+            shouldPlayInBackground: false,
+          })
+          await setIsAudioActiveAsync(false)
+        } catch {
+          // Ignore cleanup errors
+        }
+      })()
+    }
   }, [trackEvent])
 
   const startRecording = async () => {
     try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+        interruptionMode: 'doNotMix',
+      })
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
 
@@ -62,6 +79,17 @@ export default function CreateSpeechScreen() {
       })
     } catch (error) {
       console.error('Failed to start recording:', error)
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+          interruptionMode: 'mixWithOthers',
+          shouldPlayInBackground: false,
+        })
+        await setIsAudioActiveAsync(false)
+      } catch {
+        // Ignore
+      }
       Alert.alert('Error', 'Failed to start recording')
     }
   }
@@ -73,6 +101,13 @@ export default function CreateSpeechScreen() {
 
     try {
       await audioRecorder.stop()
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+        interruptionMode: 'mixWithOthers',
+        shouldPlayInBackground: false,
+      })
+      await setIsAudioActiveAsync(false)
       const uri = audioRecorder.uri
 
       if (!uri) {

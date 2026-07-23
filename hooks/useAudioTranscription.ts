@@ -2,6 +2,7 @@ import {
     AudioModule,
     RecordingPresets,
     setAudioModeAsync,
+    setIsAudioActiveAsync,
     useAudioRecorder,
     useAudioRecorderState,
 } from 'expo-audio'
@@ -71,21 +72,27 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
   const recorderState = useAudioRecorderState(audioRecorder)
   const [isTranscribing, setIsTranscribing] = useState(false)
 
-  // Setup audio mode on mount
-  useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          allowsRecording: true,
-        })
-      } catch (error) {
-        console.error('Error setting up audio:', error)
-      }
+  const restorePlaybackAudioMode = useCallback(async () => {
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+        interruptionMode: 'mixWithOthers',
+        shouldPlayInBackground: false,
+      })
+      // Hand audio focus back so Spotify can resume after mic use (iOS)
+      await setIsAudioActiveAsync(false)
+    } catch (error) {
+      console.error('Error restoring audio mode:', error)
     }
-
-    setupAudio()
   }, [])
+
+  // Leave recording mode when this screen unmounts so Spotify isn't stuck paused
+  useEffect(() => {
+    return () => {
+      void restorePlaybackAudioMode()
+    }
+  }, [restorePlaybackAudioMode])
 
   /**
    * Transcribe the recorded audio using the Supabase Edge Function
@@ -190,6 +197,7 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
       setIsTranscribing(true)
       try {
         await audioRecorder.stop()
+        await restorePlaybackAudioMode()
         const uri = audioRecorder.uri
 
         if (!uri) {
@@ -271,10 +279,16 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
           return
         }
 
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+          interruptionMode: 'doNotMix',
+        })
         await audioRecorder.prepareToRecordAsync()
         audioRecorder.record()
       } catch (error) {
         console.error('Failed to start recording:', error)
+        await restorePlaybackAudioMode()
         Alert.alert(
           'Recording Issue',
           'Unable to start recording. Please check your microphone permissions in device settings.',
@@ -288,7 +302,7 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
         )
       }
     }
-  }, [recorderState.isRecording, audioRecorder, transcribeAudio, parseVoiceWorkout, onStructuredTranscriptionComplete, onTranscriptionComplete, onError])
+  }, [recorderState.isRecording, audioRecorder, transcribeAudio, parseVoiceWorkout, onStructuredTranscriptionComplete, onTranscriptionComplete, onError, restorePlaybackAudioMode])
 
   /**
    * Stop recording without transcribing
@@ -297,11 +311,12 @@ export function useAudioTranscription(options: UseAudioTranscriptionOptions = {}
     if (recorderState.isRecording) {
       try {
         await audioRecorder.stop()
+        await restorePlaybackAudioMode()
       } catch (error) {
         console.error('Error stopping recording:', error)
       }
     }
-  }, [recorderState.isRecording, audioRecorder])
+  }, [recorderState.isRecording, audioRecorder, restorePlaybackAudioMode])
 
   return {
     isRecording: recorderState.isRecording,
