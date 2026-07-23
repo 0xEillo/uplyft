@@ -21,7 +21,7 @@ import { getWeeklyCommitmentTarget } from '@/lib/commitment'
 import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
-import { haptic, hapticSuccess } from '@/lib/haptics'
+import { haptic } from '@/lib/haptics'
 import {
   persistOnboardingStrengthSnapshot,
   type OnboardingStrengthSnapshotInput,
@@ -46,7 +46,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -59,8 +58,7 @@ import {
   View,
 } from 'react-native'
 import Body from '@/components/PatchedBodyHighlighter'
-import ConfettiCannon from 'react-native-confetti-cannon'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -99,11 +97,6 @@ interface ProcessingStepProps extends StepContentProps {
   setStep: (step: number) => void
 }
 
-interface CommitmentPledgeStepProps extends StepContentProps {
-  insets: { top: number; bottom: number; left: number; right: number }
-  onHoldingChange: (holding: boolean) => void
-}
-
 interface FinalPlanStepProps extends StepContentProps {
   weightUnit: string
 }
@@ -138,14 +131,12 @@ const STEP_NAMES: { [key: number]: string } = {
   // Continuation of main flow
   21: 'focus_muscles',
   22: 'deprioritize_muscles',
-  23: 'body_scan_feature',
-  24: 'processing',
-  25: 'plan_ready',
-  26: 'commitment_pledge',
+  23: 'processing',
+  24: 'plan_ready',
 }
 
 // Total number of steps in the onboarding flow
-const TOTAL_STEPS = 26
+const TOTAL_STEPS = 24
 
 const BODY_HALF_CONFIG = {
   upper: { scale: 0.52, offsetY: 42 },
@@ -980,492 +971,6 @@ const ProcessingStepContent = ({
   )
 }
 
-const CommitmentStepContent = ({
-  data,
-  setStep,
-  onNext,
-  colors,
-  styles,
-  insets,
-  onHoldingChange,
-}: CommitmentPledgeStepProps & {
-  setStep: (step: number) => void
-  onNext: () => void
-}) => {
-  const [holding, setHolding] = useState(false)
-  const [isCommitted, setIsCommitted] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const progress = useRef(new Animated.Value(0)).current
-  const scaleAnim = useRef(new Animated.Value(1)).current
-  const waveAnim = useRef(new Animated.Value(0)).current
-  const confettiRef = useRef<any>(null)
-
-  const coach =
-    COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(waveAnim, {
-        toValue: 1,
-        duration: 3000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    ).start()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
-  }, [])
-
-  useEffect(() => {
-    if (isCommitted) {
-      const timer = setTimeout(() => setShowSuccess(true), 800)
-      return () => clearTimeout(timer)
-    }
-  }, [isCommitted])
-
-  const handlePressIn = () => {
-    if (isCommitted) return
-    setHolding(true)
-    onHoldingChange?.(true)
-
-    // Scale down button slightly
-    Animated.spring(scaleAnim, {
-      toValue: 0.9,
-      useNativeDriver: true,
-    }).start()
-
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 3000,
-      easing: Easing.inOut(Easing.ease), // Smoother rise
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) {
-        hapticSuccess()
-        setIsCommitted(true)
-        setHolding(false)
-        // Celebration!
-        confettiRef.current?.start()
-      }
-    })
-  }
-
-  const handlePressOut = () => {
-    if (isCommitted) return
-    setHolding(false)
-    onHoldingChange?.(false)
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start()
-
-    if (!isCommitted) {
-      // Stop the current fill animation and get the current progress value
-      progress.stopAnimation((currentValue) => {
-        // Animate back down with duration proportional to how far it went up
-        // Full 3000ms up = proportionally less going back down, but at least 300ms
-        const reverseDuration = Math.max(currentValue * 1500, 300)
-        Animated.timing(progress, {
-          toValue: 0,
-          duration: reverseDuration,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }).start()
-      })
-    }
-  }
-
-  // Text Logic
-  const coachText = isCommitted
-    ? "That's how you take charge of your fitness! 💪"
-    : "Let's gain muscles, for good! 💪"
-
-  const screenHeight = Dimensions.get('window').height
-  const riseTransY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [screenHeight, -100],
-  })
-
-  // Calculate the counter-movement for the text so it appears fixed on screen
-  // while the masking container moves up.
-  const textTranslateY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-screenHeight, 100], // Exact opposite of riseTransY
-  })
-
-  // Styles to break out of parent padding
-  const breakoutStyle = {
-    marginHorizontal: -24,
-    marginTop: 0, // Removed negative margin to stay below header correctly
-    marginBottom: 0,
-    flex: 1,
-  }
-
-  const spin = waveAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  })
-
-  // Theme-based colors for the "water" effect
-  const isDark = colors.bg === '#000000'
-  const waveColor = isDark ? '#F97316' : '#000000'
-
-  return (
-    <View style={[styles.stepContainer, breakoutStyle]}>
-      {/* Confetti Celebration */}
-      <ConfettiCannon
-        ref={confettiRef}
-        count={150}
-        origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
-        autoStart={false}
-        fadeOut
-        explosionSpeed={350}
-        fallSpeed={3000}
-        colors={[
-          colors.brandPrimary,
-          '#FFD700',
-          '#FFA500',
-          '#FF6B35',
-          '#4ECDC4',
-          '#A855F7',
-        ]}
-      />
-
-      {/* Rising Water Animation Layer */}
-      <View
-        style={[StyleSheet.absoluteFill, { zIndex: 10, elevation: 10 }]}
-        pointerEvents="none"
-      >
-        {/* 1. Water Backdrop (Orange with Waves) */}
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              transform: [{ translateY: riseTransY }],
-              backgroundColor: 'transparent', // Container is transparent
-            },
-          ]}
-        >
-          {/* The Water Body */}
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: screenHeight * 2, // plenty of height
-              backgroundColor: waveColor,
-            }}
-          />
-
-          {/* Rotating Waves sitting on TOP of the orange block */}
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: -300,
-              left: '-50%',
-              width: 1000,
-              height: 1000,
-              backgroundColor: waveColor, // Same as body
-              borderRadius: 420,
-              transform: [{ rotate: spin }],
-            }}
-          />
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: -320,
-              right: '-40%',
-              width: 900,
-              height: 900,
-              backgroundColor: waveColor,
-              borderRadius: 400, // slightly different for chaos
-              transform: [{ rotate: spin }],
-            }}
-          />
-        </Animated.View>
-
-        {/* 2. Text Content Mask (The emerging white text) */}
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              transform: [{ translateY: riseTransY }],
-              zIndex: 20,
-              overflow: 'hidden', // This doesn't strictly mask like MaskedView in RN Web/simple views but works for reveal if we replicate content
-              // However, for this visual effect, we just need the text to "appear" as water passes
-              // A simple way is to just have the text INSIDE the rising view fixed to screen coordinates
-            },
-          ]}
-        >
-          <Animated.View
-            style={{
-              height: screenHeight,
-              width: '100%',
-              position: 'absolute',
-              // We need to counteract the translation to keep text fixed on screen
-              transform: [{ translateY: textTranslateY }],
-              alignItems: 'center',
-              justifyContent: 'center',
-              top: 0,
-            }}
-          >
-            {/* 
-                     We use a simple View here since the transform is applied to the parent 
-                     Absolute container above. 
-                 */}
-            <View
-              style={{
-                width: '100%',
-                height: screenHeight,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <View
-                style={{
-                  alignItems: 'center',
-                  width: '100%',
-                  paddingHorizontal: 40,
-                }}
-              >
-                {isCommitted && (
-                  <Animated.View
-                    style={{
-                      marginBottom: 40,
-                      width: 140,
-                      height: 140,
-                      borderRadius: 70,
-                      borderWidth: 0,
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      transform: [{ scale: scaleAnim }],
-                      shadowColor: '#fff',
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.4,
-                      shadowRadius: 30,
-                      elevation: 10,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 100,
-                        height: 100,
-                        borderRadius: 50,
-                        backgroundColor: 'rgba(255,255,255,0.25)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Ionicons name="checkmark" size={64} color="white" />
-                    </View>
-                  </Animated.View>
-                )}
-                <Text
-                  style={{
-                    color: 'white',
-                    fontSize: 34,
-                    fontWeight: '800',
-                    marginBottom: 12,
-                    textAlign: 'center',
-                    letterSpacing: -1,
-                  }}
-                >
-                  {isCommitted ? 'You are committed!' : 'Keep holding!'}
-                </Text>
-                <Text
-                  style={{
-                    color: 'white',
-                    fontSize: 18,
-                    opacity: 0.85,
-                    textAlign: 'center',
-                    fontWeight: '500',
-                    lineHeight: 24,
-                  }}
-                >
-                  {isCommitted ? '' : 'Commitment takes discipline.'}
-                </Text>
-              </View>
-            </View>
-          </Animated.View>
-        </Animated.View>
-      </View>
-
-      {/* Main Content Area */}
-      <View
-        style={{
-          flex: 1,
-          paddingHorizontal: 24,
-          paddingTop: 50 + (insets?.top || 0), // Match standard header spacing
-          justifyContent: 'space-between',
-        }}
-      >
-        <View style={{ width: '100%' }}>
-          {/* Coach Message */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              gap: 12,
-              marginTop: 20,
-              opacity: holding ? 0 : 1,
-            }}
-          >
-            <Image
-              source={coach.image}
-              style={{ width: 48, height: 48, borderRadius: 24 }}
-            />
-            <View>
-              <View
-                style={{
-                  backgroundColor: colors.surface,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 20,
-                  borderBottomLeftRadius: 4,
-                  maxWidth: 260,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    lineHeight: 22,
-                    color: colors.textPrimary,
-                  }}
-                >
-                  {coachText}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Simple Clean Pledge Text */}
-          {!isCommitted && !holding && (
-            <View style={{ marginTop: 24, paddingHorizontal: 4 }}>
-              <Text style={styles.stepTitle}>I, {data.name || 'User'},</Text>
-              <Text
-                style={{
-                  fontSize: 20,
-                  lineHeight: 32,
-                  color: colors.textPrimary,
-                  fontWeight: '500',
-                  marginTop: 8,
-                }}
-              >
-                commit to pushing my limits, fueling my body, and showing up
-                with discipline. This is about progress, not perfection.
-              </Text>
-            </View>
-          )}
-
-          {/* Committed Badge */}
-          {isCommitted && (
-            <Animated.View style={{ marginTop: 40, alignSelf: 'flex-start' }}>
-              <View
-                style={{
-                  backgroundColor: colors.brandPrimary,
-                  paddingVertical: 12,
-                  paddingHorizontal: 20,
-                  borderRadius: 100,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  shadowColor: colors.brandPrimary,
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 4 },
-                }}
-              >
-                <Text
-                  style={{ color: 'white', fontSize: 16, fontWeight: '700' }}
-                >
-                  Committed
-                </Text>
-                <Text style={{ fontSize: 16 }}>🤝</Text>
-              </View>
-            </Animated.View>
-          )}
-        </View>
-
-        {/* Bottom Interactive Area */}
-        <View
-          style={[
-            styles.footer,
-            {
-              zIndex: 50,
-              elevation: 50,
-              marginTop: 'auto',
-              paddingBottom: Math.max(insets?.bottom || 0, 20) + 10,
-            },
-          ]}
-        >
-          {!isCommitted && (
-            <View
-              style={{ alignItems: 'center', width: '100%', marginBottom: 60 }}
-            >
-              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPressIn={handlePressIn}
-                  onPressOut={handlePressOut}
-                  style={{
-                    width: 140,
-                    height: 140,
-                    borderRadius: 70,
-                    backgroundColor: waveColor,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    shadowColor: waveColor,
-                    shadowOpacity: 0.4,
-                    shadowRadius: 16,
-                    shadowOffset: { width: 0, height: 8 },
-                    elevation: 8,
-                    marginBottom: 24,
-                    borderWidth: 6,
-                    borderColor: '#fff',
-                  }}
-                >
-                  <Ionicons name="flash" size={56} color="white" />
-                </TouchableOpacity>
-              </Animated.View>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: '700',
-                  color: holding ? 'transparent' : '#fff',
-                }}
-              >
-                Tap and hold to commit.
-              </Text>
-            </View>
-          )}
-
-          {isCommitted && showSuccess && (
-            <HapticButton
-              style={[
-                styles.nextButton,
-                {
-                  backgroundColor: 'white',
-                  shadowColor: '#000',
-                  shadowOpacity: 0.15,
-                },
-              ]}
-              onPress={onNext}
-              hapticIntensity="medium"
-            >
-              <Text style={[styles.nextButtonText, { color: waveColor }]}>
-                Continue
-              </Text>
-            </HapticButton>
-          )}
-        </View>
-      </View>
-    </View>
-  )
-}
-
 const FinalPlanStepContent = ({
   data,
   colors,
@@ -1588,12 +1093,10 @@ const FinalPlanStepContent = ({
 export default function OnboardingScreen() {
   const { signInAnonymously, user } = useAuth()
   const { refreshProfile } = useProfile()
-  const insets = useSafeAreaInsets()
   const [step, setStep] = useState(1)
   const [strengthIntroPhase, setStrengthIntroPhase] = useState<
     StrengthIntroPhase
   >('select')
-  const [isCommitmentHolding, setIsCommitmentHolding] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [deprioritizedMuscles, setDeprioritizedMuscles] = useState<string[]>([])
   const [focusPoints, setFocusPoints] = useState<Record<string, number>>({})
@@ -1637,7 +1140,7 @@ export default function OnboardingScreen() {
 
   // Reset scroll position for specific steps
   useEffect(() => {
-    if (step === 21 || step === 22 || step === 25) {
+    if (step === 21 || step === 22) {
       scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false })
     }
   }, [step])
@@ -1892,8 +1395,8 @@ export default function OnboardingScreen() {
       return
     }
 
-    // The paywall/app entry should only happen after the commitment step is completed.
-    if (step === 25 || step >= TOTAL_STEPS) {
+    // Finish onboarding after the plan ready step ("Get Started").
+    if (step === 24 || step >= TOTAL_STEPS) {
       const age = calculateAgeFromBirthDate(
         data.birth_year,
         data.birth_month,
@@ -2029,15 +1532,13 @@ export default function OnboardingScreen() {
     // Step 8 (gender) auto-swipes when an option is selected.
     // Step 11 (strength level) has its own flow, except rating phase which uses the global fixed footer.
     // Step 23 (processing) auto-advances after bars fill.
-    // Step 25 (commitment pledge) has its own custom footer/interaction.
     return (
       step === 5 ||
       step === 8 ||
       step === 9 ||
       (step === 11 && strengthIntroPhase !== 'rating') ||
       step === 17 ||
-      step === 23 ||
-      step === 25
+      step === 23
     )
   }
 
@@ -2083,8 +1584,6 @@ export default function OnboardingScreen() {
         return false // Processing - auto-advances
       case 24:
         return true // Plan ready - has "Get Started"
-      case 25:
-        return false // Commitment pledge - has custom interaction
       default:
         return false
     }
@@ -3087,25 +2586,6 @@ export default function OnboardingScreen() {
           />
         )
       }
-      case 25: {
-        return (
-          <CommitmentStepContent
-            data={data}
-            setStep={setStep}
-            onNext={handleNext}
-            colors={colors}
-            styles={styles}
-            insets={insets}
-            onHoldingChange={setIsCommitmentHolding}
-          />
-        )
-      }
-      case 26:
-        return (
-          <View style={[styles.stepContainer, { justifyContent: 'center' }]}>
-            <Text style={styles.stepTitle}>Setting up your plan...</Text>
-          </View>
-        )
       default:
         return null
     }
@@ -3378,15 +2858,13 @@ export default function OnboardingScreen() {
   }
 
   const isSectionDividerStep = step === 5 || step === 9 || step === 17
-  const useOverlayHeader = step === 25 || isSectionDividerStep
+  const useOverlayHeader = isSectionDividerStep
 
   return (
     <SafeAreaView
       style={styles.container}
       edges={
-        step === 25
-          ? ['left', 'right']
-          : step === 23 || step === 24
+        step === 23 || step === 24
           ? ['top', 'left', 'right']
           : ['top', 'bottom', 'left', 'right']
       }
@@ -3397,23 +2875,13 @@ export default function OnboardingScreen() {
           style={[
             styles.header,
             useOverlayHeader && styles.overlayHeader,
-            step === 25 && {
-              paddingTop:
-                Math.max(insets.top, Platform.OS === 'ios' ? 44 : 0) + 20,
-            },
           ]}
         >
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons
               name="arrow-back"
               size={24}
-              color={
-                step === 25
-                  ? isCommitmentHolding || (step === 25 && false) // Logic for transition could go here, for now stick to consistency
-                    ? '#fff'
-                    : colors.textPrimary
-                  : colors.textPrimary
-              }
+              color={colors.textPrimary}
             />
           </TouchableOpacity>
 
@@ -3445,18 +2913,16 @@ export default function OnboardingScreen() {
             style={styles.content}
             contentContainerStyle={[
               styles.contentContainer,
-              (step === 24 || step === 25 || isSectionDividerStep) && {
+              (step === 24 || isSectionDividerStep) && {
                 paddingBottom: 0,
               },
               !hasAutoSwipe() &&
-                step !== 24 &&
-                step !== 25 && { paddingBottom: 140 },
+                step !== 24 && { paddingBottom: 140 },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             bounces={step !== 23}
-            scrollEnabled={step !== 25}
           >
             <View
               style={[

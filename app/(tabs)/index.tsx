@@ -520,8 +520,6 @@ export default function FeedScreen() {
     loadAppPostState()
   }, [loadAppPostState])
 
-  // Hard Paywall is handled globally in (tabs)/_layout.tsx with a 0.4s delay
-
   const loadWorkouts = useCallback(
     async (showLoading = false, loadMore = false) => {
       if (!user) return
