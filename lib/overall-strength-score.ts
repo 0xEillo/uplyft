@@ -113,7 +113,32 @@ export interface StrengthScoreProjectionResult {
   projectedExercises: OverallStrengthExerciseInput[]
 }
 
-export const OVERALL_STRENGTH_SCORE_CAP = 1000
+// Scores run 0-10000. Before 1.0.33 they ran 0-1000; the old-scale value is
+// still cached in profiles.overall_strength_score for older app versions.
+export const OVERALL_STRENGTH_SCORE_CAP = 10000
+export const LEGACY_STRENGTH_SCORE_SCALE = 10
+
+/** Converts a score to the pre-1.0.33 0-1000 scale. */
+export function toLegacyStrengthScore(score: number): number {
+  return Math.round(score / LEGACY_STRENGTH_SCORE_SCALE)
+}
+
+/**
+ * Reads a cached profile score on the current scale, falling back to the
+ * old-scale column for profiles not yet refreshed by 1.0.33+.
+ */
+export function resolveCachedStrengthPoints(profile: {
+  overall_strength_points?: number | null
+  overall_strength_score?: number | null
+}): number | null {
+  if (typeof profile.overall_strength_points === 'number') {
+    return profile.overall_strength_points
+  }
+  if (typeof profile.overall_strength_score === 'number') {
+    return profile.overall_strength_score * LEGACY_STRENGTH_SCORE_SCALE
+  }
+  return null
+}
 // Each muscle group's score is a weighted average of its lifts' scores.
 // A lift's weight = tier weight (EXERCISE_TIER_WEIGHTS) x training-frequency
 // weight x rank decay. Lifts are ranked by score, and each lower rank gets 0.7x
@@ -150,11 +175,11 @@ const OVERALL_GROUP_WEIGHTS: Record<OverallStrengthGroup, number> = {
 
 export const LEVEL_POINT_ANCHORS: Record<StrengthLevel, number> = {
   Untrained: 0,
-  Beginner: 100,
-  Novice: 200,
-  Intermediate: 400,
-  Advanced: 600,
-  Elite: 825,
+  Beginner: 1000,
+  Novice: 2000,
+  Intermediate: 4000,
+  Advanced: 6000,
+  Elite: 8250,
   'World Class': OVERALL_STRENGTH_SCORE_CAP,
 }
 

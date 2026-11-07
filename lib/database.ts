@@ -15,6 +15,7 @@ import {
 } from '@/lib/exercise-standards-config'
 import {
   calculateStrengthScoreHistory,
+  toLegacyStrengthScore,
   type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
 import { estimateOneRepMaxKg, getStrengthGender } from '@/lib/strength-progress'
@@ -315,7 +316,79 @@ const syncProfileWeightCacheFromDailyLog = async (userId: string) => {
 }
 
 const PROFILE_FEED_SELECT =
-  'id, user_tag, display_name, avatar_url, overall_strength_score, overall_strength_level, overall_strength_progress, overall_strength_updated_at'
+  'id, user_tag, display_name, avatar_url, overall_strength_points, overall_strength_score, overall_strength_level, overall_strength_progress, overall_strength_updated_at'
+
+type OnboardingStrengthBest = {
+  exerciseId: string
+  exerciseName: string
+  muscleGroup: string | null
+  max1RM: number
+  recordedAt: string
+}
+
+// Loaded here rather than via lib/onboarding-strength.ts, which imports this
+// module. Mirrors getOnboardingStrengthSnapshot.
+const getOnboardingStrengthBest = async (
+  userId: string,
+): Promise<OnboardingStrengthBest | null> => {
+  const { data, error } = await supabase
+    .from('onboarding_strength_snapshots')
+    .select(
+      'exercise_id, estimated_1rm_kg, created_at, updated_at, exercise:exercises!inner (name, muscle_group)',
+    )
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const exercise = (Array.isArray(data.exercise)
+    ? data.exercise[0]
+    : data.exercise) as { name: string; muscle_group: string | null } | undefined
+  const max1RM = Math.round(Number(data.estimated_1rm_kg))
+  if (!exercise || !(max1RM > 0)) return null
+
+  return {
+    exerciseId: data.exercise_id,
+    exerciseName: exercise.name,
+    muscleGroup: exercise.muscle_group,
+    max1RM,
+    recordedAt: data.updated_at ?? data.created_at,
+  }
+}
+
+// Same rules as mergeOnboardingStrengthSnapshotIntoExerciseData: the
+// onboarding estimate raises an existing lift's best, or adds the lift.
+const mergeOnboardingBestIntoStrengthExercises = <
+  T extends {
+    exerciseId: string
+    exerciseName: string
+    muscleGroup: string | null
+    max1RM: number
+    lastTrainedAt: string | null
+  },
+>(
+  exercises: T[],
+  best: OnboardingStrengthBest | null,
+): T[] => {
+  if (!best) return exercises
+  const index = exercises.findIndex((e) => e.exerciseId === best.exerciseId)
+  if (index === -1) {
+    return [
+      ...exercises,
+      {
+        exerciseId: best.exerciseId,
+        exerciseName: best.exerciseName,
+        muscleGroup: best.muscleGroup,
+        max1RM: best.max1RM,
+        lastTrainedAt: best.recordedAt,
+      } as T,
+    ]
+  }
+  return exercises.map((exercise, i) =>
+    i === index
+      ? { ...exercise, max1RM: Math.max(exercise.max1RM, best.max1RM) }
+      : exercise,
+  )
+}
 
 const refreshProfileStrengthCache = async (userId: string) => {
   const profile = await database.profiles.getByIdOrNull(userId)
@@ -323,6 +396,7 @@ const refreshProfileStrengthCache = async (userId: string) => {
   const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
 
   const cacheBase = {
+    overall_strength_points: null,
     overall_strength_score: null,
     overall_strength_level: null,
     overall_strength_progress: null,
@@ -339,8 +413,16 @@ const refreshProfileStrengthCache = async (userId: string) => {
     return cacheBase
   }
 
-  const { exercises, sessions } =
-    await database.stats.getStrengthScoreSourceData(userId)
+  const [sourceData, onboardingBest] = await Promise.all([
+    database.stats.getStrengthScoreSourceData(userId),
+    getOnboardingStrengthBest(userId),
+  ])
+  const { sessions } = sourceData
+  // Match the Progress screen, which counts the onboarding lift too.
+  const exercises = mergeOnboardingBestIntoStrengthExercises(
+    sourceData.exercises,
+    onboardingBest,
+  )
 
   if (exercises.length === 0) {
     const { error } = await supabase
@@ -360,7 +442,9 @@ const refreshProfileStrengthCache = async (userId: string) => {
   })
 
   const cachedStrength = {
-    overall_strength_score: result.score,
+    overall_strength_points: result.score,
+    // Old 0-1000 scale for app versions before 1.0.33.
+    overall_strength_score: toLegacyStrengthScore(result.score),
     overall_strength_level: result.level,
     overall_strength_progress: Math.round(result.progress),
     overall_strength_updated_at: new Date().toISOString(),
@@ -1058,6 +1142,7 @@ export const database = {
             display_name,
             user_tag,
             avatar_url,
+            overall_strength_points,
             overall_strength_score,
             overall_strength_level
           )
@@ -1075,6 +1160,7 @@ export const database = {
           | 'display_name'
           | 'user_tag'
           | 'avatar_url'
+          | 'overall_strength_points'
           | 'overall_strength_score'
           | 'overall_strength_level'
         >

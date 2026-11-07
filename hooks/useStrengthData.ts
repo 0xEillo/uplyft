@@ -5,10 +5,12 @@ import {
   getOnboardingStrengthSnapshot,
   mergeOnboardingStrengthSnapshotIntoExerciseData,
 } from '@/lib/onboarding-strength'
-import type {
-  OverallStrengthGroup,
-  OverallStrengthGroupBreakdown,
-  StrengthHistorySession,
+import { database } from '@/lib/database'
+import {
+  resolveCachedStrengthPoints,
+  type OverallStrengthGroup,
+  type OverallStrengthGroupBreakdown,
+  type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
 import {
   buildDisplayStrengthGroupData,
@@ -32,7 +34,7 @@ import {
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 export interface ExerciseRecord {
   weight: number
@@ -272,6 +274,28 @@ export function useStrengthData() {
     profile?.weight_kg,
     strengthSessions,
   ])
+
+  // Friends see the score cached on the profile. It can drift from the live
+  // score (formula changes, missed refreshes), so resync it when they differ.
+  const cacheSyncAttemptRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!profile?.id || !overallLevel) return
+    const liveKey = `${profile.id}:${overallLevel.score}:${overallLevel.currentLevel}`
+    const cachedScore = resolveCachedStrengthPoints(profile)
+    const inSync =
+      profile.overall_strength_points === overallLevel.score &&
+      profile.overall_strength_level === overallLevel.currentLevel
+    if (inSync || cacheSyncAttemptRef.current === liveKey) return
+
+    cacheSyncAttemptRef.current = liveKey
+    database.profiles.refreshStrengthCache(profile.id).catch((error) => {
+      console.warn('[StrengthData] Failed to resync strength cache:', {
+        error,
+        cachedScore,
+        liveScore: overallLevel.score,
+      })
+    })
+  }, [profile, overallLevel])
 
   const displayMuscleGroups = useMemo((): MuscleGroupData[] => {
     if (!overallLevel || exerciseData.length === 0) {

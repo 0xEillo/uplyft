@@ -12,6 +12,7 @@ import {
   type FriendLeaderboardEntry,
 } from '@/lib/friend-leaderboard'
 import { database } from '@/lib/database'
+import { resolveCachedStrengthPoints } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
@@ -75,7 +76,8 @@ export function useFriendLeaderboard({
       setFollowingCount(leaderboardFollowees.length)
 
       const resolvedScore =
-        currentUserScore ?? profile?.overall_strength_score ?? null
+        currentUserScore ??
+        (profile ? resolveCachedStrengthPoints(profile) : null)
       const resolvedLevel =
         currentUserLevel ?? profile?.overall_strength_level ?? null
 
@@ -111,6 +113,7 @@ export function useFriendLeaderboard({
     profile?.display_name,
     profile?.user_tag,
     profile?.avatar_url,
+    profile?.overall_strength_points,
     profile?.overall_strength_score,
     profile?.overall_strength_level,
     currentUserScore,

@@ -24,10 +24,10 @@ describe('overall strength score', () => {
     })
 
     expect(points).not.toBeNull()
-    expect(points).toBeCloseTo(50, 5)
+    expect(points).toBeCloseTo(500, 5)
   })
 
-  test('caps at 1000 when world class threshold is exceeded', () => {
+  test('caps at the score cap when world class threshold is exceeded', () => {
     const points = calculateExerciseStrengthPoints({
       exerciseName: 'Bench Press (Barbell)',
       gender: 'male',
@@ -50,7 +50,7 @@ describe('overall strength score', () => {
   })
 
   test('maps score to correct level and progress', () => {
-    const mapped = scoreToOverallLevelProgress(700)
+    const mapped = scoreToOverallLevelProgress(7000)
 
     expect(mapped.level).toBe('Advanced')
     expect(mapped.nextLevel).toBe('Elite')
@@ -59,7 +59,7 @@ describe('overall strength score', () => {
 
   test('maps group rank from effective group score instead of top exercise score', () => {
     const mapped = getOverallStrengthGroupLevelProgress({
-      effectiveScore: 395,
+      effectiveScore: 3950,
     })
 
     expect(mapped.level).toBe('Novice')
@@ -137,7 +137,7 @@ describe('overall strength score', () => {
     })
 
     expect(overall.liftsTracked).toBe(6)
-    expect(overall.score).toBe(454) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
+    expect(overall.score).toBe(4544) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
     expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(
       chestBest * TIER_1_SCORE_BONUS,
       5,
@@ -275,8 +275,8 @@ describe('overall strength score', () => {
 
     expect(projection).not.toBeNull()
     expect(projection?.currentResult.score).toBe(0)
-    expect(projection?.projectedResult.score).toBe(21)
-    expect(projection?.pointsGained).toBe(21)
+    expect(projection?.projectedResult.score).toBe(209)
+    expect(projection?.pointsGained).toBe(209)
   })
 
   test('picks the latest strength increase session from snapshots', () => {

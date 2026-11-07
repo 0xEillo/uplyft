@@ -81,8 +81,8 @@ describe('strength score rebalance', () => {
     const result = score(machines)
 
     expect(result.level).toBe('Intermediate')
-    expect(result.score).toBeGreaterThanOrEqual(400)
-    expect(result.score).toBeLessThanOrEqual(410)
+    expect(result.score).toBeGreaterThanOrEqual(4000)
+    expect(result.score).toBeLessThanOrEqual(4100)
   })
 
   test('compound machines count more than isolation lifts', () => {
@@ -314,7 +314,7 @@ describe('server and app agree on the displayed score', () => {
     },
   ]
 
-  function fakeSupabase() {
+  function fakeSupabase(onboarding: unknown = null) {
     const rows = workouts.map((workout) => ({
       id: workout.id,
       date: workout.date,
@@ -329,6 +329,7 @@ describe('server and app agree on the displayed score', () => {
       profiles: { data: { gender: 'male' }, error: null },
       workout_sessions: { data: rows, error: null },
       daily_log_entries: { data: { weight_kg: BODYWEIGHT_KG }, error: null },
+      onboarding_strength_snapshots: { data: onboarding, error: null },
     }
     return {
       from(table: string) {
@@ -369,6 +370,46 @@ describe('server and app agree on the displayed score', () => {
       sessions,
     })
     const server = await buildUserStrengthProfile(fakeSupabase(), 'user-1')
+
+    expect(server.overallLevel.points).toBe(app.result.score)
+    expect(server.overallLevel.level).toBe(app.result.level)
+  })
+  test('both count the onboarding lift', async () => {
+    const sessions: StrengthHistorySession[] = workouts.map((workout) => ({
+      sessionId: workout.id,
+      exerciseBests: Object.fromEntries(
+        workout.lifts.map(([id, , sets]) => [
+          id,
+          Math.max(...sets.map((set) => Math.round(estimateOneRepMaxKg(set.weight, set.reps)))),
+        ]),
+      ),
+    }))
+    const logged = Array.from(
+      new Map(workouts.flatMap((workout) => workout.lifts.map(([id, name]) => [id, name]))).entries(),
+    ).map(([id, name]) =>
+      lift(id, name, Math.max(...sessions.map((session) => session.exerciseBests[id] ?? 0)), {
+        sessionCount: sessions.filter((session) => session.exerciseBests[id] !== undefined).length,
+      }),
+    )
+    // Onboarding deadlift was never logged; the app adds it with no session count.
+    const app = calculateStrengthScoreHistory({
+      gender: 'male',
+      bodyweightKg: BODYWEIGHT_KG,
+      exercises: [...logged, lift('dl', 'Deadlift (Barbell)', 160)],
+      sessions,
+    })
+    const server = await buildUserStrengthProfile(
+      fakeSupabase({
+        exercise_id: 'dl',
+        working_weight_kg: 140,
+        reps: 5,
+        estimated_1rm_kg: 160,
+        created_at: '2026-02-20T10:00:00.000Z',
+        updated_at: null,
+        exercise: { name: 'Deadlift (Barbell)', muscle_group: 'Back' },
+      }),
+      'user-1',
+    )
 
     expect(server.overallLevel.points).toBe(app.result.score)
     expect(server.overallLevel.level).toBe(app.result.level)

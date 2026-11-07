@@ -48,6 +48,9 @@ export interface Profile {
   experience_level: ExperienceLevel | null
   expo_push_token: string | null
   has_requested_push_notifications: boolean
+  /** Cached score on the 0-10000 scale (app 1.0.33+). */
+  overall_strength_points: number | null
+  /** Cached score on the old 0-1000 scale, kept for older app versions. */
   overall_strength_score: number | null
   overall_strength_level: StrengthLevel | null
   overall_strength_progress: number | null

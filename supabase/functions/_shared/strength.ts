@@ -149,6 +149,7 @@ export interface UserStrengthProfile {
 }
 
 export interface StrengthProfileCacheUpdate {
+  overall_strength_points: number | null
   overall_strength_score: number | null
   overall_strength_level: StrengthLevel | null
   overall_strength_progress: number | null
@@ -224,7 +225,9 @@ interface StrengthHistorySession {
 }
 
 // Keep these in sync with lib/overall-strength-score.ts.
-const OVERALL_STRENGTH_SCORE_CAP = 1000
+// Scores run 0-10000 (0-1000 before app 1.0.33). Mirrors lib/overall-strength-score.ts.
+const OVERALL_STRENGTH_SCORE_CAP = 10000
+const LEGACY_STRENGTH_SCORE_SCALE = 10
 // Group score = weighted average of its lifts; weight = tier weight x training
 // frequency weight x 0.7^rank (lifts ranked by score).
 const SECONDARY_EXERCISE_DECAY = 0.7
@@ -240,11 +243,11 @@ const STRENGTH_SCORE_MAX_AHEAD = 3
 
 const LEVEL_POINT_ANCHORS: Record<StrengthLevel, number> = {
   Untrained: 0,
-  Beginner: 100,
-  Novice: 200,
-  Intermediate: 400,
-  Advanced: 600,
-  Elite: 825,
+  Beginner: 1000,
+  Novice: 2000,
+  Intermediate: 4000,
+  Advanced: 6000,
+  Elite: 8250,
   'World Class': OVERALL_STRENGTH_SCORE_CAP,
 }
 
@@ -652,7 +655,9 @@ function calculateOverallStrengthScore(input: {
       const groupRawScore = totalWeight > 0 ? weightedSum / totalWeight : 0
 
       const decayFactor = 1
-      const effectiveScore = groupRawScore
+      // Clamp before weighting, as lib/overall-strength-score.ts does, so a
+      // capped lift with the tier-1 bonus can't push a group past the cap.
+      const effectiveScore = clampScore(groupRawScore)
       const weightedContribution = effectiveScore * weight
       totalScore += weightedContribution
 
@@ -661,7 +666,7 @@ function calculateOverallStrengthScore(input: {
         weight,
         topExerciseScore: clampScore(topExerciseScore),
         decayFactor,
-        effectiveScore: clampScore(effectiveScore),
+        effectiveScore,
         weightedContribution,
         lastTrainedAt: state.lastTrainedAt,
         trackedExerciseCount: state.trackedExerciseCount,
@@ -1565,14 +1570,105 @@ async function loadSupportedExercises(
   }
 }
 
+interface OnboardingStrengthBest {
+  exerciseId: string
+  exerciseName: string
+  muscleGroup: string | null
+  max1RM: number
+  workingWeightKg: number | null
+  reps: number | null
+  recordedAt: string
+}
+
+async function loadOnboardingStrengthBest(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<OnboardingStrengthBest | null> {
+  const { data, error } = await supabase
+    .from('onboarding_strength_snapshots')
+    .select(
+      'exercise_id, working_weight_kg, reps, estimated_1rm_kg, created_at, updated_at, exercise:exercises!inner (name, muscle_group)',
+    )
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const row = data as {
+    exercise_id: string
+    working_weight_kg: number | string | null
+    reps: number | null
+    estimated_1rm_kg: number | string | null
+    created_at: string
+    updated_at: string | null
+    exercise:
+      | { name: string; muscle_group: string | null }
+      | { name: string; muscle_group: string | null }[]
+      | null
+  }
+  const exercise = Array.isArray(row.exercise) ? row.exercise[0] : row.exercise
+  const max1RM = Math.round(Number(row.estimated_1rm_kg))
+  if (!exercise || !(max1RM > 0)) return null
+
+  return {
+    exerciseId: row.exercise_id,
+    exerciseName: exercise.name,
+    muscleGroup: exercise.muscle_group,
+    max1RM,
+    workingWeightKg:
+      row.working_weight_kg === null ? null : Number(row.working_weight_kg),
+    reps: row.reps,
+    recordedAt: row.updated_at ?? row.created_at,
+  }
+}
+
+// Mirrors mergeOnboardingStrengthSnapshotIntoExerciseData in the app: the
+// onboarding estimate raises an existing lift's best, or adds the lift.
+function mergeOnboardingStrengthBest(
+  exercises: SupportedExerciseSnapshot[],
+  best: OnboardingStrengthBest | null,
+): SupportedExerciseSnapshot[] {
+  if (!best || !hasStrengthStandards(best.exerciseName)) return exercises
+  const index = exercises.findIndex((e) => e.exerciseId === best.exerciseId)
+  if (index === -1) {
+    const config = getExerciseConfig(best.exerciseName)
+    return [
+      ...exercises,
+      {
+        exerciseId: best.exerciseId,
+        exerciseName: best.exerciseName,
+        canonicalExerciseName: config?.name ?? best.exerciseName,
+        muscleGroup: best.muscleGroup,
+        max1RM: best.max1RM,
+        lastTrainedAt: best.recordedAt,
+        bestSetWeightKg: best.workingWeightKg,
+        bestSetReps: best.reps,
+        isRepBased: isRepBasedExercise(best.exerciseName),
+        tier: config?.tier ?? 3,
+        // Left undefined, like the app, so the lift counts as established.
+      },
+    ]
+  }
+  return exercises.map((exercise, i) =>
+    i === index && best.max1RM > exercise.max1RM
+      ? {
+          ...exercise,
+          max1RM: best.max1RM,
+          bestSetWeightKg: best.workingWeightKg,
+          bestSetReps: best.reps,
+        }
+      : exercise,
+  )
+}
+
 export async function buildUserStrengthProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserStrengthProfile> {
   const [
     { data: profile, error: profileError },
-    { exercises: supportedExercises, sessions },
+    { exercises: loggedExercises, sessions },
     latestWeightKg,
+    onboardingBest,
   ] =
     await Promise.all([
       supabase
@@ -1582,7 +1678,13 @@ export async function buildUserStrengthProfile(
         .single(),
       loadSupportedExercises(supabase, userId),
       getLatestDailyWeightKg(supabase, userId),
+      loadOnboardingStrengthBest(supabase, userId),
     ])
+  // Match the app's Progress screen, which counts the onboarding lift too.
+  const supportedExercises = mergeOnboardingStrengthBest(
+    loggedExercises,
+    onboardingBest,
+  )
 
   if (profileError) throw profileError
 
@@ -1642,7 +1744,11 @@ export async function refreshUserStrengthProfileCache(
   const strengthProfile = await buildUserStrengthProfile(supabase, userId)
   const cacheUpdate: StrengthProfileCacheUpdate = strengthProfile.overallLevel
     ? {
-        overall_strength_score: strengthProfile.overallLevel.points,
+        overall_strength_points: strengthProfile.overallLevel.points,
+        // Old 0-1000 scale for app versions before 1.0.33.
+        overall_strength_score: Math.round(
+          strengthProfile.overallLevel.points / LEGACY_STRENGTH_SCORE_SCALE,
+        ),
         overall_strength_level: strengthProfile.overallLevel.level,
         overall_strength_progress: Math.round(
           strengthProfile.overallLevel.progress,
@@ -1650,6 +1756,7 @@ export async function refreshUserStrengthProfileCache(
         overall_strength_updated_at: new Date().toISOString(),
       }
     : {
+        overall_strength_points: null,
         overall_strength_score: null,
         overall_strength_level: null,
         overall_strength_progress: null,
