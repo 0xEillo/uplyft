@@ -34,6 +34,9 @@ export interface PrDetail {
   previousReps?: number // legacy field for backwards compatibility in some UI paths
   currentReps: number // reps used in the set that triggered this PR
   setIndices?: number[] // which sets contributed to this PR
+  // Best historic reps at this set's weight or heavier. Set on 1RM / volume
+  // PRs, which (when not also a heaviest-weight PR) are always rep PRs.
+  previousBestRepsAtWeight?: number
   isCurrent: boolean // true if this is still the all-time PR, false if it's been beaten since
 }
 
@@ -155,6 +158,10 @@ export class PrService {
         previousValue: historicBest1RM?.value,
         weight: currentBest1RM.set.weight!,
         currentReps: currentBest1RM.set.reps!,
+        previousBestRepsAtWeight: this.maxRepsAtOrAboveWeight(
+          historicWorkingSets,
+          currentBest1RM.set.weight,
+        ),
         setIndices: this.setIndicesFromSet(currentBest1RM.set),
         isCurrent: !futureBest1RM || currentBest1RM.value >= futureBest1RM.value,
       })
@@ -176,6 +183,10 @@ export class PrService {
         previousValue: historicBestSetVolume?.value,
         weight: currentBestSetVolume.set.weight!,
         currentReps: currentBestSetVolume.set.reps!,
+        previousBestRepsAtWeight: this.maxRepsAtOrAboveWeight(
+          historicWorkingSets,
+          currentBestSetVolume.set.weight,
+        ),
         setIndices: this.setIndicesFromSet(currentBestSetVolume.set),
         isCurrent:
           !futureBestSetVolume ||
@@ -357,6 +368,18 @@ export class PrService {
       }
     })
 
+    return best
+  }
+
+  private static maxRepsAtOrAboveWeight(
+    sets: PrContextSet[],
+    weight: number,
+  ): number | undefined {
+    let best: number | undefined
+    sets.forEach((set) => {
+      if (!this.hasValidWeightAndReps(set) || set.weight < weight) return
+      if (best === undefined || set.reps > best) best = set.reps
+    })
     return best
   }
 

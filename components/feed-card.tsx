@@ -36,6 +36,10 @@ import { database } from '@/lib/database'
 import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
+import type {
+  WorkoutRecordHighlight,
+  WorkoutRecordHighlightsState,
+} from '@/hooks/useWorkoutRecordHighlights'
 
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
@@ -145,6 +149,9 @@ export interface FeedCardProps {
   recentLikers?: Partial<Profile>[]
   comments?: CommentPreview[]
   currentUserAvatar?: string | null
+  // Records page (only shown when stats.records > 0)
+  recordHighlights?: WorkoutRecordHighlightsState
+  onRecordsRequested?: () => void
 }
 
 /**
@@ -184,6 +191,8 @@ export const FeedCard = memo(function FeedCard({
   recentLikers = [],
   comments = [],
   currentUserAvatar,
+  recordHighlights,
+  onRecordsRequested,
 }: FeedCardProps): ReactElement {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -278,6 +287,10 @@ export const FeedCard = memo(function FeedCard({
   // Card padding is 20 horizontal
   const cardPadding = 20
   const carouselWidth = windowWidth - cardPadding * 2
+
+  const carouselRef = useRef<ScrollView>(null)
+  const showRecordsSlide =
+    !isPending && stats.records > 0 && !!onRecordsRequested
 
   const handleCarouselScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -439,6 +452,18 @@ export const FeedCard = memo(function FeedCard({
     setShowShareScreen(false)
   }
 
+  // Slide order: [photo, exercises, records] when the photo leads, otherwise
+  // [exercises, records, artwork?].
+  const recordsSlideIndex = mediaFirst ? 2 : 1
+
+  const handleRecordsStatPress = () => {
+    onRecordsRequested?.()
+    carouselRef.current?.scrollTo({
+      x: recordsSlideIndex * carouselWidth,
+      animated: true,
+    })
+  }
+
   // Memoize stats section to keep it fixed
   const statsContent = useMemo(
     () => {
@@ -461,14 +486,30 @@ export const FeedCard = memo(function FeedCard({
               {formatVolumeCompact(stats.volume || 0, weightUnit)}
             </Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Records</Text>
-            <Text style={styles.statValue}>{stats.records}</Text>
-          </View>
+          {showRecordsSlide ? (
+            <Pressable
+              onPress={handleRecordsStatPress}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.statItem,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Text style={styles.statLabel}>Records</Text>
+              <Text style={styles.statValue}>{stats.records}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Records</Text>
+              <Text style={styles.statValue}>{stats.records}</Text>
+            </View>
+          )}
         </Pressable>
       )
     },
     [
+      showRecordsSlide,
+      handleRecordsStatPress,
       isPending,
       onCardPress,
       styles.statsContainer,
@@ -620,7 +661,7 @@ export const FeedCard = memo(function FeedCard({
   )
 
   const mediaSlide = coverImageUrl ? (
-    <View style={{ width: carouselWidth }}>
+    <View key="media" style={{ width: carouselWidth }}>
       <TouchableOpacity
         style={styles.workoutImageContainer}
         onPress={() => setImageModalVisible(true)}
@@ -659,6 +700,7 @@ export const FeedCard = memo(function FeedCard({
 
   const infoSlide = (
     <View
+      key="info"
       style={{ width: carouselWidth, alignSelf: 'flex-start' }}
       onLayout={(event) => {
         const { height } = event.nativeEvent.layout
@@ -670,6 +712,139 @@ export const FeedCard = memo(function FeedCard({
       {infoContent}
     </View>
   )
+
+  const formatRecordWeight = (kg: number): string => {
+    const converted = weightUnit === 'lb' ? kg * 2.20462 : kg
+    return `${converted.toLocaleString(undefined, {
+      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+    })} ${weightUnit}`
+  }
+
+  const formatRecordDelta = (record: WorkoutRecordHighlight): string | null => {
+    if (record.delta === null || record.delta <= 0) return null
+    if (record.type === 'reps') {
+      return `${record.delta} ${record.delta === 1 ? 'rep' : 'reps'}`
+    }
+    return formatRecordWeight(record.delta)
+  }
+
+  const RECORDS_PREVIEW_LIMIT = 5
+  const recordRows =
+    recordHighlights?.status === 'ready' ? recordHighlights.highlights : null
+  const hiddenRecordCount = recordRows
+    ? Math.max(0, recordRows.length - RECORDS_PREVIEW_LIMIT)
+    : 0
+
+  const recordsSlide = showRecordsSlide ? (
+    <Pressable
+      key="records"
+      onPress={onCardPress}
+      disabled={!onCardPress}
+      style={{ width: carouselWidth, alignSelf: 'flex-start' }}
+    >
+      {recordRows === null ? (
+        recordHighlights?.status === 'error' ? (
+          <View style={styles.recordsMessage}>
+            <Text style={styles.recordsMessageText}>
+              Couldn&apos;t load records. Tap to view the workout.
+            </Text>
+          </View>
+        ) : (
+          Array.from({ length: 3 }, (_, index) => (
+            <View key={`record-skeleton-${index}`} style={styles.exerciseRow}>
+              <View style={styles.exerciseNameContainer}>
+                <View
+                  style={[
+                    styles.exerciseThumbnail,
+                    { backgroundColor: isDark ? '#2a2a2a' : '#eee' },
+                  ]}
+                />
+                <View style={styles.recordInfo}>
+                  <View
+                    style={[
+                      styles.recordSkeletonBar,
+                      { width: `${[42, 36, 40][index]}%` },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.recordSkeletonBar,
+                      { width: '55%', height: 10, opacity: 0.6 },
+                    ]}
+                  />
+                </View>
+              </View>
+              <View style={[styles.recordSkeletonBar, { width: 44 }]} />
+            </View>
+          ))
+        )
+      ) : (
+        <>
+          {recordRows.slice(0, RECORDS_PREVIEW_LIMIT).map((record) => (
+            <View
+              key={record.exerciseId}
+              style={styles.exerciseRow}
+              accessibilityLabel={`${record.exerciseName}, ${formatRecordWeight(record.weightKg)} for ${record.reps} reps`}
+            >
+              <View style={styles.exerciseNameContainer}>
+                <ExerciseMediaThumbnail
+                  gifUrl={record.gifUrl}
+                  style={styles.exerciseThumbnail}
+                  isCustom={record.isCustom}
+                />
+                <View style={styles.recordInfo}>
+                  <Text style={styles.recordSetText} numberOfLines={1}>
+                    {formatRecordWeight(record.weightKg)} × {record.reps}
+                  </Text>
+                  <Text style={styles.recordKindText} numberOfLines={1}>
+                    {record.exerciseName}
+                  </Text>
+                </View>
+              </View>
+              {formatRecordDelta(record) ? (
+                <View style={styles.recordDelta}>
+                  <Ionicons
+                    name="arrow-up"
+                    size={12}
+                    color={colors.statusSuccess}
+                  />
+                  <Text style={styles.recordDeltaText}>
+                    {formatRecordDelta(record)}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.recordNewPill}>
+                  <Text style={styles.recordNewText}>New</Text>
+                </View>
+              )}
+            </View>
+          ))}
+          {hiddenRecordCount > 0 && (
+            <TouchableOpacity
+              onPress={onCardPress}
+              activeOpacity={0.7}
+              style={styles.seeMoreButton}
+            >
+              <Text style={styles.seeMoreText}>
+                See {hiddenRecordCount} more
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.brandPrimary}
+              />
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </Pressable>
+  ) : null
+
+  const carouselSlides = (
+    mediaFirst
+      ? [mediaSlide, infoSlide, recordsSlide]
+      : [infoSlide, recordsSlide, mediaSlide]
+  ).filter((slide): slide is ReactElement => slide !== null)
 
   return (
     <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>
@@ -844,34 +1019,28 @@ export const FeedCard = memo(function FeedCard({
       )}
 
       {/* Carousel or Exercises */}
-      {coverImageUrl ? (
+      {carouselSlides.length > 1 ? (
         <View>
           <ScrollView
+            ref={carouselRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={handleCarouselScroll}
+            onScrollBeginDrag={onRecordsRequested}
             scrollEventThrottle={16}
             decelerationRate="fast"
             snapToInterval={carouselWidth}
-            contentContainerStyle={{ width: carouselWidth * 2 }}
+            contentContainerStyle={{
+              width: carouselWidth * carouselSlides.length,
+            }}
           >
-            {mediaFirst ? (
-              <>
-                {mediaSlide}
-                {infoSlide}
-              </>
-            ) : (
-              <>
-                {infoSlide}
-                {mediaSlide}
-              </>
-            )}
+            {carouselSlides}
           </ScrollView>
 
           {/* Pagination Dots */}
           <View style={styles.pagination}>
-            {[0, 1].map((_, index) => (
+            {carouselSlides.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -1817,6 +1986,56 @@ function createStyles(
     },
     menuButton: {
       padding: 4,
+    },
+    recordInfo: {
+      flex: 1,
+      gap: 4,
+    },
+    recordSetText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    recordKindText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textTertiary,
+    },
+    recordDelta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    recordDeltaText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    recordNewPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    recordNewText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    recordSkeletonBar: {
+      height: 13,
+      borderRadius: 6,
+      backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
+    },
+    recordsMessage: {
+      paddingVertical: 24,
+      alignItems: 'center',
+    },
+    recordsMessageText: {
+      fontSize: 13,
+      color: colors.textTertiary,
     },
     paginationDot: {
       height: 6,
