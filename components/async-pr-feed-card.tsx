@@ -2,6 +2,7 @@ import { FeedCard } from '@/components/feed-card'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
+import { useWorkoutRecordHighlights } from '@/hooks/useWorkoutRecordHighlights'
 import { database, OwnershipError } from '@/lib/database'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
@@ -345,6 +346,20 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
 
+  // Record details are only computed once the user shows intent to see them
+  // (swiping the card or tapping the Records stat).
+  const [recordsRequested, setRecordsRequested] = useState(false)
+  useEffect(() => {
+    setRecordsRequested(false)
+  }, [workout.id])
+  const handleRecordsRequested = useCallback(() => {
+    setRecordsRequested(true)
+  }, [])
+  const recordHighlights = useWorkoutRecordHighlights(
+    workout,
+    recordsRequested,
+  )
+
   return (
     <FeedCard
       userName={userName}
@@ -388,6 +403,10 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       recentLikers={recentLikers}
       comments={commentPreviews}
       currentUserAvatar={profile?.avatar_url}
+      recordHighlights={recordHighlights}
+      onRecordsRequested={
+        isPending || feedStats.records <= 0 ? undefined : handleRecordsRequested
+      }
     />
   )
 })

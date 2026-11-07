@@ -167,4 +167,33 @@ describe('PrService', () => {
       true,
     )
   })
+
+  test('reports the best historic reps at the record weight for rep PRs', async () => {
+    queueSupabaseData(
+      makeSessionRows('ex-1', [
+        { reps: 10, weight: 60, is_warmup: false },
+        { reps: 5, weight: 70, is_warmup: false },
+        { reps: 15, weight: 40, is_warmup: false },
+      ]),
+      [],
+    )
+
+    const currentSets: PrContextSet[] = [
+      { reps: 12, weight: 60, isWarmup: false, originalIndex: 0 },
+    ]
+
+    const result = await PrService.computePrsForExercise(
+      'user-1',
+      'ex-1',
+      'Bench Press',
+      '2026-02-01T12:00:00.000Z',
+      '2026-02-01',
+      currentSets,
+    )
+
+    expect(result.prs.find((pr) => pr.kind === 'heaviest-weight')).toBeUndefined()
+    expect(result.prs.find((pr) => pr.kind === 'best-1rm')).toEqual(
+      expect.objectContaining({ currentReps: 12, previousBestRepsAtWeight: 10 }),
+    )
+  })
 })
