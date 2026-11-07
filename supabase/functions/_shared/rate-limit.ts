@@ -16,6 +16,9 @@ export type RateLimitResult =
       dayCount: number
     }
 
+/** Daily AI chat allowance for users without an active Pro entitlement. */
+export const FREE_CHAT_DAY_LIMIT = 20
+
 export interface CheckChatRateLimitOptions {
   userId: string
   weight?: number
@@ -37,6 +40,7 @@ export async function checkChatRateLimit(
     hourLimit = 60,
     dayLimit = 200,
   } = options
+
 
   try {
     const service = createServiceClient()
@@ -125,4 +129,8 @@ export function rateLimitMessage(
     default:
       return 'Chat rate limit reached. Please try again later.'
   }
+}
+
+export function freeLimitMessage(): string {
+  return `You\u2019ve used your ${FREE_CHAT_DAY_LIMIT} free messages for today. Upgrade to Pro to keep chatting.`
 }

@@ -26,10 +26,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ExerciseMedia } from '@/components/ExerciseMedia'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
-import { ProTease } from '@/components/ProTease'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
@@ -154,7 +152,6 @@ export default function ExerciseDetailScreen() {
   const exerciseId = getSingleRouteParam(params.exerciseId)
   const routeStatsUserId = getSingleRouteParam(params.statsUserId)
   const { user } = useAuth()
-  const { isProMember } = useSubscription()
   const { isDark } = useTheme()
   const colors = useThemedColors()
   const { weightUnit, formatWeight } = useWeightUnits()
@@ -799,13 +796,9 @@ export default function ExerciseDetailScreen() {
                           <Text style={styles.statLabel}>
                             Next Level ({strengthInfo.nextLevel.level})
                           </Text>
-                          {isProMember || !isViewingOwnStats ? (
-                            <Text style={styles.statValue}>
-                              {Math.round(strengthInfo.progress || 0)}%
-                            </Text>
-                          ) : (
-                            <ProTease size="sm" feature="lift_progress" source="exercise_detail" />
-                          )}
+                          <Text style={styles.statValue}>
+                            {Math.round(strengthInfo.progress || 0)}%
+                          </Text>
                         </View>
                         <View style={styles.separator} />
                       </>

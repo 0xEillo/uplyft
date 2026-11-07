@@ -426,7 +426,7 @@ export interface PaywallProperties extends BaseEventProperties {
 }
 
 /**
- * Human-readable labels for each `PaywallFeature`. ProTease prefixes with
+ * Human-readable labels for each `PaywallFeature`. Paywall titles prefix with
  * “Unlock ” for the paywall title. Keep concise.
  */
 export const PAYWALL_FEATURE_LABELS: Record<PaywallFeature, string> = {

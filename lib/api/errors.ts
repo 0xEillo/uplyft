@@ -6,6 +6,7 @@ export type ApiErrorCode =
   | 'DB_FAILED'
   | 'NETWORK'
   | 'RATE_LIMITED'
+  | 'FREE_LIMIT_REACHED'
   | 'UNKNOWN'
 
 export interface ApiErrorShape {

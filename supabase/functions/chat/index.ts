@@ -32,7 +32,13 @@ import {
   getExerciseStandardsForProfile,
 } from '../_shared/strength.ts'
 import { createUserClient } from '../_shared/supabase.ts'
-import { checkChatRateLimit, rateLimitMessage } from '../_shared/rate-limit.ts'
+import {
+  checkChatRateLimit,
+  FREE_CHAT_DAY_LIMIT,
+  freeLimitMessage,
+  rateLimitMessage,
+} from '../_shared/rate-limit.ts'
+import { isProSubscriber } from '../_shared/subscription.ts'
 import {
   buildUserContextSummary,
   summarizeTrainingPatterns,
@@ -346,14 +352,33 @@ serve(async (req) => {
     // path, so weight them harder against all windows.
     const requestHasImages = Boolean(payload.images && payload.images.length > 0)
     const rateWeight = requestHasImages ? 4 : 1
-    const rateResult = await checkChatRateLimit({
+    // Free users get a smaller daily allowance; Pro keeps the default limits.
+    let isPro = await isProSubscriber(authedUserId)
+    let rateResult = await checkChatRateLimit({
       userId: authedUserId,
       weight: rateWeight,
+      dayLimit: isPro ? undefined : FREE_CHAT_DAY_LIMIT,
     })
 
+    // Before rejecting a free user on the daily cap, re-check RevenueCat
+    // bypassing the cache in case they just upgraded. A rejected check does
+    // not record usage, so retrying with the Pro limits is safe.
+    if (!rateResult.allowed && !isPro && rateResult.reason === 'day') {
+      isPro = await isProSubscriber(authedUserId, { forceRefresh: true })
+      if (isPro) {
+        rateResult = await checkChatRateLimit({
+          userId: authedUserId,
+          weight: rateWeight,
+        })
+      }
+    }
+
     if (!rateResult.allowed) {
+      const isFreeLimit = !isPro && rateResult.reason === 'day'
+
       console.warn(`[chat-edge][${correlationId}] Rate limited`, {
         userId: authedUserId,
+        isPro,
         reason: rateResult.reason,
         retryAfterSeconds: rateResult.retryAfterSeconds,
         minuteCount: rateResult.minuteCount,
@@ -363,8 +388,10 @@ serve(async (req) => {
 
       return jsonResponse(
         {
-          error: rateLimitMessage(rateResult.reason),
-          code: 'RATE_LIMITED',
+          error: isFreeLimit
+            ? freeLimitMessage()
+            : rateLimitMessage(rateResult.reason),
+          code: isFreeLimit ? 'FREE_LIMIT_REACHED' : 'RATE_LIMITED',
           details: {
             reason: rateResult.reason,
             retryAfterSeconds: rateResult.retryAfterSeconds,

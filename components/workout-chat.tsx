@@ -38,7 +38,11 @@ import {
   parseProgramForDisplay,
   parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
-import { callChatFunction, mapChatApiErrorToMessage } from '@/lib/api/chat'
+import {
+  callChatFunction,
+  isFreeChatLimitError,
+  mapChatApiErrorToMessage,
+} from '@/lib/api/chat'
 import {
   fetchUnconsumedProactiveMessages,
   markProactiveMessagesConsumed,
@@ -560,6 +564,10 @@ export interface WorkoutChatProps {
   // When true, the ✨ quick-actions menu (Create Workout / Create Program)
   // is shown automatically on first mount (e.g. deep-link from Library).
   autoOpenActions?: boolean
+
+  // Called when the server rejects a message because a free user has used up
+  // their daily AI chat allowance (e.g. to show the paywall).
+  onFreeLimitReached?: () => void
 }
 
 const MAX_IMAGES = 10
@@ -1093,7 +1101,11 @@ export function WorkoutChat({
   onChatStarted,
   keyboardVerticalOffsetOverride,
   autoOpenActions = false,
+  onFreeLimitReached,
 }: WorkoutChatProps) {
+  // Ref so the send callbacks don't need this in their dependency lists.
+  const onFreeLimitReachedRef = useRef(onFreeLimitReached)
+  onFreeLimitReachedRef.current = onFreeLimitReached
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const inputRef = useRef<TextInput>(null)
   // Holds the id of the most recently sent user message so its bubble can
@@ -3163,6 +3175,9 @@ export function WorkoutChat({
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = mapChatApiErrorToMessage(error)
+      if (isFreeChatLimitError(error)) {
+        onFreeLimitReachedRef.current?.()
+      }
       setMessages((prev) => {
         const withUserStatus: Message[] = hiddenPrompt
           ? prev
@@ -3407,6 +3422,9 @@ export function WorkoutChat({
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = mapChatApiErrorToMessage(error)
+      if (isFreeChatLimitError(error)) {
+        onFreeLimitReachedRef.current?.()
+      }
       // Only add error message - don't create duplicate placeholder
       setMessages((prev) => {
         // Check if last message is an empty assistant placeholder we created

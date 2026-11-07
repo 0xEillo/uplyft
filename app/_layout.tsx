@@ -237,14 +237,6 @@ function RootLayoutNav() {
             name="strength-stats"
             options={{ presentation: 'card', animation: 'default' }}
           />
-          <Stack.Screen
-            name="strength-pro-tour"
-            options={{
-              presentation: 'card',
-              animation: 'slide_from_bottom',
-              gestureEnabled: true,
-            }}
-          />
 
 
           <Stack.Screen

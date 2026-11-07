@@ -92,8 +92,8 @@ export async function callChatFunction(
       // providers is still retried because it represents transient capacity.
       const isAppRateLimit =
         response.status === 429 &&
-        (payload?.code === 'RATE_LIMITED' ||
-          lastError.code === 'RATE_LIMITED')
+        (lastError.code === 'RATE_LIMITED' ||
+          lastError.code === 'FREE_LIMIT_REACHED')
 
       if (
         attempt < retryCount &&
@@ -134,6 +134,11 @@ export async function callChatFunction(
   )
 }
 
+/** True when a free user has used up their daily AI chat allowance. */
+export function isFreeChatLimitError(error: unknown): boolean {
+  return isApiError(error) && error.code === 'FREE_LIMIT_REACHED'
+}
+
 export function mapChatApiErrorToMessage(error: unknown): string {
   if (!isApiError(error)) {
     return "Sorry, I couldn't process that request. Please try again."
@@ -141,6 +146,13 @@ export function mapChatApiErrorToMessage(error: unknown): string {
 
   if (error.httpStatus === 413) {
     return 'That conversation got too long. Please start a new chat or send a shorter follow-up.'
+  }
+
+  if (error.code === 'FREE_LIMIT_REACHED') {
+    return (
+      error.message ||
+      'You\u2019ve used your free messages for today. Upgrade to Pro to keep chatting.'
+    )
   }
 
   if (error.code === 'RATE_LIMITED') {

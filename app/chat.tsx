@@ -1,3 +1,4 @@
+import { Paywall } from '@/components/paywall'
 import { useProfile } from '@/contexts/profile-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
@@ -6,6 +7,7 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { getCoach } from '@/lib/coaches'
 import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
@@ -26,6 +28,7 @@ import {
   WorkoutContext,
 } from '@/components/workout-chat'
 
+const PAYWALL_SOURCE = 'chat_free_limit'
 
 export default function ChatScreen() {
   const colors = useThemedColors()
@@ -37,6 +40,22 @@ export default function ChatScreen() {
   const { coachId } = useProfile()
   const coach = getCoach(coachId)
   const [headerHeight, setHeaderHeight] = useState(0)
+
+  // AI chat is free with a daily message cap for non-Pro users (enforced by
+  // the chat edge function). When the cap is hit, offer the paywall.
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
+  const [paywallVisible, setPaywallVisible] = useState(false)
+
+  const handleFreeLimitReached = useCallback(() => {
+    Keyboard.dismiss()
+    trackPaywallShown('ai_chat', PAYWALL_SOURCE)
+    setPaywallVisible(true)
+  }, [trackPaywallShown])
+
+  const handlePaywallClose = useCallback(() => {
+    trackPaywallDismissed('ai_chat', PAYWALL_SOURCE)
+    setPaywallVisible(false)
+  }, [trackPaywallDismissed])
 
   const styles = useMemo(() => createStyles(colors, insets), [colors, insets])
 
@@ -264,8 +283,16 @@ export default function ChatScreen() {
           onClose={handleClose}
           keyboardVerticalOffsetOverride={chatKeyboardOffset}
           autoOpenActions={shouldAutoOpenActions}
+          onFreeLimitReached={handleFreeLimitReached}
         />
       </View>
+
+      <Paywall
+        visible={paywallVisible}
+        onClose={handlePaywallClose}
+        title="Keep chatting with your coach"
+        feature="ai_chat"
+      />
     </View>
   )
 }
