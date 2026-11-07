@@ -1,14 +1,12 @@
 import { BaseNavbar, NavbarIsland } from '@/components/base-navbar'
 import { BlurredHeader } from '@/components/blurred-header'
 import { EmptyState } from '@/components/EmptyState'
-import { SlideInView } from '@/components/slide-in-view'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { Layout } from '@/constants/theme'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useNotifications } from '@/contexts/notification-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
-import { supabase } from '@/lib/supabase'
 import {
   formatNotificationText,
   getNotificationIcon,
@@ -18,14 +16,15 @@ import { resolveNotificationRoute } from '@/lib/utils/notification-routing'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
-import { router, usePathname } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { Image } from 'expo-image'
+import { router } from 'expo-router'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Image,
+  FlatList,
+  ListRenderItem,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -33,38 +32,69 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+type FollowRequestDecision = 'approve' | 'decline'
+type Styles = ReturnType<typeof createStyles>
+type Colors = ReturnType<typeof useThemedColors>
+
+// How long to show the "Request approved/declined" state before the row is
+// dropped from the list.
+const RESPONDED_REQUEST_DISMISS_MS = 1500
+
 export default function NotificationsScreen() {
   const colors = useThemedColors()
-  const styles = createStyles(colors)
-  const pathname = usePathname()
+  const styles = useMemo(() => createStyles(colors), [colors])
+  const insets = useSafeAreaInsets()
   const { trackEvent } = useAnalytics()
   const {
     notifications,
     unreadCount,
+    hasLoaded,
     markAsRead,
-    markAllAsReadOptimistically,
+    markNotificationAsRead,
     refreshNotifications,
   } = useNotifications()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [respondingRequests, setRespondingRequests] = useState<Set<string>>(
-    new Set(),
+    () => new Set(),
   )
   const [respondedRequests, setRespondedRequests] = useState<
-    Map<string, 'approve' | 'decline'>
-  >(new Map())
-  const [shouldExit, setShouldExit] = useState(false)
-  const [shouldAnimate] = useState(true)
+    Map<string, FollowRequestDecision>
+  >(() => new Map())
 
-  // Track screen view and reset responded requests state when screen is focused
+  const topInset = insets.top + Layout.navbarHeight
+
+  // Keep latest values in refs so focus/unmount effects don't re-fire on
+  // every data change.
+  const statsRef = useRef({ count: notifications.length, unread: unreadCount })
+  statsRef.current = { count: notifications.length, unread: unreadCount }
+  const markAsReadRef = useRef(markAsRead)
+  markAsReadRef.current = markAsRead
+  const dismissTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
   useFocusEffect(
     useCallback(() => {
       trackEvent(AnalyticsEvents.NOTIFICATIONS_VIEWED, {
-        notification_count: notifications.length,
-        unread_count: unreadCount,
+        notification_count: statsRef.current.count,
+        unread_count: statsRef.current.unread,
       })
-      setRespondedRequests(new Map())
-    }, [trackEvent, notifications.length, unreadCount]),
+    }, [trackEvent]),
   )
+
+  // Pull fresh data in the background; cached data renders immediately.
+  useEffect(() => {
+    void refreshNotifications()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Mark everything as read when the screen is left by any route
+  // (back button, swipe gesture, Android back).
+  useEffect(() => {
+    const timers = dismissTimersRef.current
+    return () => {
+      timers.forEach(clearTimeout)
+      markAsReadRef.current()
+    }
+  }, [])
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -75,77 +105,41 @@ export default function NotificationsScreen() {
     }
   }, [refreshNotifications])
 
-  const handleBackPress = () => {
-    // Mark all as read when leaving notifications screen
-    if (unreadCount > 0) {
-      markAsRead()
-    }
-    setShouldExit(true)
-  }
-
-  const handleExitComplete = () => {
+  const handleBackPress = useCallback(() => {
     router.back()
-  }
+  }, [])
 
   const handleNotificationPress = useCallback(
-    async (notification: NotificationWithProfiles) => {
+    (notification: NotificationWithProfiles) => {
       trackEvent(AnalyticsEvents.NOTIFICATION_TAPPED, {
         notification_id: notification.id,
         notification_type: notification.type,
       })
 
-      try {
-        await database.notifications.markAsRead(notification.id)
-        await refreshNotifications()
-      } catch (error) {
-        console.error('Error marking notification as read:', error)
-      }
-
+      // Navigate immediately; read state syncs in the background.
+      markNotificationAsRead(notification.id)
       router.push(
         resolveNotificationRoute(notification, {
-          returnTo: pathname || '/notifications',
+          returnTo: '/notifications',
         }) as any,
       )
     },
-    [refreshNotifications, pathname, trackEvent],
+    [markNotificationAsRead, trackEvent],
   )
 
-  const handleMarkAllAsRead = useCallback(async () => {
-    try {
-      // Optimistically update UI immediately
-      markAllAsReadOptimistically()
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Update database in background
-      await database.notifications.markAllAsRead(user.id)
-
-      // Refresh to ensure sync with database
-      await refreshNotifications()
-    } catch (error) {
-      console.error('Error marking all as read:', error)
-      Alert.alert('Error', 'Failed to mark notifications as read')
-      // Refresh to revert optimistic update if it failed
-      await refreshNotifications()
-    }
-  }, [markAllAsReadOptimistically, refreshNotifications])
-
   const handleFollowRequestResponse = useCallback(
-    async (requestId: string, decision: 'approve' | 'decline') => {
+    async (requestId: string, decision: FollowRequestDecision) => {
+      setRespondingRequests((prev) => new Set(prev).add(requestId))
       try {
-        setRespondingRequests((prev) => new Set(prev).add(requestId))
         await database.followRequests.respond(requestId, decision)
-        // Mark this request as responded to and store the decision
         setRespondedRequests((prev) => new Map(prev).set(requestId, decision))
 
-        // Optimistically remove the notification from the list after a short delay
-        // This gives users time to see the updated message before it disappears
-        setTimeout(() => {
-          refreshNotifications()
-        }, 1500)
+        // Give the user a moment to see the result before the row disappears
+        dismissTimersRef.current.push(
+          setTimeout(() => {
+            void refreshNotifications()
+          }, RESPONDED_REQUEST_DISMISS_MS),
+        )
       } catch (error) {
         console.error('Error responding to follow request notification:', error)
         Alert.alert(
@@ -163,301 +157,278 @@ export default function NotificationsScreen() {
     [refreshNotifications],
   )
 
-  const insets = useSafeAreaInsets()
-  const NAVBAR_HEIGHT = Layout.navbarHeight
+  const renderItem = useCallback<ListRenderItem<NotificationWithProfiles>>(
+    ({ item }) => {
+      const requestId = item.request_id
+      return (
+        <NotificationRow
+          notification={item}
+          decision={requestId ? respondedRequests.get(requestId) : undefined}
+          isResponding={requestId ? respondingRequests.has(requestId) : false}
+          onPress={handleNotificationPress}
+          onRespond={handleFollowRequestResponse}
+          colors={colors}
+          styles={styles}
+        />
+      )
+    },
+    [
+      respondedRequests,
+      respondingRequests,
+      handleNotificationPress,
+      handleFollowRequestResponse,
+      colors,
+      styles,
+    ],
+  )
+
+  const listEmpty = hasLoaded ? (
+    <EmptyState
+      icon="notifications-outline"
+      title="No notifications yet"
+      description="When people follow you or interact with your workouts, you'll see them here."
+    />
+  ) : (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator color={colors.brandPrimary} />
+    </View>
+  )
 
   return (
-    <SlideInView
-      style={{ flex: 1 }}
-      enabled={shouldAnimate}
-      shouldExit={shouldExit}
-      onExitComplete={handleExitComplete}
-    >
-      <View style={styles.container}>
-        <BlurredHeader>
-          <BaseNavbar
-            leftContent={
-              <NavbarIsland>
-                <TouchableOpacity
-                  onPress={handleBackPress}
-                  accessibilityLabel="Go back"
-                  accessibilityRole="button"
-                  style={styles.backButton}
-                >
-                  <Ionicons
-                    name="arrow-back"
-                    size={24}
-                    color={colors.textPrimary}
-                  />
-                </TouchableOpacity>
-              </NavbarIsland>
-            }
-            centerContent={
-              <Text style={styles.headerTitle}>Notifications</Text>
-            }
-            rightContent={
-              unreadCount > 0 ? (
-                <TouchableOpacity
-                  onPress={handleMarkAllAsRead}
-                  style={styles.markAllButton}
-                >
-                  <Text style={styles.markAllReadText}>Mark all</Text>
-                </TouchableOpacity>
-              ) : undefined
-            }
-          />
-        </BlurredHeader>
-
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={[
-            styles.contentContainer,
-            { paddingTop: insets.top + NAVBAR_HEIGHT },
-          ]}
-          scrollIndicatorInsets={{ top: insets.top + NAVBAR_HEIGHT }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              progressViewOffset={insets.top + NAVBAR_HEIGHT}
-            />
+    <View style={styles.container}>
+      <BlurredHeader>
+        <BaseNavbar
+          leftContent={
+            <NavbarIsland>
+              <TouchableOpacity
+                onPress={handleBackPress}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                style={styles.backButton}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+            </NavbarIsland>
           }
-        >
-          {notifications.length > 0 ? (
-            <View style={styles.notificationsList}>
-              {notifications.map((notification) => {
-                const actorNames = notification.actorProfiles.map(
-                  (p) => p.display_name,
-                )
-                const actorCount = notification.actors.length
-                let { title, body } = formatNotificationText(
-                  notification.type,
-                  actorNames,
-                  actorCount,
-                  notification.metadata,
-                )
+          centerContent={<Text style={styles.headerTitle}>Notifications</Text>}
+          rightContent={
+            unreadCount > 0 ? (
+              <TouchableOpacity
+                onPress={markAsRead}
+                style={styles.markAllButton}
+                accessibilityRole="button"
+                accessibilityLabel="Mark all notifications as read"
+              >
+                <Text style={styles.markAllReadText}>Mark all</Text>
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
+      </BlurredHeader>
 
-                // Update messaging if this request was responded to
-                if (
-                  notification.type === 'follow_request_received' &&
-                  notification.request_id &&
-                  respondedRequests.has(notification.request_id)
-                ) {
-                  const decision = respondedRequests.get(
-                    notification.request_id,
-                  )
-                  const firstActor = actorNames[0] || 'User'
-
-                  if (decision === 'approve') {
-                    title = 'Request Approved'
-                    body = `${firstActor} is now following you`
-                  } else if (decision === 'decline') {
-                    title = 'Request Declined'
-                    body = `You declined ${firstActor}'s follow request`
-                  }
-                }
-
-                let iconName = getNotificationIcon(notification.type)
-                let iconColor = getNotificationIconColor(
-                  notification.read,
-                  colors.brandPrimary,
-                  colors.textSecondary,
-                )
-
-                // Update icon if this request was responded to
-                if (
-                  notification.type === 'follow_request_received' &&
-                  notification.request_id &&
-                  respondedRequests.has(notification.request_id)
-                ) {
-                  const decision = respondedRequests.get(
-                    notification.request_id,
-                  )
-                  if (decision === 'approve') {
-                    iconName = 'checkmark-circle'
-                    iconColor = colors.brandPrimary
-                  } else if (decision === 'decline') {
-                    iconName = 'close-circle'
-                    iconColor = colors.textSecondary
-                  }
-                }
-
-                const showFollowRequestActions =
-                  notification.type === 'follow_request_received' &&
-                  Boolean(notification.request_id) &&
-                  !respondedRequests.has(notification.request_id!)
-                const isResponding =
-                  notification.request_id &&
-                  respondingRequests.has(notification.request_id)
-                const isSystemNotification =
-                  notification.type === 'trial_reminder' ||
-                  notification.type.startsWith('retention_')
-
-                return (
-                  <TouchableOpacity
-                    key={notification.id}
-                    style={[
-                      styles.notificationItem,
-                      !notification.read && styles.notificationItemUnread,
-                    ]}
-                    onPress={() => handleNotificationPress(notification)}
-                    activeOpacity={0.7}
-                  >
-                    {/* Actor avatars or system icon */}
-                    <View style={styles.avatarsContainer}>
-                      {isSystemNotification ? (
-                        // System notification - show icon instead of avatars
-                        <View
-                          style={[
-                            styles.avatar,
-                            styles.avatarPlaceholder,
-                            { backgroundColor: colors.brandPrimary },
-                          ]}
-                        >
-                          <Ionicons
-                            name={getNotificationIcon(notification.type) as any}
-                            size={18}
-                            color={colors.surface}
-                          />
-                        </View>
-                      ) : (
-                        // User notifications - show actor avatars
-                        notification.actorProfiles
-                          .slice(0, 2)
-                          .map((actor, index) => (
-                            <View
-                              key={actor.id}
-                              style={[
-                                styles.avatarWrapper,
-                                index > 0 && { marginLeft: -8 },
-                              ]}
-                            >
-                              {actor.avatar_url ? (
-                                <Image
-                                  source={{ uri: actor.avatar_url }}
-                                  style={styles.avatar}
-                                />
-                              ) : (
-                                <View
-                                  style={[
-                                    styles.avatar,
-                                    styles.avatarPlaceholder,
-                                  ]}
-                                >
-                                  <Text style={styles.avatarText}>
-                                    {actor.display_name[0]?.toUpperCase() ||
-                                      '?'}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          ))
-                      )}
-                    </View>
-
-                    {/* Notification content */}
-                    <View style={styles.notificationContent}>
-                      <View style={styles.notificationHeader}>
-                        <Ionicons
-                          name={iconName as any}
-                          size={16}
-                          color={iconColor}
-                          style={styles.notificationTypeIcon}
-                        />
-                        <Text
-                          style={[
-                            styles.notificationTitle,
-                            !notification.read &&
-                              styles.notificationTitleUnread,
-                          ]}
-                        >
-                          {title}
-                        </Text>
-                      </View>
-                      <Text style={styles.notificationBody}>{body}</Text>
-                      {showFollowRequestActions && notification.request_id && (
-                        <View style={styles.followRequestActions}>
-                          <TouchableOpacity
-                            style={[
-                              styles.followRequestButton,
-                              styles.declineButton,
-                            ]}
-                            onPress={() =>
-                              handleFollowRequestResponse(
-                                notification.request_id!,
-                                'decline',
-                              )
-                            }
-                            disabled={!!isResponding}
-                          >
-                            {isResponding ? (
-                              <ActivityIndicator
-                                size="small"
-                                color={colors.statusError}
-                              />
-                            ) : (
-                              <Text
-                                style={[
-                                  styles.followRequestButtonText,
-                                  styles.declineButtonText,
-                                ]}
-                              >
-                                Decline
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.followRequestButton,
-                              styles.approveButton,
-                            ]}
-                            onPress={() =>
-                              handleFollowRequestResponse(
-                                notification.request_id!,
-                                'approve',
-                              )
-                            }
-                            disabled={!!isResponding}
-                          >
-                            {isResponding ? (
-                              <ActivityIndicator
-                                size="small"
-                                color={colors.surface}
-                              />
-                            ) : (
-                              <Text style={styles.followRequestButtonText}>
-                                Approve
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                      <Text style={styles.notificationTime}>
-                        {formatTimeAgo(notification.created_at)}
-                      </Text>
-                    </View>
-
-                    {/* Unread indicator */}
-                    {!notification.read && <View style={styles.unreadDot} />}
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          ) : (
-            <EmptyState
-              icon="notifications-outline"
-              title="No notifications yet"
-              description="When people follow you or interact with your workouts, you'll see them here."
-              buttonText="Discover People"
-              onPress={() => router.push('/search')}
-            />
-          )}
-        </ScrollView>
-      </View>
-    </SlideInView>
+      <FlatList
+        data={notifications}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        extraData={respondedRequests}
+        style={styles.content}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingTop: topInset, paddingBottom: insets.bottom },
+        ]}
+        scrollIndicatorInsets={{ top: topInset }}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={listEmpty}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            progressViewOffset={topInset}
+            tintColor={colors.textSecondary}
+          />
+        }
+      />
+    </View>
   )
 }
+
+const keyExtractor = (item: NotificationWithProfiles) => item.id
+
+type NotificationRowProps = {
+  notification: NotificationWithProfiles
+  decision: FollowRequestDecision | undefined
+  isResponding: boolean
+  onPress: (notification: NotificationWithProfiles) => void
+  onRespond: (requestId: string, decision: FollowRequestDecision) => void
+  colors: Colors
+  styles: Styles
+}
+
+const NotificationRow = memo(function NotificationRow({
+  notification,
+  decision,
+  isResponding,
+  onPress,
+  onRespond,
+  colors,
+  styles,
+}: NotificationRowProps) {
+  const actorNames = notification.actorProfiles.map((p) => p.display_name)
+  const isFollowRequest =
+    notification.type === 'follow_request_received' &&
+    Boolean(notification.request_id)
+  const isSystemNotification =
+    notification.type === 'trial_reminder' ||
+    notification.type.startsWith('retention_') ||
+    notification.type.startsWith('proactive_coach_')
+
+  let { title, body } = formatNotificationText(
+    notification.type,
+    actorNames,
+    notification.actors.length,
+    notification.metadata,
+  )
+  let iconName = getNotificationIcon(notification.type)
+  let iconColor = getNotificationIconColor(
+    notification.read,
+    colors.brandPrimary,
+    colors.textSecondary,
+  )
+
+  // Reflect a follow request the user just responded to
+  if (isFollowRequest && decision) {
+    const firstActor = actorNames[0] || 'User'
+    if (decision === 'approve') {
+      title = 'Request Approved'
+      body = `${firstActor} is now following you`
+      iconName = 'checkmark-circle'
+      iconColor = colors.brandPrimary
+    } else {
+      title = 'Request Declined'
+      body = `You declined ${firstActor}'s follow request`
+      iconName = 'close-circle'
+      iconColor = colors.textSecondary
+    }
+  }
+
+  const showFollowRequestActions = isFollowRequest && !decision
+  const requestId = notification.request_id
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.notificationItem,
+        !notification.read && styles.notificationItemUnread,
+      ]}
+      onPress={() => onPress(notification)}
+      activeOpacity={0.7}
+    >
+      {/* Actor avatars or system icon */}
+      <View style={styles.avatarsContainer}>
+        {isSystemNotification || notification.actorProfiles.length === 0 ? (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Ionicons
+              name={getNotificationIcon(notification.type) as any}
+              size={18}
+              color={colors.surface}
+            />
+          </View>
+        ) : (
+          notification.actorProfiles.slice(0, 2).map((actor, index) => (
+            <View
+              key={actor.id}
+              style={[styles.avatarWrapper, index > 0 && styles.avatarOverlap]}
+            >
+              {actor.avatar_url ? (
+                <Image
+                  source={{ uri: actor.avatar_url }}
+                  style={styles.avatar}
+                  cachePolicy="memory-disk"
+                  recyclingKey={actor.id}
+                  transition={120}
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarText}>
+                    {actor.display_name?.[0]?.toUpperCase() || '?'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Notification content */}
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationHeader}>
+          <Ionicons
+            name={iconName as any}
+            size={16}
+            color={iconColor}
+            style={styles.notificationTypeIcon}
+          />
+          <Text
+            style={[
+              styles.notificationTitle,
+              !notification.read && styles.notificationTitleUnread,
+            ]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+        </View>
+        <Text style={styles.notificationBody}>{body}</Text>
+        {showFollowRequestActions && requestId && (
+          <View style={styles.followRequestActions}>
+            <TouchableOpacity
+              style={[styles.followRequestButton, styles.declineButton]}
+              onPress={() => onRespond(requestId, 'decline')}
+              disabled={isResponding}
+            >
+              {isResponding ? (
+                <ActivityIndicator size="small" color={colors.statusError} />
+              ) : (
+                <Text
+                  style={[
+                    styles.followRequestButtonText,
+                    styles.declineButtonText,
+                  ]}
+                >
+                  Decline
+                </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.followRequestButton, styles.approveButton]}
+              onPress={() => onRespond(requestId, 'approve')}
+              disabled={isResponding}
+            >
+              {isResponding ? (
+                <ActivityIndicator size="small" color={colors.surface} />
+              ) : (
+                <Text style={styles.followRequestButtonText}>Approve</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+        <Text style={styles.notificationTime}>
+          {formatTimeAgo(notification.created_at)}
+        </Text>
+      </View>
+
+      {/* Unread indicator */}
+      {!notification.read && <View style={styles.unreadDot} />}
+    </TouchableOpacity>
+  )
+})
 
 function formatTimeAgo(dateString: string): string {
   const now = new Date()
@@ -506,8 +477,11 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     contentContainer: {
       flexGrow: 1,
     },
-    notificationsList: {
+    loadingContainer: {
       flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingBottom: 100,
     },
     notificationItem: {
       flexDirection: 'row',
@@ -529,7 +503,10 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
     avatarWrapper: {
       borderWidth: 2,
       borderColor: colors.surface,
-      borderRadius: 16,
+      borderRadius: 18,
+    },
+    avatarOverlap: {
+      marginLeft: -8,
     },
     avatar: {
       width: 32,
@@ -558,6 +535,7 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       marginRight: 6,
     },
     notificationTitle: {
+      flexShrink: 1,
       fontSize: 14,
       fontWeight: '600',
       color: colors.textSecondary,
@@ -611,29 +589,6 @@ function createStyles(colors: ReturnType<typeof useThemedColors>) {
       backgroundColor: colors.brandPrimary,
       marginLeft: 8,
       marginTop: 6,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 40,
-      paddingBottom: 100,
-    },
-    emptyButton: {
-      backgroundColor: colors.brandPrimary,
-      paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 12,
-      shadowColor: colors.brandPrimary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    emptyButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '700',
     },
   })
 }

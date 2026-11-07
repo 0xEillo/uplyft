@@ -34,6 +34,7 @@ import type {
     Follow,
     FollowRelationshipStatus,
     FollowRequest,
+    NotificationWithProfiles,
     ParsedWorkout,
     Profile,
     RetentionPushPreferences,
@@ -5409,74 +5410,77 @@ export const database = {
   // Notifications operations
   notifications: {
     /**
-     * Get all notifications for a user, enriched with actor profiles
+     * Get the most recent notifications for a user, enriched with actor profiles.
+     * Follow-request and profile lookups run in parallel to keep this to two
+     * round trips.
      */
-    async list(userId: string) {
+    async list(userId: string, limit = 50): Promise<NotificationWithProfiles[]> {
       const { data: notifications, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('recipient_id', userId)
         .order('updated_at', { ascending: false })
+        .limit(limit)
 
       if (error) throw error
       if (!notifications || notifications.length === 0) {
         return []
       }
 
-      // Filter out follow_request_received notifications where the request is no longer pending
-      const followRequestNotifications = notifications.filter(
-        (n) => n.type === 'follow_request_received' && n.request_id,
+      const actorIdsFor = (n: { actors: unknown }): string[] =>
+        Array.isArray(n.actors) ? (n.actors as string[]) : []
+
+      const requestIds = [
+        ...new Set<string>(
+          notifications
+            .filter((n) => n.type === 'follow_request_received' && n.request_id)
+            .map((n) => n.request_id as string),
+        ),
+      ]
+      const uniqueActorIds = [
+        ...new Set<string>(notifications.flatMap(actorIdsFor)),
+      ]
+
+      const [requestsResult, profilesResult] = await Promise.all([
+        requestIds.length > 0
+          ? supabase
+              .from('follow_requests')
+              .select('id, status')
+              .in('id', requestIds)
+          : Promise.resolve({ data: [] as { id: string; status: string }[] }),
+        uniqueActorIds.length > 0
+          ? supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url, user_tag')
+              .in('id', uniqueActorIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      if (profilesResult.error) throw profilesResult.error
+
+      const requestStatuses = new Map<string, string>(
+        requestsResult.data?.map((r) => [r.id, r.status]) || [],
+      )
+      const profileMap = new Map<string, Profile>(
+        (profilesResult.data as Profile[] | null)?.map((p) => [p.id, p]) || [],
       )
 
-      let requestStatuses = new Map<string, string>()
-      if (followRequestNotifications.length > 0) {
-        const requestIds = followRequestNotifications
-          .map((n) => n.request_id)
-          .filter(Boolean)
-        const { data: requests } = await supabase
-          .from('follow_requests')
-          .select('id, status')
-          .in('id', requestIds)
-
-        requestStatuses = new Map(requests?.map((r) => [r.id, r.status]) || [])
-      }
-
-      // Filter out notifications where follow request is no longer pending
-      const filteredNotifications = notifications.filter((n) => {
-        if (n.type === 'follow_request_received' && n.request_id) {
-          const status = requestStatuses.get(n.request_id)
-          // Only show if status is still pending (or if we couldn't find the status, keep it just in case)
-          return status === 'pending' || status === undefined
-        }
-        return true
-      })
-
-      // Fetch unique actor profiles
-      const allActorIds = filteredNotifications.flatMap<string>((n) =>
-        Array.isArray(n.actors) ? (n.actors as string[]) : [],
-      )
-      const uniqueActorIds = [...new Set<string>(allActorIds)]
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url, user_tag')
-        .in('id', uniqueActorIds)
-
-      if (profilesError) throw profilesError
-
-      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || [])
-
-      // Attach profiles to notifications
-      return filteredNotifications.map((n) => ({
-        ...n,
-        actorProfiles: [
-          ...new Set<string>(
-            Array.isArray(n.actors) ? (n.actors as string[]) : [],
-          ),
-        ]
-          .map((id) => profileMap.get(id))
-          .filter(Boolean),
-      }))
+      return notifications
+        .filter((n) => {
+          // Hide follow-request notifications that are no longer pending
+          // (keep them if we couldn't resolve the status, just in case)
+          if (n.type === 'follow_request_received' && n.request_id) {
+            const status = requestStatuses.get(n.request_id)
+            return status === 'pending' || status === undefined
+          }
+          return true
+        })
+        .map((n) => ({
+          ...n,
+          actorProfiles: [...new Set<string>(actorIdsFor(n))]
+            .map((id) => profileMap.get(id))
+            .filter((p): p is Profile => Boolean(p)),
+        }))
     },
 
     /**

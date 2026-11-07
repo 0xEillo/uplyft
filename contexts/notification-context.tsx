@@ -2,7 +2,15 @@ import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import type { NotificationWithProfiles } from '@/types/database.types'
 import * as Notifications from 'expo-notifications'
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Platform } from 'react-native'
 import { useAuth } from './auth-context'
 
@@ -44,8 +52,12 @@ interface NotificationContextType {
   requestPermission: () => Promise<boolean>
   unreadCount: number
   notifications: NotificationWithProfiles[]
+  /** True once the first load for the current user has finished. */
+  hasLoaded: boolean
+  /** Mark every notification as read (optimistic, syncs in background). */
   markAsRead: () => void
-  markAllAsReadOptimistically: () => void
+  /** Mark a single notification as read (optimistic, syncs in background). */
+  markNotificationAsRead: (notificationId: string) => void
   refreshNotifications: () => Promise<void>
 }
 
@@ -53,59 +65,82 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
   undefined
 )
 
+// Coalesce bursts of realtime events (e.g. "mark all as read" fires one
+// UPDATE event per row) into a single reload.
+const REALTIME_RELOAD_DEBOUNCE_MS = 400
+
 export function NotificationProvider({
   children,
 }: {
   children: React.ReactNode
 }) {
   const { user } = useAuth()
+  const userId = user?.id ?? null
   const [hasPermission, setHasPermission] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState<NotificationWithProfiles[]>([])
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const loadSeqRef = useRef(0)
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const notificationsRef = useRef(notifications)
+  notificationsRef.current = notifications
+
+  const unreadCount = useMemo(
+    () => notifications.reduce((count, n) => (n.read ? count : count + 1), 0),
+    [notifications]
+  )
 
   // Load notifications from database
   const loadNotifications = useCallback(async () => {
-    if (!user) {
+    const seq = ++loadSeqRef.current
+
+    if (!userId) {
       setNotifications([])
-      setUnreadCount(0)
-      void syncApplicationBadge(0)
+      setHasLoaded(false)
       return
     }
 
     try {
-      const data = await database.notifications.list(user.id)
+      const data = await database.notifications.list(userId)
+      // Ignore stale responses so an older request can't overwrite newer data
+      if (seq !== loadSeqRef.current) return
       setNotifications(data)
-
-      const unread = data.filter((n) => !n.read).length
-      setUnreadCount(unread)
-      void syncApplicationBadge(unread)
     } catch (error: unknown) {
-      // Silently handle transient server errors (like 502 Bad Gateway) 
+      // Silently handle transient server errors (like 502 Bad Gateway)
       // instead of printing full HTML blobs to the console.
       const errorMessage = (error as { message?: string })?.message || String(error)
       if (!errorMessage.includes('502') && !errorMessage.includes('<html>')) {
         console.error('[Notifications] Error loading notifications:', errorMessage)
       }
-      
       // Fallback: keep existing notifications but don't crash
+    } finally {
+      if (seq === loadSeqRef.current) setHasLoaded(true)
     }
-  }, [user])
+  }, [userId])
+
+  const scheduleReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    reloadTimerRef.current = setTimeout(() => {
+      reloadTimerRef.current = null
+      void loadNotifications()
+    }, REALTIME_RELOAD_DEBOUNCE_MS)
+  }, [loadNotifications])
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    }
+  }, [])
 
   // Request notification permissions on mount
   useEffect(() => {
     checkPermission()
   }, [])
 
-  // Load notifications when user changes
+  // Load notifications when the signed-in user changes
   useEffect(() => {
-    if (user) {
-      loadNotifications()
-    } else {
-      setNotifications([])
-      setUnreadCount(0)
-      void syncApplicationBadge(0)
-    }
-  }, [user, loadNotifications])
+    setHasLoaded(false)
+    void loadNotifications()
+  }, [loadNotifications])
 
   useEffect(() => {
     void syncApplicationBadge(unreadCount)
@@ -113,20 +148,20 @@ export function NotificationProvider({
 
   // Real-time subscription to notifications table
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
 
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications:${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `recipient_id=eq.${user.id}`,
+          filter: `recipient_id=eq.${userId}`,
         },
-        (payload) => {
-          loadNotifications()
+        () => {
+          scheduleReload()
         }
       )
       .subscribe()
@@ -134,7 +169,7 @@ export function NotificationProvider({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, loadNotifications])
+  }, [userId, scheduleReload])
 
   // Listen for incoming push notifications
   useEffect(() => {
@@ -143,17 +178,15 @@ export function NotificationProvider({
     try {
       // Listener for when notification is received while app is foregrounded
       const notificationListener =
-        Notifications.addNotificationReceivedListener((notification) => {
-          // Reload from database to get updated count
-          loadNotifications()
+        Notifications.addNotificationReceivedListener(() => {
+          scheduleReload()
         })
 
       // Listener for when user taps on notification
       const responseListener =
         Notifications.addNotificationResponseReceivedListener(() => {
           // Navigation is handled in usePushNotifications hook
-          // Just reload notifications here
-          loadNotifications()
+          scheduleReload()
         })
 
       return () => {
@@ -163,7 +196,7 @@ export function NotificationProvider({
     } catch (error) {
       console.warn('[Notifications] Failed to set up listeners:', error)
     }
-  }, [loadNotifications])
+  }, [scheduleReload])
 
   const checkPermission = async () => {
     if (!isNotificationsAvailable) {
@@ -222,45 +255,65 @@ export function NotificationProvider({
   }
 
   const markAsRead = useCallback(() => {
-    setUnreadCount(0)
-    void syncApplicationBadge(0)
+    if (!notificationsRef.current.some((n) => !n.read)) return
 
-    if (!user) return
+    // Drop any in-flight load so it can't overwrite the optimistic update
+    loadSeqRef.current++
+    setNotifications((prev) =>
+      prev.map((n) => (n.read ? n : { ...n, read: true }))
+    )
 
-    database.notifications.markAllAsRead(user.id).catch((error) => {
+    if (!userId) return
+
+    database.notifications.markAllAsRead(userId).catch((error) => {
       console.error('[Notifications] Error marking notifications as read:', error)
       void loadNotifications()
     })
-  }, [loadNotifications, user])
+  }, [loadNotifications, userId])
 
-  const markAllAsReadOptimistically = useCallback(() => {
-    // Optimistically update UI immediately
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) => ({
-        ...notification,
-        read: true,
-      }))
-    )
-    setUnreadCount(0)
-    void syncApplicationBadge(0)
-  }, [])
+  const markNotificationAsRead = useCallback(
+    (notificationId: string) => {
+      const target = notificationsRef.current.find((n) => n.id === notificationId)
+      if (!target || target.read) return
 
-  const refreshNotifications = useCallback(async () => {
-    await loadNotifications()
-  }, [loadNotifications])
+      loadSeqRef.current++
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      )
+
+      database.notifications.markAsRead(notificationId).catch((error) => {
+        console.error('[Notifications] Error marking notification as read:', error)
+        void loadNotifications()
+      })
+    },
+    [loadNotifications]
+  )
+
+  const value = useMemo<NotificationContextType>(
+    () => ({
+      hasPermission,
+      requestPermission,
+      unreadCount,
+      notifications,
+      hasLoaded,
+      markAsRead,
+      markNotificationAsRead,
+      refreshNotifications: loadNotifications,
+    }),
+    // requestPermission only closes over stable setters
+    [
+      hasPermission,
+      unreadCount,
+      notifications,
+      hasLoaded,
+      markAsRead,
+      markNotificationAsRead,
+      loadNotifications,
+    ]
+  )
 
   return (
-    <NotificationContext.Provider
-      value={{
-        hasPermission,
-        requestPermission,
-        unreadCount,
-        notifications,
-        markAsRead,
-        markAllAsReadOptimistically,
-        refreshNotifications,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   )
