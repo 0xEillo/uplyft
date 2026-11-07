@@ -70,7 +70,10 @@ export function FriendLeaderboardPreview({
 
   if (isLoading || !isEligible) return null
 
-  const youPointsColor = getLeaderboardPointsColor(
+  // Numbers stay neutral (matching the rows); the level colour is only used
+  // for the level name.
+  const youPointsColor = colors.textPrimary
+  const youLevelColor = getLeaderboardPointsColor(
     currentUserEntry?.level ?? null,
     colors.textTertiary,
   )
@@ -105,18 +108,18 @@ export function FriendLeaderboardPreview({
                 <Text style={styles.youName}>You</Text>
                 <Text style={styles.youRank}>
                   Rank #{currentUserEntry.rank}
-                  {currentUserEntry.level
-                    ? ` · ${currentUserEntry.level}`
-                    : ''}
+                  {currentUserEntry.level ? (
+                    <Text style={{ color: youLevelColor }}>
+                      {` · ${currentUserEntry.level}`}
+                    </Text>
+                  ) : null}
                 </Text>
               </View>
               <View style={styles.youPointsRow}>
                 <Text style={[styles.youPoints, { color: youPointsColor }]}>
                   {formatLeaderboardPoints(currentUserEntry.score)}
                 </Text>
-                <Text
-                  style={[styles.youPointsLabel, { color: youPointsColor }]}
-                >
+                <Text style={styles.youPointsLabel}>
                   pts
                 </Text>
               </View>
@@ -166,12 +169,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       marginTop: 32,
-      marginBottom: 8,
-      paddingHorizontal: 2,
+      marginBottom: 10,
+      paddingHorizontal: 4,
     },
     sectionHeaderText: {
       fontSize: 20,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.textPrimary,
       letterSpacing: -0.4,
     },
@@ -203,7 +206,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       minWidth: 0,
     },
     youName: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '700',
       color: colors.textPrimary,
     },
@@ -215,18 +218,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     youPoints: {
       fontSize: 20,
-      fontWeight: '800',
-      letterSpacing: -0.4,
+      fontWeight: '700',
+      letterSpacing: -0.3,
       fontVariant: ['tabular-nums'],
       lineHeight: 22,
     },
     youPointsLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      opacity: 0.72,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textTertiary,
     },
     youRank: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '500',
       color: colors.textTertiary,
       marginTop: 2,

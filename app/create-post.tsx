@@ -3,11 +3,9 @@ import { EditorToolbar } from '@/components/editor-toolbar'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { RestTimerOverlay } from '@/components/RestTimerOverlay'
 import { StructuredWorkoutInput } from '@/components/structured-workout-input'
-import { hasUnreadWelcomeMessage } from '@/components/workout-chat'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
-import { useProfile } from '@/contexts/profile-context'
 import { useRestTimerContext } from '@/contexts/rest-timer-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
@@ -22,7 +20,6 @@ import { useImageTranscription } from '@/hooks/useImageTranscription'
 import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
@@ -40,8 +37,6 @@ import {
   WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import Svg, { Path } from 'react-native-svg'
 import {
   useFocusEffect,
 } from '@react-navigation/native'
@@ -53,7 +48,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Image,
   Keyboard,
   type LayoutChangeEvent,
   Platform,
@@ -67,14 +61,10 @@ import {
   View,
 } from 'react-native'
 import Reanimated, {
-  cancelAnimation,
   Easing as ReanimatedEasing,
-  runOnUI,
   useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
@@ -295,17 +285,15 @@ function formatDurationMinSec(seconds: number): string {
   if (mins >= 60) {
     const hours = Math.floor(mins / 60)
     const m = mins % 60
-    return `${hours}h ${m}min`
+    return `${hours}h ${m}m`
   }
-  return secs > 0 ? `${mins}min ${secs}s` : `${mins}min`
+  // Same "38m 43s" format as the live-workout pill on Home.
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
 }
 
 export default function CreatePostScreen() {
   const colors = useThemedColors()
   const { weightUnit, convertInputToKg } = useWeightUnits()
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
-  const coachFirstName = coach.name.split(' ')[1] || coach.name
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const isIOS = Platform.OS === 'ios'
@@ -365,8 +353,6 @@ export default function CreatePostScreen() {
     useState(true)
   const [keypadProps, setKeypadProps] = useState<CustomNumericKeypadProps | null>(null)
   const [keypadTapShield, setKeypadTapShield] = useState(false)
-  const [hasUnreadCoachWelcome, setHasUnreadCoachWelcome] = useState(false)
-  const chatHandWave = useSharedValue(0)
   const [warmupCalculatorEnabled, setWarmupCalculatorEnabled] = useState(() =>
     getWarmupCalculatorEnabled(),
   )
@@ -701,48 +687,6 @@ export default function CreatePostScreen() {
     notesForFocusRef.current = notes
     workoutTitleForFocusRef.current = workoutTitle
   }, [notes, workoutTitle])
-
-  // Track whether the unified coach chat still has an unseen welcome message,
-  // so we can wave the avatar button to draw the user's attention until they
-  // open the chat for the first time.
-  useEffect(() => {
-    let cancelled = false
-    const refresh = async () => {
-      const unread = await hasUnreadWelcomeMessage(user?.id)
-      if (!cancelled) setHasUnreadCoachWelcome(unread)
-    }
-    refresh()
-    // Re-check periodically in case the user opens the chat (which marks the
-    // welcome as seen) and returns here without remounting the screen.
-    const interval = setInterval(refresh, 2000)
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-    }
-  }, [user?.id])
-
-  // Wave animation for coach avatar button when the welcome is still unread.
-  useEffect(() => {
-    if (!hasUnreadCoachWelcome) {
-      runOnUI(() => {
-        'worklet'
-        cancelAnimation(chatHandWave)
-        chatHandWave.value = 0
-      })()
-      return
-    }
-    runOnUI(() => {
-      'worklet'
-      chatHandWave.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 600, easing: ReanimatedEasing.out(ReanimatedEasing.cubic) }),
-          withTiming(0, { duration: 600, easing: ReanimatedEasing.in(ReanimatedEasing.cubic) }),
-          withTiming(0, { duration: 800 }),
-        ),
-        -1,
-      )
-    })()
-  }, [hasUnreadCoachWelcome, chatHandWave])
 
   const startToolbarInsetHandoff = useCallback(() => {
     setIsToolbarInsetLocked(true)
@@ -1872,9 +1816,6 @@ export default function CreatePostScreen() {
     height: Math.max(customKeypadSpacerH.value, keyboard.height.value),
   }))
 
-  const chatHandWaveStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + chatHandWave.value * 0.08 }],
-  }))
   const isToolbarVisible =
     toolbarVisibleButtons.length > 0 &&
     (!isStructuredInputFocused || Boolean(keypadProps))
@@ -1917,28 +1858,42 @@ export default function CreatePostScreen() {
           </View>
 
           <View style={styles.headerRightButtons}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              activeOpacity={0.7}
-              onPress={() => router.push('/create-post-settings')}
-              disabled={isLoading}
+            {/* Secondary actions share one glass island, like the Home header. */}
+            <LiquidGlassSurface
+              style={styles.headerActionsIsland}
+              debugLabel="create-post-actions-island"
             >
-              <Ionicons
-                name="settings-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            {shouldShowWorkoutTimer && (
               <TouchableOpacity
-                onPress={handleDiscardWorkout}
-                style={styles.discardButton}
-                disabled={isLoading}
+                style={styles.headerButton}
                 activeOpacity={0.7}
+                onPress={() => router.push('/create-post-settings')}
+                disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Workout settings"
               >
-                <Ionicons name="trash-outline" size={22} color="#E53935" />
+                <Ionicons
+                  name="settings-outline"
+                  size={22}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
-            )}
+              {shouldShowWorkoutTimer && (
+                <TouchableOpacity
+                  onPress={handleDiscardWorkout}
+                  style={styles.discardButton}
+                  disabled={isLoading}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Discard workout"
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={colors.statusError}
+                  />
+                </TouchableOpacity>
+              )}
+            </LiquidGlassSurface>
             <TouchableOpacity
               onPress={handlePost}
               style={[styles.headerButton, styles.submitButtonFilled]}
@@ -1986,11 +1941,11 @@ export default function CreatePostScreen() {
             bounces={true}
             automaticallyAdjustContentInsets={false}
           >
-            {/* Workout Stats Bar + Chat Button */}
+            {/* Workout Stats Bar */}
             <View style={styles.statsBarContainer}>
               <View style={styles.statsBar}>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
                     Duration
                   </Text>
                   <Text
@@ -2004,7 +1959,7 @@ export default function CreatePostScreen() {
                   </Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
                     Volume
                   </Text>
                   <Text style={[styles.statValue, { color: colors.textPrimary }]}>
@@ -2012,65 +1967,13 @@ export default function CreatePostScreen() {
                   </Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
                     Sets
                   </Text>
                   <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                     {draftStats.setsCount}
                   </Text>
                 </View>
-              </View>
-              <View>
-                <TouchableOpacity
-                  style={styles.chatButton}
-                  onPress={() => {
-                    haptic('light')
-                    blurInputs()
-                    router.push('/chat')
-                  }}
-                  disabled={isLoading || isRecording || isTranscribing}
-                  activeOpacity={0.6}
-                >
-                  <Reanimated.View
-                    style={[
-                      {
-                        width: 46,
-                        height: 46,
-                        borderRadius: 23,
-                      },
-                      chatHandWaveStyle,
-                    ]}
-                  >
-                    <LiquidGlassSurface
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: 23,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Svg
-                        width={24}
-                        height={24}
-                        viewBox="0 0 24 24"
-                      >
-                        <Path
-                          d="M3.5 9 H12.5 A2.5 2.5 0 0 1 15 11.5 V16.5 A2.5 2.5 0 0 1 12.5 19 H7 L2 22 L3.5 19 A2.5 2.5 0 0 1 1 16.5 V11.5 A2.5 2.5 0 0 1 3.5 9 Z"
-                          fill={colors.textPrimary}
-                        />
-                        <Path
-                          d="M19 1 C19 3 21 5 23 5 C21 5 19 7 19 9 C19 7 17 5 15 5 C17 5 19 3 19 1 Z"
-                          fill={colors.textPrimary}
-                        />
-                        <Path
-                          d="M15 1 C15 1.75 15.75 2.5 16.5 2.5 C15.75 2.5 15 3.25 15 4 C15 3.25 14.25 2.5 13.5 2.5 C14.25 2.5 15 1.75 15 1 Z"
-                          fill={colors.textPrimary}
-                        />
-                      </Svg>
-                    </LiquidGlassSurface>
-                  </Reanimated.View>
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -2305,8 +2208,6 @@ const createStyles = (
       alignItems: 'center',
       paddingHorizontal: 20,
       paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
       position: 'relative',
     },
     headerButton: {
@@ -2337,7 +2238,15 @@ const createStyles = (
     headerRightButtons: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 10,
+    },
+    headerActionsIsland: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 44,
+      borderRadius: 22,
+      paddingHorizontal: 4,
+      gap: 0,
     },
     discardButton: {
       height: 44,
@@ -2384,15 +2293,15 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 12,
+      paddingTop: 12,
+      paddingBottom: 16,
       gap: 12,
     },
     statsBar: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 24,
+      gap: 32,
     },
     statItem: {
       gap: 2,
@@ -2402,8 +2311,10 @@ const createStyles = (
       fontWeight: '500',
     },
     statValue: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+      fontVariant: ['tabular-nums'],
     },
     statValueDuration: {
       fontWeight: '700',
@@ -2412,12 +2323,8 @@ const createStyles = (
       padding: 6,
       borderRadius: 12,
     },
-    chatButton: {
-      padding: 6,
-      borderRadius: 12,
-    },
     divider: {
-      height: 1,
+      height: StyleSheet.hairlineWidth,
       backgroundColor: colors.border,
       marginHorizontal: 20,
     },

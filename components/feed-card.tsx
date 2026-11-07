@@ -268,8 +268,8 @@ export const FeedCard = memo(function FeedCard({
   }
 
   // Calculate carousel width (screen width - card padding * 2)
-  // Card padding is 14 horizontal
-  const cardPadding = 14
+  // Card padding is 20 horizontal
+  const cardPadding = 20
   const carouselWidth = windowWidth - cardPadding * 2
 
   const handleCarouselScroll = (
@@ -488,7 +488,13 @@ export const FeedCard = memo(function FeedCard({
         <Pressable
           onPress={onCardPress}
           disabled={!onCardPress || isPending}
-          style={[styles.exercisesContainer, { minHeight: MIN_CONTENT_HEIGHT }]}
+          style={[
+            styles.exercisesContainer,
+            // Only reserve the full preview height when it is needed: while the
+            // skeleton is showing, or when the info slide shares a carousel with
+            // a photo. Otherwise short workouts leave a large empty gap.
+            (isPending || coverImageUrl) && { minHeight: MIN_CONTENT_HEIGHT },
+          ]}
         >
           {/* Skeleton Rows (when pending) */}
           {isPending && (
@@ -610,6 +616,7 @@ export const FeedCard = memo(function FeedCard({
       PREVIEW_LIMIT,
       skeletonRowWidths,
       MIN_CONTENT_HEIGHT,
+      coverImageUrl,
     ],
   )
 
@@ -1173,7 +1180,7 @@ function createStyles(
   return StyleSheet.create({
     card: {
       backgroundColor: colors.bg,
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
       paddingTop: 18,
       paddingBottom: 0,
     },
@@ -1194,16 +1201,16 @@ function createStyles(
       justifyContent: 'center',
     },
     avatar: {
-      width: 41,
-      height: 41,
-      borderRadius: 21,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
       color: colors.surface,
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '600',
     },
     userNameRow: {
@@ -1274,7 +1281,7 @@ function createStyles(
       marginBottom: 12, // Moved from contents to ensure player matches height correctly
     },
     titleRowContainerNoDescription: {
-      marginBottom: 4,
+      marginBottom: 10,
     },
     titleContent: {
       flex: 1,
@@ -1287,7 +1294,9 @@ function createStyles(
     },
     workoutTitle: {
       fontSize: 22,
-      fontWeight: '600',
+      fontWeight: '700',
+      letterSpacing: -0.4,
+      lineHeight: 27,
       color: colors.textPrimary,
       marginBottom: 6,
     },
@@ -1556,8 +1565,8 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 6,
-      paddingHorizontal: 12,
+      paddingVertical: 7,
+      paddingHorizontal: 0,
     },
     exerciseNameContainer: {
       flex: 1,
@@ -1567,21 +1576,22 @@ function createStyles(
       marginRight: 12,
     },
     exerciseThumbnail: {
-      width: 48,
-      height: 48,
-      borderRadius: 12,
+      width: 44,
+      height: 44,
+      borderRadius: 10,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '500',
       color: colors.textPrimary,
       flex: 1,
     },
     setsText: {
       fontSize: 14,
-      fontWeight: '400',
-      color: colors.textSecondary,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      fontVariant: ['tabular-nums'],
     },
     seeMoreButton: {
       flexDirection: 'row',
@@ -1601,15 +1611,15 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 2,
-      marginBottom: 10,
+      marginTop: 0,
+      marginBottom: 14,
     },
     statsContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
-      gap: 28,
-      paddingVertical: 10,
+      gap: 32,
+      paddingVertical: 0,
       paddingHorizontal: 0,
     },
     statsRowMusic: {
@@ -1625,17 +1635,18 @@ function createStyles(
     },
     statItem: {
       alignItems: 'flex-start',
-      gap: 4,
+      gap: 2,
     },
     statLabel: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '500',
       color: colors.textTertiary,
     },
     statValue: {
-      fontSize: 15,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     skeletonBar: {
       height: 14,
@@ -1684,7 +1695,8 @@ function createStyles(
       justifyContent: 'flex-start',
       gap: 16,
       paddingVertical: 10,
-      paddingHorizontal: 4,
+      paddingHorizontal: 0,
+      marginLeft: -8,
       marginTop: 4,
     },
     commentsListContainer: {

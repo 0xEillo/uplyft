@@ -45,6 +45,24 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
     return `${mins}m`
   }
 
+  // Render "1h 20m" with the numbers in the value style and the h/m units in
+  // the same smaller unit style as "kg".
+  const renderDuration = (seconds: number) =>
+    formatTotalDuration(seconds)
+      .split(/(\d+)/)
+      .filter(Boolean)
+      .map((part, index) =>
+        /^\d+$/.test(part) ? (
+          <Text key={index} style={styles.metricValue}>
+            {part}
+          </Text>
+        ) : (
+          <Text key={index} style={[styles.metricValueUnit, styles.durationUnit]}>
+            {part.trim()}
+          </Text>
+        ),
+      )
+
   const formatVolume = (kg: number) => {
     if (kg >= 1000) {
       return `${(kg / 1000).toFixed(1).replace(/\.0$/, '')}k`
@@ -58,10 +76,12 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
     formatValue: (val: number) => string,
     suffix: string = '',
   ) => {
-    // No previous week data → always gray, no comparison is meaningful
+    // No previous week data → no comparison is meaningful, so show nothing
+    // rather than a row of grey "– 0" pills.
     const noData = previous === 0
-    const isPositive = !noData && diff > 0
-    const isNegative = !noData && diff < 0
+    if (noData) return null
+    const isPositive = diff > 0
+    const isNegative = diff < 0
 
     let pillBg: string = colors.surfaceSubtle
     let pillText: string = colors.textTertiary
@@ -89,7 +109,7 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
           style={styles.diffIcon}
         />
         <Text style={[styles.diffText, { color: pillText }]}>
-          {noData || diff === 0
+          {diff === 0
             ? `0${suffix}`
             : `${formatValue(Math.abs(diff))}${suffix}`}
         </Text>
@@ -106,8 +126,8 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
       <View style={styles.metricsRow}>
         {/* Workouts Column */}
         <View style={styles.metricColumn}>
-          <Text style={styles.metricValue}>{workouts.current}</Text>
           <Text style={styles.metricLabel}>Workouts</Text>
+          <Text style={styles.metricValue}>{workouts.current}</Text>
           {renderDiffPill(workouts.diff, workouts.previous, (val) =>
             val.toString(),
           )}
@@ -115,10 +135,10 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
 
         {/* Duration Column */}
         <View style={styles.metricColumn}>
-          <Text style={styles.metricValue}>
-            {formatTotalDuration(durationSeconds.current)}
-          </Text>
           <Text style={styles.metricLabel}>Time</Text>
+          <View style={styles.valueRow}>
+            {renderDuration(durationSeconds.current)}
+          </View>
           {renderDiffPill(
             durationSeconds.diff,
             durationSeconds.previous,
@@ -128,13 +148,13 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
 
         {/* Volume Column */}
         <View style={styles.metricColumn}>
+          <Text style={styles.metricLabel}>Volume</Text>
           <View style={styles.valueRow}>
             <Text style={styles.metricValue}>
               {formatVolume(volumeKg.current)}
             </Text>
             <Text style={styles.metricValueUnit}> kg</Text>
           </View>
-          <Text style={styles.metricLabel}>Volume</Text>
           {renderDiffPill(
             volumeKg.diff,
             volumeKg.previous,
@@ -151,9 +171,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
     container: {
       paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingTop: 8,
+      paddingBottom: 20,
       backgroundColor: colors.bg,
-      borderBottomWidth: 1,
+      // Same 8pt band the feed uses between cards, so the page has one
+      // separator idiom.
+      borderBottomWidth: 8,
       borderBottomColor: colors.separator,
     },
     loadingContainer: {
@@ -165,12 +188,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     title: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
     },
     metricsRow: {
       flexDirection: 'row',
@@ -186,28 +209,35 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       alignItems: 'baseline',
     },
     metricValue: {
-      fontSize: 20,
-      fontWeight: '800',
+      fontSize: 26,
+      fontWeight: '700',
+      letterSpacing: -0.5,
       color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     metricValueUnit: {
       fontSize: 15,
-      fontWeight: '700',
-      color: colors.textPrimary,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    // Same visual gap as the leading space in " kg".
+    durationUnit: {
+      marginLeft: 3,
+      marginRight: 6,
     },
     metricLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginTop: 2,
-      marginBottom: 8,
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginBottom: 2,
       fontWeight: '500',
     },
     diffPill: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginTop: 8,
       paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
+      paddingVertical: 3,
+      borderRadius: 999,
       alignSelf: 'flex-start',
     },
     diffIcon: {

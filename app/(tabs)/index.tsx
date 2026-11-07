@@ -1281,7 +1281,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 20,
       fontWeight: '600',
       color: colors.textPrimary,
-      marginLeft: 6,
     },
     largeTitleContainer: {
       paddingHorizontal: 20,

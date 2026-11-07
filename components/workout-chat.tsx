@@ -86,6 +86,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as Clipboard from 'expo-clipboard'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system/legacy'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -579,21 +580,14 @@ const STATS_REPORT_BLOCK_REGEX = /<stats_report>([\s\S]*?)<\/stats_report>/i
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
 
-// Check if user has unread welcome message (for badge display)
-export async function hasUnreadWelcomeMessage(
-  userId: string | undefined,
-): Promise<boolean> {
-  if (!userId) return false
-  try {
-    const storageKey = `${WELCOME_MESSAGE_SEEN_KEY}_${userId}`
-    const hasSeen = await AsyncStorage.getItem(storageKey)
-    return !hasSeen
-  } catch {
-    return false
-  }
+function formatMessageTime(createdAt: string): string {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 // Get personalized welcome message based on coach personality
+
 function getWelcomeMessage(coachId: string, userName?: string): string {
   const name = userName && userName !== 'Guest' ? ` ${userName}` : ''
 
@@ -781,8 +775,8 @@ function createCoachMarkdownStyle(
 ): any {
   return {
     body: {
-      fontSize: 16,
-      lineHeight: 23,
+      fontSize: 17,
+      lineHeight: 24,
       color: colors.textPrimary,
       margin: 0,
       flexDirection: 'column',
@@ -858,8 +852,8 @@ function createCoachMarkdownStyle(
       marginBottom: 14,
     },
     list_item: {
-      marginTop: 6,
-      marginBottom: 6,
+      marginTop: 4,
+      marginBottom: 4,
     },
     hr: {
       backgroundColor: colors.border,
@@ -1324,7 +1318,8 @@ export function WorkoutChat({
     () =>
       ({
         ...themedColors,
-        bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg,
+        // The chat screen renders on the app background (matches its header).
+        bg: themedColors.bg,
       } as any),
     [themedColors, mode],
   )
@@ -2078,6 +2073,10 @@ export function WorkoutChat({
     let ndjsonMode: boolean | null = null
     let hasDisabledLoading = false
 
+    if (!options?.silent && assistantMessageId) {
+      setStreamingMessageId(assistantMessageId)
+    }
+
     try {
       while (true) {
         const { value, done } = await reader.read()
@@ -2219,6 +2218,7 @@ export function WorkoutChat({
         )
       }
 
+      setStreamingMessageId(null)
       return {
         content: acc,
         interrupted: true,
@@ -2233,6 +2233,7 @@ export function WorkoutChat({
           m.id === assistantMessageId ? { ...m, content: acc } : m,
         ),
       )
+      setStreamingMessageId(null)
     }
 
     const parsedWorkoutPlan = parseWorkoutForDisplay(acc)
@@ -2385,7 +2386,7 @@ export function WorkoutChat({
     return {
       opacity: p,
       transform: [{ translateY: (1 - p) * 4 }],
-      maxHeight: p * 104,
+      maxHeight: p * 120,
     }
   })
 
@@ -2813,6 +2814,35 @@ export function WorkoutChat({
     showCopyToast()
   }
 
+  // Id of the assistant reply currently streaming in (isLoading flips to false
+  // on the first visible chunk, so it can't be used to detect streaming).
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  )
+
+  // Thumbs up / down on assistant replies. Session-local UI state; the rating
+  // itself is recorded as an analytics event.
+  const [messageFeedback, setMessageFeedback] = useState<
+    Record<string, 'up' | 'down'>
+  >({})
+  const handleMessageFeedback = (messageId: string, rating: 'up' | 'down') => {
+    haptic('light')
+    const isClearing = messageFeedback[messageId] === rating
+    setMessageFeedback((prev) => {
+      const next = { ...prev }
+      if (isClearing) {
+        delete next[messageId]
+      } else {
+        next[messageId] = rating
+      }
+      return next
+    })
+    trackEvent(AnalyticsEvents.AI_CHAT_MESSAGE_FEEDBACK, {
+      message_id: messageId,
+      rating: isClearing ? 'cleared' : rating,
+    })
+  }
+
   const showCopyToast = () => {
     if (copyToastVisibleHideTimeoutRef.current) {
       clearTimeout(copyToastVisibleHideTimeoutRef.current)
@@ -2897,6 +2927,7 @@ export function WorkoutChat({
       content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
       status: hiddenPrompt ? undefined : 'sending',
+      createdAt: new Date().toISOString(),
     }
 
     if (!hiddenPrompt) {
@@ -4102,6 +4133,8 @@ export function WorkoutChat({
                 mode,
                 coachId,
                 coachName: profile?.display_name ?? '',
+                messageFeedback,
+                streamingMessageId,
               }}
               keyExtractor={(item: Message) => item.id}
               getItemType={(item: Message) => item.role}
@@ -4149,9 +4182,16 @@ export function WorkoutChat({
                           onLongPress={() => handleCopyMessage(message.content)}
                           delayLongPress={220}
                         >
-                          <Text style={styles.userMessageText}>
-                            {message.content}
-                          </Text>
+                          <View style={styles.userMessageTextRow}>
+                            <Text style={styles.userMessageText}>
+                              {message.content}
+                            </Text>
+                            {message.createdAt ? (
+                              <Text style={styles.userMessageTime}>
+                                {formatMessageTime(message.createdAt)}
+                              </Text>
+                            ) : null}
+                          </View>
                         </TouchableOpacity>
                       </View>
 
@@ -4426,7 +4466,6 @@ export function WorkoutChat({
                                   </View>
                                 </View>
                               )}
-
                               {foodLogPayload && (
                                 <TouchableOpacity
                                   activeOpacity={0.9}
@@ -5160,6 +5199,82 @@ export function WorkoutChat({
                                   )}
                                 </View>
                               )}
+
+                              {/* Copy / thumbs actions, hidden while this
+                                  reply is still streaming in. */}
+                              {coachText &&
+                                message.id !== streamingMessageId && (
+                                  <View style={styles.assistantActionRow}>
+                                    <TouchableOpacity
+                                      style={styles.assistantActionButton}
+                                      onPress={() =>
+                                        handleCopyMessage(
+                                          displayContent || coachText,
+                                        )
+                                      }
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Copy message"
+                                    >
+                                      <Ionicons
+                                        name="copy-outline"
+                                        size={18}
+                                        color={colors.textSecondary}
+                                      />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={styles.assistantActionButton}
+                                      onPress={() =>
+                                        handleMessageFeedback(message.id, 'up')
+                                      }
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Good response"
+                                      accessibilityState={{
+                                        selected:
+                                          messageFeedback[message.id] === 'up',
+                                      }}
+                                    >
+                                      <Ionicons
+                                        name={
+                                          messageFeedback[message.id] === 'up'
+                                            ? 'thumbs-up'
+                                            : 'thumbs-up-outline'
+                                        }
+                                        size={18}
+                                        color={
+                                          messageFeedback[message.id] === 'up'
+                                            ? colors.textPrimary
+                                            : colors.textSecondary
+                                        }
+                                      />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={styles.assistantActionButton}
+                                      onPress={() =>
+                                        handleMessageFeedback(message.id, 'down')
+                                      }
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Bad response"
+                                      accessibilityState={{
+                                        selected:
+                                          messageFeedback[message.id] === 'down',
+                                      }}
+                                    >
+                                      <Ionicons
+                                        name={
+                                          messageFeedback[message.id] === 'down'
+                                            ? 'thumbs-down'
+                                            : 'thumbs-down-outline'
+                                        }
+                                        size={18}
+                                        color={
+                                          messageFeedback[message.id] === 'down'
+                                            ? colors.textPrimary
+                                            : colors.textSecondary
+                                        }
+                                      />
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
                             </View>
                           </>
                         )
@@ -5271,6 +5386,12 @@ export function WorkoutChat({
                 },
               ]}
             >
+              {/* Messages fade out above the composer instead of hard-clipping. */}
+              <LinearGradient
+                pointerEvents="none"
+                colors={[`${colors.bg}00`, colors.bg]}
+                style={styles.composerFade}
+              />
               {/* Chat quick actions — opens above the composer when the user
                   taps ✨ (still inside KeyboardAvoidingView with the keyboard). */}
               {/* Always-mounted ✨ actions menu slot. Visibility is driven
@@ -5297,7 +5418,7 @@ export function WorkoutChat({
                     <View style={styles.chatActionIconWrapper}>
                       <Ionicons
                         name="flash"
-                        size={16}
+                        size={22}
                         color={colors.textPrimary}
                       />
                       <View style={styles.chatActionSparkleBadge}>
@@ -5332,7 +5453,7 @@ export function WorkoutChat({
                     <View style={styles.chatActionIconWrapper}>
                       <Ionicons
                         name="calendar-outline"
-                        size={16}
+                        size={22}
                         color={colors.textPrimary}
                       />
                       <View style={styles.chatActionSparkleBadge}>
@@ -5413,16 +5534,25 @@ export function WorkoutChat({
                       </TouchableOpacity>
                     </LiquidGlassSurface>
                   </View>
-                ) : (
-                  !hideImagePicker && (
-                    <View style={styles.addImageShadowWrapper}>
-                      <LiquidGlassSurface
-                        key={`plan-image-button-glass-${composerGlassKey}`}
-                        style={styles.addImageButtonGlass}
-                        debugLabel="plan-image-button"
-                      >
-                        <TouchableOpacity
-                          style={styles.addImageButton}
+                ) : null}
+
+                {/* Main input pill — always LiquidGlassSurface */}
+                <View style={styles.shadowWrapper}>
+                  <LiquidGlassSurface
+                    key={`plan-chat-input-glass-${composerGlassKey}`}
+                    style={styles.textInputGlass}
+                    debugLabel="plan-chat-input"
+                  >
+                  <View
+                    style={[
+                      styles.textInputContainer,
+                      isRecording && styles.textInputContainerRecording,
+                    ]}
+                  >
+                    {/* "+" opens the Create Workout / Program actions. */}
+                    {!isRecording && !isTranscribing && !hideImagePicker && (
+                      <TouchableOpacity
+                          style={styles.composerPlusButton}
                           onPress={showImagePickerActionSheet}
                           disabled={isLoading}
                           accessibilityRole="button"
@@ -5442,12 +5572,12 @@ export function WorkoutChat({
                               pointerEvents="none"
                             >
                               <Ionicons
-                                name="sparkles"
-                                size={18}
+                                name="add"
+                                size={26}
                                 color={
                                   isLoading
                                     ? colors.textPlaceholder
-                                    : colors.brandPrimary
+                                    : colors.textPrimary
                                 }
                               />
                             </AnimatedReanimated.View>
@@ -5470,24 +5600,8 @@ export function WorkoutChat({
                             </AnimatedReanimated.View>
                           </View>
                         </TouchableOpacity>
-                      </LiquidGlassSurface>
-                    </View>
-                  )
-                )}
+                    )}
 
-                {/* Main input pill — always LiquidGlassSurface */}
-                <View style={styles.shadowWrapper}>
-                  <LiquidGlassSurface
-                    key={`plan-chat-input-glass-${composerGlassKey}`}
-                    style={styles.textInputGlass}
-                    debugLabel="plan-chat-input"
-                  >
-                  <View
-                    style={[
-                      styles.textInputContainer,
-                      isRecording && styles.textInputContainerRecording,
-                    ]}
-                  >
                     {/* Content area: visualizer OR text input */}
                     {isRecording ? (
                       <RecordingIndicator colors={colors} />
@@ -5501,7 +5615,7 @@ export function WorkoutChat({
                               ? 'Make changes to your plan...'
                               : 'Ask anything'
                           }
-                          placeholderTextColor={colors.textPlaceholder}
+                          placeholderTextColor={colors.textTertiary}
                           value={input}
                           onChangeText={setInput}
                           multiline
@@ -5528,8 +5642,8 @@ export function WorkoutChat({
                           >
                             <Ionicons
                               name="mic-outline"
-                              size={19}
-                              color={colors.textPlaceholder}
+                              size={23}
+                              color={colors.textSecondary}
                             />
                           </TouchableOpacity>
                         )}
@@ -5582,13 +5696,11 @@ export function WorkoutChat({
                           />
                         )}
                       </TouchableOpacity>
-                    ) : (
+                    ) : !input.trim() && selectedImages.length === 0 ? null : (
                       <TouchableOpacity
                         style={[
                           styles.sendButton,
-                          ((!input.trim() && selectedImages.length === 0) ||
-                            isLoading) &&
-                            styles.sendButtonDisabled,
+                          isLoading && styles.sendButtonDisabled,
                         ]}
                         onPress={() => handleSendMessage()}
                         disabled={
@@ -5903,12 +6015,6 @@ function createStyles(
   isDark: boolean,
   mode: 'fullscreen' | 'sheet',
 ) {
-  const chatActionPillBg = isDark
-    ? mode === 'sheet'
-      ? colors.surfaceSubtle
-      : colors.surfaceCard
-    : '#f4f4f5'
-
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -6030,7 +6136,8 @@ function createStyles(
     },
     messagesContent: {
       flexGrow: 1,
-      padding: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       paddingBottom: 0,
       paddingTop: 16,
     },
@@ -6070,28 +6177,44 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     assistantMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     userMessageBubble: {
-      maxWidth: '80%',
+      maxWidth: '85%',
     },
+    // Neutral grey bubble for the user; assistant replies render as plain text.
     userMessageContent: {
-      backgroundColor: colors.textPrimary,
-      paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderRadius: 18,
-      borderBottomRightRadius: 4,
+      backgroundColor: isDark ? '#2C2C2E' : '#E9E9EB',
+      paddingVertical: 11,
+      paddingHorizontal: 15,
+      borderRadius: 22,
+      borderBottomRightRadius: 6,
+    },
+    userMessageTextRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'flex-end',
+      justifyContent: 'flex-end',
     },
     userMessageText: {
-      fontSize: 16,
-      lineHeight: 22,
-      color: isDark ? colors.bg : colors.surface,
+      fontSize: 17,
+      lineHeight: 23,
+      color: colors.textPrimary,
+      flexShrink: 1,
+    },
+    userMessageTime: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: colors.textTertiary,
+      marginLeft: 10,
+      marginBottom: 1,
+      fontVariant: ['tabular-nums'],
     },
     userMessageMetaRow: {
       flexDirection: 'row',
@@ -6112,7 +6235,21 @@ function createStyles(
       gap: 8,
     },
     assistantCoachBubbleWrap: {
-      maxWidth: '85%',
+      flex: 1,
+      maxWidth: '100%',
+    },
+    assistantActionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+      marginLeft: -7,
+    },
+    assistantActionButton: {
+      width: 34,
+      height: 36,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     assistantMessageMetaRow: {
       flexDirection: 'row',
@@ -6152,11 +6289,7 @@ function createStyles(
       marginTop: 12,
     },
     assistantMessageBubble: {
-      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
-      paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderRadius: 18,
-      borderBottomLeftRadius: 4,
+      backgroundColor: 'transparent',
     },
     foodLogCard: {
       marginTop: 12,
@@ -6461,51 +6594,43 @@ function createStyles(
       marginTop: 8,
     },
     inputContainer: {
-      backgroundColor: 'transparent',
+      backgroundColor: colors.bg,
       borderTopWidth: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
     },
+    composerFade: {
+      position: 'absolute',
+      top: -24,
+      left: 0,
+      right: 0,
+      height: 24,
+    },
     chatActionsMenu: {
-      flexDirection: 'row',
-      flexWrap: 'nowrap',
+      flexDirection: 'column',
       alignItems: 'stretch',
-      justifyContent: 'center',
-      gap: 8,
       paddingTop: 4,
-      paddingBottom: 10,
-      paddingHorizontal: 2,
-      overflow: 'visible',
+      paddingBottom: 8,
+      paddingHorizontal: 16,
+      overflow: 'hidden',
     },
     chatActionSlot: {
-      flex: 1,
       minWidth: 0,
     },
-    chatActionShadow: {
-      borderRadius: 100,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
-      elevation: 4,
-    },
+    chatActionShadow: {},
     chatActionPill: {
-      borderRadius: 100,
-      overflow: 'visible',
-      backgroundColor: chatActionPillBg,
-      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     chatActionInner: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 10,
-      gap: 6,
+      justifyContent: 'flex-start',
+      paddingVertical: 12,
+      gap: 16,
     },
     chatActionIconWrapper: {
-      width: 24,
-      height: 24,
+      width: 26,
+      height: 26,
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
@@ -6518,16 +6643,15 @@ function createStyles(
       height: 15,
       borderRadius: 8,
       borderWidth: 2,
-      backgroundColor: chatActionPillBg,
-      borderColor: chatActionPillBg,
+      backgroundColor: colors.bg,
+      borderColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
     },
     chatActionLabel: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '400',
       color: colors.textPrimary,
-      letterSpacing: -0.15,
     },
     inputWrapper: {
       flexDirection: 'row',
@@ -6536,7 +6660,7 @@ function createStyles(
     },
     shadowWrapper: {
       flex: 1,
-      borderRadius: 20,
+      borderRadius: 26,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -6544,16 +6668,24 @@ function createStyles(
       elevation: 2,
     },
     textInputGlass: {
-      borderRadius: 20,
+      borderRadius: 26,
     },
     textInputContainer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      paddingLeft: 14,
-      paddingRight: 4,
-      paddingBottom: 4,
-      paddingTop: 4,
-      minHeight: 40,
+      paddingLeft: 6,
+      paddingRight: 8,
+      paddingBottom: 6,
+      paddingTop: 6,
+      minHeight: 52,
+    },
+    composerPlusButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 2,
     },
     textInputContainerRecording: {
       alignItems: 'center',
@@ -6561,14 +6693,14 @@ function createStyles(
     },
     input: {
       flex: 1,
-      fontSize: 16,
+      fontSize: 17,
       lineHeight: 22,
       color: colors.textPrimary,
-      minHeight: 32,
+      minHeight: 40,
       maxHeight: 120,
       textAlignVertical: 'top',
-      paddingTop: Platform.OS === 'ios' ? 5 : 0,
-      paddingBottom: Platform.OS === 'ios' ? 5 : 0,
+      paddingTop: Platform.OS === 'ios' ? 9 : 0,
+      paddingBottom: Platform.OS === 'ios' ? 9 : 0,
       marginRight: 6,
     },
     inputInnerWrapper: {
@@ -6585,14 +6717,16 @@ function createStyles(
       marginRight: 6,
     },
     micButtonInside: {
-      padding: 6,
+      width: 40,
+      height: 40,
       justifyContent: 'center',
       alignItems: 'center',
     },
     sendButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginBottom: 2,
       backgroundColor: colors.textPrimary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -6606,17 +6740,15 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-end',
-      marginBottom: 16,
+      marginBottom: 20,
       gap: 8,
     },
     typingIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
-      paddingHorizontal: 16,
+      backgroundColor: 'transparent',
+      paddingHorizontal: 0,
       paddingVertical: 12,
-      borderRadius: 18,
-      borderBottomLeftRadius: 4,
       gap: 4,
     },
     loadingText: {
@@ -6699,8 +6831,8 @@ function createStyles(
       alignItems: 'center',
     },
     chatActionsTriggerIconStack: {
-      width: 22,
-      height: 22,
+      width: 26,
+      height: 26,
       alignItems: 'center',
       justifyContent: 'center',
     },
