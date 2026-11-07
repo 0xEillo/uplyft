@@ -14,6 +14,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -139,7 +140,6 @@ function hasGrantedNotificationPermission(
 }
 
 interface RestTimerContextType {
-  remainingSeconds: number
   isActive: boolean
   initialDuration: number
   start: (duration: number) => void
@@ -150,6 +150,10 @@ interface RestTimerContextType {
 const RestTimerContext = createContext<RestTimerContextType | undefined>(
   undefined,
 )
+
+// The countdown ticks every second; it lives in its own context so only the
+// components that display it re-render, not every rest-timer consumer.
+const RestTimerRemainingContext = createContext<number | undefined>(undefined)
 
 export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   const [remainingSeconds, setRemainingSeconds] = useState(0)
@@ -642,18 +646,22 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cancelRestTimerNotifications, clearTicker])
 
+  const value = useMemo(
+    () => ({
+      isActive,
+      initialDuration,
+      start,
+      stop,
+      addTime,
+    }),
+    [isActive, initialDuration, start, stop, addTime],
+  )
+
   return (
-    <RestTimerContext.Provider
-      value={{
-        remainingSeconds,
-        isActive,
-        initialDuration,
-        start,
-        stop,
-        addTime,
-      }}
-    >
-      {children}
+    <RestTimerContext.Provider value={value}>
+      <RestTimerRemainingContext.Provider value={remainingSeconds}>
+        {children}
+      </RestTimerRemainingContext.Provider>
     </RestTimerContext.Provider>
   )
 }
@@ -666,4 +674,15 @@ export function useRestTimerContext() {
     )
   }
   return context
+}
+
+/** Seconds left on the rest timer. Re-renders the caller every tick. */
+export function useRestTimerRemainingSeconds() {
+  const remainingSeconds = useContext(RestTimerRemainingContext)
+  if (remainingSeconds === undefined) {
+    throw new Error(
+      'useRestTimerRemainingSeconds must be used within a RestTimerProvider',
+    )
+  }
+  return remainingSeconds
 }

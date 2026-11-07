@@ -76,6 +76,12 @@ interface WorkoutSessionRow {
  */
 const performanceCache = new Map<string, ExerciseLastPerformance | null>()
 
+/** In-flight last-performance requests, so concurrent callers share one query. */
+const performanceInflight = new Map<
+  string,
+  Promise<ExerciseLastPerformance | null>
+>()
+
 /** Cache for historical-bests lookups. */
 const historicalBestsCache = new Map<string, ExerciseHistoricalBests | null>()
 
@@ -135,6 +141,51 @@ export async function getLastPerformanceForExercise(
     return performanceCache.get(cacheKey) ?? null
   }
 
+  const pending = performanceInflight.get(cacheKey)
+  if (!skipCache && pending) {
+    return pending
+  }
+
+  const request = fetchLastPerformance(userId, exerciseName, cacheKey)
+  performanceInflight.set(cacheKey, request)
+  try {
+    return await request
+  } finally {
+    if (performanceInflight.get(cacheKey) === request) {
+      performanceInflight.delete(cacheKey)
+    }
+  }
+}
+
+/**
+ * Synchronously read a cached last performance. Returns `undefined` when the
+ * exercise hasn't been fetched yet (vs `null` = fetched, no history).
+ */
+export function peekLastPerformanceForExercise(
+  userId: string,
+  exerciseName: string,
+): ExerciseLastPerformance | null | undefined {
+  const cacheKey = getCacheKey(userId, exerciseName)
+  if (!performanceCache.has(cacheKey)) return undefined
+  return performanceCache.get(cacheKey) ?? null
+}
+
+/**
+ * Fire-and-forget warm-up of the last-performance cache (e.g. as soon as an
+ * exercise is picked, before it is actually added to the workout).
+ */
+export function prefetchLastPerformanceForExercise(
+  userId: string,
+  exerciseName: string,
+): void {
+  void getLastPerformanceForExercise(userId, exerciseName)
+}
+
+async function fetchLastPerformance(
+  userId: string,
+  exerciseName: string,
+  cacheKey: string,
+): Promise<ExerciseLastPerformance | null> {
   try {
     // Query the most recent workout session containing this exercise
     const { data, error } = await supabase

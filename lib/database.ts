@@ -605,6 +605,14 @@ const hydrateMissingWorkoutRoutineExerciseRelations = async <
   return routines
 }
 
+/**
+ * Explicit column list for `exercises` reads. Avoids `*`, which would also
+ * download the 1536-dim `embedding` vector (~15-20KB of JSON per row) that the
+ * client never uses.
+ */
+export const EXERCISE_COLUMNS =
+  'id, name, muscle_group, type, equipment, created_by, created_at, aliases, exercise_id, gif_url, target_muscles, body_parts, equipments, secondary_muscles, instructions'
+
 export const database = {
   // Profile operations
   profiles: {
@@ -1533,7 +1541,7 @@ export const database = {
     async getById(id: string) {
       const { data, error } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .eq('id', id)
         .single()
 
@@ -1570,7 +1578,7 @@ export const database = {
       if (!names || names.length === 0) return []
       const { data, error } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .in('name', names)
 
       if (error) throw error
@@ -1580,7 +1588,7 @@ export const database = {
     async getAll() {
       const { data, error } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .order('name')
 
       if (error) throw error
@@ -1646,7 +1654,7 @@ export const database = {
           workout_exercises!inner (
             exercise_id,
             created_at,
-            exercise:exercises!inner (*)
+            exercise:exercises!inner (${EXERCISE_COLUMNS})
           )
         `,
         )
@@ -1681,6 +1689,46 @@ export const database = {
           limit !== undefined ? recentExercises.slice(0, limit) : recentExercises,
         usageCounts,
       }
+    },
+
+    /**
+     * Lightweight variant of getRecentWithUsage: returns only exercise IDs
+     * (most recently performed first) plus per-exercise workout counts, without
+     * joining full exercise rows. Callers resolve IDs against the cached
+     * exercise catalog, which keeps this payload tiny even for long histories.
+     */
+    async getExerciseUsage(
+      userId: string,
+    ): Promise<{ recentIds: string[]; usageCounts: Record<string, number> }> {
+      const { data: sessions, error } = await supabase
+        .from('workout_sessions')
+        .select('workout_exercises!inner (exercise_id)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const recentIds: string[] = []
+      const usageCounts: Record<string, number> = {}
+
+      type SessionResult = { workout_exercises?: { exercise_id?: string }[] }
+      ;((sessions as unknown) as SessionResult[])?.forEach((session) => {
+        const seenInSession = new Set<string>()
+
+        session.workout_exercises?.forEach((we) => {
+          const exerciseId = we.exercise_id
+          if (!exerciseId || seenInSession.has(exerciseId)) return
+          seenInSession.add(exerciseId)
+
+          if (usageCounts[exerciseId] === undefined) {
+            usageCounts[exerciseId] = 0
+            recentIds.push(exerciseId)
+          }
+          usageCounts[exerciseId] += 1
+        })
+      })
+
+      return { recentIds, usageCounts }
     },
 
     async getMostFrequentMuscleGroups(userId: string, limit = 4) {
@@ -1728,7 +1776,7 @@ export const database = {
         .from('exercises')
         .select(
           `
-          *,
+          ${EXERCISE_COLUMNS},
           workout_exercises!inner (
             id,
             session_id
@@ -1744,7 +1792,7 @@ export const database = {
           .select(
             `
             workout_exercises!inner (
-              exercise:exercises!inner (*)
+              exercise:exercises!inner (${EXERCISE_COLUMNS})
             )
           `,
           )
@@ -1787,7 +1835,7 @@ export const database = {
     async findByName(name: string) {
       const { data, error } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .ilike('name', `%${name}%`)
         .limit(10)
 
@@ -1822,7 +1870,7 @@ export const database = {
       // We fetch all matches and filter in memory to ensure we strictly respect ownership
       const { data: nameMatches } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .ilike('name', normalizedName)
 
       if (nameMatches && nameMatches.length > 0) {
@@ -1843,7 +1891,7 @@ export const database = {
       // Try to find by alias match
       const { data: aliasMatches } = await supabase
         .from('exercises')
-        .select('*')
+        .select(EXERCISE_COLUMNS)
         .contains('aliases', [searchName])
 
       if (aliasMatches && aliasMatches.length > 0) {
@@ -1947,7 +1995,7 @@ export const database = {
       if (existing) {
         const { data } = await supabase
           .from('exercises')
-          .select('*')
+          .select(EXERCISE_COLUMNS)
           .eq('id', existing.id)
           .single()
         return data as Exercise
@@ -2178,7 +2226,7 @@ export const database = {
           routine:workout_routines (id, name),
           workout_exercises!inner (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets!inner (*)
           )
         `,
@@ -2263,7 +2311,7 @@ export const database = {
           routine:workout_routines (id, name),
           workout_exercises!inner (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets!inner (*)
           )
         `,
@@ -2412,7 +2460,7 @@ export const database = {
           routine:workout_routines (id, name),
           workout_exercises (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets (*)
           )
         `,
@@ -2503,7 +2551,7 @@ export const database = {
           routine:workout_routines (id, name),
           workout_exercises (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets (*)
           )
         `,
@@ -2645,7 +2693,7 @@ export const database = {
         .select(
           `
           *,
-          exercise:exercises (*),
+          exercise:exercises (${EXERCISE_COLUMNS}),
           sets (*)
         `,
         )
@@ -5227,7 +5275,7 @@ export const database = {
           *,
           workout_routine_exercises (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets:workout_routine_sets (*)
           )
         `,
@@ -5253,7 +5301,7 @@ export const database = {
           *,
           workout_routine_exercises (
             *,
-            exercise:exercises (*),
+            exercise:exercises (${EXERCISE_COLUMNS}),
             sets:workout_routine_sets (*)
           )
         `,
@@ -5620,7 +5668,7 @@ export const database = {
           *,
           explore_routine_exercises (
             *,
-            exercise:exercises (*)
+            exercise:exercises (${EXERCISE_COLUMNS})
           )
         `,
         )

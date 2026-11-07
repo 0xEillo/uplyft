@@ -13,7 +13,7 @@ import {
     WorkoutSessionWithDetails,
 } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Alert,
     Keyboard,
@@ -89,7 +89,6 @@ interface WorkoutSetRowProps {
   exerciseIndex: number
   setIndex: number
   set: SetData
-  workingSetNumber: number
   isWarmup: boolean
   isBodyWeight: boolean
   isDurationMode: boolean
@@ -115,9 +114,12 @@ interface WorkoutSetRowProps {
   onDeleteSet: (exerciseIndex: number, setIndex: number) => void
   onSelectionWeightChange?: (start: number, end: number, valueLength: number) => void
   onSelectionRepsChange?: (start: number, end: number, valueLength: number) => void
-  registerWeightRef: (ref: TextInput | null) => void
-  registerRepsRef: (ref: TextInput | null) => void
-  registerDurationRef: (ref: TextInput | null) => void
+  registerInputRef: (
+    exerciseIndex: number,
+    setIndex: number,
+    field: 'weight' | 'reps' | 'duration',
+    ref: TextInput | null,
+  ) => void
   canDelete: boolean
 }
 
@@ -161,7 +163,48 @@ function normalizeExerciseLoggingTypes(exercises: ExerciseData[]): ExerciseData[
 }
 
 function areExerciseDataArraysEqual(a: ExerciseData[], b: ExerciseData[]): boolean {
+  if (a === b) return true
+  // Fast path: updates are immutable, so identical element references mean
+  // identical content. Fall back to a deep compare otherwise.
+  if (a.length === b.length && a.every((exercise, index) => exercise === b[index])) {
+    return true
+  }
   return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/**
+ * Immutably update one exercise. Only the touched exercise gets a new object;
+ * every other exercise keeps its identity so memoized rows can skip rendering.
+ */
+function updateExerciseAt(
+  exercises: ExerciseData[],
+  exerciseIndex: number,
+  updater: (exercise: ExerciseData) => ExerciseData,
+): ExerciseData[] {
+  const exercise = exercises[exerciseIndex]
+  if (!exercise) return exercises
+  const next = exercises.slice()
+  next[exerciseIndex] = updater(exercise)
+  return next
+}
+
+/**
+ * Immutably patch one set. Copies only the touched exercise, its sets array
+ * and the touched set.
+ */
+function updateSetAt(
+  exercises: ExerciseData[],
+  exerciseIndex: number,
+  setIndex: number,
+  patch: Partial<SetData>,
+): ExerciseData[] {
+  return updateExerciseAt(exercises, exerciseIndex, (exercise) => {
+    const set = exercise.sets[setIndex]
+    if (!set) return exercise
+    const sets = exercise.sets.slice()
+    sets[setIndex] = { ...set, ...patch }
+    return { ...exercise, sets }
+  })
 }
 
 const WorkoutSetRow = React.memo(function WorkoutSetRow({
@@ -193,11 +236,22 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   onDeleteSet,
   onSelectionWeightChange,
   onSelectionRepsChange,
-  registerWeightRef,
-  registerRepsRef,
-  registerDurationRef,
+  registerInputRef,
   canDelete,
 }: WorkoutSetRowProps) {
+  const registerWeightRef = useCallback(
+    (ref: TextInput | null) => registerInputRef(exerciseIndex, setIndex, 'weight', ref),
+    [registerInputRef, exerciseIndex, setIndex],
+  )
+  const registerRepsRef = useCallback(
+    (ref: TextInput | null) => registerInputRef(exerciseIndex, setIndex, 'reps', ref),
+    [registerInputRef, exerciseIndex, setIndex],
+  )
+  const registerDurationRef = useCallback(
+    (ref: TextInput | null) => registerInputRef(exerciseIndex, setIndex, 'duration', ref),
+    [registerInputRef, exerciseIndex, setIndex],
+  )
+
   const renderRightActions = useCallback(() => {
     if (compactPreview || !canDelete) return null
 
@@ -647,7 +701,10 @@ export function StructuredWorkoutInput({
 
   const colors = useThemedColors()
   const { weightUnit, convertToPreferred, convertInputToKg } = useWeightUnits()
-  const styles = createStyles(colors, compactPreview)
+  const styles = useMemo(
+    () => createStyles(colors, compactPreview),
+    [colors, compactPreview],
+  )
   const isInitialMount = useRef(true)
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({})
   const [focusedInput, setFocusedInput] = useState<FocusedInputState | null>(null)
@@ -768,13 +825,22 @@ export function StructuredWorkoutInput({
     exercisesRef.current = exercises
   }, [exercises])
 
-  // Look up exercise GIFs when exercises change
+  // Stable keys that only change when the exercise list / names change (not
+  // on every weight/reps keystroke). Effects below key off these and read the
+  // latest exercises from exercisesRef (synced by the effect above, which runs
+  // first because effects fire in declaration order).
+  const exerciseIdentityKey = exercises
+    .map((ex) => `${ex.id}\u0000${ex.name}`)
+    .join('\u0001')
+  const exerciseNamesKey = exercises.map((ex) => ex.name).join('\u0001')
+
+  // Look up exercise GIFs when the exercise list changes
   useEffect(() => {
     let cancelled = false
     void exerciseLookup.initialize().then(() => {
       if (cancelled) return
       const updates: Record<string, string | null> = {}
-      exercises.forEach((ex) => {
+      exercisesRef.current.forEach((ex) => {
         if (!ex.name.trim()) return
         const match = exerciseLookup.findByNameExact(ex.name.trim())
         if (match?.gifUrl) {
@@ -784,13 +850,18 @@ export function StructuredWorkoutInput({
         }
       })
       if (!cancelled) {
-        setExerciseGifUrls((prev) => ({ ...prev, ...updates }))
+        setExerciseGifUrls((prev) => {
+          const hasChanges = Object.keys(updates).some(
+            (id) => !(id in prev) || prev[id] !== updates[id],
+          )
+          return hasChanges ? { ...prev, ...updates } : prev
+        })
       }
     })
     return () => {
       cancelled = true
     }
-  }, [exercises])
+  }, [exerciseIdentityKey])
 
   // Fetch historical bests for every exercise we haven't queried yet.
   // Feeds live PR detection on completed sets.
@@ -800,7 +871,7 @@ export function StructuredWorkoutInput({
 
     const namesToFetch = Array.from(
       new Set(
-        exercises
+        exercisesRef.current
           .map((ex) => ex.name.trim())
           .filter((name) => name.length > 0)
           .filter((name) => !(name.toLowerCase() in historicalBests)),
@@ -833,9 +904,10 @@ export function StructuredWorkoutInput({
     }
     // historicalBests intentionally omitted: we derive the "need to fetch"
     // set synchronously from the latest value, and only want to re-run when
-    // the exercise list itself changes.
+    // the exercise names change (not on every weight/reps keystroke, which
+    // would otherwise cancel in-flight fetches).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exercises, onFetchExerciseHistoricalBests, compactPreview])
+  }, [exerciseNamesKey, onFetchExerciseHistoricalBests, compactPreview])
 
   const commitExercises = useCallback(
     (nextExercises: ExerciseData[]) => {
@@ -981,39 +1053,38 @@ export function StructuredWorkoutInput({
 
   const handleWeightChange = useCallback(
     (exerciseIndex: number, setIndex: number, value: string) => {
-      const newExercises = [...exercisesRef.current]
-      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      const set = exercisesRef.current[exerciseIndex]?.sets[setIndex]
       if (!set) return
 
-      set.weight = value
-      commitExercises(newExercises)
+      commitExercises(
+        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, { weight: value }),
+      )
     },
     [commitExercises],
   )
 
   const handleRepsChange = useCallback(
     (exerciseIndex: number, setIndex: number, value: string) => {
-      const newExercises = [...exercisesRef.current]
-      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      const set = exercisesRef.current[exerciseIndex]?.sets[setIndex]
       if (!set) return
 
-      const repsWasEmpty = !set.reps.trim()
-      set.reps = value
-      const repsNowHasData = Boolean(set.reps.trim())
-
-      commitExercises(newExercises)
+      commitExercises(
+        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, { reps: value }),
+      )
     },
     [commitExercises],
   )
 
   const handleDurationChange = useCallback(
     (exerciseIndex: number, setIndex: number, value: string) => {
-      const newExercises = [...exercisesRef.current]
-      const set = newExercises[exerciseIndex]?.sets[setIndex]
+      const set = exercisesRef.current[exerciseIndex]?.sets[setIndex]
       if (!set) return
 
-      set.duration = value.replace(/\D/g, '').slice(0, 4)
-      commitExercises(newExercises)
+      commitExercises(
+        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
+          duration: value.replace(/\D/g, '').slice(0, 4),
+        }),
+      )
     },
     [commitExercises],
   )
@@ -1022,8 +1093,7 @@ export function StructuredWorkoutInput({
     async (exerciseIndex: number) => {
       debugNext('handleAddSet:start', { exerciseIndex })
       await hapticAsync('light')
-      const newExercises = [...exercisesRef.current]
-      const exercise = newExercises[exerciseIndex]
+      const exercise = exercisesRef.current[exerciseIndex]
       if (!exercise) {
         debugNext('handleAddSet:missingExercise', { exerciseIndex })
         return null
@@ -1031,7 +1101,6 @@ export function StructuredWorkoutInput({
 
       // Get the previous set (if it exists) to carry over targets
       const previousSet = exercise.sets[exercise.sets.length - 1]
-      const newSetIndex = exercise.sets.length
 
       // The new set number (1-indexed)
       const newSetNumber = exercise.sets.length + 1
@@ -1065,70 +1134,102 @@ export function StructuredWorkoutInput({
         targetRestSeconds: previousSet?.targetRestSeconds ?? null,
       }
 
-      exercise.sets.push(newSet)
-      commitExercises(newExercises)
+      // Re-read the latest exercises after the async history fetch so edits
+      // made in the meantime are not dropped.
+      const latestExercise = exercisesRef.current[exerciseIndex]
+      if (!latestExercise) {
+        debugNext('handleAddSet:missingExercise', { exerciseIndex })
+        return null
+      }
+      const newSetIndex = latestExercise.sets.length
+      commitExercises(
+        updateExerciseAt(exercisesRef.current, exerciseIndex, (ex) => ({
+          ...ex,
+          sets: [...ex.sets, newSet],
+        })),
+      )
       debugNext('handleAddSet:done', {
         exerciseIndex,
         newSetIndex,
-        totalSets: exercise.sets.length,
+        totalSets: newSetIndex + 1,
       })
       return newSetIndex
     },
     [commitExercises, debugNext, onFetchSetHistory],
   )
 
-  const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
-    await hapticAsync('light')
-    const newExercises = [...exercisesRef.current]
-    const exercise = newExercises[exerciseIndex]
-    if (!exercise) return
-
-    // If only one set remains, delete the whole exercise
-    if (exercise.sets.length <= 1) {
-      handleDeleteExercise(exerciseIndex)
-      return
-    }
-
-    exercise.sets.splice(setIndex, 1)
-    commitExercises(newExercises)
-  }
-
-  const handleToggleSetType = async (
-    exerciseIndex: number,
-    setIndex: number,
-  ) => {
-    await hapticAsync('light')
-    const newExercises = [...exercisesRef.current]
-    const exercise = newExercises[exerciseIndex]
-    const set = exercise?.sets[setIndex]
-    if (!set) return
-    if (getExerciseLoggingType(exercise!) === 'duration') {
-      set.isWarmup = !set.isWarmup
-      set.isBodyWeight = false
-      commitExercises(newExercises)
-      return
-    }
-    // Cycle: normal → warmup (W) → body weight (B) → normal
-    if (set.isWarmup) {
-      set.isWarmup = false
-      set.isBodyWeight = true
-      set.weight = ''
-      // Blur weight input before it unmounts so keypad closes
-      inputRefs.current[`${exerciseIndex}-${setIndex}-weight`]?.blur()
-      setFocusedInput((prev) =>
-        prev?.exerciseIndex === exerciseIndex &&
-        prev?.setIndex === setIndex &&
-        prev?.field === 'weight'
-          ? null
-          : prev,
+  const handleDeleteExercise = useCallback(
+    async (exerciseIndex: number) => {
+      await hapticAsync('light')
+      const newExercises = exercisesRef.current.filter(
+        (_, index) => index !== exerciseIndex,
       )
-    } else if (set.isBodyWeight) {
-      set.isBodyWeight = false
-    } else {
-      set.isWarmup = true
-    }
-    commitExercises(newExercises)
-  }
+      commitExercises(newExercises)
+    },
+    [commitExercises],
+  )
+
+  const handleDeleteSet = useCallback(
+    async (exerciseIndex: number, setIndex: number) => {
+      await hapticAsync('light')
+      const exercise = exercisesRef.current[exerciseIndex]
+      if (!exercise) return
+
+      // If only one set remains, delete the whole exercise
+      if (exercise.sets.length <= 1) {
+        handleDeleteExercise(exerciseIndex)
+        return
+      }
+
+      commitExercises(
+        updateExerciseAt(exercisesRef.current, exerciseIndex, (ex) => ({
+          ...ex,
+          sets: ex.sets.filter((_, index) => index !== setIndex),
+        })),
+      )
+    },
+    [commitExercises, handleDeleteExercise],
+  )
+
+  const handleToggleSetType = useCallback(
+    async (exerciseIndex: number, setIndex: number) => {
+      await hapticAsync('light')
+      const exercise = exercisesRef.current[exerciseIndex]
+      const set = exercise?.sets[setIndex]
+      if (!exercise || !set) return
+      if (getExerciseLoggingType(exercise) === 'duration') {
+        commitExercises(
+          updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
+            isWarmup: !set.isWarmup,
+            isBodyWeight: false,
+          }),
+        )
+        return
+      }
+      // Cycle: normal → warmup (W) → body weight (B) → normal
+      let patch: Partial<SetData>
+      if (set.isWarmup) {
+        patch = { isWarmup: false, isBodyWeight: true, weight: '' }
+        // Blur weight input before it unmounts so keypad closes
+        inputRefs.current[`${exerciseIndex}-${setIndex}-weight`]?.blur()
+        setFocusedInput((prev) =>
+          prev?.exerciseIndex === exerciseIndex &&
+          prev?.setIndex === setIndex &&
+          prev?.field === 'weight'
+            ? null
+            : prev,
+        )
+      } else if (set.isBodyWeight) {
+        patch = { isBodyWeight: false }
+      } else {
+        patch = { isWarmup: true }
+      }
+      commitExercises(
+        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, patch),
+      )
+    },
+    [commitExercises],
+  )
 
   const handleToggleComplete = useCallback(
     async (exerciseIndex: number, setIndex: number) => {
@@ -1140,21 +1241,23 @@ export function StructuredWorkoutInput({
       const nextCompleted = !set.isCompleted
       await hapticAsync(nextCompleted ? 'medium' : 'light')
 
-      const newExercises = [...currentExercises]
-      const updatedSet = newExercises[exerciseIndex]?.sets[setIndex]
-      if (!updatedSet) return
+      // Re-read after the await so concurrent edits are not dropped.
+      const latestSet = exercisesRef.current[exerciseIndex]?.sets[setIndex]
+      if (!latestSet) return
 
-      updatedSet.isCompleted = nextCompleted
-
-      if (updatedSet.isCompleted && onRestTimerStart) {
-        if (updatedSet.targetRestSeconds) {
-          onRestTimerStart(updatedSet.targetRestSeconds)
+      if (nextCompleted && onRestTimerStart) {
+        if (latestSet.targetRestSeconds) {
+          onRestTimerStart(latestSet.targetRestSeconds)
         } else if (autoRestEnabled && autoRestDuration) {
           onRestTimerStart(autoRestDuration)
         }
       }
 
-      commitExercises(newExercises)
+      commitExercises(
+        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
+          isCompleted: nextCompleted,
+        }),
+      )
     },
     [commitExercises, onRestTimerStart, autoRestEnabled, autoRestDuration],
   )
@@ -1267,18 +1370,22 @@ export function StructuredWorkoutInput({
     async (exerciseIndex: number) => {
       await hapticAsync('light')
       closeStructuredInput()
-      const newExercises = [...exercisesRef.current]
-      const exercise = newExercises[exerciseIndex]
+      const exercise = exercisesRef.current[exerciseIndex]
       if (!exercise) return
 
-      const currentLoggingType = getExerciseLoggingType(exercise)
-      exercise.loggingType = currentLoggingType === 'duration' ? 'reps' : 'duration'
-      exercise.sets = exercise.sets.map((set) =>
-        exercise.loggingType === 'duration'
-          ? { ...set, weight: '', reps: '', isBodyWeight: false }
-          : { ...set, duration: '' },
+      const nextLoggingType: 'reps' | 'duration' =
+        getExerciseLoggingType(exercise) === 'duration' ? 'reps' : 'duration'
+      commitExercises(
+        updateExerciseAt(exercisesRef.current, exerciseIndex, (ex) => ({
+          ...ex,
+          loggingType: nextLoggingType,
+          sets: ex.sets.map((set) =>
+            nextLoggingType === 'duration'
+              ? { ...set, weight: '', reps: '', isBodyWeight: false }
+              : { ...set, duration: '' },
+          ),
+        })),
       )
-      commitExercises(newExercises)
     },
     [closeStructuredInput, commitExercises],
   )
@@ -1287,8 +1394,7 @@ export function StructuredWorkoutInput({
     async (exerciseIndex: number) => {
       await hapticAsync('light')
       closeStructuredInput()
-      const newExercises = [...exercisesRef.current]
-      const exercise = newExercises[exerciseIndex]
+      const exercise = exercisesRef.current[exerciseIndex]
       if (!exercise) return
 
       const workingSets = exercise.sets.filter((set) => !set.isWarmup)
@@ -1371,8 +1477,13 @@ export function StructuredWorkoutInput({
         }
       })
 
-      exercise.sets = [...warmupSets, ...workingSets]
-      commitExercises(newExercises)
+      // Re-read after the awaits above so edits made meanwhile are kept.
+      commitExercises(
+        updateExerciseAt(exercisesRef.current, exerciseIndex, (ex) => ({
+          ...ex,
+          sets: [...warmupSets, ...ex.sets.filter((set) => !set.isWarmup)],
+        })),
+      )
     },
     [
       closeStructuredInput,
@@ -1385,13 +1496,6 @@ export function StructuredWorkoutInput({
     ],
   )
 
-  const handleDeleteExercise = async (exerciseIndex: number) => {
-    await hapticAsync('light')
-    const newExercises = exercisesRef.current.filter(
-      (_, index) => index !== exerciseIndex,
-    )
-    commitExercises(newExercises)
-  }
 
   const focusInputWithCursor = useCallback(
     (
@@ -1514,10 +1618,8 @@ export function StructuredWorkoutInput({
       }
 
       // When moving from Reps/Duration, auto-validate the current set (mark as completed)
-      const newExercises = [...exercisesRef.current]
-      const currentSet = newExercises[exerciseIndex]?.sets[setIndex]
+      const currentSet = exercisesRef.current[exerciseIndex]?.sets[setIndex]
       if (currentSet && !currentSet.isCompleted) {
-        currentSet.isCompleted = true
         if (onRestTimerStart) {
           if (currentSet.targetRestSeconds) {
             onRestTimerStart(currentSet.targetRestSeconds)
@@ -1525,7 +1627,11 @@ export function StructuredWorkoutInput({
             onRestTimerStart(autoRestDuration)
           }
         }
-        commitExercises(newExercises)
+        commitExercises(
+          updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
+            isCompleted: true,
+          }),
+        )
       }
 
       const nextSetIndex = setIndex + 1
@@ -1939,6 +2045,35 @@ export function StructuredWorkoutInput({
     [debugFocusTransfer, onInputBlur, onKeypadStateChange, setFocusedInputState],
   )
 
+  const handlePressIn = useCallback(
+    (exIdx: number, setIdx: number, fld: 'weight' | 'reps' | 'duration') => {
+      // When keypad is closed, native input can retain ghost focus so onFocus won't fire.
+      // Force blur/focus cycle to wake keypad; otherwise just delegate to handleFocus.
+      if (!focusedInputRef.current) {
+        inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.blur()
+        requestAnimationFrame(() => {
+          inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.focus()
+          handleFocus(exIdx, setIdx, fld)
+        })
+      } else {
+        handleFocus(exIdx, setIdx, fld)
+      }
+    },
+    [handleFocus],
+  )
+
+  const registerInputRef = useCallback(
+    (
+      exIdx: number,
+      setIdx: number,
+      fld: 'weight' | 'reps' | 'duration',
+      ref: TextInput | null,
+    ) => {
+      inputRefs.current[`${exIdx}-${setIdx}-${fld}`] = ref
+    },
+    [],
+  )
+
   // Drag and drop handlers
   const handleLongPressExercise = useCallback(
     async (index: number) => {
@@ -1958,10 +2093,10 @@ export function StructuredWorkoutInput({
 
   const handleMoveExerciseUp = useCallback(
     async (index: number) => {
-      const updated = [...exercisesRef.current]
-      if (index <= 0 || index >= updated.length) return
+      if (index <= 0 || index >= exercisesRef.current.length) return
       await hapticAsync('light')
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      const updated = [...exercisesRef.current]
 
       // Compute the new order
       ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
@@ -1975,10 +2110,10 @@ export function StructuredWorkoutInput({
 
   const handleMoveExerciseDown = useCallback(
     async (index: number) => {
-      const updated = [...exercisesRef.current]
-      if (index < 0 || index >= updated.length - 1) return
+      if (index < 0 || index >= exercisesRef.current.length - 1) return
       await hapticAsync('light')
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      const updated = [...exercisesRef.current]
 
       // Compute the new order
       ;[updated[index + 1], updated[index]] = [updated[index], updated[index + 1]]
@@ -2152,7 +2287,6 @@ export function StructuredWorkoutInput({
                         exerciseIndex={exerciseIndex}
                         setIndex={setIndex}
                         set={set}
-                        workingSetNumber={workingSetNumber}
                         isWarmup={isWarmup}
                         isBodyWeight={isBodyWeight}
                         isDurationMode={isDurationMode}
@@ -2174,25 +2308,11 @@ export function StructuredWorkoutInput({
                         onDurationChange={handleDurationChange}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        onPressIn={(exIdx, setIdx, fld) => {
-                          // When keypad is closed, native input can retain ghost focus so onFocus won't fire.
-                          // Force blur/focus cycle to wake keypad; otherwise just delegate to handleFocus.
-                          if (!focusedInputRef.current) {
-                            inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.blur()
-                            requestAnimationFrame(() => {
-                              inputRefs.current[`${exIdx}-${setIdx}-${fld}`]?.focus()
-                              handleFocus(exIdx, setIdx, fld)
-                            })
-                          } else {
-                            handleFocus(exIdx, setIdx, fld)
-                          }
-                        }}
+                        onPressIn={handlePressIn}
                         onDeleteSet={handleDeleteSet}
                         onSelectionWeightChange={undefined}
                         onSelectionRepsChange={undefined}
-                        registerWeightRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref }}
-                        registerRepsRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref }}
-                        registerDurationRef={(ref) => { inputRefs.current[`${exerciseIndex}-${setIndex}-duration`] = ref }}
+                        registerInputRef={registerInputRef}
                         canDelete={true}
                       />
                     )

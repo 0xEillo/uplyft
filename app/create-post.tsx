@@ -6,8 +6,14 @@ import { StructuredWorkoutInput } from '@/components/structured-workout-input'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
-import { useRestTimerContext } from '@/contexts/rest-timer-context'
-import { useWorkoutComposer } from '@/contexts/workout-composer-context'
+import {
+  useRestTimerContext,
+  useRestTimerRemainingSeconds,
+} from '@/contexts/rest-timer-context'
+import {
+  useWorkoutComposer,
+  useWorkoutElapsedSeconds,
+} from '@/contexts/workout-composer-context'
 import { useAudioTranscription } from '@/hooks/useAudioTranscription'
 import {
   getExerciseSuggestion,
@@ -21,6 +27,12 @@ import { useRoutineSelection } from '@/hooks/useRoutineSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
+import { exerciseLookup } from '@/lib/services/exerciseLookup'
+import {
+  type ExerciseUsage,
+  loadExerciseUsage,
+  peekExerciseUsage,
+} from '@/lib/services/exerciseUsage'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { buildStructuredDraftFromRoutineTemplate } from '@/lib/utils/routine-structured-draft'
 import {
@@ -41,7 +53,16 @@ import {
   useFocusEffect,
 } from '@react-navigation/native'
 import { router } from 'expo-router'
-import { type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type ComponentProps,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -53,9 +74,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
   TextInput,
+  type TextStyle,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -277,6 +300,9 @@ function resolveStructuredExercise(
   }
 }
 
+const EMPTY_EXERCISE_LIST: Exercise[] = []
+const EMPTY_USAGE_COUNTS: Record<string, number> = {}
+
 function formatDurationMinSec(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
   if (safeSeconds < 60) return `${safeSeconds}s`
@@ -289,6 +315,23 @@ function formatDurationMinSec(seconds: number): string {
   }
   // Same "38m 43s" format as the live-workout pill on Home.
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+}
+
+/**
+ * Live workout duration label. Subscribes to the ticking timer itself so the
+ * (large) workout screen doesn't re-render every second.
+ */
+function WorkoutDurationText({ style }: { style: StyleProp<TextStyle> }) {
+  const durationDisplay = useWorkoutElapsedSeconds(formatDurationMinSec)
+  return <Text style={style}>{durationDisplay}</Text>
+}
+
+/** Feeds the rest countdown to the overlay without re-rendering the screen. */
+function RestTimerOverlayWithCountdown(
+  props: Omit<ComponentProps<typeof RestTimerOverlay>, 'remainingSeconds'>,
+) {
+  const remainingSeconds = useRestTimerRemainingSeconds()
+  return <RestTimerOverlay {...props} remainingSeconds={remainingSeconds} />
 }
 
 export default function CreatePostScreen() {
@@ -310,7 +353,9 @@ export default function CreatePostScreen() {
   // Exercise history hook for creating exercises with last performance data
   const {
     createExerciseWithHistory,
-    createEmptySet,
+    createExerciseDraft,
+    applyLastPerformance,
+    loadLastPerformance,
     fetchSetHistory,
     fetchExerciseHistoricalBests,
   } = useExerciseHistory()
@@ -322,7 +367,7 @@ export default function CreatePostScreen() {
     canReview,
     discardSession,
     draft,
-    elapsedSeconds: workoutElapsedSeconds,
+    getElapsedSeconds,
     enterReview,
     hasActiveSession,
     hasHydrated,
@@ -363,10 +408,39 @@ export default function CreatePostScreen() {
   // ROUTINE & STRUCTURED WORKOUT STATE
   // =============================================================================
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
-  const [allExercises, setAllExercises] = useState<Exercise[]>([])
-  const [exerciseUsageCounts, setExerciseUsageCounts] = useState<
-    Record<string, number>
-  >({})
+  const { user } = useAuth()
+  // Shared exercise catalog (warmed at app start, persisted to disk) - no
+  // per-screen download of the full exercise table.
+  const exerciseCatalog = useSyncExternalStore(
+    exerciseLookup.subscribe,
+    exerciseLookup.getAll,
+  )
+  const [exerciseUsage, setExerciseUsage] = useState<ExerciseUsage | null>(
+    () => peekExerciseUsage(user?.id),
+  )
+  // Recent exercises first (up to 50), then the rest alphabetically, so
+  // autocomplete suggests frequently used exercises first.
+  const allExercises = useMemo<Exercise[]>(() => {
+    if (!user?.id || exerciseCatalog.length === 0) return EMPTY_EXERCISE_LIST
+
+    const visible = exerciseCatalog.filter(
+      (e) => !e.created_by || e.created_by === user.id,
+    )
+    const visibleById = new Map(visible.map((e) => [e.id, e]))
+    const recent: Exercise[] = []
+    for (const id of exerciseUsage?.recentIds ?? []) {
+      const exercise = visibleById.get(id)
+      if (!exercise) continue
+      recent.push(exercise)
+      if (recent.length >= 50) break
+    }
+    if (recent.length === 0) return visible
+
+    const recentIds = new Set(recent.map((e) => e.id))
+    return [...recent, ...visible.filter((e) => !recentIds.has(e.id))]
+  }, [exerciseCatalog, exerciseUsage, user?.id])
+  const exerciseUsageCounts =
+    (user?.id ? exerciseUsage?.usageCounts : undefined) ?? EMPTY_USAGE_COUNTS
   const [hasLoadedRoutines, setHasLoadedRoutines] = useState(false)
   const selectedRoutine = useMemo(
     () =>
@@ -421,8 +495,9 @@ export default function CreatePostScreen() {
 
 
 
+  const hasElapsedWorkoutTime = useWorkoutElapsedSeconds((seconds) => seconds > 0)
   const shouldShowWorkoutTimer =
-    hasWorkoutDraftContent || workoutElapsedSeconds > 0
+    hasWorkoutDraftContent || hasElapsedWorkoutTime
 
   const draftStats = useMemo(() => {
     const BODYWEIGHT_FALLBACK_KG = 1
@@ -448,10 +523,9 @@ export default function CreatePostScreen() {
     return {
       volumeKg: Math.round(volumeKg),
       setsCount,
-      durationDisplay: formatDurationMinSec(workoutElapsedSeconds ?? 0),
       volumeDisplay: formatVolume(volumeKg, weightUnit),
     }
-  }, [structuredData, workoutElapsedSeconds, weightUnit, convertInputToKg])
+  }, [structuredData, weightUnit, convertInputToKg])
 
   const handleStructuredDataChange = useCallback(
     (newData: StructuredExerciseDraft[]) => {
@@ -680,7 +754,6 @@ export default function CreatePostScreen() {
   const notesForFocusRef = useRef(notes)
   const workoutTitleForFocusRef = useRef(workoutTitle)
   const [isToolbarInsetLocked, setIsToolbarInsetLocked] = useState(false)
-  const { user } = useAuth()
   const { trackEvent } = useAnalytics()
 
   useEffect(() => {
@@ -845,8 +918,8 @@ export default function CreatePostScreen() {
     }
   }, [ensureNotesCursorVisible])
   const getCurrentWorkoutElapsedSeconds = useCallback(
-    () => Math.max(0, Math.floor(workoutElapsedSeconds)),
-    [workoutElapsedSeconds],
+    () => Math.max(0, Math.floor(getElapsedSeconds())),
+    [getElapsedSeconds],
   )
 
   const blurInputs = useCallback(() => {
@@ -983,31 +1056,19 @@ export default function CreatePostScreen() {
       setHasLoadedRoutines(false)
 
       if (user?.id) {
-        const [
-          userRoutines,
-          allExercisesList,
-          { exercises: recentExercises, usageCounts },
-        ] = await Promise.all([
+        const [userRoutines, usage] = await Promise.all([
           database.workoutRoutines.getAll(user.id),
-          database.exercises.getAll(),
-          database.exercises.getRecentWithUsage(user.id, 50), // Last 50 unique recent exercises + usage counts
+          loadExerciseUsage(user.id),
+          // Usually instant (warmed at app start); a catalog failure must not
+          // block routines from loading.
+          exerciseLookup.initialize().catch(() => undefined),
         ])
 
         setRoutines(userRoutines)
-
-        // Sort exercises: Recent ones first, then alphabetical
-        // This ensures autocomplete suggests frequently used exercises first
-        const recentIds = new Set(recentExercises.map((e) => e.id))
-        const otherExercises = allExercisesList.filter(
-          (e) => !recentIds.has(e.id),
-        )
-
-        setAllExercises([...recentExercises, ...otherExercises])
-        setExerciseUsageCounts(usageCounts)
+        setExerciseUsage(usage)
       } else {
         setRoutines([])
-        setAllExercises([])
-        setExerciseUsageCounts({})
+        setExerciseUsage(null)
       }
     } catch (error) {
       console.error('[CreatePost] Error loading data:', error)
@@ -1300,7 +1361,7 @@ export default function CreatePostScreen() {
     router.push({
       pathname: '/(stand-alone)/finalize-workout',
       params: {
-        durationDisplay: draftStats.durationDisplay,
+        durationDisplay: formatDurationMinSec(finalizedDurationSeconds),
         volumeValue: draftStats.volumeDisplay.value.toString(),
         volumeUnit: draftStats.volumeDisplay.unit,
         setsCount: draftStats.setsCount.toString(),
@@ -1569,17 +1630,48 @@ export default function CreatePostScreen() {
     createExerciseWithHistory,
   ])
 
+  /**
+   * Patch "last workout" placeholders into already-inserted exercises once
+   * their history arrives. Matches by draft id so reorders/removals in the
+   * meantime are respected, and only fills sets without placeholders.
+   */
+  const hydrateExerciseHistory = useCallback(
+    (drafts: StructuredExerciseDraft[]) => {
+      drafts.forEach((draft) => {
+        void loadLastPerformance(draft.name).then((lastPerformance) => {
+          if (!lastPerformance) return
+          setStructuredData((prev) => {
+            const index = prev.findIndex((e) => e.id === draft.id)
+            if (index === -1) return prev
+            const updated = applyLastPerformance(prev[index], lastPerformance)
+            if (updated === prev[index]) return prev
+            const next = [...prev]
+            next[index] = updated
+            return next
+          })
+        })
+      })
+    },
+    [applyLastPerformance, loadLastPerformance, setStructuredData],
+  )
+
   const handleMultiSelectExercises = useCallback(
-    async (exercises: Exercise[]) => {
-      // Create new structured exercises with history data (in parallel)
-      const newExercises = await Promise.all(
-        exercises.map((exercise) => createExerciseWithHistory(exercise.name)),
+    (exercises: Exercise[]) => {
+      // Insert immediately (no network wait); history placeholders are
+      // usually already cached by the picker, otherwise they stream in.
+      const drafts = exercises.map((exercise) =>
+        createExerciseDraft(exercise.name),
       )
+      const newExercises = drafts.map((d) => d.exercise)
 
       setStructuredData((prev) => [...prev, ...newExercises])
       setIsStructuredMode(true)
+
+      hydrateExerciseHistory(
+        drafts.filter((d) => d.needsHistory).map((d) => d.exercise),
+      )
     },
-    [createExerciseWithHistory],
+    [createExerciseDraft, hydrateExerciseHistory, setStructuredData, setIsStructuredMode],
   )
 
   const handleChooseExercisePress = useCallback(() => {
@@ -1610,33 +1702,36 @@ export default function CreatePostScreen() {
 
   const handleManualReplaceExercise = useCallback((index: number) => {
     // Register callback for single exercise replacement
-    registerCallback(async (selectedExercises: Exercise | Exercise[]) => {
+    registerCallback((selectedExercises: Exercise | Exercise[]) => {
       const exercises = Array.isArray(selectedExercises)
         ? selectedExercises
         : [selectedExercises]
-      
+
       if (exercises.length === 0) return
-      
+
       const newExercise = exercises[0]
-      const newExerciseData = await createExerciseWithHistory(newExercise.name)
-      
+      // setStructuredData runs its updater synchronously against the latest draft.
+      const inserted: {
+        draft: ReturnType<typeof createExerciseDraft> | null
+      } = { draft: null }
+
       setStructuredData((prev) => {
+        const oldExercise = prev[index]
+        if (!oldExercise) return prev
+
+        // Keep the same number of sets, with fresh (empty) values.
+        const setCount = Math.max(1, oldExercise.sets.length)
+        const draft = createExerciseDraft(newExercise.name, setCount)
+        inserted.draft = draft
+
         const newData = [...prev]
-        // Preserve sets if possible, or just replace entirely
-        const oldExercise = newData[index]
-        if (oldExercise) {
-          // Keep the same number of sets but clear the data, or just use the new history
-          const setCount = Math.max(1, oldExercise.sets.length)
-          const sets = Array.from({ length: setCount }, (_, i) => {
-            return newExerciseData.sets[i] || createEmptySet()
-          })
-          newData[index] = {
-            ...newExerciseData,
-            sets,
-          }
-        }
+        newData[index] = draft.exercise
         return newData
       })
+
+      if (inserted.draft?.needsHistory) {
+        hydrateExerciseHistory([inserted.draft.exercise])
+      }
     })
 
     // Navigate to the full-screen exercise selector in single-select (replace) mode
@@ -1644,7 +1739,7 @@ export default function CreatePostScreen() {
       pathname: '/select-exercise',
       params: { currentExerciseName: '__replace__' },
     })
-  }, [registerCallback, createExerciseWithHistory, createEmptySet])
+  }, [registerCallback, createExerciseDraft, hydrateExerciseHistory, setStructuredData])
 
   // Track previous structured data length to detect deletions
   const previousStructuredDataLength = useRef(0)
@@ -1745,7 +1840,6 @@ export default function CreatePostScreen() {
       isProcessingImage,
       isLoading,
       isRestTimerActive: restTimer.isActive,
-      restTimerRemaining: restTimer.remainingSeconds,
       bottomInsetOverride: bottomSafeInset,
       visibleButtons: toolbarVisibleButtons,
       timerButtonRef: toolbarTimerRef,
@@ -1764,7 +1858,6 @@ export default function CreatePostScreen() {
       isLoading,
       toolbarVisibleButtons,
       restTimer.isActive,
-      restTimer.remainingSeconds,
       bottomSafeInset,
     ],
   )
@@ -1948,15 +2041,13 @@ export default function CreatePostScreen() {
                   <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
                     Duration
                   </Text>
-                  <Text
+                  <WorkoutDurationText
                     style={[
                       styles.statValue,
                       styles.statValueDuration,
                       { color: colors.brandPrimary },
                     ]}
-                  >
-                    {draftStats.durationDisplay}
-                  </Text>
+                  />
                 </View>
                 <View style={styles.statItem}>
                   <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
@@ -2169,10 +2260,9 @@ export default function CreatePostScreen() {
 
       </View>
 
-      <RestTimerOverlay
+      <RestTimerOverlayWithCountdown
         visible={showRestTimer}
         onClose={() => setShowRestTimer(false)}
-        remainingSeconds={restTimer.remainingSeconds}
         isActive={restTimer.isActive}
         onStart={restTimer.start}
         onStop={restTimer.stop}

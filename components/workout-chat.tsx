@@ -510,7 +510,7 @@ export interface WorkoutContextPr {
 
 export interface WorkoutContext {
   sessionId?: string
-  mode?: 'planning' | 'analysis'
+  mode?: 'planning'
   title: string
   notes?: string
   exercises: WorkoutContextExercise[]
@@ -695,80 +695,8 @@ const getVisibleAssistantMessageText = (content: string): string =>
     .replace(/\{\s*"title".*/gs, '')
     .trim()
 
-const WORKOUT_ANALYSIS_LABELS = [
-  'Workout Score',
-  'Overview',
-  'Top Win',
-  'Main Fix',
-  'Next Step',
-  'Summary',
-  'What Went Well',
-  'Needs Work',
-  'Exercise Notes',
-  'Next Session Focus',
-] as const
-
-function formatWorkoutAnalysisForDisplay(text: string): string {
-  const trimmed = text.trim()
-  if (!trimmed) return trimmed
-
-  const hasWorkoutAnalysisLabel = WORKOUT_ANALYSIS_LABELS.some((label) =>
-    trimmed.includes(`${label}:`),
-  )
-
-  if (!hasWorkoutAnalysisLabel) return trimmed
-
-  const lines = trimmed
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  const formatted: string[] = []
-
-  for (const line of lines) {
-    const scoreMatch = line.match(/^Workout Score:\s*(.+)$/i)
-    if (scoreMatch) {
-      formatted.push(`## Workout Score\n\n**${scoreMatch[1].trim()}**`)
-      continue
-    }
-
-    const overviewMatch = line.match(/^(Overview|Summary):\s*(.+)$/i)
-    if (overviewMatch) {
-      formatted.push(`### ${overviewMatch[1]}\n\n${overviewMatch[2].trim()}`)
-      continue
-    }
-
-    const singleBulletSectionMatch = line.match(
-      /^(Top Win|Main Fix|Next Step):\s*(.+)$/i,
-    )
-    if (singleBulletSectionMatch) {
-      formatted.push(
-        `### ${singleBulletSectionMatch[1]}\n\n- ${singleBulletSectionMatch[2].trim()}`,
-      )
-      continue
-    }
-
-    const sectionHeaderMatch = line.match(
-      /^(What Went Well|Needs Work|Exercise Notes|Next Session Focus):$/i,
-    )
-    if (sectionHeaderMatch) {
-      formatted.push(`### ${sectionHeaderMatch[1]}`)
-      continue
-    }
-
-    if (/^[•·⋅]/.test(line)) {
-      formatted.push(`- ${line.replace(/^[•·⋅]\s*/, '').trim()}`)
-      continue
-    }
-
-    formatted.push(line)
-  }
-
-  return formatted.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
 const formatAssistantMessageForDisplay = (content: string): string =>
-  formatWorkoutAnalysisForDisplay(getVisibleAssistantMessageText(content))
+  getVisibleAssistantMessageText(content)
 
 function createCoachMarkdownStyle(
   colors: ReturnType<typeof useThemedColors>,
@@ -1107,7 +1035,6 @@ export function WorkoutChat({
   // after to avoid re-animating on FlashList recycling.
   const animateOnMountUserMessageIdRef = useRef<string | null>(null)
   const imageViewerListRef = useRef<FlatList<string>>(null)
-  const autoSendMessageRef = useRef<(message: string) => void>(() => {})
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
@@ -1163,10 +1090,6 @@ export function WorkoutChat({
     loadedDraftContext,
     setLoadedDraftContext,
   ] = useState<WorkoutContext | null>(null)
-  const [
-    handoffWorkoutContext,
-    setHandoffWorkoutContext,
-  ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
   const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
@@ -1181,10 +1104,6 @@ export function WorkoutChat({
   /** User closed ✨ via toggle while still in empty chat; don't auto-reopen until they start fresh. */
   const userDismissedEmptyChatActionsRef = useRef(false)
   const closeChatActionsRef = useRef<(() => void) | null>(null)
-
-  const [pendingAutoSendMessage, setPendingAutoSendMessage] = useState<
-    string | null
-  >(null)
 
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [
@@ -1903,9 +1822,6 @@ export function WorkoutChat({
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
             void openWorkoutPlanningWizard()
-          } else if (pending.action === 'analyze_workout') {
-            setHandoffWorkoutContext(pending.workoutContext)
-            setPendingAutoSendMessage(pending.prompt)
           }
         } catch (error) {
           console.error(
@@ -1923,10 +1839,10 @@ export function WorkoutChat({
     }, [openWorkoutPlanningWizard, refreshDailyLogSummary, selectedImages.length]),
   )
 
-  // Combined context: prefer an explicitly provided workout, then handoff context,
-  // then fall back to the current draft.
+  // Combined context: prefer an explicitly provided workout, then fall back to
+  // the current draft.
   const effectiveWorkoutContext =
-    workoutContext || handoffWorkoutContext || loadedDraftContext || undefined
+    workoutContext || loadedDraftContext || undefined
 
   // Combine initial context exercises with any proposed exercises for the "current workout" state
   const currentWorkoutExercises = useMemo(
@@ -3045,7 +2961,7 @@ export function WorkoutChat({
         equipmentPreference?: ChatEquipmentPreference
         workoutContext?: {
           sessionId?: string
-          mode?: 'planning' | 'analysis'
+          mode?: 'planning'
           title?: string
           notes?: string
           exercises?: unknown
@@ -3251,17 +3167,6 @@ export function WorkoutChat({
     }
   }
 
-  autoSendMessageRef.current = (message: string) => {
-    void handleSendMessage(message)
-  }
-
-  useEffect(() => {
-    if (!pendingAutoSendMessage || !effectiveWorkoutContext || isLoading) return
-
-    setPendingAutoSendMessage(null)
-    autoSendMessageRef.current(pendingAutoSendMessage)
-  }, [effectiveWorkoutContext, isLoading, pendingAutoSendMessage])
-
   const handleResendMessage = (messageId: string) => {
     if (isLoading) return
 
@@ -3298,8 +3203,6 @@ export function WorkoutChat({
     setParsedProgram(null)
     setSavedAssistantMessageIds(new Set())
     setSavingAssistantMessageIds(new Set())
-    setHandoffWorkoutContext(null)
-    setPendingAutoSendMessage(null)
     inputRef.current?.clear()
     Keyboard.dismiss()
 

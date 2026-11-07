@@ -7,6 +7,7 @@ import React, {
   useReducer,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 
 import { useAuth } from '@/contexts/auth-context'
@@ -55,7 +56,12 @@ interface WorkoutComposerContextValue {
   review: WorkoutComposerReviewState
   hasHydrated: boolean
   hasActiveSession: boolean
-  elapsedSeconds: number
+  /**
+   * Current elapsed workout time, computed on demand. The ticking value is
+   * deliberately NOT part of this context (it would re-render every consumer
+   * once per second); subscribe with `useWorkoutElapsedSeconds` instead.
+   */
+  getElapsedSeconds: () => number
   canReview: boolean
   canDiscard: boolean
   isReviewing: boolean
@@ -79,6 +85,35 @@ interface WorkoutComposerContextValue {
 const WorkoutComposerContext = createContext<
   WorkoutComposerContextValue | undefined
 >(undefined)
+
+interface ElapsedSecondsStore {
+  get: () => number
+  set: (value: number) => void
+  subscribe: (listener: () => void) => () => void
+}
+
+function createElapsedSecondsStore(): ElapsedSecondsStore {
+  let value = 0
+  const listeners = new Set<() => void>()
+  return {
+    get: () => value,
+    set: (next) => {
+      if (next === value) return
+      value = next
+      listeners.forEach((listener) => listener())
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
+
+const WorkoutElapsedSecondsContext = createContext<ElapsedSecondsStore | null>(
+  null,
+)
 
 export function WorkoutComposerProvider({
   children,
@@ -171,6 +206,14 @@ export function WorkoutComposerProvider({
     () => getWorkoutComposerElapsedSeconds(session, nowMs),
     [nowMs, session],
   )
+  const [elapsedStore] = useState(createElapsedSecondsStore)
+  useEffect(() => {
+    elapsedStore.set(elapsedSeconds)
+  }, [elapsedStore, elapsedSeconds])
+  const getElapsedSeconds = useCallback(
+    () => getWorkoutComposerElapsedSeconds(sessionRef.current, Date.now()),
+    [],
+  )
   const hasActiveSession = hasActiveWorkoutComposerSession(session)
   const canReview = canReviewWorkoutComposerSession(session)
   const canDiscard = hasActiveSession
@@ -207,12 +250,18 @@ export function WorkoutComposerProvider({
     const patch =
       typeof update === 'function' ? update(currentDraft) : update
 
-    dispatch({
-      type: 'update_draft',
+    const action = {
+      type: 'update_draft' as const,
       patch,
       now: Date.now(),
       nowIso: new Date().toISOString(),
-    })
+    }
+    // Track the latest state eagerly (the reducer is pure) so a functional
+    // update issued before React commits - e.g. async history placeholders
+    // landing while the user types - builds on the newest draft instead of
+    // overwriting the keystroke.
+    sessionRef.current = workoutComposerReducer(sessionRef.current, action)
+    dispatch(action)
   }, [])
 
   const updateReview = useCallback<
@@ -316,7 +365,7 @@ export function WorkoutComposerProvider({
       review: session.review,
       hasHydrated,
       hasActiveSession,
-      elapsedSeconds,
+      getElapsedSeconds,
       canReview,
       canDiscard,
       isReviewing,
@@ -332,9 +381,9 @@ export function WorkoutComposerProvider({
       canDiscard,
       canReview,
       discardSession,
-      elapsedSeconds,
       enqueueCurrentSession,
       enterReview,
+      getElapsedSeconds,
       hasActiveSession,
       hasHydrated,
       isReviewing,
@@ -348,7 +397,9 @@ export function WorkoutComposerProvider({
 
   return (
     <WorkoutComposerContext.Provider value={value}>
-      {children}
+      <WorkoutElapsedSecondsContext.Provider value={elapsedStore}>
+        {children}
+      </WorkoutElapsedSecondsContext.Provider>
     </WorkoutComposerContext.Provider>
   )
 }
@@ -362,4 +413,28 @@ export function useWorkoutComposer() {
   }
 
   return context
+}
+
+function identity<T>(value: T) {
+  return value
+}
+
+/**
+ * Subscribe to the ticking workout timer. Only components using this hook
+ * re-render each second. Pass a selector (e.g. `(s) => s > 0`) to re-render
+ * only when the derived value changes.
+ */
+export function useWorkoutElapsedSeconds(): number
+export function useWorkoutElapsedSeconds<T>(selector: (seconds: number) => T): T
+export function useWorkoutElapsedSeconds<T>(
+  selector: (seconds: number) => T = identity as (seconds: number) => T,
+): T {
+  const store = useContext(WorkoutElapsedSecondsContext)
+  if (!store) {
+    throw new Error(
+      'useWorkoutElapsedSeconds must be used within a WorkoutComposerProvider',
+    )
+  }
+
+  return useSyncExternalStore(store.subscribe, () => selector(store.get()))
 }
