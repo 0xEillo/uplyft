@@ -58,24 +58,3 @@ export function formatBodyFat(percentage: number | null): string {
   return `${percentage.toFixed(1)}%`
 }
 
-/**
- * Format BMI for display
- */
-export function formatBMI(bmi: number | null): string {
-  if (bmi === null || bmi === undefined) {
-    return '--'
-  }
-  return bmi.toFixed(1)
-}
-
-/**
- * Format date for body log display
- */
-export function formatBodyLogDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}

@@ -7,7 +7,6 @@
  */
 
 import {
-    EXERCISES_WITH_STANDARDS,
     getExerciseNameMap,
     type StrengthLevel,
     type StrengthStandard,
@@ -81,13 +80,6 @@ export function getStrengthStandard(
 export function clampStrengthProgress(progress: number): number {
   if (!Number.isFinite(progress)) return 0
   return Math.max(0, Math.min(100, progress))
-}
-
-/**
- * Get all available standards for display
- */
-export function getAvailableStandards(): string[] {
-  return EXERCISES_WITH_STANDARDS.map((config) => config.name)
 }
 
 /**

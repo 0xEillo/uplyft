@@ -24,32 +24,6 @@ export type BodyPartSlug =
   | 'hamstring'
   | 'gluteal'
 
-export const ALL_BODY_PART_SLUGS: BodyPartSlug[] = [
-  'trapezius',
-  'triceps',
-  'forearm',
-  'adductors',
-  'calves',
-  'hair',
-  'neck',
-  'deltoids',
-  'hands',
-  'feet',
-  'head',
-  'ankles',
-  'tibialis',
-  'obliques',
-  'chest',
-  'biceps',
-  'abs',
-  'quadriceps',
-  'knees',
-  'upper-back',
-  'lower-back',
-  'hamstring',
-  'gluteal',
-]
-
 type BodyPartMetadata = {
   displayName?: string
   primaryMuscle?: string
@@ -125,7 +99,7 @@ const BODY_PART_METADATA: Partial<Record<BodyPartSlug, BodyPartMetadata>> = {
 }
 
 // Human-readable names for body parts
-export const BODY_PART_DISPLAY_NAMES: Partial<Record<BodyPartSlug, string>> =
+const BODY_PART_DISPLAY_NAMES: Partial<Record<BodyPartSlug, string>> =
   Object.fromEntries(
     Object.entries(BODY_PART_METADATA)
       .filter(([, metadata]) => metadata.displayName)

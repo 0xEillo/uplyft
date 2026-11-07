@@ -213,7 +213,7 @@ function buildSessionBaselineExercises(input: {
   })
 }
 
-export function calculateStrengthAggregateFromScores(input: {
+function calculateStrengthAggregateFromScores(input: {
   weightedExerciseScores: number[]
   lastTrainedAt: string | null
   now?: Date
@@ -222,7 +222,7 @@ export function calculateStrengthAggregateFromScores(input: {
   decayFactor: number
   effectiveScore: number
 } {
-  const { weightedExerciseScores, lastTrainedAt } = input
+  const { weightedExerciseScores } = input
 
   const sortedScores = [...weightedExerciseScores].sort((a, b) => b - a)
   const topExerciseScore = sortedScores[0] ?? 0

@@ -12,7 +12,7 @@ export interface TrimChatMessagesOptions {
 // Keep only a small recent window. In this app, chats are short and recent turns
 // matter far more than deep history.
 export const DEFAULT_CHAT_HISTORY_MESSAGE_LIMIT = 10
-export const DEFAULT_CHAT_HISTORY_CHARACTER_LIMIT = 8000
+const DEFAULT_CHAT_HISTORY_CHARACTER_LIMIT = 8000
 
 export function trimChatMessagesForRequest<T extends ChatHistoryMessage>(
   messages: readonly T[],

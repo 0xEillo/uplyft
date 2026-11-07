@@ -211,7 +211,7 @@ function sessionHasTimerProgress(session: WorkoutComposerSession): boolean {
   )
 }
 
-export function draftHasMeaningfulContent(
+function draftHasMeaningfulContent(
   draft: WorkoutComposerDraftState,
 ): boolean {
   return (

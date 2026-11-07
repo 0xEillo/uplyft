@@ -2,7 +2,7 @@ import { clampStrengthProgress, type StrengthLevel } from './strength-standards'
 
 export type StrengthGender = 'male' | 'female'
 
-export const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
+const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
   'Untrained',
   'Beginner',
   'Novice',
@@ -12,7 +12,7 @@ export const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
   'World Class',
 ]
 
-export const STRENGTH_LEVEL_SCORES: Record<StrengthLevel, number> = {
+const STRENGTH_LEVEL_SCORES: Record<StrengthLevel, number> = {
   Untrained: 0,
   Beginner: 1,
   Novice: 2,

@@ -70,7 +70,7 @@ export async function queuePendingOnboardingProfile(
   )
 }
 
-export async function clearPendingOnboardingProfile(): Promise<void> {
+async function clearPendingOnboardingProfile(): Promise<void> {
   await AsyncStorage.removeItem(PENDING_ONBOARDING_STORAGE_KEY)
 }
 

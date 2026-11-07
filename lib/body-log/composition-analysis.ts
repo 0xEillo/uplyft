@@ -286,57 +286,6 @@ export function getBMIStatus(
 }
 
 /**
- * Get overall physique status combining body fat and BMI
- */
-export function getOverallStatus(
-  bodyFat: number | null,
-  bmi: number | null,
-  gender: Gender,
-): OverallStatus | null {
-  const bodyFatStatus = getBodyFatStatus(bodyFat, gender)
-  const bmiStatus = getBMIStatus(bmi, gender)
-
-  // If both metrics are missing, return null
-  if (!bodyFatStatus && !bmiStatus) return null
-
-  // Prioritize body fat status if both available, otherwise use BMI
-  const primaryStatus = bodyFatStatus || bmiStatus
-
-  if (!primaryStatus) return null
-
-  // Determine overall status based on color priority
-  if (primaryStatus.color === 'optimal') {
-    return {
-      title: 'Peak Conditioning',
-      summary:
-        'Your physique is in a strong athletic range. Keep up the great work!',
-      color: 'optimal',
-    }
-  } else if (primaryStatus.color === 'building') {
-    return {
-      title: 'Building Phase',
-      summary:
-        'You are making solid progress. Stay consistent with training and nutrition.',
-      color: 'building',
-    }
-  } else if (primaryStatus.color === 'moderate') {
-    return {
-      title: 'Room for Improvement',
-      summary:
-        'You can focus on body composition to reach your athletic potential.',
-      color: 'moderate',
-    }
-  } else {
-    return {
-      title: 'Early Journey',
-      summary:
-        'Great starting point! Consistency with training and nutrition can yield results.',
-      color: 'high',
-    }
-  }
-}
-
-/**
  * Get color scheme for status indicators
  */
 export function getStatusColor(

@@ -56,8 +56,6 @@ export const COMMITMENT_FREQUENCIES: {
   { value: 'not_sure', label: 'Not sure' },
 ]
 
-export const COMMITMENTS = COMMITMENT_DAYS
-
 
 export const EXPERIENCE_LEVELS: {
   value: ExperienceLevel

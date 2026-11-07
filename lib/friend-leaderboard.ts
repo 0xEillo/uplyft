@@ -44,7 +44,7 @@ export function isLeaderboardEligible(followingCount: number): boolean {
   return followingCount > 1
 }
 
-export const DEV_MOCK_LEADERBOARD_USER_ID_PREFIX = 'dev-mock-lb-'
+const DEV_MOCK_LEADERBOARD_USER_ID_PREFIX = 'dev-mock-lb-'
 
 export function isDevMockLeaderboardUserId(userId: string): boolean {
   return userId.startsWith(DEV_MOCK_LEADERBOARD_USER_ID_PREFIX)
@@ -151,7 +151,7 @@ export function buildFriendLeaderboardEntries(
   }))
 }
 
-export const LEADERBOARD_DEFAULT_VISIBLE = 3
+const LEADERBOARD_DEFAULT_VISIBLE = 3
 export const LEADERBOARD_MAX_VISIBLE = 10
 
 export function getVisibleLeaderboardEntries(

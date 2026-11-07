@@ -3,8 +3,6 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import { Platform } from 'react-native'
-
 const tintColorLight = '#FF6B35'
 const tintColorDark = '#FF6B35'
 
@@ -26,34 +24,6 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 }
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans:
-      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono:
-      "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-})
 
 /**
  * Design tokens. Prefer these over raw numbers in StyleSheet.
@@ -127,7 +97,7 @@ export const FontWeight = {
 export type FontWeightKey = keyof typeof FontWeight
 
 /** Line height multipliers to apply against FontSize. */
-export const LineHeight = {
+const LineHeight = {
   tight: 1.2,
   normal: 1.4,
   relaxed: 1.5,
@@ -162,47 +132,6 @@ export const Layout = {
     md: 44,
     lg: 52,
   },
-} as const
-
-/** Shadow presets. RN needs shadow* (iOS) + elevation (Android). */
-export const Shadow = {
-  none: {
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-} as const
-
-/** Motion durations (ms). For Animated / LayoutAnimation. */
-export const Duration = {
-  instant: 100,
-  fast: 150,
-  base: 200,
-  slow: 300,
-  slower: 500,
 } as const
 
 /** Opacity presets (disabled states, overlays, press feedback). */
@@ -287,17 +216,3 @@ export const Typography = {
 } as const
 export type TypographyKey = keyof typeof Typography
 
-/** One bundled export if you prefer `Theme.spacing.md` style. */
-export const Theme = {
-  spacing: Spacing,
-  radius: Radius,
-  fontSize: FontSize,
-  fontWeight: FontWeight,
-  lineHeight: LineHeight,
-  iconSize: IconSize,
-  layout: Layout,
-  shadow: Shadow,
-  duration: Duration,
-  opacity: Opacity,
-  typography: Typography,
-} as const

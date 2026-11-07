@@ -73,13 +73,6 @@ const RECOVERY_GRADIENT_COLORS = [
 
 
 // We use intensity 1-10 for the gradient steps
-const RECOVERY_STATUS_INTENSITY: Record<RecoveryStatus, number> = {
-  not_recovered: 1, 
-  recovering: 3,    
-  recovered: 6,    
-  untrained: 0,
-}
-
 const RECOVERY_STATUS_LABELS: Record<RecoveryStatus, string> = {
   not_recovered: 'Not Recovered',
   recovering: 'Recovering',
@@ -169,7 +162,7 @@ function calculateIntensity(
 /**
  * Get recovery status based on hours since last workout and required recovery time
  */
-export function getRecoveryStatusWithIntensity(
+function getRecoveryStatusWithIntensity(
   hoursSinceLastWorkout: number | null,
   recoveryTimeHours: number
 ): RecoveryStatus {
@@ -198,18 +191,10 @@ export function getRecoveryColor(status: RecoveryStatus): string {
 }
 
 /**
- * Get intensity value for body highlighter (1-4 based on recovery status)
- * @deprecated Use getRecoveryIntensityFromPercentage for gradient-based coloring
- */
-export function getRecoveryIntensity(status: RecoveryStatus): number {
-  return RECOVERY_STATUS_INTENSITY[status]
-}
-
-/**
  * Calculate recovery percentage (0-100) based on hours since workout and recovery time
  * 0% = just worked out, 100% = fully recovered
  */
-export function calculateRecoveryPercentage(
+function calculateRecoveryPercentage(
   hoursSinceLastWorkout: number | null,
   recoveryTimeHours: number | null
 ): number {
@@ -219,21 +204,6 @@ export function calculateRecoveryPercentage(
   
   const percentage = Math.min(100, (hoursSinceLastWorkout / recoveryTimeHours) * 100)
   return Math.round(percentage)
-}
-
-// Get intensity value for body highlighter based on recovery percentage
-// Returns 2-7 for gradient steps (1 is reserved for unranked/base), or 0 for untrained
-export function getRecoveryIntensityFromPercentage(recoveryPercentage: number): number {
-  if (recoveryPercentage > 100) return 0
-  
-  // Map 0-100% to intensity 2-7 (shifted by 1 to reserve intensity 1 for unranked)
-  if (recoveryPercentage === 100) return 7 // Was 6, now 7
-  
-  // 5 steps before 100% (0-19, 20-39, 40-59, 60-79, 80-99)
-  // Original: floor/20 => 0-4. Add 1 => 1-5.
-  // New: Add 2 => 2-6.
-  const intensity = Math.floor(recoveryPercentage / 20) + 2
-  return Math.min(7, Math.max(2, intensity))
 }
 
 /**
@@ -248,14 +218,6 @@ export function getRecoveryColorFromPercentage(recoveryPercentage: number): stri
   // 6 colors map to 0-20, 20-40, 40-60, 60-80, 80-100
   const index = Math.floor(Math.max(0, Math.min(99, recoveryPercentage)) / 20)
   return RECOVERY_GRADIENT_COLORS[index]
-}
-
-/**
- * Get the recovery gradient colors array for the body highlighter
- * This provides all 11 gradient colors for the Body component
- */
-export function getRecoveryGradientColors(): string[] {
-  return RECOVERY_GRADIENT_COLORS
 }
 
 /**

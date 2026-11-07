@@ -7,12 +7,12 @@ export interface MuscleBodyMapping {
   bodyHalf: 'upper' | 'lower'
 }
 
-export const BODY_HALF_CONFIG = {
+const BODY_HALF_CONFIG = {
   upper: { scale: 0.52, offsetY: 42 },
   lower: { scale: 0.36, offsetY: -26 },
 }
 
-export const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
+const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
   // Upper body muscles
   Chest: { slug: 'chest', side: 'front', bodyHalf: 'upper' },
   Shoulders: { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },

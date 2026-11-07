@@ -113,19 +113,6 @@ function sanitizeMessages(value: unknown): CoachChatMessage[] {
   return sanitized
 }
 
-export function hasMeaningfulCoachChatSnapshot(
-  snapshot: CoachChatSnapshot | null | undefined,
-): boolean {
-  if (!snapshot) return false
-
-  return (
-    snapshot.messages.length > 0 ||
-    snapshot.input.trim().length > 0 ||
-    snapshot.selectedImages.length > 0 ||
-    snapshot.savedAssistantMessageIds.length > 0
-  )
-}
-
 export function sanitizeCoachChatSnapshot(
   value: unknown,
 ): CoachChatSnapshot | null {
@@ -264,19 +251,6 @@ export async function saveCoachChatSnapshot(
     ...sanitizedSnapshot,
     savedAt: Date.now(),
   }
-  writeCollection(userId, collection)
-}
-
-export async function clearCoachChatSnapshot(
-  userId: string | undefined,
-  descriptor: CoachChatPersistenceDescriptor,
-): Promise<void> {
-  if (!userId) return
-
-  const collection = readCollection(userId)
-  if (!collection) return
-
-  delete collection.snapshots[getCoachChatPersistenceScopeKey(descriptor)]
   writeCollection(userId, collection)
 }
 

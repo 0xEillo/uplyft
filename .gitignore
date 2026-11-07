@@ -48,3 +48,7 @@ app-example
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# EAS local credentials
+credentials.json
+credentials/

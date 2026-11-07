@@ -1,7 +1,7 @@
 import { WorkoutPlanningData } from '@/components/workout-planning-wizard'
 
 // Shared JSON schema without weight suggestions
-export const WORKOUT_JSON_SCHEMA = `{
+const WORKOUT_JSON_SCHEMA = `{
   "title": "Workout Title",
   "description": "2-3 sentence coaching summary that explains the workout focus, how to execute, and briefly why these exercises fit the user's goal/request",
   "estimatedDuration": 60,
@@ -19,7 +19,7 @@ export const WORKOUT_JSON_SCHEMA = `{
   ]
 }`
 
-export const PROGRAM_JSON_SCHEMA = `{
+const PROGRAM_JSON_SCHEMA = `{
   "title": "Program Title",
   "description": "3-5 sentence coaching brief that explains the split, how to run the week, effort/progression guidance, recovery/rest-day guidance, and why the structure fits the user's goal/request",
   "goal": "Hypertrophy",
@@ -175,54 +175,3 @@ export function buildWorkoutAnalysisPrompt(input?: {
     .join('\n')
 }
 
-export function isWorkoutRequest(text: string) {
-  const lowerText = text.toLowerCase()
-
-  const creationKeywords = [
-    'create',
-    'make',
-    'generate',
-    'give',
-    'build',
-    'design',
-    'plan',
-    'suggest',
-    'need',
-    'want',
-  ]
-
-  const workoutKeywords = [
-    'workout',
-    'routine',
-    'program',
-    'split',
-    'schedule',
-    'exercises',
-  ]
-
-  const workoutTypes = [
-    'push',
-    'pull',
-    'legs',
-    'upper',
-    'lower',
-    'full body',
-    'bro split',
-    'chest',
-    'back',
-    'arm',
-    'leg',
-    'shoulder',
-    'abs',
-    'glute',
-  ]
-
-  const hasCreation = creationKeywords.some((k) => lowerText.includes(k))
-  const hasWorkout = workoutKeywords.some((k) => lowerText.includes(k))
-  const hasType = workoutTypes.some((k) => lowerText.includes(k))
-
-  if (hasCreation && (hasWorkout || hasType)) return true
-  if (hasType && (hasWorkout || lowerText.includes('day'))) return true
-
-  return false
-}

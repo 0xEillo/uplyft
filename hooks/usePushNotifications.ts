@@ -120,7 +120,7 @@ export function shouldPromptForPushNotificationsAfterWorkout(
   )
 }
 
-export async function promptForPushNotifications({
+async function promptForPushNotifications({
   userId,
   title = 'Get the best experience',
   message = 'Enable notifications to get workout reactions, comments, reminders, and important updates.',

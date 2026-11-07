@@ -8,7 +8,7 @@ export interface Coach {
   image: number // require() returns a number for bundled assets
 }
 
-export const COACHES: Record<CoachId, Coach> = {
+const COACHES: Record<CoachId, Coach> = {
   ross: {
     id: 'ross',
     name: 'Science-Based Ross',

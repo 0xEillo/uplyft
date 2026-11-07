@@ -194,11 +194,6 @@ export async function requestTrackingPermissionDetailed(): Promise<
   }
 }
 
-export async function requestTrackingPermission(): Promise<boolean> {
-  const result = await requestTrackingPermissionDetailed()
-  return result.granted
-}
-
 /**
  * Log standard Facebook events for ad optimization
  */

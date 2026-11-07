@@ -12,7 +12,7 @@ import {
     useWindowDimensions,
 } from 'react-native'
 
-export const PROFILE_CARD_HEIGHT = 160
+const PROFILE_CARD_HEIGHT = 160
 
 export const useProfileCardDimensions = () => {
   const { width } = useWindowDimensions()

@@ -1,9 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
 const EXERCISE_IMAGES_BUCKET = 'exercise-images' as const
-const EXERCISE_IMAGES_BASE_URL =
-  'https://nsgezkxrgwtmnshulijs.supabase.co/storage/v1/object/public/exercise-images/'
-
 /**
  * Uploads a custom exercise image to Supabase storage.
  *
@@ -57,36 +54,4 @@ export async function uploadExerciseImage(
   }
 }
 
-/**
- * Deletes a custom exercise image from Supabase storage.
- * Safe to call even if the file doesn't exist.
- *
- * @param userId - User ID
- * @param exerciseId - Exercise ID
- */
-export async function deleteExerciseImage(
-  userId: string,
-  exerciseId: string,
-): Promise<void> {
-  // Try to delete all known extensions
-  const extensions = ['jpg', 'jpeg', 'png', 'webp', 'heic']
-  const paths = extensions.map((ext) => `${userId}/${exerciseId}.${ext}`)
 
-  try {
-    await supabase.storage.from(EXERCISE_IMAGES_BUCKET).remove(paths)
-  } catch (error) {
-    // Deletion is best-effort, don't throw
-    console.warn('Failed to delete exercise image(s):', error)
-  }
-}
-
-/**
- * Returns true if imagePath is a full URL (custom uploaded image)
- * rather than a relative path for the exercise-gifs bucket.
- */
-export function isCustomExerciseImageUrl(gifUrl?: string | null): boolean {
-  if (!gifUrl) return false
-  return gifUrl.startsWith('http://') || gifUrl.startsWith('https://')
-}
-
-export { EXERCISE_IMAGES_BASE_URL }

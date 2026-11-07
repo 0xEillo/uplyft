@@ -130,7 +130,7 @@ function rankAutocompleteMatches(
  * Detect if current line looks like an exercise name.
  * Used to determine if the "Convert to Structured" button should be shown.
  */
-export function detectExerciseName(text: string, cursorPos: number): boolean {
+function detectExerciseName(text: string, cursorPos: number): boolean {
   if (!text) return false
 
   const textBeforeCursor = text.substring(0, cursorPos)
@@ -162,7 +162,7 @@ export function detectExerciseName(text: string, cursorPos: number): boolean {
  * Get exercise suggestions and related variations based on current input.
  * Returns null if no valid suggestions are available.
  */
-export function getExerciseAutocompleteGroup(
+function getExerciseAutocompleteGroup(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
@@ -276,63 +276,6 @@ export function getExerciseSuggestion(
 }
 
 /**
- * Parse text around cursor to extract exercise name and sets.
- * Used for converting free-form text to structured workout format.
- */
-export function parseExerciseFromText(
-  text: string,
-  cursorPos: number,
-): {
-  exerciseName: string
-  sets: { weight?: string; reps?: string }[]
-  startLineIndex: number
-  endLineIndex: number
-} | null {
-  const lines = text.split('\n')
-  const textBeforeCursor = text.substring(0, cursorPos)
-  const linesBefore = textBeforeCursor.split('\n')
-  const currentLineIndex = linesBefore.length - 1
-
-  // Get exercise name (current line or previous line if current is empty)
-  let exerciseName = lines[currentLineIndex]?.trim() || ''
-  let startIndex = currentLineIndex
-
-  // If current line is empty, look at previous line
-  if (!exerciseName && currentLineIndex > 0) {
-    exerciseName = lines[currentLineIndex - 1]?.trim() || ''
-    startIndex = currentLineIndex - 1
-  }
-
-  if (!exerciseName) return null
-
-  // Extract sets from following lines (until empty line or end)
-  const sets: { weight?: string; reps?: string }[] = []
-  for (let i = startIndex + 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) break // Stop at empty line
-
-    // Try to parse set: "weight x reps"
-    const setMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+)/i)
-    if (setMatch) {
-      sets.push({
-        weight: setMatch[1],
-        reps: setMatch[2],
-      })
-    } else {
-      // If line doesn't match set pattern, stop
-      break
-    }
-  }
-
-  return {
-    exerciseName,
-    sets: sets.length > 0 ? sets : [{ weight: '', reps: '' }],
-    startLineIndex: startIndex,
-    endLineIndex: startIndex + sets.length,
-  }
-}
-
-/**
  * Parse rep range from string like "10-12" or "10".
  */
 export function parseRepRange(
@@ -357,22 +300,6 @@ interface UseExerciseAutocompleteOptions {
   cursorPosition: number
   exercises: Exercise[]
   isInputFocused: boolean
-}
-
-/**
- * Hook for exercise autocomplete functionality.
- * Returns the current suggestion based on input state.
- */
-export function useExerciseAutocomplete({
-  text,
-  cursorPosition,
-  exercises,
-  isInputFocused,
-}: UseExerciseAutocompleteOptions): ExerciseSuggestion | null {
-  return useMemo(() => {
-    if (!isInputFocused) return null
-    return getExerciseSuggestion(text, cursorPosition, exercises)
-  }, [text, cursorPosition, exercises, isInputFocused])
 }
 
 /**

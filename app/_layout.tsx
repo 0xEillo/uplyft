@@ -20,7 +20,6 @@ import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import { NotificationProvider } from '@/contexts/notification-context'
-import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { RestTimerProvider } from '@/contexts/rest-timer-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
@@ -460,15 +459,13 @@ export default function RootLayout() {
                   <SubscriptionProvider>
                     <NotificationProvider>
                       <AnalyticsProvider>
-                        <PostsProvider>
-                          <LiveActivityProvider>
-                            <WorkoutComposerProvider>
-                              <RestTimerProvider>
-                                <RootLayoutNav />
-                              </RestTimerProvider>
-                            </WorkoutComposerProvider>
-                          </LiveActivityProvider>
-                        </PostsProvider>
+                        <LiveActivityProvider>
+                          <WorkoutComposerProvider>
+                            <RestTimerProvider>
+                              <RootLayoutNav />
+                            </RestTimerProvider>
+                          </WorkoutComposerProvider>
+                        </LiveActivityProvider>
                       </AnalyticsProvider>
                     </NotificationProvider>
                   </SubscriptionProvider>
