@@ -1,19 +1,10 @@
 import { FeedCard } from '@/components/feed-card'
-import type { WorkoutContext } from '@/components/workout-chat'
-import { AnalyticsEvents } from '@/constants/analytics-events'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { buildWorkoutAnalysisPrompt } from '@/lib/ai/workoutPrompt'
-import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
-import { getCoach } from '@/lib/coaches'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, OwnershipError } from '@/lib/database'
-import { haptic } from '@/lib/haptics'
-import { PrService } from '@/lib/pr'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
-import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import {
   consumeWorkoutSocialUpdate,
   subscribeWorkoutSocialUpdates,
@@ -29,27 +20,6 @@ import type {
 import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
-
-interface PrDetailForDisplay {
-  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
-  label: string
-  value: number
-  previousValue?: number
-  weight: number
-  previousReps?: number
-  currentReps: number
-  setIndices?: number[]
-  isCurrent: boolean
-}
-
-interface PrInfo {
-  exerciseId: string
-  exerciseName: string
-  prSetIndices: Set<number>
-  prLabels: string[]
-  prDetails: PrDetailForDisplay[]
-  hasCurrentPR: boolean
-}
 
 interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails & {
@@ -72,8 +42,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
-  const { coachId, profile } = useProfile()
-  const { trackEvent } = useAnalytics()
+  const { profile } = useProfile()
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
@@ -90,7 +59,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     (isOwnWorkout
       ? profile?.overall_strength_level ?? workout.profile?.overall_strength_level
       : workout.profile?.overall_strength_level) ?? null
-  const coach = getCoach(coachId)
 
   // Social interaction states
   const [likeCount, setLikeCount] = useState(workout.social?.likeCount ?? 0)
@@ -362,122 +330,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     }
   }, [workout.routine, router])
 
-  const handleCoachPress = useCallback(async () => {
-    if (!isOwnWorkout || workout.isPending) return
-
-    const workingSetCount = (workout.workout_exercises || []).reduce(
-      (sum, exercise) =>
-        sum +
-        (exercise.sets?.filter((set) => !set.is_warmup).length ||
-          exercise.sets?.length ||
-          0),
-      0,
-    )
-
-    let workoutPrInfo: PrInfo[] = []
-    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
-    if (prUserId && workout.created_at && workout.date) {
-      try {
-        const result = await PrService.computePrsForSession({
-          sessionId: workout.id,
-          userId: prUserId,
-          createdAt: workout.created_at,
-          date: workout.date,
-          exercises: (workout.workout_exercises || []).map((exercise) => ({
-            exerciseId: exercise.exercise_id,
-            exerciseName: exercise.exercise?.name || 'Exercise',
-            sets: mapSetsToPrContext(exercise.sets),
-          })),
-        })
-
-        workoutPrInfo = result.perExercise.map((exercisePr) => ({
-          exerciseId: exercisePr.exerciseId,
-          exerciseName: exercisePr.exerciseName,
-          prSetIndices: new Set(
-            exercisePr.prs.flatMap((detail) => detail.setIndices || []),
-          ),
-          prLabels: exercisePr.prs.map((detail) => detail.label),
-          prDetails: exercisePr.prs.map((detail) => ({
-            kind: detail.kind,
-            label: detail.label,
-            value: detail.value,
-            previousValue: detail.previousValue,
-            weight: detail.weight,
-            previousReps: detail.previousReps,
-            currentReps: detail.currentReps,
-            setIndices: detail.setIndices,
-            isCurrent: detail.isCurrent,
-          })),
-          hasCurrentPR: exercisePr.prs.some((detail) => detail.isCurrent),
-        }))
-      } catch (error) {
-        console.error('Error computing PRs for coach analysis:', error)
-      }
-    }
-
-    const workoutContext: WorkoutContext = {
-      sessionId: workout.id,
-      mode: 'analysis',
-      title: workout.type || workout.notes?.split('\n')[0] || 'Workout Session',
-      notes: workout.notes || '',
-      exercises: (workout.workout_exercises || []).map((exercise) => ({
-        name: exercise.exercise?.name || exercise.exercise_name || 'Exercise',
-        setsCount: exercise.sets?.length || 0,
-        sets:
-          exercise.sets?.map((set) => {
-            const weight =
-              typeof set.weight === 'number' ? `${set.weight} kg` : undefined
-            const reps =
-              typeof set.reps === 'number' ? `${set.reps}` : undefined
-
-            return {
-              ...(weight ? { weight } : {}),
-              ...(reps ? { reps } : {}),
-            }
-          }) || [],
-      })),
-      stats: {
-        exerciseCount: (workout.workout_exercises || []).length,
-        totalSetCount,
-        workingSetCount,
-        durationSeconds: workout.duration ?? null,
-        volumeKg: calculateTotalVolume(workout, 'kg'),
-        completedAt: workout.created_at ?? null,
-      },
-      prs: workoutPrInfo.flatMap((exercisePr) =>
-        exercisePr.prDetails.map((detail) => ({
-          exerciseName: exercisePr.exerciseName,
-          kind: detail.kind,
-          label: detail.label,
-          value: detail.value,
-          previousValue: detail.previousValue,
-          weight: detail.weight,
-          currentReps: detail.currentReps,
-          isCurrent: detail.isCurrent,
-        })),
-      ),
-    }
-
-    await setPendingChatAttachment({
-      action: 'analyze_workout',
-      prompt: buildWorkoutAnalysisPrompt({
-        workoutTitle: workoutContext.title,
-        exerciseCount: workoutContext.stats?.exerciseCount,
-        totalSetCount: workoutContext.stats?.totalSetCount,
-        workingSetCount: workoutContext.stats?.workingSetCount,
-        durationSeconds: workoutContext.stats?.durationSeconds,
-      }),
-      workoutContext,
-    })
-
-    haptic('medium')
-    trackEvent(AnalyticsEvents.AI_CHAT_OPENED, {
-      source: 'feed_workout_analysis',
-      workout_id: workout.id,
-    })
-    router.push('/chat')
-  }, [isOwnWorkout, router, trackEvent, totalSetCount, user?.id, workout])
-
   const commentPreviews = useMemo(() => {
     return comments.map((c) => ({
       id: c.id,
@@ -498,7 +350,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       userName={userName}
       userAvatar={avatarUrl || ''}
       userLevel={userLevel}
-      coachAvatarSource={coach.image}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
         isPending
@@ -533,7 +384,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       isLiked={isLiked}
       onLike={handleLike}
       onComment={handleComment}
-      onCoachPress={isPending || !isOwnWorkout ? undefined : handleCoachPress}
       isFirst={isFirst}
       recentLikers={recentLikers}
       comments={commentPreviews}

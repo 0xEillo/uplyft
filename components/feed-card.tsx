@@ -104,7 +104,6 @@ export interface FeedCardProps {
   userName: string
   userAvatar: string
   userLevel?: Profile['overall_strength_level']
-  coachAvatarSource?: number
   timeAgo: string
   workoutTitle: string
   workoutDescription?: string | null
@@ -127,7 +126,6 @@ export interface FeedCardProps {
   isLiked?: boolean
   onLike?: () => void
   onComment?: () => void
-  onCoachPress?: () => void
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
@@ -146,7 +144,6 @@ export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
   userLevel,
-  coachAvatarSource,
   timeAgo,
   workoutTitle,
   workoutDescription,
@@ -168,7 +165,6 @@ export const FeedCard = memo(function FeedCard({
   isLiked = false,
   onLike,
   onComment,
-  onCoachPress,
   onEdit,
   onDelete,
   onCreateRoutine,
@@ -750,23 +746,8 @@ export const FeedCard = memo(function FeedCard({
             </Text>
           </Animated.View>
         ) : (
-          (onCoachPress || onEdit || onDelete || onCreateRoutine) && (
+          (onEdit || onDelete || onCreateRoutine) && (
             <View style={styles.headerActions}>
-              {onCoachPress && coachAvatarSource ? (
-                <TouchableOpacity
-                  onPress={onCoachPress}
-                  style={styles.coachButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={coachAvatarSource}
-                    style={styles.coachAvatar}
-                    contentFit="cover"
-                    transition={100}
-                  />
-                </TouchableOpacity>
-              ) : null}
               {(onEdit || onDelete || onCreateRoutine) && (
                 <View style={{ zIndex: 10 }}>
                   <TouchableOpacity
@@ -1818,19 +1799,6 @@ function createStyles(
       alignItems: 'center',
       gap: 10,
       marginLeft: 12,
-    },
-    coachButton: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceSubtle,
-    },
-    coachAvatar: {
-      width: '100%',
-      height: '100%',
     },
     menuButton: {
       padding: 4,
