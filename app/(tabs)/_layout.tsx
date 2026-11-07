@@ -21,7 +21,10 @@ import {
   useBottomAccessoryVisibility,
 } from '@/contexts/bottom-accessory-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
-import { useWorkoutComposer } from '@/contexts/workout-composer-context'
+import {
+  useWorkoutComposer,
+  useWorkoutElapsedSeconds,
+} from '@/contexts/workout-composer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useSegments } from 'expo-router'
@@ -74,7 +77,6 @@ function TabLayoutContent() {
   } = useRestTimerContext()
   const {
     discardSession,
-    elapsedSeconds: workoutElapsedSeconds,
     hasActiveSession,
   } = useWorkoutComposer()
   const bottomAccessoryVisibility = useBottomAccessoryVisibility()
@@ -102,9 +104,6 @@ function TabLayoutContent() {
   const tabsWithWorkoutAccessory = new Set(['index', 'profile'])
   const showBottomAccessory =
     !isTabBarHidden && tabsWithWorkoutAccessory.has(currentTab)
-  const bottomAccessoryTitle = isWorkoutLive
-    ? `Workout ${formatAccessoryElapsed(workoutElapsedSeconds)}`
-    : 'Start New Workout'
   const handleOpenCreatePost = () => router.push('/create-post')
   const getChatReturnTab = () => {
     if (currentTab === 'profile' || currentTab === 'analytics') {
@@ -271,8 +270,7 @@ function TabLayoutContent() {
               overflow: 'hidden',
             }}
           >
-            <BaseAccessoryAction
-              title={bottomAccessoryTitle}
+            <TimedAccessoryAction
               textPrimary={isWorkoutLive ? colors.textPrimary : '#fff'}
               accentColor={colors.statusSuccess}
               onOpen={handleOpenCreatePost}
@@ -292,6 +290,20 @@ function TabLayoutContent() {
       <RatingPromptModal />
     </>
   )
+}
+
+/**
+ * Subscribes to the workout timer itself so only this small component
+ * re-renders every second, not the whole tab layout.
+ */
+function TimedAccessoryAction(
+  props: Omit<React.ComponentProps<typeof BaseAccessoryAction>, 'title'>,
+) {
+  const { isLive } = props
+  const title = useWorkoutElapsedSeconds((seconds) =>
+    isLive ? `Workout ${formatAccessoryElapsed(seconds)}` : 'Start New Workout',
+  )
+  return <BaseAccessoryAction {...props} title={title} />
 }
 
 function BaseAccessoryAction({

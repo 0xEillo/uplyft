@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/auth-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import {
     ExerciseHistoricalBests,
+    ExerciseLastPerformance,
     getHistoricalBestsForExercise,
     getLastPerformanceForExercise,
     getSetPerformance,
+    peekLastPerformanceForExercise,
     SetPerformance,
 } from '@/lib/services/exerciseHistoryService'
 import { formatWeightInputValue } from '@/lib/utils/weight-input-format'
@@ -128,6 +130,90 @@ export function useExerciseHistory() {
   )
 
   /**
+   * Fill "last workout" placeholders on sets that don't have them yet.
+   * Returns the same object when nothing changed.
+   */
+  const applyLastPerformance = useCallback(
+    (
+      exercise: StructuredExerciseDraft,
+      lastPerformance: ExerciseLastPerformance | null | undefined,
+    ): StructuredExerciseDraft => {
+      if (!lastPerformance?.sets?.length) return exercise
+
+      let changed = false
+      const sets = exercise.sets.map((set, index) => {
+        if (set.lastWorkoutWeight != null || set.lastWorkoutReps != null) {
+          return set
+        }
+        const historySet = lastPerformance.sets.find(
+          (s) => s.setNumber === index + 1,
+        )
+        if (!historySet) return set
+
+        const formatted = formatSetHistoryForDisplay(historySet)
+        if (!formatted.weight && !formatted.reps) return set
+
+        changed = true
+        return {
+          ...set,
+          lastWorkoutWeight: formatted.weight,
+          lastWorkoutReps: formatted.reps,
+        }
+      })
+
+      return changed ? { ...exercise, sets } : exercise
+    },
+    [formatSetHistoryForDisplay],
+  )
+
+  /**
+   * Synchronous version of createExerciseWithHistory: returns a draft right
+   * away so the UI never waits on the network. Uses cached history when it is
+   * already available (e.g. prefetched by the exercise picker); otherwise
+   * `needsHistory` is true and callers should patch it in via
+   * `loadLastPerformance` + `applyLastPerformance`.
+   */
+  const createExerciseDraft = useCallback(
+    (
+      exerciseName: string,
+      numberOfSets = 1,
+      targetRepsMin: number | null = null,
+      targetRepsMax: number | null = null,
+    ): { exercise: StructuredExerciseDraft; needsHistory: boolean } => {
+      const baseExercise: StructuredExerciseDraft = {
+        id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        name: exerciseName,
+        sets: Array.from({ length: numberOfSets }, () =>
+          createEmptySet(targetRepsMin, targetRepsMax),
+        ),
+      }
+
+      if (!user?.id) {
+        return { exercise: baseExercise, needsHistory: false }
+      }
+
+      const cached = peekLastPerformanceForExercise(user.id, exerciseName)
+      if (cached === undefined) {
+        return { exercise: baseExercise, needsHistory: true }
+      }
+
+      return {
+        exercise: applyLastPerformance(baseExercise, cached),
+        needsHistory: false,
+      }
+    },
+    [user?.id, createEmptySet, applyLastPerformance],
+  )
+
+  const loadLastPerformance = useCallback(
+    async (exerciseName: string): Promise<ExerciseLastPerformance | null> => {
+      if (!user?.id) return null
+      return getLastPerformanceForExercise(user.id, exerciseName)
+    },
+    [user?.id],
+  )
+
+  /**
    * Fetch and format history for a specific set number.
    *
    * Used by StructuredWorkoutInput when the user adds new sets via the + button.
@@ -180,6 +266,9 @@ export function useExerciseHistory() {
 
   return {
     createExerciseWithHistory,
+    createExerciseDraft,
+    applyLastPerformance,
+    loadLastPerformance,
     createEmptySet,
     fetchSetHistory,
     fetchExerciseHistoricalBests,

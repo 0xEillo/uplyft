@@ -1,158 +1,151 @@
-import { database } from '@/lib/database'
+import { exerciseLookup } from '@/lib/services/exerciseLookup'
+import {
+  type ExerciseUsage,
+  loadExerciseUsage,
+  peekExerciseUsage,
+} from '@/lib/services/exerciseUsage'
 import {
   type ExerciseEquipment,
   getAvailableExerciseEquipment,
   matchesExerciseEquipmentFilter,
 } from '@/lib/utils/exercise-equipment'
 import { Exercise } from '@/types/database.types'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 
 interface UseExercisesOptions {
   userId?: string
   initialLoad?: boolean
 }
 
-interface ExerciseCache {
-  exercises: Exercise[]
-  muscleGroups: string[]
-  equipmentTypes: ExerciseEquipment[]
-  lastFetched: number
+const EMPTY_EXERCISES: Exercise[] = []
+const EMPTY_USAGE_COUNTS: Record<string, number> = {}
+
+// Derived filter metadata is computed once per catalog snapshot (the catalog
+// array is replaced, never mutated, when it changes).
+const derivedMetadataCache = new WeakMap<
+  Exercise[],
+  { muscleGroups: string[]; equipmentTypes: ExerciseEquipment[] }
+>()
+
+function getDerivedMetadata(allExercises: Exercise[]) {
+  const cached = derivedMetadataCache.get(allExercises)
+  if (cached) return cached
+
+  const muscleSet = new Set<string>()
+  allExercises.forEach((e) => {
+    if (e.muscle_group && typeof e.muscle_group === 'string') {
+      muscleSet.add(e.muscle_group)
+    }
+  })
+
+  const derived = {
+    muscleGroups: Array.from(muscleSet).sort(),
+    // Derive equipment types from a normalized canonical set.
+    equipmentTypes: getAvailableExerciseEquipment(allExercises),
+  }
+  derivedMetadataCache.set(allExercises, derived)
+  return derived
 }
 
-// Global cache - persists across component mounts
-let globalCache: ExerciseCache | null = null
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-
-function haveSameExerciseIdsAndOrder(a: Exercise[], b: Exercise[]) {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-
-  return a.every((exercise, index) => exercise.id === b[index]?.id)
+function filterVisibleExercises(allExercises: Exercise[], userId?: string) {
+  return allExercises.filter(
+    (e) => !e.created_by || (userId && e.created_by === userId),
+  )
 }
 
-function haveSameStringValues(a: string[], b: string[]) {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-
-  return a.every((value, index) => value === b[index])
-}
-
+/**
+ * Exercise catalog + the user's usage stats, backed by the shared
+ * `exerciseLookup` cache (warmed at app start and persisted to disk), so
+ * screens render immediately instead of waiting on a network round trip.
+ */
 export function useExercises(options: UseExercisesOptions = {}) {
   const { userId, initialLoad = true } = options
 
-  const [exercises, setExercises] = useState<Exercise[]>(
-    globalCache?.exercises ?? [],
+  const catalog = useSyncExternalStore(
+    exerciseLookup.subscribe,
+    exerciseLookup.getAll,
   )
-  const [recentExercises, setRecentExercises] = useState<Exercise[]>([])
-  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({})
-  const [muscleGroups, setMuscleGroups] = useState<string[]>(
-    globalCache?.muscleGroups ?? [],
+  const exercises = useMemo(
+    () =>
+      catalog.length === 0
+        ? EMPTY_EXERCISES
+        : filterVisibleExercises(catalog, userId),
+    [catalog, userId],
   )
-  const [equipmentTypes, setEquipmentTypes] = useState<ExerciseEquipment[]>(
-    globalCache?.equipmentTypes ?? [],
+  const { muscleGroups, equipmentTypes } = getDerivedMetadata(catalog)
+
+  const [usage, setUsage] = useState<ExerciseUsage | null>(() =>
+    peekExerciseUsage(userId),
   )
-  const [isLoading, setIsLoading] = useState(!globalCache)
+  const [isFetching, setIsFetching] = useState(
+    () => initialLoad && exerciseLookup.getAll().length === 0,
+  )
   const [error, setError] = useState<Error | null>(null)
 
   const isMounted = useRef(true)
 
-  const loadExercises = useCallback(async (force = false) => {
-    // Helper to filter exercises based on visibility
-    const filterVisibleExercises = (
-      allExercises: Exercise[],
-      currentUserId?: string,
-    ) => {
-      return allExercises.filter(
-        (e) => !e.created_by || (currentUserId && e.created_by === currentUserId),
-      )
-    }
+  const loadExercises = useCallback(
+    async (force = false) => {
+      const hasData = exerciseLookup.getAll().length > 0
+      if (!hasData) setIsFetching(true)
 
-    // Check cache validity and keep stable references when the visible data did not change.
-    const now = Date.now()
-    if (!force && globalCache && now - globalCache.lastFetched < CACHE_TTL) {
-      const filtered = filterVisibleExercises(globalCache.exercises, userId)
-      setExercises((prev) =>
-        haveSameExerciseIdsAndOrder(prev, filtered) ? prev : filtered,
-      )
-      setMuscleGroups((prev) =>
-        haveSameStringValues(prev, globalCache!.muscleGroups)
-          ? prev
-          : globalCache!.muscleGroups,
-      )
-      setEquipmentTypes((prev) =>
-        haveSameStringValues(prev, globalCache!.equipmentTypes)
-          ? prev
-          : globalCache!.equipmentTypes,
-      )
-      setIsLoading(false)
-      return filtered
-    }
-
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      const allExercises = await database.exercises.getAll()
-
-      if (!isMounted.current) return []
-
-      // Derive muscle groups
-      const muscleSet = new Set<string>()
-      allExercises.forEach((e) => {
-        if (e.muscle_group && typeof e.muscle_group === 'string') {
-          muscleSet.add(e.muscle_group)
+      try {
+        setError(null)
+        await exerciseLookup.initialize(force)
+      } catch (err) {
+        if (isMounted.current) {
+          setError(
+            err instanceof Error ? err : new Error('Failed to load exercises'),
+          )
         }
-      })
-      const muscles = Array.from(muscleSet).sort()
-
-      // Derive equipment types from a normalized canonical set.
-      const equipment = getAvailableExerciseEquipment(allExercises)
-
-      // Update global cache
-      globalCache = {
-        exercises: allExercises,
-        muscleGroups: muscles,
-        equipmentTypes: equipment,
-        lastFetched: now,
+      } finally {
+        if (isMounted.current && !hasData) {
+          setIsFetching(false)
+        }
       }
 
-      const filtered = filterVisibleExercises(allExercises, userId)
-      setExercises(filtered)
-      setMuscleGroups(muscles)
-      setEquipmentTypes(equipment)
-
-      return filtered
-    } catch (err) {
-      if (!isMounted.current) return []
-      setError(
-        err instanceof Error ? err : new Error('Failed to load exercises'),
-      )
-      return []
-    } finally {
-      if (isMounted.current) {
-        setIsLoading(false)
-      }
-    }
-  }, [userId])
+      return filterVisibleExercises(exerciseLookup.getAll(), userId)
+    },
+    [userId],
+  )
 
   const loadRecentExercises = useCallback(async () => {
     if (!userId) return []
 
     try {
-      const {
-        exercises: recent,
-        usageCounts: counts,
-      } = await database.exercises.getRecentWithUsage(userId)
+      const nextUsage = await loadExerciseUsage(userId)
       if (isMounted.current) {
-        setRecentExercises(recent)
-        setUsageCounts(counts)
+        setUsage(nextUsage)
       }
-      return recent
+      return nextUsage.recentIds
+        .map((id) => exerciseLookup.getById(id))
+        .filter((exercise): exercise is Exercise => exercise !== null)
     } catch (err) {
       console.error('Error loading recent exercises:', err)
       return []
     }
   }, [userId])
+
+  const recentExercises = useMemo(() => {
+    if (!usage || usage.recentIds.length === 0 || exercises.length === 0) {
+      return EMPTY_EXERCISES
+    }
+
+    const visibleById = new Map(exercises.map((e) => [e.id, e]))
+    const resolved: Exercise[] = []
+    for (const id of usage.recentIds) {
+      const exercise = visibleById.get(id)
+      if (exercise) resolved.push(exercise)
+    }
+    return resolved
+  }, [usage, exercises])
 
   const searchExercises = useCallback(
     (
@@ -196,28 +189,20 @@ export function useExercises(options: UseExercisesOptions = {}) {
   )
 
   const addExercise = useCallback((exercise: Exercise) => {
-    setExercises((prev) => {
-      if (prev.some((e) => e.id === exercise.id)) return prev
-      const updated = [exercise, ...prev]
-      // Update global cache
-      if (globalCache) {
-        globalCache.exercises = updated
-      }
-      return updated
-    })
+    exerciseLookup.addExercise(exercise)
   }, [])
 
   const invalidateCache = useCallback(() => {
-    globalCache = null
+    exerciseLookup.invalidate()
   }, [])
 
   useEffect(() => {
     isMounted.current = true
 
     if (initialLoad) {
-      loadExercises()
+      void loadExercises()
       if (userId) {
-        loadRecentExercises()
+        void loadRecentExercises()
       }
     }
 
@@ -229,16 +214,16 @@ export function useExercises(options: UseExercisesOptions = {}) {
   return {
     exercises,
     recentExercises,
-    usageCounts,
+    usageCounts: usage?.usageCounts ?? EMPTY_USAGE_COUNTS,
     muscleGroups,
     equipmentTypes,
-    isLoading,
+    isLoading: isFetching && catalog.length === 0,
     error,
     loadExercises,
     loadRecentExercises,
     searchExercises,
     addExercise,
     invalidateCache,
-    isFromCache: !!globalCache && exercises.length > 0,
+    isFromCache: catalog.length > 0,
   }
 }
