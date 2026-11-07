@@ -283,10 +283,10 @@ export const FeedCard = memo(function FeedCard({
     )
   }
 
-  // Calculate carousel width (screen width - card padding * 2)
-  // Card padding is 20 horizontal
+  // The carousel bleeds past the card's horizontal padding so media runs
+  // edge to edge; text slides re-apply the padding themselves.
   const cardPadding = 20
-  const carouselWidth = windowWidth - cardPadding * 2
+  const carouselWidth = windowWidth
 
   const carouselRef = useRef<ScrollView>(null)
   const showRecordsSlide =
@@ -701,7 +701,11 @@ export const FeedCard = memo(function FeedCard({
   const infoSlide = (
     <View
       key="info"
-      style={{ width: carouselWidth, alignSelf: 'flex-start' }}
+      style={{
+        width: carouselWidth,
+        alignSelf: 'flex-start',
+        paddingHorizontal: cardPadding,
+      }}
       onLayout={(event) => {
         const { height } = event.nativeEvent.layout
         if (Math.abs(height - infoHeight) > 2) {
@@ -740,7 +744,11 @@ export const FeedCard = memo(function FeedCard({
       key="records"
       onPress={onCardPress}
       disabled={!onCardPress}
-      style={{ width: carouselWidth, alignSelf: 'flex-start' }}
+      style={{
+        width: carouselWidth,
+        alignSelf: 'flex-start',
+        paddingHorizontal: cardPadding,
+      }}
     >
       {recordRows === null ? (
         recordHighlights?.status === 'error' ? (
@@ -882,38 +890,42 @@ export const FeedCard = memo(function FeedCard({
                 />
               )}
             </View>
-            {(displayRoutine || (workoutSong && !isPending)) && (
-              <View style={styles.headerSubtitle}>
-                {displayRoutine && (
-                  <Text
-                    style={styles.routineLink}
-                    numberOfLines={1}
-                    onPress={onRoutinePress}
-                  >
-                    {displayRoutine.name} ›
+            <View style={styles.headerSubtitle}>
+              <Text style={styles.timeAgo} numberOfLines={1}>
+                {timeAgo}
+              </Text>
+              {(displayRoutine || (workoutSong && !isPending)) && (
+                <Text style={styles.subtitleSeparator}> • </Text>
+              )}
+              {displayRoutine && (
+                <Text
+                  style={styles.routineLink}
+                  numberOfLines={1}
+                  onPress={onRoutinePress}
+                >
+                  {displayRoutine.name} ›
+                </Text>
+              )}
+              {displayRoutine && workoutSong && !isPending && (
+                <Text style={styles.subtitleSeparator}> • </Text>
+              )}
+              {workoutSong && !isPending && (
+                <TouchableOpacity
+                  style={styles.headerMusicContainer}
+                  onPress={() => toggleMusicPreview(workoutSong)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="musical-note"
+                    size={12}
+                    color={colors.textPrimary}
+                  />
+                  <Text style={styles.headerMusicText} numberOfLines={1}>
+                    {workoutSong.artistName} • {workoutSong.trackName}
                   </Text>
-                )}
-                {displayRoutine && workoutSong && !isPending && (
-                  <Text style={styles.subtitleSeparator}> • </Text>
-                )}
-                {workoutSong && !isPending && (
-                  <TouchableOpacity
-                    style={styles.headerMusicContainer}
-                    onPress={() => toggleMusicPreview(workoutSong)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="musical-note"
-                      size={12}
-                      color={colors.textPrimary}
-                    />
-                    <Text style={styles.headerMusicText} numberOfLines={1}>
-                      {workoutSong.artistName} • {workoutSong.trackName}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -1020,7 +1032,7 @@ export const FeedCard = memo(function FeedCard({
 
       {/* Carousel or Exercises */}
       {carouselSlides.length > 1 ? (
-        <View>
+        <View style={{ marginHorizontal: -cardPadding }}>
           <ScrollView
             ref={carouselRef}
             horizontal
@@ -1123,9 +1135,6 @@ export const FeedCard = memo(function FeedCard({
                 />
               </TouchableOpacity>
             )}
-
-            <View style={{ flex: 1 }} />
-            <Text style={styles.bottomTimeAgo}>{timeAgo}</Text>
           </View>
 
           {/* Liked By Section */}
@@ -1380,14 +1389,9 @@ function createStyles(
       color: colors.textPrimary,
     },
     timeAgo: {
-      fontSize: 13,
-      color: colors.textTertiary,
-      marginTop: 2,
-    },
-    bottomTimeAgo: {
       fontSize: 12,
       color: colors.textTertiary,
-      fontWeight: '400',
+      flexShrink: 0,
     },
     headerMusicContainer: {
       flexDirection: 'row',
@@ -1645,10 +1649,7 @@ function createStyles(
       width: '100%',
       aspectRatio: 1,
       marginBottom: 12,
-      borderRadius: 12,
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.surfaceSubtle,
     },
     workoutImage: {
@@ -1729,9 +1730,9 @@ function createStyles(
       marginRight: 12,
     },
     exerciseThumbnail: {
-      width: 44,
-      height: 44,
-      borderRadius: 10,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {

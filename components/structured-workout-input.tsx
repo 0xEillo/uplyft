@@ -2430,7 +2430,7 @@ const createStyles = (
     exerciseThumbnail: {
       width: compactPreview ? 32 : 44,
       height: compactPreview ? 32 : 44,
-      borderRadius: compactPreview ? 8 : 10,
+      borderRadius: compactPreview ? 16 : 22,
     },
     exerciseNameButton: {
       flex: 1,
