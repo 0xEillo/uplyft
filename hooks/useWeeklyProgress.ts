@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { database } from '@/lib/database'
 import { LayoutAnimation } from 'react-native'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 export interface WeeklyProgressStats {
   workouts: { current: number; previous: number; diff: number }
@@ -10,7 +10,14 @@ export interface WeeklyProgressStats {
   isLoading: boolean
 }
 
-export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
+/**
+ * @param refreshToken Changing it refetches the stats. Pass `null` while the
+ * token isn't known yet: the first null -> value transition does not refetch,
+ * because the initial fetch already returned current data.
+ */
+export function useWeeklyProgress(
+  refreshToken?: number | null,
+): WeeklyProgressStats {
   const { user } = useAuth()
   const userId = user?.id
   const [isLoading, setIsLoading] = useState(true)
@@ -21,9 +28,34 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
   })
   const hasLoadedRef = useRef(false)
   const requestIdRef = useRef(0)
+  const isMountedRef = useRef(true)
+  const lastRequestRef = useRef<{
+    userId: string | undefined
+    refreshToken: number | null | undefined
+  } | null>(null)
 
   useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const lastRequest = lastRequestRef.current
+    lastRequestRef.current = { userId, refreshToken }
+    if (
+      lastRequest &&
+      lastRequest.userId === userId &&
+      lastRequest.refreshToken === null &&
+      refreshToken != null
+    ) {
+      // Token just became known; the in-flight/initial fetch is still current.
+      return
+    }
+
     if (!userId) {
+      requestIdRef.current += 1 // drop any in-flight result for the old user
       hasLoadedRef.current = false
       setStats({
         workouts: { current: 0, previous: 0, diff: 0 },
@@ -34,7 +66,6 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
       return
     }
 
-    let isActive = true
     const activeUserId = userId
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
@@ -79,7 +110,7 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
         const currentVolume = currentWeekStats?.volume_kg ?? 0
         const previousVolume = previousWeekStats?.volume_kg ?? 0
 
-        if (!isActive || requestId !== requestIdRef.current) {
+        if (!isMountedRef.current || requestId !== requestIdRef.current) {
           return
         }
 
@@ -109,7 +140,7 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
         console.error('Failed to fetch weekly progress:', error)
       } finally {
         if (
-          isActive &&
+          isMountedRef.current &&
           requestId === requestIdRef.current &&
           shouldShowLoading
         ) {
@@ -119,11 +150,8 @@ export function useWeeklyProgress(refreshToken?: number): WeeklyProgressStats {
     }
 
     void fetchStats()
-
-    return () => {
-      isActive = false
-    }
   }, [refreshToken, userId])
 
-  return { ...stats, isLoading }
+  // Stable object so memoized consumers (list header) only update on change
+  return useMemo(() => ({ ...stats, isLoading }), [stats, isLoading])
 }

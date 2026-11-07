@@ -2,8 +2,16 @@ import { FeedCard } from '@/components/feed-card'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database, OwnershipError } from '@/lib/database'
+import {
+  database,
+  OwnershipError,
+  type WorkoutCommentPreviewRow,
+} from '@/lib/database'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
+import {
+  loadFeedCommentPreviews,
+  peekFeedCommentPreviews,
+} from '@/lib/utils/feed-comment-previews'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
 import {
   consumeWorkoutSocialUpdate,
@@ -20,6 +28,9 @@ import type {
 import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
+
+const EMPTY_COMMENTS: WorkoutCommentPreviewRow[] = []
+const EMPTY_LIKERS: Partial<Profile>[] = []
 
 interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails & {
@@ -66,42 +77,61 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     workout.social?.commentCount ?? 0,
   )
   const [isLiked, setIsLiked] = useState(workout.social?.isLiked ?? false)
-  const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
-  const [comments, setComments] = useState<any[]>([])
+  const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>(
+    EMPTY_LIKERS,
+  )
+  const viewerId = user?.id ?? null
+  // When the feed query already told us the comment count we can skip the
+  // preview request entirely for posts without comments.
+  const hasKnownSocial = workout.social != null
+  // Keyed by workout id so a recycled list cell never shows the previous
+  // workout's comments while the new preview loads.
+  const [commentsState, setCommentsState] = useState<{
+    workoutId: string
+    comments: WorkoutCommentPreviewRow[]
+  }>(() => ({
+    workoutId: workout.id,
+    comments:
+      peekFeedCommentPreviews(workout.id, viewerId, commentCount) ??
+      EMPTY_COMMENTS,
+  }))
+  const comments =
+    commentsState.workoutId === workout.id
+      ? commentsState.comments
+      : peekFeedCommentPreviews(workout.id, viewerId, commentCount) ??
+        EMPTY_COMMENTS
 
   useEffect(() => {
     if (!workout.id || workout.isPending) return
-    let isMounted = true
-    const fetchComments = async () => {
-      try {
-        const fetchedComments =
-          await database.workoutComments.listWithProfilesByWorkout(workout.id, 2)
-        const commentIds = fetchedComments.map((c) => c.id)
-        const [likeCounts, likedIds] = await Promise.all([
-          database.workoutCommentLikes.getCounts(commentIds),
-          user?.id
-            ? database.workoutCommentLikes.getLikedCommentIds(commentIds, user.id)
-            : Promise.resolve([] as string[]),
-        ])
-        const likedIdSet = new Set(likedIds)
-        if (isMounted) {
-          setComments(
-            fetchedComments.map((c) => ({
-              ...c,
-              likeCount: likeCounts[c.id] || 0,
-              isLiked: likedIdSet.has(c.id),
-            })),
-          )
-        }
-      } catch (error) {
-        console.error('Error fetching comments for feed card:', error)
-      }
+    const setForWorkout = (next: WorkoutCommentPreviewRow[]) =>
+      setCommentsState((prev) =>
+        prev.workoutId === workout.id && prev.comments === next
+          ? prev
+          : { workoutId: workout.id, comments: next },
+      )
+
+    if (hasKnownSocial && commentCount === 0) {
+      setForWorkout(EMPTY_COMMENTS)
+      return
     }
-    void fetchComments()
+    const cached = peekFeedCommentPreviews(workout.id, viewerId, commentCount)
+    if (cached) {
+      setForWorkout(cached)
+      return
+    }
+
+    let isMounted = true
+    loadFeedCommentPreviews(workout.id, viewerId, commentCount)
+      .then((fetched) => {
+        if (isMounted) setForWorkout(fetched)
+      })
+      .catch((error) => {
+        console.error('Error fetching comments for feed card:', error)
+      })
     return () => {
       isMounted = false
     }
-  }, [workout.id, workout.isPending, commentCount, user?.id])
+  }, [workout.id, workout.isPending, commentCount, viewerId, hasKnownSocial])
 
   const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
     if (!user?.id) return null
@@ -126,7 +156,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   ])
 
   useEffect(() => {
-    setRecentLikers([])
+    // Functional update avoids an extra render on mount (list is already empty).
+    setRecentLikers((prev) => (prev.length === 0 ? prev : EMPTY_LIKERS))
   }, [workout.id])
 
   const applySocialUpdate = useCallback(
