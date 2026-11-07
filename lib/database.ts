@@ -129,6 +129,17 @@ type RoutineWithNullableExerciseRelations = {
   }[] | null
 }
 
+export interface WorkoutCommentPreviewRow {
+  id: string
+  workout_id: string
+  user_id: string
+  content: string
+  created_at: string
+  profile: Pick<Profile, 'id' | 'display_name' | 'user_tag' | 'avatar_url'> | null
+  likeCount: number
+  isLiked: boolean
+}
+
 export interface WeeklyProgressStatsRow {
   period: 'current' | 'previous'
   workout_count: number
@@ -1405,6 +1416,67 @@ export const database = {
       }))
     },
 
+    /**
+     * First `perWorkout` comments (oldest first) for many workouts in a single
+     * request, with commenter profile and comment likes embedded. Replaces the
+     * per-card listWithProfilesByWorkout + like-count + liked-ids round trips.
+     */
+    async getPreviewsForWorkouts(
+      workoutIds: string[],
+      viewerId: string | null,
+      perWorkout = 2,
+    ): Promise<Record<string, WorkoutCommentPreviewRow[]>> {
+      const result: Record<string, WorkoutCommentPreviewRow[]> = {}
+      if (workoutIds.length === 0) return result
+
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(
+          `
+          id,
+          workout_comments (
+            id,
+            workout_id,
+            user_id,
+            content,
+            created_at,
+            profile:profiles!workout_comments_user_id_fkey (id, display_name, user_tag, avatar_url),
+            workout_comment_likes (user_id)
+          )
+        `,
+        )
+        .in('id', workoutIds)
+        .order('created_at', {
+          ascending: true,
+          referencedTable: 'workout_comments',
+        })
+        .limit(perWorkout, { referencedTable: 'workout_comments' })
+
+      if (error) throw error
+
+      for (const row of (data || []) as unknown as {
+        id: string
+        workout_comments?: (Omit<
+          WorkoutCommentPreviewRow,
+          'likeCount' | 'isLiked'
+        > & { workout_comment_likes?: { user_id: string }[] })[]
+      }[]) {
+        result[row.id] = (row.workout_comments || []).map(
+          ({ workout_comment_likes: likes = [], ...comment }) => ({
+            ...comment,
+            likeCount: likes.length,
+            isLiked: viewerId
+              ? likes.some((like) => like.user_id === viewerId)
+              : false,
+          }),
+        )
+      }
+      for (const id of workoutIds) {
+        result[id] = result[id] || []
+      }
+      return result
+    },
+
     async getCount(workoutId: string) {
       const { count, error } = await supabase
         .from('workout_comments')
@@ -2270,6 +2342,103 @@ export const database = {
       }))
 
       return workoutsWithProfile as WorkoutSessionWithDetails[]
+    },
+
+    /**
+     * Profile-tab feed page. Same workout payload as getRecent, plus the
+     * social metadata (like/comment counts and whether the viewer liked it)
+     * embedded in the same request so cards never fetch it themselves.
+     * The author profile is fetched in parallel instead of after the page.
+     */
+    async getProfileFeed(
+      userId: string,
+      viewerId: string,
+      limit = 10,
+      offset = 0,
+    ): Promise<FeedWorkout[]> {
+      const [sessionsResult, profileResult] = await Promise.all([
+        supabase
+          .from('workout_sessions')
+          .select(
+            `
+            *,
+            routine:workout_routines (id, name),
+            workout_exercises!inner (
+              *,
+              exercise:exercises (${EXERCISE_COLUMNS}),
+              sets!inner (*)
+            ),
+            like_count:workout_likes (count),
+            comment_count:workout_comments (count),
+            viewer_like:workout_likes (user_id)
+          `,
+          )
+          .eq('user_id', userId)
+          .eq('is_processing', false)
+          .eq('viewer_like.user_id', viewerId)
+          .order('date', { ascending: false })
+          .range(offset, offset + limit - 1),
+        supabase
+          .from('profiles')
+          .select(PROFILE_FEED_SELECT)
+          .eq('id', userId)
+          .maybeSingle(),
+      ])
+
+      const { data, error } = sessionsResult
+      if (error) {
+        throwIfPrivacyViolation(error)
+      }
+      if (!data || data.length === 0) {
+        return []
+      }
+      if (profileResult.error) {
+        console.error('Error fetching profile for getProfileFeed:', profileResult.error)
+      }
+
+      await hydrateMissingWorkoutExerciseRelations(data)
+
+      const readCount = (value: unknown) =>
+        Array.isArray(value) ? Number(value[0]?.count) || 0 : 0
+
+      return data.map((row) => {
+        const {
+          like_count: likeCountRows,
+          comment_count: commentCountRows,
+          viewer_like: viewerLikeRows,
+          ...workout
+        } = row as typeof row & {
+          like_count?: { count: number }[]
+          comment_count?: { count: number }[]
+          viewer_like?: { user_id: string }[]
+        }
+        return {
+          ...workout,
+          profile: profileResult.data || undefined,
+          social: {
+            likeCount: readCount(likeCountRows),
+            commentCount: readCount(commentCountRows),
+            isLiked: Array.isArray(viewerLikeRows) && viewerLikeRows.length > 0,
+          },
+        }
+      }) as unknown as FeedWorkout[]
+    },
+
+    /**
+     * Dates of a user's workouts since `since` (date column only), used for
+     * the profile "this week" count and activity dots.
+     */
+    async getDatesSince(userId: string, since: Date): Promise<string[]> {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select('date')
+        .eq('user_id', userId)
+        .eq('is_processing', false)
+        .gte('date', since.toISOString())
+        .order('date', { ascending: true })
+
+      if (error) throw error
+      return (data || []).map((row: { date: string }) => row.date)
     },
 
     async getSocialFeed(userId: string, limit = 10, offset = 0) {
@@ -5340,6 +5509,23 @@ export const database = {
         await hydrateMissingWorkoutRoutineExerciseRelations([data])
       }
       return data as WorkoutRoutineWithDetails
+    },
+
+    /**
+     * Name of the most recently updated active routine (no exercises/sets).
+     */
+    async getLatestActiveName(userId: string): Promise<string | null> {
+      const { data, error } = await supabase
+        .from('workout_routines')
+        .select('name')
+        .eq('user_id', userId)
+        .eq('is_archived', false)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+      return (data as { name: string } | null)?.name ?? null
     },
 
     /**

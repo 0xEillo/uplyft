@@ -40,6 +40,17 @@ import type { WorkoutSong } from '@/types/music'
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 
+const PREVIEW_LIMIT = 5
+const SKELETON_ROW_WIDTHS = [60, 80, 70, 75, 65]
+const skeletonRowWidths = Array.from(
+  { length: PREVIEW_LIMIT },
+  (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
+)
+const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
+const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
+const SONG_OVERLAY_DARK = { backgroundColor: 'rgba(0, 0, 0, 0.55)' }
+const SONG_OVERLAY_LIGHT = { backgroundColor: 'rgba(255, 255, 255, 0.9)' }
+
 // Helper functions for compact formatting
 function formatDurationCompact(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -279,7 +290,7 @@ export const FeedCard = memo(function FeedCard({
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
-  const [imageLoading, setImageLoading] = useState(true)
+  const [imageLoading, setImageLoading] = useState(Boolean(coverImageUrl))
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
 
   // Skeleton shimmer animation for pending state
@@ -289,20 +300,15 @@ export const FeedCard = memo(function FeedCard({
     .current
   const [analyzingDots, setAnalyzingDots] = useState('')
 
-  const styles = createStyles(colors, isDark)
-  const songOverlayStyle = {
-    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
-  }
+  // Memoized so the useMemo blocks below (which depend on styles) actually
+  // cache across renders instead of being rebuilt every time.
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+  const songOverlayStyle = isDark ? SONG_OVERLAY_DARK : SONG_OVERLAY_LIGHT
 
-  const PREVIEW_LIMIT = 5
-  const SKELETON_ROW_WIDTHS = [60, 80, 70, 75, 65]
-  const skeletonRowWidths = Array.from(
-    { length: PREVIEW_LIMIT },
-    (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
+  const displayedExercises = useMemo(
+    () => exercises.slice(0, PREVIEW_LIMIT),
+    [exercises],
   )
-  const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
-  const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
-  const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
   const hiddenExerciseCount = Math.max(
     0,
     totalExerciseCount - displayedExercises.length,
@@ -609,9 +615,6 @@ export const FeedCard = memo(function FeedCard({
       isDark,
       hiddenExerciseCount,
       styles,
-      PREVIEW_LIMIT,
-      skeletonRowWidths,
-      MIN_CONTENT_HEIGHT,
       coverImageUrl,
     ],
   )

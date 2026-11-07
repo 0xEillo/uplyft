@@ -1,19 +1,22 @@
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useWeeklyProgress } from '@/hooks/useWeeklyProgress'
+import type { WeeklyProgressStats } from '@/hooks/useWeeklyProgress'
 import { Ionicons } from '@expo/vector-icons'
-import React from 'react'
+import React, { memo, useMemo } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 interface WeeklySnapshotProps {
-  refreshToken?: number
+  /** From useWeeklyProgress, owned by the screen so the data survives the
+   * snapshot moving between the loading view and the list header. */
+  progress: WeeklyProgressStats
 }
 
-export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
+export const WeeklySnapshot = memo(function WeeklySnapshot({
+  progress,
+}: WeeklySnapshotProps) {
   const colors = useThemedColors()
-  const { workouts, durationSeconds, volumeKg, isLoading } =
-    useWeeklyProgress(refreshToken)
+  const { workouts, durationSeconds, volumeKg, isLoading } = progress
 
-  const styles = createStyles(colors)
+  const styles = useMemo(() => createStyles(colors), [colors])
 
   if (isLoading) {
     return (
@@ -165,7 +168,7 @@ export function WeeklySnapshot({ refreshToken }: WeeklySnapshotProps) {
       </View>
     </View>
   )
-}
+})
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
