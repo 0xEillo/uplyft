@@ -8,6 +8,7 @@ import {
 import type {
   OverallStrengthGroup,
   OverallStrengthGroupBreakdown,
+  StrengthHistorySession,
 } from '@/lib/overall-strength-score'
 import {
   buildDisplayStrengthGroupData,
@@ -94,6 +95,9 @@ export function useStrengthData() {
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
   const [best1RMSnapshotByExerciseId, setBest1RMSnapshotByExerciseId] =
     useState<Record<string, ExerciseBest1RMSnapshot>>({})
+  const [strengthSessions, setStrengthSessions] = useState<
+    StrengthHistorySession[] | undefined
+  >(undefined)
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -116,6 +120,7 @@ export function useStrengthData() {
         })
 
       setProfile(strengthContext.profile)
+      setStrengthSessions(strengthContext.sessions)
       setBest1RMSnapshotByExerciseId(
         mergedStrengthContext.best1RMSnapshotByExerciseId,
       )
@@ -235,6 +240,7 @@ export function useStrengthData() {
         strengthGender: getStrengthGender(profile.gender),
         exercises: exerciseData,
         best1RMSnapshotByExerciseId,
+        sessions: strengthSessions,
       },
     })
 
@@ -259,7 +265,13 @@ export function useStrengthData() {
       lastIncreaseAt,
       groupBreakdown: currentResult.groupBreakdown,
     }
-  }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
+  }, [
+    best1RMSnapshotByExerciseId,
+    exerciseData,
+    profile?.gender,
+    profile?.weight_kg,
+    strengthSessions,
+  ])
 
   const displayMuscleGroups = useMemo((): MuscleGroupData[] => {
     if (!overallLevel || exerciseData.length === 0) {

@@ -6,6 +6,7 @@ import {
   type OverallStrengthBest1RMSnapshot,
   type OverallStrengthExerciseInput,
   type OverallStrengthScoreDeltaForSessionResult,
+  type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
 import {
   getStrengthGender,
@@ -28,6 +29,8 @@ export interface StrengthScoreDeltaContext<
   strengthGender: StrengthGender | null
   exercises: TExercise[]
   best1RMSnapshotByExerciseId: Record<string, OverallStrengthBest1RMSnapshot>
+  /** Per-workout history used to replay the displayed score. */
+  sessions?: StrengthHistorySession[]
 }
 
 export interface StrengthScoreDeltaResult
@@ -131,8 +134,13 @@ export function calculateStrengthScoreDelta(
   },
 ): StrengthScoreDeltaResult | null {
   const { semantics, context, postedWorkoutSessionId, now } = input
-  const { profile, strengthGender, exercises, best1RMSnapshotByExerciseId } =
-    context
+  const {
+    profile,
+    strengthGender,
+    exercises,
+    best1RMSnapshotByExerciseId,
+    sessions,
+  } = context
   const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
 
   if (
@@ -163,6 +171,7 @@ export function calculateStrengthScoreDelta(
     exercises,
     best1RMSnapshotByExerciseId,
     baselineSessionId,
+    sessions,
     now,
   })
 
@@ -191,9 +200,9 @@ export async function loadStrengthScoreDeltaContext<
     ? Promise.resolve(options?.profileOverride ?? null)
     : database.profiles.getByIdOrNull(userId)
 
-  const [rawProfile, exercises, snapshots] = await Promise.all([
+  const [rawProfile, sourceData, snapshots] = await Promise.all([
     profilePromise,
-    database.stats.getMajorCompoundLiftsData(userId),
+    database.stats.getStrengthScoreSourceData(userId),
     database.stats.getExerciseCurrentAndPreviousBest1RMs(userId),
   ])
   const profile = hasProfileOverride
@@ -203,8 +212,9 @@ export async function loadStrengthScoreDeltaContext<
   return {
     profile,
     strengthGender: getStrengthGender(profile?.gender ?? null),
-    exercises: exercises as unknown as TExercise[],
+    exercises: sourceData.exercises as unknown as TExercise[],
     best1RMSnapshotByExerciseId: snapshots,
+    sessions: sourceData.sessions,
   }
 }
 

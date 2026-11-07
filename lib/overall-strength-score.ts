@@ -26,6 +26,39 @@ export interface OverallStrengthExerciseInput {
   muscleGroup?: string | null
   max1RM: number
   lastTrainedAt?: string | null
+  /**
+   * Number of workouts this lift has been logged in. Lifts trained more often
+   * count more in their muscle group. Leave undefined to treat the lift as
+   * fully established.
+   */
+  sessionCount?: number | null
+}
+
+/**
+ * One logged workout, used to replay how the strength score evolved.
+ * Sessions must be supplied in chronological order.
+ */
+export interface StrengthHistorySession {
+  sessionId: string | null
+  /** Best performance (rounded estimated 1RM in kg, or reps for rep-based lifts) per exerciseId. */
+  exerciseBests: Record<string, number>
+}
+
+export interface StrengthScoreHistoryStep {
+  sessionId: string | null
+  hadRecord: boolean
+  scoreBefore: number
+  scoreAfter: number
+  /** Unrounded score after this workout. */
+  preciseScoreAfter: number
+}
+
+export interface StrengthScoreHistoryResult {
+  /** Final result. `score`, `level`, `nextLevel` and `progress` reflect the displayed score. */
+  result: OverallStrengthScoreResult
+  steps: StrengthScoreHistoryStep[]
+  /** Result just before `captureBeforeSessionId`, when requested and found. */
+  capturedBefore: OverallStrengthScoreResult | null
 }
 
 export interface OverallStrengthBest1RMSnapshot {
@@ -81,11 +114,30 @@ export interface StrengthScoreProjectionResult {
 }
 
 export const OVERALL_STRENGTH_SCORE_CAP = 1000
-// Geometric decay for normalized weighted average across exercises in a group.
-// Each subsequent exercise gets 0.5x the weight of the previous, then all weights
-// are normalized to sum to 1. This means the group score reflects balanced strength
-// across all tracked exercises — a single outlier lift can't dominate the group.
-const SECONDARY_EXERCISE_DECAY = 0.5
+// Each muscle group's score is a weighted average of its lifts' scores.
+// A lift's weight = tier weight (EXERCISE_TIER_WEIGHTS) x training-frequency
+// weight x rank decay. Lifts are ranked by score, and each lower rank gets 0.7x
+// the weight of the one above, so stronger lifts lead without accessories
+// becoming irrelevant.
+const SECONDARY_EXERCISE_DECAY = 0.7
+
+// Multiplier applied to a lift's score. Big free-weight compounds keep a small
+// bonus; every other lift counts at its real level. Tier only reduces how much
+// a lift counts in the average, never its score.
+const EXERCISE_TIER_SCORE_MULTIPLIERS: Record<1 | 2 | 3, number> = {
+  1: 1.1,
+  2: 1,
+  3: 1,
+}
+
+// A lift's frequency weight is 1 - e^(-sessions / scale): ~0.49 after one
+// workout, ~0.86 after three, ~0.96 after five. Lifts you train regularly
+// count fully; a lift tried once counts about half.
+const TRAINING_FREQUENCY_SCALE_SESSIONS = 1.5
+
+// The displayed score may run this many points ahead of the precise score, so
+// small records can still award a whole point. Later gains pay it back.
+export const STRENGTH_SCORE_MAX_AHEAD = 3
 
 const OVERALL_GROUP_WEIGHTS: Record<OverallStrengthGroup, number> = {
   Legs: 0.24,
@@ -213,35 +265,43 @@ function buildSessionBaselineExercises(input: {
   })
 }
 
-function calculateStrengthAggregateFromScores(input: {
-  weightedExerciseScores: number[]
-  lastTrainedAt: string | null
-  now?: Date
-}): {
+interface GroupExerciseEntry {
+  score: number
+  weight: number
+}
+
+export function getTrainingFrequencyWeight(
+  sessionCount: number | null | undefined,
+): number {
+  if (sessionCount === null || sessionCount === undefined) return 1
+  if (!Number.isFinite(sessionCount)) return 1
+  const sessions = Math.max(1, sessionCount)
+  return 1 - Math.exp(-sessions / TRAINING_FREQUENCY_SCALE_SESSIONS)
+}
+
+function calculateStrengthAggregateFromScores(entries: GroupExerciseEntry[]): {
   topExerciseScore: number
   decayFactor: number
   effectiveScore: number
 } {
-  const { weightedExerciseScores } = input
-
-  const sortedScores = [...weightedExerciseScores].sort((a, b) => b - a)
-  const topExerciseScore = sortedScores[0] ?? 0
-  const weights = sortedScores.map((_, i) =>
-    Math.pow(SECONDARY_EXERCISE_DECAY, i),
+  // Rank by score; ties broken by weight so the result doesn't depend on input order.
+  const sorted = [...entries].sort(
+    (a, b) => b.score - a.score || b.weight - a.weight,
   )
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-  const groupRawScore =
-    totalWeight > 0
-      ? sortedScores.reduce((sum, s, i) => sum + s * weights[i], 0) /
-        totalWeight
-      : 0
+  const topExerciseScore = sorted[0]?.score ?? 0
 
-  const decayFactor = 1
-  const effectiveScore = groupRawScore
+  let weightedSum = 0
+  let totalWeight = 0
+  sorted.forEach((entry, rank) => {
+    const weight = entry.weight * Math.pow(SECONDARY_EXERCISE_DECAY, rank)
+    weightedSum += entry.score * weight
+    totalWeight += weight
+  })
+  const effectiveScore = totalWeight > 0 ? weightedSum / totalWeight : 0
 
   return {
     topExerciseScore: clampScore(topExerciseScore),
-    decayFactor,
+    decayFactor: 1,
     effectiveScore: clampScore(effectiveScore),
   }
 }
@@ -493,18 +553,17 @@ export function calculateOverallStrengthScore(input: {
   now?: Date
 }): OverallStrengthScoreResult {
   const { gender, bodyweightKg, exercises } = input
-  const now = input.now ?? new Date()
 
   const groupState: Record<
     OverallStrengthGroup,
-    { exerciseScores: number[]; lastTrainedAt: string | null; trackedExerciseCount: number }
+    { entries: GroupExerciseEntry[]; lastTrainedAt: string | null; trackedExerciseCount: number }
   > = {
-    Legs: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Back: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Chest: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Shoulders: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Arms: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Core: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Legs: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Back: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Chest: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Shoulders: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Arms: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
+    Core: { entries: [], lastTrainedAt: null, trackedExerciseCount: 0 },
   }
 
   let liftsTracked = 0
@@ -529,12 +588,15 @@ export function calculateOverallStrengthScore(input: {
 
     const config = exerciseNameMap.get(exercise.exerciseName)
     const tier = config?.tier ?? 3
-    const tierWeight = EXERCISE_TIER_WEIGHTS[tier]
-    const weightedPoints = points * tierWeight
 
     const state = groupState[overallGroup]
     state.trackedExerciseCount += 1
-    state.exerciseScores.push(weightedPoints)
+    state.entries.push({
+      score: points * EXERCISE_TIER_SCORE_MULTIPLIERS[tier],
+      weight:
+        EXERCISE_TIER_WEIGHTS[tier] *
+        getTrainingFrequencyWeight(exercise.sessionCount),
+    })
 
     const currentLast = asDateOrNull(state.lastTrainedAt)
     const nextLast = asDateOrNull(exercise.lastTrainedAt)
@@ -551,11 +613,7 @@ export function calculateOverallStrengthScore(input: {
     const state = groupState[group]
 
     const { topExerciseScore, decayFactor, effectiveScore } =
-      calculateStrengthAggregateFromScores({
-        weightedExerciseScores: state.exerciseScores,
-        lastTrainedAt: state.lastTrainedAt,
-        now,
-      })
+      calculateStrengthAggregateFromScores(state.entries)
     const weightedContribution = effectiveScore * weight
     totalScore += weightedContribution
 
@@ -645,6 +703,8 @@ export function calculateOverallStrengthScoreDeltaForSession(input: {
     OverallStrengthBest1RMSnapshot | undefined
   >
   baselineSessionId: string | null | undefined
+  /** Workout history. When provided, points come from the history replay. */
+  sessions?: StrengthHistorySession[]
   now?: Date
 }): OverallStrengthScoreDeltaForSessionResult {
   const {
@@ -653,8 +713,40 @@ export function calculateOverallStrengthScoreDeltaForSession(input: {
     exercises,
     best1RMSnapshotByExerciseId,
     baselineSessionId,
+    sessions,
     now,
   } = input
+
+  if (sessions) {
+    const history = calculateStrengthScoreHistory({
+      gender,
+      bodyweightKg,
+      exercises,
+      sessions,
+      captureBeforeSessionId: baselineSessionId ?? null,
+      now,
+    })
+    const currentResult = history.result
+    const step = baselineSessionId
+      ? history.steps.find((candidate) => candidate.sessionId === baselineSessionId)
+      : undefined
+    const pointsGained = step
+      ? Math.max(0, step.scoreAfter - step.scoreBefore)
+      : 0
+    // Keep "before + gained = now" so the UI's before/after numbers always add up.
+    const baselineScore = currentResult.score - pointsGained
+    const baselineSource = history.capturedBefore ?? currentResult
+
+    return {
+      currentResult,
+      baselineResult: {
+        ...baselineSource,
+        score: baselineScore,
+        ...scoreToOverallLevelProgress(baselineScore),
+      },
+      pointsGained,
+    }
+  }
 
   const currentResult = calculateOverallStrengthScore({
     gender,
@@ -685,5 +777,174 @@ export function calculateOverallStrengthScoreDeltaForSession(input: {
     currentResult,
     baselineResult,
     pointsGained,
+  }
+}
+
+/**
+ * Moves the displayed score after a workout. Every workout with a record
+ * earns at least +1, but the displayed score never falls below the rounded
+ * precise score and never runs more than STRENGTH_SCORE_MAX_AHEAD points
+ * ahead of it, so extra points are paid back by later gains.
+ *
+ * A workout with a record also never lowers the displayed score. In the rare
+ * case where it would (a weak lift gaining weight in its group), the score is
+ * held and the next workout without a record brings it back within the limit.
+ */
+export function applyStrengthScoreRounding(input: {
+  previousDisplayedScore: number
+  preciseScore: number
+  hadRecord: boolean
+}): number {
+  const { previousDisplayedScore, preciseScore, hadRecord } = input
+  const minimum = Math.round(preciseScore)
+  const maximum = Math.min(
+    OVERALL_STRENGTH_SCORE_CAP,
+    Math.max(minimum, Math.floor(preciseScore + STRENGTH_SCORE_MAX_AHEAD)),
+  )
+  const candidate = previousDisplayedScore + (hadRecord ? 1 : 0)
+  const displayed = Math.min(maximum, Math.max(minimum, candidate))
+  return hadRecord ? Math.max(previousDisplayedScore, displayed) : displayed
+}
+
+function withDisplayedScore(
+  result: OverallStrengthScoreResult,
+  displayedScore: number,
+): OverallStrengthScoreResult {
+  return {
+    ...result,
+    score: displayedScore,
+    ...scoreToOverallLevelProgress(displayedScore),
+  }
+}
+
+function isScoredExercise(exercise: OverallStrengthExerciseInput): boolean {
+  if (!hasStrengthStandards(exercise.exerciseName)) return false
+  const specificMuscle = resolveSpecificMuscleName(
+    exercise.exerciseName,
+    exercise.muscleGroup,
+  )
+  return toOverallGroup(specificMuscle) !== null
+}
+
+/**
+ * Replays the workout history in order to produce the displayed strength
+ * score. The precise score after each workout comes from
+ * calculateOverallStrengthScore; the displayed score follows it using
+ * applyStrengthScoreRounding. Replaying from history keeps every device and
+ * the server in agreement without storing extra state.
+ *
+ * `exercises` is the current state (it supplies names, muscle groups and any
+ * best not present in the sessions, e.g. one entered during onboarding).
+ */
+export function calculateStrengthScoreHistory(input: {
+  gender: StrengthGender
+  bodyweightKg: number
+  exercises: OverallStrengthExerciseInput[]
+  sessions: StrengthHistorySession[]
+  captureBeforeSessionId?: string | null
+  now?: Date
+}): StrengthScoreHistoryResult {
+  const { gender, bodyweightKg, exercises, sessions, captureBeforeSessionId, now } =
+    input
+
+  const exerciseById = new Map(
+    exercises.map((exercise) => [exercise.exerciseId, exercise]),
+  )
+  const scoredExerciseIds = new Set(
+    exercises.filter(isScoredExercise).map((exercise) => exercise.exerciseId),
+  )
+
+  const bestInSessions = new Map<string, number>()
+  sessions.forEach((session) => {
+    Object.entries(session.exerciseBests).forEach(([exerciseId, value]) => {
+      if (!exerciseById.has(exerciseId) || !(value > 0)) return
+      bestInSessions.set(
+        exerciseId,
+        Math.max(bestInSessions.get(exerciseId) ?? 0, value),
+      )
+    })
+  })
+
+  // Bests that never appear in a logged workout (e.g. onboarding) are known
+  // from the start.
+  const bestByExerciseId = new Map<string, number>()
+  const sessionCountByExerciseId = new Map<string, number>()
+  exercises.forEach((exercise) => {
+    if (exercise.max1RM > (bestInSessions.get(exercise.exerciseId) ?? 0)) {
+      bestByExerciseId.set(exercise.exerciseId, exercise.max1RM)
+    }
+  })
+
+  const buildState = (): OverallStrengthExerciseInput[] =>
+    Array.from(bestByExerciseId.entries()).map(([exerciseId, best]) => {
+      const exercise = exerciseById.get(exerciseId) as OverallStrengthExerciseInput
+      return {
+        ...exercise,
+        max1RM: best,
+        sessionCount:
+          exercise.sessionCount === null || exercise.sessionCount === undefined
+            ? exercise.sessionCount
+            : sessionCountByExerciseId.get(exerciseId) ?? 0,
+      }
+    })
+  const scoreState = () =>
+    calculateOverallStrengthScore({
+      gender,
+      bodyweightKg,
+      exercises: buildState(),
+      now,
+    })
+
+  let currentResult = scoreState()
+  let displayedScore = Math.round(getPreciseOverallScore(currentResult))
+  let capturedBefore: OverallStrengthScoreResult | null = null
+  const steps: StrengthScoreHistoryStep[] = []
+
+  sessions.forEach((session) => {
+    if (
+      captureBeforeSessionId &&
+      session.sessionId === captureBeforeSessionId
+    ) {
+      capturedBefore = withDisplayedScore(currentResult, displayedScore)
+    }
+
+    let changed = false
+    let hadRecord = false
+    Object.entries(session.exerciseBests).forEach(([exerciseId, value]) => {
+      if (!exerciseById.has(exerciseId) || !(value > 0)) return
+      changed = true
+      sessionCountByExerciseId.set(
+        exerciseId,
+        (sessionCountByExerciseId.get(exerciseId) ?? 0) + 1,
+      )
+      if (value > (bestByExerciseId.get(exerciseId) ?? 0)) {
+        bestByExerciseId.set(exerciseId, value)
+        if (scoredExerciseIds.has(exerciseId)) hadRecord = true
+      }
+    })
+
+    const scoreBefore = displayedScore
+    if (changed) {
+      currentResult = scoreState()
+      displayedScore = applyStrengthScoreRounding({
+        previousDisplayedScore: displayedScore,
+        preciseScore: getPreciseOverallScore(currentResult),
+        hadRecord,
+      })
+    }
+
+    steps.push({
+      sessionId: session.sessionId,
+      hadRecord,
+      scoreBefore,
+      scoreAfter: displayedScore,
+      preciseScoreAfter: getPreciseOverallScore(currentResult),
+    })
+  })
+
+  return {
+    result: withDisplayedScore(currentResult, displayedScore),
+    steps,
+    capturedBefore,
   }
 }

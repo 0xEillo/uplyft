@@ -10,7 +10,9 @@ import {
     getStrengthLevelTargetPerformance,
     scoreToOverallLevelProgress,
 } from '../lib/overall-strength-score'
-import { EXERCISE_TIER_WEIGHTS } from '../lib/exercise-standards-config'
+
+// Big free-weight compounds (tier 1) keep a 10% bonus on their score.
+const TIER_1_SCORE_BONUS = 1.1
 
 describe('overall strength score', () => {
   test('interpolates below beginner threshold', () => {
@@ -135,9 +137,9 @@ describe('overall strength score', () => {
     })
 
     expect(overall.liftsTracked).toBe(6)
-    expect(overall.score).toBe(442) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
+    expect(overall.score).toBe(454) // weighted aggregation across Legs, Back, Chest, Shoulders, Arms (Core empty)
     expect(overall.groupBreakdown.Chest.topExerciseScore).toBeCloseTo(
-      chestBest * EXERCISE_TIER_WEIGHTS[1],
+      chestBest * TIER_1_SCORE_BONUS,
       5,
     )
   })
@@ -170,7 +172,7 @@ describe('overall strength score', () => {
     })
 
     const expected = Math.round(
-      chestPoints * EXERCISE_TIER_WEIGHTS[1] * 0.19,
+      chestPoints * TIER_1_SCORE_BONUS * 0.19,
     )
 
     expect(overall.groupBreakdown.Chest.decayFactor).toBe(1)

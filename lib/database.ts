@@ -13,7 +13,10 @@ import {
   getLeaderboardExercises,
   isRepBasedExercise,
 } from '@/lib/exercise-standards-config'
-import { calculateOverallStrengthScore } from '@/lib/overall-strength-score'
+import {
+  calculateStrengthScoreHistory,
+  type StrengthHistorySession,
+} from '@/lib/overall-strength-score'
 import { estimateOneRepMaxKg, getStrengthGender } from '@/lib/strength-progress'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
@@ -324,7 +327,8 @@ const refreshProfileStrengthCache = async (userId: string) => {
     return cacheBase
   }
 
-  const exercises = await database.stats.getMajorCompoundLiftsData(userId)
+  const { exercises, sessions } =
+    await database.stats.getStrengthScoreSourceData(userId)
 
   if (exercises.length === 0) {
     const { error } = await supabase
@@ -336,10 +340,11 @@ const refreshProfileStrengthCache = async (userId: string) => {
     return cacheBase
   }
 
-  const result = calculateOverallStrengthScore({
+  const { result } = calculateStrengthScoreHistory({
     gender: strengthGender,
     bodyweightKg,
     exercises,
+    sessions,
   })
 
   const cachedStrength = {
@@ -3665,10 +3670,20 @@ export const database = {
     },
 
     async getMajorCompoundLiftsData(userId: string) {
+      const { exercises } = await this.getStrengthScoreSourceData(userId)
+      return exercises
+    },
+
+    /**
+     * Loads every strength-standards lift the user has logged, plus a
+     * per-workout history of their bests used to replay the strength score.
+     */
+    async getStrengthScoreSourceData(userId: string) {
       const { data, error } = await supabase
         .from('workout_sessions')
         .select(
           `
+          id,
           date,
           created_at,
           workout_exercises!inner (
@@ -3686,6 +3701,7 @@ export const database = {
       if (error) throw error
 
       interface CompoundLiftSessionRow {
+        id: string
         date: string
         created_at: string
         workout_exercises?: {
@@ -3718,14 +3734,21 @@ export const database = {
           gifUrl: string | null
           max1RM: number
           lastTrainedAt: string | null
+          sessionCount: number
           recordsByWeight: Map<
             number,
             { maxReps: number; date: string; estimated1RM: number }
           >
         }
       >()
+      const sessionHistory: (StrengthHistorySession & {
+        performedAt: number
+        createdAt: number
+      })[] = []
 
       ;((data as unknown) as CompoundLiftSessionRow[]).forEach((session) => {
+        const sessionBests: Record<string, number> = {}
+
         session.workout_exercises?.forEach((workoutExercise) => {
           const exercise = Array.isArray(workoutExercise.exercise)
             ? workoutExercise.exercise[0]
@@ -3745,6 +3768,7 @@ export const database = {
               gifUrl: exercise.gif_url || canonicalGifUrl,
               max1RM: 0,
               lastTrainedAt: session.created_at,
+              sessionCount: 0,
               recordsByWeight: new Map(),
             })
           }
@@ -3776,6 +3800,9 @@ export const database = {
             if (rounded1RM > current.max1RM) {
               current.max1RM = rounded1RM
             }
+            if (rounded1RM > (sessionBests[workoutExercise.exercise_id] ?? 0)) {
+              sessionBests[workoutExercise.exercise_id] = rounded1RM
+            }
 
             const weightKey = isRepBased ? 0 : set.weight!
             const existingRecord = current.recordsByWeight.get(weightKey)
@@ -3788,14 +3815,30 @@ export const database = {
             }
           })
         })
+
+        const exerciseIds = Object.keys(sessionBests)
+        if (exerciseIds.length === 0) return
+        exerciseIds.forEach((exerciseId) => {
+          const tracked = exerciseMap.get(exerciseId)
+          if (tracked) tracked.sessionCount += 1
+        })
+        const createdAt = new Date(session.created_at).getTime()
+        const performedAt = new Date(session.date || session.created_at).getTime()
+        sessionHistory.push({
+          sessionId: session.id,
+          exerciseBests: sessionBests,
+          performedAt: Number.isFinite(performedAt) ? performedAt : createdAt,
+          createdAt,
+        })
       })
 
-      return Array.from(exerciseMap.entries()).map(([exerciseId, value]) => ({
+      const exercises = Array.from(exerciseMap.entries()).map(([exerciseId, value]) => ({
         exerciseId,
         exerciseName: value.exerciseName,
         muscleGroup: value.muscleGroup,
         max1RM: value.max1RM,
         lastTrainedAt: value.lastTrainedAt,
+        sessionCount: value.sessionCount,
         gifUrl: value.gifUrl,
         records: Array.from(value.recordsByWeight.entries())
           .map(([weight, record]) => ({
@@ -3806,6 +3849,14 @@ export const database = {
           }))
           .sort((a, b) => b.weight - a.weight),
       }))
+
+      const sessions: StrengthHistorySession[] = sessionHistory
+        .sort(
+          (a, b) => a.performedAt - b.performedAt || a.createdAt - b.createdAt,
+        )
+        .map(({ sessionId, exerciseBests }) => ({ sessionId, exerciseBests }))
+
+      return { exercises, sessions }
     },
 
     async getAllUsersMax1RMs(exerciseId: string) {

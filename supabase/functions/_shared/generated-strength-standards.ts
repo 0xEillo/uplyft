@@ -599,7 +599,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
     aliases: [
       'Chest Press'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: 'T0yTjgW.gif',
     male: [
       {
@@ -1525,7 +1525,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
   {
     id: '25050a20-cd9d-4193-b681-dd7c1af27348',
     name: 'Shoulder Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'CggQhII.gif',
     male: [
       {
@@ -1771,7 +1771,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
   {
     id: '62de3610-8941-4c87-aff2-31d5da85f82f',
     name: 'Lat Pulldown (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'eYnzaCm.gif',
     male: [
       {
@@ -2439,7 +2439,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
   {
     id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
     name: 'Leg Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: '10Z2DXU.gif',
     male: [
       {
@@ -2771,7 +2771,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
   {
     id: '0ecd527a-c4ee-476c-9c02-293bfd4f7c46',
     name: 'Seated Row (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'Tq6gbK6.gif',
     male: [
       {
@@ -4886,7 +4886,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'Sled Hack Squat',
       'Machine Hack Squat'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: 'Qa55kX1.gif',
     male: [
       {
@@ -5060,7 +5060,7 @@ export const GENERATED_EXERCISES_WITH_STANDARDS = [
       'T Bar Row',
       'T-Bar Row'
     ],
-    tier: 3,
+    tier: 2,
     gifUrl: 'aaXr7ld.gif',
     male: [
       {
@@ -6364,12 +6364,15 @@ export const GENERATED_EXERCISE_MUSCLE_MAPPING = {
   'Bent Over Row (Dumbbell)': 'Back',
   'Seated Row': 'Back',
   'Seated Row (Machine)': 'Back',
+  'Seated Row (Cable)': 'Back',
+  'Dumbbell Row (Dumbbell)': 'Back',
   'T Bar Row (Machine)': 'Back',
   'Shrug (Barbell)': 'Traps',
   'Shrug (Dumbbell)': 'Traps',
   'Shrug (Smith Machine)': 'Traps',
   'Rack Pull (Barbell)': 'Traps',
   'Bicep Curl (Dumbbell)': 'Biceps',
+  'Bicep Curl (Cable)': 'Biceps',
   'Hammer Curl (Dumbbell)': 'Biceps',
   'Incline Hammer Curl (Dumbbell)': 'Biceps',
   'Bicep Curl (Barbell)': 'Biceps',

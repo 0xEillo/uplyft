@@ -638,7 +638,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'd6328434-8f90-40eb-8f27-5cf26033e65d',
     name: 'Chest Press (Machine)',
     aliases: ['Chest Press'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'T0yTjgW.gif',
     male: [
       {
@@ -1579,7 +1579,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '25050a20-cd9d-4193-b681-dd7c1af27348',
     name: 'Shoulder Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'CggQhII.gif',
     male: [
       {
@@ -1831,7 +1831,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '62de3610-8941-4c87-aff2-31d5da85f82f',
     name: 'Lat Pulldown (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'eYnzaCm.gif',
     male: [
       {
@@ -2506,7 +2506,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
     name: 'Leg Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: '10Z2DXU.gif',
     male: [
       {
@@ -2843,7 +2843,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '0ecd527a-c4ee-476c-9c02-293bfd4f7c46',
     name: 'Seated Row (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'Tq6gbK6.gif',
     male: [
       {
@@ -4965,7 +4965,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '4075e4c0-aeb6-460d-9de7-98064e5fde4c',
     name: 'Hack Squat (Machine)',
     aliases: ['Hack Squat', 'Sled Hack Squat', 'Machine Hack Squat'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'Qa55kX1.gif',
     male: [
       {
@@ -5140,7 +5140,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '10d290b0-ada9-44f9-b52f-dfe13e224bd3',
     name: 'T Bar Row (Machine)',
     aliases: ['T Bar Row', 'T-Bar Row'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'aaXr7ld.gif',
     male: [
       {
@@ -6482,6 +6482,8 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Bent Over Row (Dumbbell)': 'Back',
   'Seated Row': 'Back',
   'Seated Row (Machine)': 'Back',
+  'Seated Row (Cable)': 'Back',
+  'Dumbbell Row (Dumbbell)': 'Back',
   'T Bar Row (Machine)': 'Back',
 
   // Traps
@@ -6492,6 +6494,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
+  'Bicep Curl (Cable)': 'Biceps',
   'Hammer Curl (Dumbbell)': 'Biceps',
   'Incline Hammer Curl (Dumbbell)': 'Biceps',
   'Bicep Curl (Barbell)': 'Biceps',

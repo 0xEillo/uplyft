@@ -6,7 +6,7 @@ const mockDatabase = {
     getLatestWeightEntry: jest.fn(),
   },
   stats: {
-    getMajorCompoundLiftsData: jest.fn(),
+    getStrengthScoreSourceData: jest.fn(),
     getExerciseCurrentAndPreviousBest1RMs: jest.fn(),
   },
 }
@@ -178,16 +178,19 @@ describe('strength score delta service', () => {
       gender: 'male',
       weight_kg: 88,
     } as any)
-    mockDatabase.stats.getMajorCompoundLiftsData.mockResolvedValue([
-      {
-        exerciseId: 'bench',
-        exerciseName: 'Bench Press (Barbell)',
-        muscleGroup: 'Chest',
-        max1RM: 120,
-        records: [],
-        lastTrainedAt: '2026-03-05T10:00:00.000Z',
-      },
-    ] as any)
+    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
+      exercises: [
+        {
+          exerciseId: 'bench',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: 120,
+          records: [],
+          lastTrainedAt: '2026-03-05T10:00:00.000Z',
+        },
+      ],
+      sessions: [],
+    } as any)
     mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
       bench: {
         currentBest1RM: 120,
@@ -208,7 +211,7 @@ describe('strength score delta service', () => {
     expect(context.exercises).toHaveLength(1)
     expect(mockDatabase.profiles.getByIdOrNull).not.toHaveBeenCalled()
     expect(mockDatabase.dailyLog.getLatestWeightEntry).toHaveBeenCalledWith('user-1')
-    expect(mockDatabase.stats.getMajorCompoundLiftsData).toHaveBeenCalledWith('user-1')
+    expect(mockDatabase.stats.getStrengthScoreSourceData).toHaveBeenCalledWith('user-1')
     expect(mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs).toHaveBeenCalledWith('user-1')
   })
 
@@ -218,16 +221,19 @@ describe('strength score delta service', () => {
       log_date: '2026-03-05',
       weight_kg: 95,
     } as any)
-    mockDatabase.stats.getMajorCompoundLiftsData.mockResolvedValue([
-      {
-        exerciseId: 'bench',
-        exerciseName: 'Bench Press (Barbell)',
-        muscleGroup: 'Chest',
-        max1RM: 120,
-        records: [],
-        lastTrainedAt: '2026-03-05T10:00:00.000Z',
-      },
-    ] as any)
+    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
+      exercises: [
+        {
+          exerciseId: 'bench',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: 120,
+          records: [],
+          lastTrainedAt: '2026-03-05T10:00:00.000Z',
+        },
+      ],
+      sessions: [],
+    } as any)
     mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
       bench: {
         currentBest1RM: 120,
@@ -256,24 +262,33 @@ describe('strength score delta service', () => {
       gender: 'male',
       weight_kg: 90,
     } as any)
-    mockDatabase.stats.getMajorCompoundLiftsData.mockResolvedValue([
-      {
-        exerciseId: 'bench',
-        exerciseName: 'Bench Press (Barbell)',
-        muscleGroup: 'Chest',
-        max1RM: 130,
-        records: [],
-        lastTrainedAt: '2026-03-05T10:00:00.000Z',
-      },
-      {
-        exerciseId: 'squat',
-        exerciseName: 'Squat (Barbell)',
-        muscleGroup: 'Quads',
-        max1RM: 170,
-        records: [],
-        lastTrainedAt: '2026-03-05T10:00:00.000Z',
-      },
-    ] as any)
+    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
+      exercises: [
+        {
+          exerciseId: 'bench',
+          exerciseName: 'Bench Press (Barbell)',
+          muscleGroup: 'Chest',
+          max1RM: 130,
+          sessionCount: 2,
+          records: [],
+          lastTrainedAt: '2026-03-05T10:00:00.000Z',
+        },
+        {
+          exerciseId: 'squat',
+          exerciseName: 'Squat (Barbell)',
+          muscleGroup: 'Quads',
+          max1RM: 170,
+          sessionCount: 3,
+          records: [],
+          lastTrainedAt: '2026-03-05T10:00:00.000Z',
+        },
+      ],
+      sessions: [
+        { sessionId: 'workout-first', exerciseBests: { bench: 120, squat: 165 } },
+        { sessionId: 'workout-older', exerciseBests: { squat: 170 } },
+        { sessionId: 'workout-123', exerciseBests: { bench: 130, squat: 160 } },
+      ],
+    } as any)
     mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
       bench: {
         currentBest1RM: 130,
@@ -302,7 +317,11 @@ describe('strength score delta service', () => {
     expect(overlayDelta).not.toBeNull()
     expect(cardDelta).not.toBeNull()
     expect(overlayDelta?.pointsGained).toBe(cardDelta?.pointsGained)
+    expect(overlayDelta?.pointsGained).toBeGreaterThan(0)
     expect(overlayDelta?.currentResult.level).toBe(cardDelta?.currentResult.level)
     expect(overlayDelta?.baselineSessionId).toBe(cardDelta?.baselineSessionId)
+    expect(overlayDelta!.baselineResult.score + overlayDelta!.pointsGained).toBe(
+      overlayDelta!.currentResult.score,
+    )
   })
 })
