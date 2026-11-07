@@ -5,7 +5,6 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
 import { LiquidGlassSurface } from "@/components/liquid-glass-surface";
-import { RankCalculator } from "@/components/RankCalculator";
 import { useAuth } from "@/contexts/auth-context";
 import { Image } from "expo-image";
 import { useTheme } from "@/contexts/theme-context";
@@ -1428,12 +1427,6 @@ export function StrengthBodyView({
             })}
           </View>
         </>
-
-        {/* Rank Calculator Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>Rank Calculator</Text>
-        </View>
-        <RankCalculator />
 
         {/* Share/Invite Section */}
         <View style={styles.shareSection}>

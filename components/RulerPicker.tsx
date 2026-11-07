@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { LinearGradient } from 'expo-linear-gradient'
 
 interface RulerPickerProps {
   value: number
@@ -18,8 +19,15 @@ interface RulerPickerProps {
   max: number
   step: number
   dragMultiplier?: number
-  label: string
+  /** Optional caption on the left. Without one, the value is centred. */
+  label?: string
   unit: string
+  /** Smaller header and ruler for use inside denser layouts. */
+  compact?: boolean
+  /** Horizontal spacing between ticks. Widen for short ranges. */
+  tickWidth?: number
+  /** Background colour to fade the ruler's edges into. */
+  fadeColor?: string
 }
 
 const TICK_WIDTH = 10
@@ -69,11 +77,15 @@ export function RulerPicker({
   dragMultiplier = 1,
   label,
   unit,
+  compact = false,
+  tickWidth = TICK_WIDTH,
+  fadeColor,
 }: RulerPickerProps) {
   const colors = useThemedColors()
   const { width } = useWindowDimensions()
-  const rulerWidth = Math.max(0, width - 16)
-  const sidePadding = Math.max(0, (rulerWidth - TICK_WIDTH) / 2)
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null)
+  const rulerWidth = measuredWidth ?? Math.max(0, width - 16)
+  const sidePadding = Math.max(0, (rulerWidth - tickWidth) / 2)
 
   const clampValue = useCallback(
     (next: number) => {
@@ -97,8 +109,8 @@ export function RulerPicker({
   const totalTicks = Math.floor((max - min) / step) + 1
 
   const offsetForValue = useCallback(
-    (v: number) => Math.round((clamp(v, min, max) - min) / step) * TICK_WIDTH,
-    [min, max, step],
+    (v: number) => Math.round((clamp(v, min, max) - min) / step) * tickWidth,
+    [min, max, step, tickWidth],
   )
 
   const translateX = useRef(new Animated.Value(-offsetForValue(displayValue))).current
@@ -164,7 +176,7 @@ export function RulerPicker({
       stopMomentum()
 
       const initialValueVelocity =
-        ((-velocityX * 1000) / TICK_WIDTH) * dragMultiplier * step
+        ((-velocityX * 1000) / tickWidth) * dragMultiplier * step
 
       if (Math.abs(initialValueVelocity) < MOMENTUM_STOP_SPEED) return
 
@@ -196,7 +208,7 @@ export function RulerPicker({
         const clampedFrac = clamp(fractionalValue, min, max)
         fractionalValue = clampedFrac
 
-        translateX.setValue(-((clampedFrac - min) / step) * TICK_WIDTH)
+        translateX.setValue(-((clampedFrac - min) / step) * tickWidth)
 
         const snapped = clampValue(clampedFrac)
         if (snapped !== draftValueRef.current) {
@@ -232,6 +244,7 @@ export function RulerPicker({
       step,
       stopMomentum,
       syncTranslateX,
+      tickWidth,
       translateX,
     ],
   )
@@ -260,11 +273,11 @@ export function RulerPicker({
           gestureStartValueRef.current = draftValueRef.current
         },
         onPanResponderMove: (_event, gestureState) => {
-          const rawDelta = (-gestureState.dx / TICK_WIDTH) * dragMultiplier
+          const rawDelta = (-gestureState.dx / tickWidth) * dragMultiplier
           const fractional = gestureStartValueRef.current + rawDelta * step
           const clampedFrac = clamp(fractional, min, max)
 
-          translateX.setValue(-((clampedFrac - min) / step) * TICK_WIDTH)
+          translateX.setValue(-((clampedFrac - min) / step) * tickWidth)
 
           const snapped = clampValue(clampedFrac)
           if (snapped !== draftValueRef.current) {
@@ -287,7 +300,7 @@ export function RulerPicker({
           if (wasTap) {
             const loc = event.nativeEvent as { locationX?: number }
             const distanceFromCenter = (loc.locationX ?? 0) - rulerWidth / 2
-            const tickDelta = Math.round(distanceFromCenter / TICK_WIDTH)
+            const tickDelta = Math.round(distanceFromCenter / tickWidth)
             setNextValue(draftValueRef.current + tickDelta * step)
           }
 
@@ -327,6 +340,7 @@ export function RulerPicker({
       step,
       stopMomentum,
       syncTranslateX,
+      tickWidth,
       translateX,
     ],
   )
@@ -344,17 +358,20 @@ export function RulerPicker({
     () =>
       StyleSheet.create({
         container: {
-          marginBottom: 24,
+          marginBottom: compact ? 16 : 24,
         },
         header: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'baseline',
           paddingHorizontal: 16,
-          marginBottom: 8,
+          marginBottom: compact ? 2 : 8,
+        },
+        headerCentered: {
+          justifyContent: 'center',
         },
         label: {
-          fontSize: 16,
+          fontSize: compact ? 13 : 16,
           fontWeight: '800',
           color: colors.textSecondary,
           letterSpacing: 1,
@@ -364,18 +381,18 @@ export function RulerPicker({
           alignItems: 'baseline',
         },
         value: {
-          fontSize: 48,
+          fontSize: compact ? 34 : 48,
           fontWeight: '800',
           color: colors.textPrimary,
         },
         unit: {
-          fontSize: 18,
+          fontSize: compact ? 15 : 18,
           fontWeight: '600',
           color: colors.textPrimary,
           marginLeft: 4,
         },
         rulerContainer: {
-          height: 60,
+          height: compact ? 44 : 60,
           justifyContent: 'flex-end',
           width: rulerWidth,
           alignSelf: 'center',
@@ -388,7 +405,7 @@ export function RulerPicker({
           paddingHorizontal: sidePadding,
         },
         tick: {
-          width: TICK_WIDTH,
+          width: tickWidth,
           justifyContent: 'flex-end',
           alignItems: 'center',
         },
@@ -404,6 +421,12 @@ export function RulerPicker({
         tickMinor: {
           height: 15,
         },
+        fade: {
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: Math.min(64, rulerWidth * 0.18),
+        },
         indicator: {
           position: 'absolute',
           left: rulerWidth / 2 - 1,
@@ -414,13 +437,19 @@ export function RulerPicker({
           borderRadius: 1,
         },
       }),
-    [colors, rulerWidth, sidePadding],
+    [colors, compact, rulerWidth, sidePadding, tickWidth],
   )
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.label}>{label}</Text>
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const next = Math.round(event.nativeEvent.layout.width)
+        if (next > 0 && next !== measuredWidth) setMeasuredWidth(next)
+      }}
+    >
+      <View style={[styles.header, !label && styles.headerCentered]}>
+        {!!label && <Text style={styles.label}>{label}</Text>}
         <View style={styles.valueContainer}>
           <Text style={styles.value}>{displayValue}</Text>
           <Text style={styles.unit}>{unit}</Text>
@@ -439,6 +468,24 @@ export function RulerPicker({
             tickMinorStyle={styles.tickMinor}
           />
         </Animated.View>
+        {fadeColor && (
+          <>
+            <LinearGradient
+              pointerEvents="none"
+              colors={[fadeColor, `${fadeColor}00`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.fade, { left: 0 }]}
+            />
+            <LinearGradient
+              pointerEvents="none"
+              colors={[`${fadeColor}00`, fadeColor]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.fade, { right: 0 }]}
+            />
+          </>
+        )}
         <View style={styles.indicator} pointerEvents="none" />
         <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
       </View>
