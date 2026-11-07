@@ -2,7 +2,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
@@ -171,6 +171,16 @@ export default function ExerciseDetailScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('records')
+  const navigation = useNavigation()
+
+  // iOS 26 lets you swipe back from anywhere on the screen, and that native
+  // gesture beats the JS-driven rank rulers, so a horizontal drag on a ruler
+  // can pop the screen. Limit back-swipe to the screen edge on the Rank tab.
+  useEffect(() => {
+    navigation.setOptions({
+      fullScreenGestureEnabled: activeTab === 'rank' ? false : undefined,
+    })
+  }, [activeTab, navigation])
   const [shouldExit, setShouldExit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -740,6 +750,8 @@ export default function ExerciseDetailScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
+            // The Rank tab fits on one screen; no vertical scroll or bounce.
+            scrollEnabled={activeTab !== 'rank'}
             contentContainerStyle={[
               styles.contentContainer,
               { paddingTop: insets.top + STICKY_HEIGHT },
