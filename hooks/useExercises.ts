@@ -44,6 +44,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
     globalCache?.exercises ?? [],
   )
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([])
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({})
   const [muscleGroups, setMuscleGroups] = useState<string[]>(
     globalCache?.muscleGroups ?? [],
   )
@@ -138,9 +139,13 @@ export function useExercises(options: UseExercisesOptions = {}) {
     if (!userId) return []
 
     try {
-      const recent = await database.exercises.getRecent(userId)
+      const {
+        exercises: recent,
+        usageCounts: counts,
+      } = await database.exercises.getRecentWithUsage(userId)
       if (isMounted.current) {
         setRecentExercises(recent)
+        setUsageCounts(counts)
       }
       return recent
     } catch (err) {
@@ -224,6 +229,7 @@ export function useExercises(options: UseExercisesOptions = {}) {
   return {
     exercises,
     recentExercises,
+    usageCounts,
     muscleGroups,
     equipmentTypes,
     isLoading,

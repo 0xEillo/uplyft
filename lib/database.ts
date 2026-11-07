@@ -1624,7 +1624,21 @@ export const database = {
     },
 
     async getRecent(userId: string, limit?: number) {
-      // Get recent workout sessions for the user
+      const { exercises } = await database.exercises.getRecentWithUsage(
+        userId,
+        limit,
+      )
+      return exercises
+    },
+
+    /**
+     * Unique exercises the user has performed (most recent first) along with
+     * how many workouts each exercise appeared in.
+     */
+    async getRecentWithUsage(
+      userId: string,
+      limit?: number,
+    ): Promise<{ exercises: Exercise[]; usageCounts: Record<string, number> }> {
       const { data: sessions, error: sessionsError } = await supabase
         .from('workout_sessions')
         .select(
@@ -1641,26 +1655,32 @@ export const database = {
 
       if (sessionsError) throw sessionsError
 
-      // Flatten and extract unique exercises
-      const exerciseMap = new Map<string, Exercise>()
       const recentExercises: Exercise[] = []
+      const usageCounts: Record<string, number> = {}
 
       // Iterate through sessions (newest first)
       type SessionResult = { workout_exercises?: { exercise?: Exercise }[] }
       ;((sessions as unknown) as SessionResult[])?.forEach((session) => {
-        // Sort exercises in session by created_at (though usually consistent)
-        const sessionExercises = session.workout_exercises || []
+        const seenInSession = new Set<string>()
 
-        sessionExercises.forEach((we) => {
-          if (we.exercise && !exerciseMap.has(we.exercise.id)) {
-            exerciseMap.set(we.exercise.id, we.exercise)
-            recentExercises.push(we.exercise)
+        session.workout_exercises?.forEach((we) => {
+          const exercise = we.exercise
+          if (!exercise || seenInSession.has(exercise.id)) return
+          seenInSession.add(exercise.id)
+
+          if (usageCounts[exercise.id] === undefined) {
+            usageCounts[exercise.id] = 0
+            recentExercises.push(exercise)
           }
+          usageCounts[exercise.id] += 1
         })
       })
 
-      // Sort by recency (already sorted by session date)
-      return limit !== undefined ? recentExercises.slice(0, limit) : recentExercises
+      return {
+        exercises:
+          limit !== undefined ? recentExercises.slice(0, limit) : recentExercises,
+        usageCounts,
+      }
     },
 
     async getMostFrequentMuscleGroups(userId: string, limit = 4) {

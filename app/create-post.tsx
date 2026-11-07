@@ -378,6 +378,9 @@ export default function CreatePostScreen() {
   // =============================================================================
   const [routines, setRoutines] = useState<WorkoutRoutineWithDetails[]>([])
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
+  const [exerciseUsageCounts, setExerciseUsageCounts] = useState<
+    Record<string, number>
+  >({})
   const [hasLoadedRoutines, setHasLoadedRoutines] = useState(false)
   const selectedRoutine = useMemo(
     () =>
@@ -1039,11 +1042,11 @@ export default function CreatePostScreen() {
         const [
           userRoutines,
           allExercisesList,
-          recentExercises,
+          { exercises: recentExercises, usageCounts },
         ] = await Promise.all([
           database.workoutRoutines.getAll(user.id),
           database.exercises.getAll(),
-          database.exercises.getRecent(user.id, 50), // Fetch last 50 unique recent exercises
+          database.exercises.getRecentWithUsage(user.id, 50), // Last 50 unique recent exercises + usage counts
         ])
 
         setRoutines(userRoutines)
@@ -1056,9 +1059,11 @@ export default function CreatePostScreen() {
         )
 
         setAllExercises([...recentExercises, ...otherExercises])
+        setExerciseUsageCounts(usageCounts)
       } else {
         setRoutines([])
         setAllExercises([])
+        setExerciseUsageCounts({})
       }
     } catch (error) {
       console.error('[CreatePost] Error loading data:', error)
@@ -1456,6 +1461,7 @@ export default function CreatePostScreen() {
     text: notes,
     cursorPosition,
     exercises: allExercises,
+    usageCounts: exerciseUsageCounts,
     isInputFocused: isNotesFocused,
   })
 

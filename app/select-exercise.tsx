@@ -17,6 +17,7 @@ import {
   matchesExerciseEquipmentFilter,
   normalizeExerciseEquipment,
 } from '@/lib/utils/exercise-equipment'
+import { rankExercisesByUsage } from '@/lib/utils/exercise-usage-ranking'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 import {
   isMuscleFilterAvailable,
@@ -442,6 +443,7 @@ export default function SelectExerciseScreen() {
   const {
     exercises,
     recentExercises,
+    usageCounts,
     muscleGroups,
     equipmentTypes,
     isLoading,
@@ -491,9 +493,14 @@ export default function SelectExerciseScreen() {
   const filteredExercises = useMemo(() => {
     let result = exercises
 
-    // Apply fuzzy search filter (handles typos, plurals, word order)
+    // Apply fuzzy search filter (handles typos, plurals, word order), then
+    // float the user's most-performed exercises to the top of strong matches.
     if (trimmedQuery) {
-      result = fuzzySearchExercises(result, trimmedQuery)
+      result = rankExercisesByUsage(
+        fuzzySearchExercises(result, trimmedQuery),
+        trimmedQuery,
+        usageCounts,
+      )
     }
 
     // Apply muscle group filter
@@ -526,6 +533,7 @@ export default function SelectExerciseScreen() {
     return result
   }, [
     exercises,
+    usageCounts,
     trimmedQuery,
     hasMuscleFilter,
     selectedMuscleGroups,
@@ -759,7 +767,11 @@ export default function SelectExerciseScreen() {
 
     // Apply fuzzy search filter
     if (trimmedQuery) {
-      result = fuzzySearchExercises(result, trimmedQuery)
+      result = rankExercisesByUsage(
+        fuzzySearchExercises(result, trimmedQuery),
+        trimmedQuery,
+        usageCounts,
+      )
     }
 
     // Apply muscle group filter
@@ -792,6 +804,7 @@ export default function SelectExerciseScreen() {
     return result
   }, [
     recentExercises,
+    usageCounts,
     trimmedQuery,
     hasMuscleFilter,
     selectedMuscleGroups,

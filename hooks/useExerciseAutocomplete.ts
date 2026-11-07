@@ -1,5 +1,9 @@
 import { useMemo } from 'react'
 
+import {
+  type ExerciseUsageCounts,
+  matchesAllQueryTokens,
+} from '@/lib/utils/exercise-usage-ranking'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 
 import { Exercise } from '@/types/database.types'
@@ -63,6 +67,7 @@ function rankAutocompleteMatches(
   matches: Exercise[],
   normalizedInput: string,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): Exercise[] {
   if (matches.length <= 1) return matches
 
@@ -75,6 +80,8 @@ function rankAutocompleteMatches(
   type Ranked = {
     exercise: Exercise
     originalIndex: number
+    strongMatch: boolean
+    usageCount: number
     startsWithInput: boolean
     tokenStartsWithInput: boolean
     baseFrequency: number
@@ -91,6 +98,8 @@ function rankAutocompleteMatches(
     return {
       exercise,
       originalIndex,
+      strongMatch: matchesAllQueryTokens(exercise.name, normalizedInput),
+      usageCount: usageCounts?.[exercise.id] ?? 0,
       startsWithInput: nameLower.startsWith(normalizedInput),
       tokenStartsWithInput: tokens.some((token) =>
         token.startsWith(normalizedInput),
@@ -102,6 +111,15 @@ function rankAutocompleteMatches(
   })
 
   ranked.sort((a, b) => {
+    // Every typed word matches the start of a word in the name.
+    if (a.strongMatch !== b.strongMatch) {
+      return a.strongMatch ? -1 : 1
+    }
+    // Among equally good matches, the user's most-performed exercises win
+    // (e.g. "ben" → "Bench Press (Dumbbell)" for someone who always does DB).
+    if (a.usageCount !== b.usageCount) {
+      return b.usageCount - a.usageCount
+    }
     if (a.startsWithInput !== b.startsWithInput) {
       return a.startsWithInput ? -1 : 1
     }
@@ -166,6 +184,7 @@ function getExerciseAutocompleteGroup(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): ExerciseAutocompleteGroup | null {
   if (!text || !exercises.length) return null
 
@@ -205,19 +224,24 @@ function getExerciseAutocompleteGroup(
     fuzzyMatches,
     normalizedInput,
     exercises,
+    usageCounts,
   )
 
   if (!matches.length) return null
 
   const firstMatch = matches[0]
-  
-  // Only show inline primary suggestion if it's a prefix match
-  // Otherwise the ghost text overlay won't align with what the user typed (e.g. typos)
-  const isPrefixMatch = firstMatch.name.toLowerCase().startsWith(normalizedInput)
-  
+
+  // Inline ghost text must be a prefix match, otherwise it won't align with
+  // what the user typed (e.g. typos). Use the highest-ranked prefix match so a
+  // frequently-used non-prefix match (e.g. "Incline Bench Press") ranked first
+  // doesn't suppress the completion.
+  const prefixMatch = matches.find((ex) =>
+    ex.name.toLowerCase().startsWith(normalizedInput),
+  )
+
   const primary =
-    isPrefixMatch && firstMatch.name.toLowerCase() !== normalizedInput
-      ? { name: firstMatch.name, inputLength: trimmedPrefix.length }
+    prefixMatch && prefixMatch.name.toLowerCase() !== normalizedInput
+      ? { name: prefixMatch.name, inputLength: trimmedPrefix.length }
       : null
 
   const firstParts = getExerciseNameParts(firstMatch.name)
@@ -270,8 +294,14 @@ export function getExerciseSuggestion(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): ExerciseSuggestion | null {
-  const group = getExerciseAutocompleteGroup(text, cursorPos, exercises)
+  const group = getExerciseAutocompleteGroup(
+    text,
+    cursorPos,
+    exercises,
+    usageCounts,
+  )
   return group?.primary ?? null
 }
 
@@ -299,6 +329,8 @@ interface UseExerciseAutocompleteOptions {
   text: string
   cursorPosition: number
   exercises: Exercise[]
+  /** Exercise id → number of workouts it was performed in. */
+  usageCounts?: ExerciseUsageCounts
   isInputFocused: boolean
 }
 
@@ -309,12 +341,18 @@ export function useExerciseAutocompleteGroup({
   text,
   cursorPosition,
   exercises,
+  usageCounts,
   isInputFocused,
 }: UseExerciseAutocompleteOptions): ExerciseAutocompleteGroup | null {
   return useMemo(() => {
     if (!isInputFocused) return null
-    return getExerciseAutocompleteGroup(text, cursorPosition, exercises)
-  }, [text, cursorPosition, exercises, isInputFocused])
+    return getExerciseAutocompleteGroup(
+      text,
+      cursorPosition,
+      exercises,
+      usageCounts,
+    )
+  }, [text, cursorPosition, exercises, usageCounts, isInputFocused])
 }
 
 /**
