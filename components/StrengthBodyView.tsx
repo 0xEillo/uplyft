@@ -1164,7 +1164,7 @@ export function StrengthBodyView({
                   <View style={styles.priorityMainRow}>
                     <ExerciseMediaThumbnail
                       gifUrl={exercise.gifUrl}
-                      style={styles.exerciseCardThumbnail}
+                      style={styles.priorityCardThumbnail}
                     />
                     <View style={styles.priorityExerciseTextWrap}>
                       <Text style={styles.exerciseCardName} numberOfLines={2}>
@@ -2009,6 +2009,13 @@ const createStyles = (
       width: 56,
       height: 56,
       borderRadius: 14,
+      backgroundColor: colors.bg,
+      overflow: "hidden",
+    },
+    priorityCardThumbnail: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       backgroundColor: colors.bg,
       overflow: "hidden",
     },
