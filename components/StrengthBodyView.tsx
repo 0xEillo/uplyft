@@ -4,6 +4,7 @@ import { ExerciseMediaThumbnail } from "@/components/ExerciseMedia";
 import { LevelBadge } from "@/components/LevelBadge";
 import { LifterLevelShareSheet } from "@/components/LifterLevelShareSheet";
 import { LifterLevelsSheet } from "@/components/LifterLevelsSheet";
+import { LiquidGlassSurface } from "@/components/liquid-glass-surface";
 import { RankCalculator } from "@/components/RankCalculator";
 import { useAuth } from "@/contexts/auth-context";
 import { Image } from "expo-image";
@@ -794,6 +795,17 @@ export function StrengthBodyView({
   const priorityPointsColor = getLevelColor(
     overallLevel?.balancedLevel ?? "Untrained",
   );
+  // Untrained's level colour is a neutral grey, which makes the hero read as
+  // disabled. Use primary text for the numbers and the brand colour for the
+  // progress fill until the user reaches a coloured level.
+  const isNeutralLevel =
+    !overallLevel?.balancedLevel || overallLevel.balancedLevel === "Untrained";
+  const heroAccentColor = isNeutralLevel
+    ? colors.textPrimary
+    : priorityPointsColor;
+  const heroProgressColor = isNeutralLevel
+    ? colors.brandPrimary
+    : priorityPointsColor;
 
   // Navigate to exercise detail
   const navigateToExercise = useCallback(
@@ -911,17 +923,22 @@ export function StrengthBodyView({
       <View style={styles.bodySection}>
         {/* ── SECTION 1: Gamified Hero Card ── */}
         <View style={[styles.sectionHeader, styles.sectionHeaderFirst]}>
-          <Text style={styles.sectionHeaderText}>Lifter Level</Text>
-          <TouchableOpacity
-            onPress={() => setShowShareSheet(true)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons
-              name="share-outline"
-              size={18}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
+          <Text style={styles.screenTitleText}>Lifter Level</Text>
+          {/* Same 44pt glass shell as the Home header actions. */}
+          <LiquidGlassSurface style={styles.headerActionShell}>
+            <TouchableOpacity
+              onPress={() => setShowShareSheet(true)}
+              style={styles.headerActionButton}
+              accessibilityRole="button"
+              accessibilityLabel="Share lifter level"
+            >
+              <Ionicons
+                name="share-outline"
+                size={22}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
         </View>
 
         <View style={styles.heroCard}>
@@ -933,7 +950,7 @@ export function StrengthBodyView({
                   <Text
                     style={[
                       styles.heroLevelName,
-                      { color: priorityPointsColor },
+                      { color: heroAccentColor },
                     ]}
                     numberOfLines={2}
                   >
@@ -943,7 +960,7 @@ export function StrengthBodyView({
                     <Text
                       style={[
                         styles.heroXpCurrent,
-                        { color: priorityPointsColor },
+                        { color: heroAccentColor },
                       ]}
                     >
                       {overallLevel ? Math.round(overallLevel.score) : "—"}
@@ -974,7 +991,7 @@ export function StrengthBodyView({
                       styles.heroProgressFill,
                       {
                         width: `${levelProgressPct}%` as any,
-                        backgroundColor: priorityPointsColor,
+                        backgroundColor: heroProgressColor,
                       },
                     ]}
                   />
@@ -991,6 +1008,7 @@ export function StrengthBodyView({
                   level={overallLevel?.balancedLevel ?? "Untrained"}
                   size="hero"
                   showTooltipOnPress={false}
+                  color={isNeutralLevel ? heroAccentColor : undefined}
                 />
               </TouchableOpacity>
             </View>
@@ -1022,7 +1040,17 @@ export function StrengthBodyView({
                   "World Class",
                 ] as StrengthLevel[]
               ).map((level) => (
-                <LevelBadge key={level} level={level} variant="pill" size="small" />
+                <View key={level} style={styles.heroLegendCell}>
+                  <View
+                    style={[
+                      styles.heroLegendDot,
+                      { backgroundColor: getLevelColor(level) },
+                    ]}
+                  />
+                  <Text style={styles.heroLegendLabel} numberOfLines={1}>
+                    {level}
+                  </Text>
+                </View>
               ))}
             </View>
           </View>
@@ -1116,6 +1144,7 @@ export function StrengthBodyView({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.priorityCarousel}
               contentContainerStyle={styles.priorityCarouselContent}
               snapToInterval={recommendationCardWidth + 12}
               snapToAlignment="start"
@@ -1128,6 +1157,7 @@ export function StrengthBodyView({
                   Math.round(exercise.estimatedScoreGain),
                 );
                 const targetLevel = exercise.nextLevel ?? exercise.level;
+                const gainColor = getLevelColor(targetLevel);
                 const isUntapped =
                   exercise.max1RM === 0 && exercise.level === "Untrained";
 
@@ -1154,7 +1184,7 @@ export function StrengthBodyView({
                           <Text
                             style={[
                               styles.priorityPointsValue,
-                              { color: priorityPointsColor },
+                              { color: gainColor },
                             ]}
                           >
                             +{projectedGain}
@@ -1162,7 +1192,7 @@ export function StrengthBodyView({
                           <Text
                             style={[
                               styles.priorityPointsSuffix,
-                              { color: priorityPointsColor },
+                              { color: gainColor },
                             ]}
                           >
                             pts
@@ -1714,7 +1744,7 @@ const createStyles = (
       justifyContent: "space-between",
       alignItems: "flex-start",
       paddingTop: 18,
-      paddingBottom: 14,
+      paddingBottom: 4,
     },
     heroLevelLeft: {
       flex: 1,
@@ -1726,10 +1756,10 @@ const createStyles = (
       gap: 6,
     },
     heroLevelName: {
-      fontSize: 26,
+      fontSize: 30,
       fontWeight: "800",
-      letterSpacing: -0.65,
-      lineHeight: 30,
+      letterSpacing: -0.7,
+      lineHeight: 34,
     },
     heroXpRow: {
       flexDirection: "row",
@@ -1745,13 +1775,13 @@ const createStyles = (
     heroXpTotal: {
       fontSize: 16,
       fontWeight: "600",
-      color: isDark ? "rgba(255,255,255,0.38)" : colors.textSecondary,
+      color: colors.textTertiary,
       fontVariant: ["tabular-nums"] as any,
     },
     heroXpTotalSuffix: {
       fontSize: 14,
       fontWeight: "600",
-      color: isDark ? "rgba(255,255,255,0.38)" : colors.textSecondary,
+      color: colors.textTertiary,
     },
     heroXpDelta: {
       fontSize: 13,
@@ -1770,24 +1800,57 @@ const createStyles = (
       borderRadius: 999,
     },
     heroBodyHint: {
-      fontSize: 11,
-      color: isDark ? "rgba(255,255,255,0.35)" : colors.textTertiary,
+      fontSize: 12,
+      color: colors.textTertiary,
       textAlign: "center",
       marginTop: 6,
       marginBottom: 4,
     },
+    // Two even rows of three instead of a 5 + 1 wrap.
     heroLegend: {
       flexDirection: "row",
       flexWrap: "wrap",
+      rowGap: 10,
+      paddingTop: 4,
+      paddingBottom: 16,
+      paddingLeft: 8,
+    },
+    heroLegendCell: {
+      width: "33.333%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    heroLegendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    heroLegendLabel: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: colors.textSecondary,
+      flexShrink: 1,
+    },
+    headerActionShell: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
       justifyContent: "center",
-      gap: 8,
-      paddingVertical: 10,
+    },
+    headerActionButton: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
     },
 
-    // Body Section - consistent 14px horizontal padding
+    // Body Section - 16px screen gutter; section titles add 4 to sit on the
+    // same 20px rail as the Home feed.
     bodySection: {
       flex: 1,
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       marginTop: -64,
     },
 
@@ -1797,20 +1860,32 @@ const createStyles = (
       justifyContent: "space-between",
       alignItems: "center",
       marginTop: 32,
-      marginBottom: 8,
-      paddingHorizontal: 2,
+      marginBottom: 10,
+      paddingHorizontal: 4,
     },
     sectionHeaderFirst: {
       marginTop: 16,
+      marginBottom: 14,
     },
-    sectionHeaderText: {
+    screenTitleText: {
       fontSize: 20,
       fontWeight: "600",
       color: colors.textPrimary,
       letterSpacing: -0.4,
     },
+    sectionHeaderText: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      letterSpacing: -0.4,
+    },
+    // Bleed the carousel to the screen edges so the next card peeks from the
+    // edge instead of being clipped at the gutter.
+    priorityCarousel: {
+      marginHorizontal: -16,
+    },
     priorityCarouselContent: {
-      paddingRight: 2,
+      paddingHorizontal: 16,
       paddingBottom: 2,
       gap: 12,
     },
@@ -1862,7 +1937,7 @@ const createStyles = (
       fontVariant: ["tabular-nums"],
     },
     priorityPointsSuffix: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "700",
       letterSpacing: 0.1,
     },

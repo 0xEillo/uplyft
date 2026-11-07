@@ -1,3 +1,4 @@
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { useProfile } from '@/contexts/profile-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
@@ -9,6 +10,7 @@ import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
@@ -235,32 +237,7 @@ export default function ChatScreen() {
         style={styles.header}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
-        <View style={styles.headerLeft}>
-          <Image source={coach.image} style={styles.headerAvatar} />
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {coach.name}
-            </Text>
-            <Text style={styles.headerSubtitle} numberOfLines={1}>
-              Your coach
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={handleOpenSettings}
-            style={styles.headerIconButton}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Chat settings"
-          >
-            <Ionicons
-              name="settings-outline"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
+        <LiquidGlassSurface style={styles.headerGlassButton}>
           <TouchableOpacity
             onPress={handleClose}
             style={styles.headerIconButton}
@@ -268,9 +245,24 @@ export default function ChatScreen() {
             accessibilityRole="button"
             accessibilityLabel="Close chat"
           >
-            <Ionicons name="close" size={22} color={colors.textPrimary} />
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-        </View>
+        </LiquidGlassSurface>
+
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {coach.name}
+        </Text>
+
+        {/* Coach avatar doubles as the entry point to chat settings. */}
+        <TouchableOpacity
+          onPress={handleOpenSettings}
+          style={styles.headerIconButton}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Chat settings"
+        >
+          <Image source={coach.image} style={styles.headerAvatar} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.chatContainer}>
@@ -284,6 +276,12 @@ export default function ChatScreen() {
           keyboardVerticalOffsetOverride={chatKeyboardOffset}
           autoOpenActions={shouldAutoOpenActions}
           onFreeLimitReached={handleFreeLimitReached}
+        />
+        {/* Messages dissolve under the header instead of hard-clipping. */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={[colors.bg, `${colors.bg}00`]}
+          style={styles.headerFade}
         />
       </View>
 
@@ -304,7 +302,7 @@ const createStyles = (
   StyleSheet.create({
     page: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
+      backgroundColor: colors.bg,
       paddingTop: insets.top,
     },
     header: {
@@ -312,54 +310,46 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      paddingTop: 6,
+      paddingBottom: 8,
       gap: 12,
     },
-    headerLeft: {
-      flex: 1,
-      flexDirection: 'row',
+    headerGlassButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
-      minWidth: 0,
     },
-    headerAvatar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+    headerIconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    headerTextWrap: {
+    headerTitle: {
       flex: 1,
-      minWidth: 0,
-    },
-    headerName: {
-      fontSize: 16,
+      textAlign: 'center',
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,
       letterSpacing: -0.2,
     },
-    headerSubtitle: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 1,
-    },
-    headerRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    headerIconButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.surfaceSubtle,
+    headerAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
     },
     chatContainer: {
       flex: 1,
       overflow: 'hidden',
+    },
+    headerFade: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 24,
     },
   })

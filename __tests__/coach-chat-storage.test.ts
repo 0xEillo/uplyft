@@ -252,4 +252,40 @@ describe('coach chat storage', () => {
       'Same proactive message',
     )
   })
+
+  test('keeps unstamped local replies next to the message before them', () => {
+    const merged = mergeExternalMessages(
+      [
+        {
+          id: 'user-1',
+          role: 'user',
+          content: 'Plan my week',
+          createdAt: '2026-04-30T10:00:00.000Z',
+        },
+        // Assistant replies are created locally without createdAt.
+        { id: 'reply-1', role: 'assistant', content: 'Here you go' },
+      ],
+      [
+        {
+          id: 'proactive_late',
+          role: 'assistant',
+          content: 'Later proactive message',
+          createdAt: '2026-04-30T11:00:00.000Z',
+        },
+        {
+          id: 'proactive_early',
+          role: 'assistant',
+          content: 'Earlier proactive message',
+          createdAt: '2026-04-30T09:00:00.000Z',
+        },
+      ],
+    )
+
+    expect(merged.map((message) => message.id)).toEqual([
+      'proactive_early',
+      'user-1',
+      'reply-1',
+      'proactive_late',
+    ])
+  })
 })

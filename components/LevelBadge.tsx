@@ -67,6 +67,8 @@ interface LevelBadgeProps {
   showTooltipOnPress?: boolean
   iconOnly?: boolean
   onPress?: () => void
+  /** Overrides the level colour (e.g. to avoid Untrained's grey reading as disabled). */
+  color?: string
 }
 
 export function LevelBadge({
@@ -77,8 +79,9 @@ export function LevelBadge({
   showTooltipOnPress = false,
   iconOnly = false,
   onPress,
+  color: colorOverride,
 }: LevelBadgeProps) {
-  const color = LEVEL_COLORS[level] ?? '#6B7280'
+  const color = colorOverride ?? LEVEL_COLORS[level] ?? '#6B7280'
   const [showTooltip, setShowTooltip] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const timeoutRef = useRef<any>(null)

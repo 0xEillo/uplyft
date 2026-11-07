@@ -333,7 +333,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
             activeOpacity={0.7}
           >
             <Text style={styles.previousText} numberOfLines={1}>
-              {`${set.lastWorkoutWeight}${unitDisplay} x ${set.lastWorkoutReps}`}
+              {`${set.lastWorkoutWeight} ${unitDisplay} × ${set.lastWorkoutReps}`}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -356,7 +356,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
                 isRepsFocused && styles.boxInputFocused,
               ]}
               placeholder={set.lastWorkoutDuration ? formatDurationInputValue(set.lastWorkoutDuration) : 'mm:ss'}
-              placeholderTextColor={colors.textPlaceholder}
+              placeholderTextColor={colors.textTertiary}
               showSoftInputOnFocus={false}
               keyboardType="number-pad"
               contextMenuHidden
@@ -395,7 +395,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
                 isWeightSuspicious && styles.boxInputWarning,
               ]}
               placeholder={set.lastWorkoutWeight ? set.lastWorkoutWeight : '-'}
-              placeholderTextColor={colors.textPlaceholder}
+              placeholderTextColor={colors.textTertiary}
               showSoftInputOnFocus={false}
               keyboardType="number-pad"
               contextMenuHidden
@@ -435,7 +435,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
               isRepsFocused && styles.boxInputFocused,
             ]}
             placeholder={set.lastWorkoutReps ? set.lastWorkoutReps : '-'}
-            placeholderTextColor={colors.textPlaceholder}
+            placeholderTextColor={colors.textTertiary}
             showSoftInputOnFocus={false}
             keyboardType="number-pad"
             contextMenuHidden
@@ -601,7 +601,7 @@ const WorkoutExerciseHeader = React.memo(function WorkoutExerciseHeader({
           onPress={() => onMenuPress(exerciseIndex)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textTertiary} />
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -2418,7 +2418,7 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: compactPreview ? 4 : 8,
+      marginBottom: compactPreview ? 4 : 12,
     },
     exerciseNameRow: {
       flex: 1,
@@ -2428,8 +2428,8 @@ const createStyles = (
       marginRight: 8,
     },
     exerciseThumbnail: {
-      width: compactPreview ? 32 : 40,
-      height: compactPreview ? 32 : 40,
+      width: compactPreview ? 32 : 44,
+      height: compactPreview ? 32 : 44,
       borderRadius: compactPreview ? 8 : 10,
     },
     exerciseNameButton: {
@@ -2497,15 +2497,15 @@ const createStyles = (
       width: '100%',
       paddingHorizontal: 4,
       paddingVertical: 4,
-      borderRadius: 6,
+      borderRadius: compactPreview ? 6 : 10,
     },
     setRowCompleted: {
       backgroundColor: (colors.statusSuccess || '#34C759') + '1A', // ~10% opacity green
     },
     checkmarkButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+      width: compactPreview ? 32 : 38,
+      height: compactPreview ? 32 : 38,
+      borderRadius: compactPreview ? 8 : 10,
       backgroundColor: colors.surfaceSubtle,
       justifyContent: 'center',
       alignItems: 'center',
@@ -2561,7 +2561,7 @@ const createStyles = (
     },
     boxInputPlaceholder: {
       width: compactPreview ? 52 : 60,
-      height: compactPreview ? 32 : 36,
+      height: compactPreview ? 32 : 38,
     },
     previousTouchable: {
       flex: 1,
@@ -2574,12 +2574,16 @@ const createStyles = (
       color: colors.textTertiary,
       textAlign: 'center',
     },
+    // The filled box carries the control; the border only appears for focus
+    // and warning states.
     boxInput: {
       width: compactPreview ? 52 : 60,
-      height: compactPreview ? 32 : 36,
-      borderRadius: 8,
+      height: compactPreview ? 32 : 38,
+      borderRadius: compactPreview ? 8 : 10,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: 'transparent',
+      fontVariant: ['tabular-nums'],
+      fontWeight: '600',
       backgroundColor: colors.surfaceSubtle || 'transparent',
       fontSize: compactPreview ? 15 : 17,
       color: colors.textPrimary,
@@ -2626,8 +2630,8 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      marginTop: compactPreview ? 8 : 12,
-      paddingHorizontal: 4,
+      marginTop: 8,
+      paddingHorizontal: compactPreview ? 4 : 0,
     },
     addSetButton: {
       flex: 1,
@@ -2653,9 +2657,11 @@ const createStyles = (
       borderRadius: 24,
       paddingVertical: 10,
     },
+    // Amber stays on the flame icon only, so it doesn't compete with the
+    // brand-orange duration and finish button.
     addWarmupText: {
       fontSize: 15,
-      color: colors.statusWarning,
+      color: colors.textPrimary,
       fontWeight: '600',
       marginLeft: 6,
     },
