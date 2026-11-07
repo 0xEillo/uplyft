@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
+import { ExerciseRankCalculator } from '@/components/ExerciseRankCalculator'
 import { LevelBadge } from '@/components/LevelBadge'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SlideInView } from '@/components/slide-in-view'
@@ -113,7 +114,7 @@ const formatLoggedSetSummary = (
   return '-'
 }
 
-type TabType = 'records' | 'history' | 'how_to'
+type TabType = 'records' | 'history' | 'rank'
 
 const MUSCLE_GROUPS = [
   'Chest',
@@ -715,17 +716,17 @@ export default function ExerciseDetailScreen() {
               <TouchableOpacity
                 style={[
                   styles.tab,
-                  activeTab === 'how_to' && styles.activeTab,
+                  activeTab === 'rank' && styles.activeTab,
                 ]}
-                onPress={() => setActiveTab('how_to')}
+                onPress={() => setActiveTab('rank')}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    activeTab === 'how_to' && styles.activeTabText,
+                    activeTab === 'rank' && styles.activeTabText,
                   ]}
                 >
-                  How to
+                  Rank
                 </Text>
               </TouchableOpacity>
             </View>
@@ -739,7 +740,14 @@ export default function ExerciseDetailScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + STICKY_HEIGHT }]}
+            contentContainerStyle={[
+              styles.contentContainer,
+              { paddingTop: insets.top + STICKY_HEIGHT },
+              activeTab === 'rank' && {
+                flexGrow: 1,
+                paddingBottom: insets.bottom + 8,
+              },
+            ]}
             scrollIndicatorInsets={{ top: insets.top + STICKY_HEIGHT }}
             refreshControl={
               <RefreshControl
@@ -884,67 +892,19 @@ export default function ExerciseDetailScreen() {
                 )}
               </View>
             </View>
-          ) : activeTab === 'how_to' ? (
-              <View style={styles.tabContent}>
-                  {/* Media Section */}
-                  <View style={[styles.mediaContainer, !!exercise?.created_by && { backgroundColor: '#1A1A1A' }]}>
-                      <ExerciseMedia 
-                          gifUrl={exercise?.gif_url} 
-                          mode="full" 
-                          style={styles.media}
-                          isCustom={!!exercise?.created_by}
-                      />
-                  </View>
-
-                  {/* Muscles Section */}
-                  <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>{exercise?.name}</Text>
-                  </View>
-                   <View style={styles.musclesSection}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          {exercise?.muscle_group && (
-                              <Text style={styles.musclesText}>{exercise.muscle_group}</Text>
-                          )}
-                          {exercise?.created_by && (
-                              <View style={styles.customBadge}>
-                                  <Text style={styles.customBadgeText}>Custom</Text>
-                              </View>
-                          )}
-                      </View>
-                      {exercise?.target_muscles && exercise.target_muscles.length > 0 && (
-                          <Text style={styles.musclesText}>
-                              Primary: <Text style={styles.muscleHighlight}>{exercise.target_muscles.join(', ')}</Text>
-                          </Text>
-                      )}
-                      {exercise?.secondary_muscles && exercise.secondary_muscles.length > 0 && (
-                          <Text style={styles.musclesText}>
-                              Secondary: <Text style={styles.muscleHighlightSecondary}>{exercise.secondary_muscles.join(', ')}</Text>
-                          </Text>
-                      )}
-                  </View>
-                  
-                  {/* Instructions Section */}
-                  {exercise?.instructions && exercise.instructions.length > 0 && (
-                  <>
-                      <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-                          <Text style={styles.sectionTitle}>Instructions</Text>
-                      </View>
-                      <View style={styles.instructionsContainer}>
-                          {exercise.instructions.map((step, index) => {
-                              const cleanStep = step.replace(/^Step:\d+\s*/i, '').trim()
-                              return (
-                                  <View key={index} style={styles.instructionStep}>
-                                      <View style={styles.stepNumberContainer}>
-                                          <Text style={styles.stepNumberText}>{index + 1}</Text>
-                                      </View>
-                                      <Text style={styles.stepText}>{cleanStep}</Text>
-                                  </View>
-                              )
-                          })}
-                      </View>
-                  </>
-                  )}
-              </View>
+          ) : activeTab === 'rank' ? (
+            <View style={[styles.tabContent, styles.rankTabContent]}>
+              {exercise?.name ? (
+                <ExerciseRankCalculator
+                  key={`${exercise.id}-${weightUnit}`}
+                  exerciseName={exercise.name}
+                  gender={getStrengthGender(profile?.gender)}
+                  bodyweightKg={coerceBodyweightKg(profile?.weight_kg)}
+                  bestSet={exercisePerformance.bestSet}
+                  isViewingOwnStats={isViewingOwnStats}
+                />
+              ) : null}
+            </View>
           ) : (
             <View style={styles.tabContent}>
                 <View style={styles.sectionHeader}>
@@ -1492,6 +1452,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingTop: 16,
       gap: 16,
     },
+    rankTabContent: {
+      flex: 1,
+    },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1502,9 +1465,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
-    },
-    musclesSection: {
-      gap: 4,
     },
     statsGrid: {
       backgroundColor: colors.bg,
@@ -1592,10 +1552,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         borderRadius: 4,
         overflow: 'hidden'
     },
-    howToContainer: {
-        flex: 1,
-        gap: 24
-    },
     mediaContainer: {
         aspectRatio: 6 / 5,
         backgroundColor: '#FFFFFF',
@@ -1610,50 +1566,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     sectionContainer: {
         gap: 4
-    },
-    howToTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: colors.textPrimary,
-        marginBottom: 4
-    },
-    musclesText: {
-        fontSize: 16,
-        color: colors.textSecondary
-    },
-    muscleHighlight: {
-        color: colors.textPrimary
-    },
-    muscleHighlightSecondary: {
-        color: colors.textPrimary
-    },
-    instructionsContainer: {
-        gap: 16
-    },
-    instructionStep: {
-        flexDirection: 'row',
-        gap: 16,
-        paddingRight: 8,
-    },
-    stepNumberContainer: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: colors.brandPrimary + '15',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: -2, // Align with text cap height
-    },
-    stepNumberText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.brandPrimary,
-    },
-    stepText: {
-        flex: 1,
-        fontSize: 16,
-        color: colors.textPrimary,
-        lineHeight: 24,
     },
     progressBarFill: {
         height: '100%',
@@ -1805,17 +1717,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         fontWeight: '700',
     },
 
-    customBadge: {
-        backgroundColor: '#1C1C1E',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 10,
-    },
-    customBadgeText: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: '700',
-    },
 
     // Image picker styles
     imagePickerContainer: {
