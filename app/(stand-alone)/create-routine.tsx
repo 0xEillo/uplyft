@@ -7,12 +7,17 @@ import { useAuth } from '@/contexts/auth-context'
 import { useExerciseSelection } from '@/hooks/useExerciseSelection'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { database } from '@/lib/database'
+import {
+  createRoutineWithTemplate,
+  replaceRoutineTemplate,
+  type RoutineTemplateExercise,
+} from '@/lib/routines/routine-template'
 import { supabase } from '@/lib/supabase'
 import {
   generateRandomTintColor,
   getRoutineImageUrl,
 } from '@/lib/utils/routine-images'
-import { Exercise, WorkoutRoutineExercise } from '@/types/database.types'
+import { Exercise } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { Picker } from '@react-native-picker/picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -577,6 +582,48 @@ export default function CreateRoutineScreen() {
     setIsSaving(true)
 
     try {
+      // Build (and validate) the whole template before writing anything.
+      const templateExercises: RoutineTemplateExercise[] = exercises.map(
+        (ex, exIndex) => ({
+          exercise_id: ex.exerciseId,
+          order_index: exIndex,
+          notes: ex.notes,
+          sets: ex.sets.map((set, setIndex) => {
+            const repsMin = set.repsMin.trim()
+              ? parseInt(set.repsMin.trim(), 10)
+              : null
+            const repsMax = set.repsMax.trim()
+              ? parseInt(set.repsMax.trim(), 10)
+              : null
+
+            // If only one value is provided, use it for both min and max
+            const finalMin = repsMin ?? repsMax
+            const finalMax = repsMax ?? repsMin
+
+            const restSeconds = set.restSeconds
+
+            // Validate rest seconds range
+            if (
+              restSeconds !== null &&
+              (restSeconds < 0 || restSeconds > 3600)
+            ) {
+              throw new Error(
+                `Rest time must be between 0 and 60 minutes (${
+                  ex.exerciseName
+                }, Set ${setIndex + 1})`,
+              )
+            }
+
+            return {
+              set_number: setIndex + 1,
+              reps_min: finalMin,
+              reps_max: finalMax,
+              rest_seconds: restSeconds,
+            }
+          }),
+        }),
+      )
+
       let routineIdToUse: string
 
       if (isEditMode && routineId) {
@@ -588,102 +635,25 @@ export default function CreateRoutineScreen() {
           tint_color: tintColor,
         })
 
-        // Delete existing exercises and sets (cascade will handle sets)
-        await supabase
-          .from('workout_routine_exercises')
-          .delete()
-          .eq('routine_id', routineId)
+        // Swap in the new exercises/sets; the old template is only removed
+        // once the new one is fully written.
+        await replaceRoutineTemplate(routineId, templateExercises)
 
         routineIdToUse = routineId
       } else {
-        // Create new routine
-        const routine = await database.workoutRoutines.create(
+        // Create new routine (deleted again if writing its exercises fails)
+        const { routine } = await createRoutineWithTemplate(
           user.id,
-          routineName.trim(),
           {
-            notes: routineNotes.trim() || undefined,
-            imagePath: imagePath || undefined,
-            tintColor: tintColor,
-            programId: programId || undefined,
+            name: routineName.trim(),
+            notes: routineNotes.trim() || null,
+            image_path: imagePath || null,
+            tint_color: tintColor ?? null,
+            program_id: programId || null,
           },
+          templateExercises,
         )
         routineIdToUse = routine.id
-      }
-
-      // Insert routine exercises
-      const routineExercises = exercises.map((ex, index) => ({
-        routine_id: routineIdToUse,
-        exercise_id: ex.exerciseId,
-        order_index: index,
-        notes: ex.notes,
-      }))
-
-      const {
-        data: insertedExercises,
-        error: exercisesError,
-      } = await supabase
-        .from('workout_routine_exercises')
-        .insert(routineExercises)
-        .select()
-
-      if (exercisesError) throw exercisesError
-
-      const insertedExerciseByOrder = new Map<number, string>()
-      insertedExercises?.forEach((exercise: WorkoutRoutineExercise) => {
-        if (typeof exercise.order_index === 'number') {
-          insertedExerciseByOrder.set(exercise.order_index, exercise.id)
-        }
-      })
-
-      // Insert routine sets with optional rep ranges
-      const routineSets = exercises.flatMap((ex, exIndex) => {
-        const routineExerciseId = insertedExerciseByOrder.get(exIndex)
-        if (!routineExerciseId) {
-          console.warn('[create-routine] Missing routine exercise for index', {
-            routineId: routineIdToUse,
-            exerciseIndex: exIndex,
-          })
-          return []
-        }
-        return ex.sets.map((set, setIndex) => {
-          const repsMin = set.repsMin.trim()
-            ? parseInt(set.repsMin.trim(), 10)
-            : null
-          const repsMax = set.repsMax.trim()
-            ? parseInt(set.repsMax.trim(), 10)
-            : null
-
-          // If only one value is provided, use it for both min and max
-          const finalMin = repsMin ?? repsMax
-          const finalMax = repsMax ?? repsMin
-
-          const restSeconds = set.restSeconds
-
-          // Validate rest seconds range
-          if (restSeconds !== null && (restSeconds < 0 || restSeconds > 3600)) {
-            throw new Error(
-              `Rest time must be between 0 and 60 minutes (${
-                ex.exerciseName
-              }, Set ${setIndex + 1})`,
-            )
-          }
-
-          return {
-            routine_exercise_id: routineExerciseId,
-            set_number: setIndex + 1,
-            reps_min: finalMin,
-            reps_max: finalMax,
-            rest_seconds: restSeconds,
-          }
-        })
-      })
-
-      if (routineSets.length > 0) {
-        const { error: setsError } = await supabase
-          .from('workout_routine_sets')
-          .insert(routineSets)
-
-        if (setsError) throw setsError
       }
 
       // If routine was created from an existing workout, link that workout to this routine

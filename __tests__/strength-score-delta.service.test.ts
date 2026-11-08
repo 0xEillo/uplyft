@@ -1,18 +1,7 @@
-const mockDatabase = {
-  profiles: {
-    getByIdOrNull: jest.fn(),
-  },
-  dailyLog: {
-    getLatestWeightEntry: jest.fn(),
-  },
-  stats: {
-    getStrengthScoreSourceData: jest.fn(),
-    getExerciseCurrentAndPreviousBest1RMs: jest.fn(),
-  },
-}
+const mockLoadStrengthInputs = jest.fn()
 
-jest.mock('@/lib/database', () => ({
-  database: mockDatabase,
+jest.mock('@/lib/strength-inputs', () => ({
+  loadStrengthInputs: (...args: unknown[]) => mockLoadStrengthInputs(...args),
 }))
 
 import {
@@ -23,10 +12,6 @@ import {
 } from '@/lib/strength-score-delta'
 
 describe('strength score delta service', () => {
-  beforeEach(() => {
-    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue(null)
-  })
-
   afterEach(() => {
     jest.clearAllMocks()
   })
@@ -172,97 +157,60 @@ describe('strength score delta service', () => {
     expect(delta?.currentResult.liftsTracked).toBe(1)
   })
 
-  test('loadStrengthScoreDeltaContext uses profile override when provided', async () => {
-    mockDatabase.profiles.getByIdOrNull.mockResolvedValue({
-      id: 'user-1',
-      gender: 'male',
-      weight_kg: 88,
-    } as any)
-    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
-      exercises: [
-        {
-          exerciseId: 'bench',
-          exerciseName: 'Bench Press (Barbell)',
-          muscleGroup: 'Chest',
-          max1RM: 120,
-          records: [],
-          lastTrainedAt: '2026-03-05T10:00:00.000Z',
-        },
-      ],
-      sessions: [],
-    } as any)
-    mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
+  test('loadStrengthScoreDeltaContext loads through the shared strength inputs loader', async () => {
+    const overrideProfile = { id: 'override', gender: 'male', weight_kg: 90 } as any
+    const exercises = [
+      {
+        exerciseId: 'bench',
+        exerciseName: 'Bench Press (Barbell)',
+        muscleGroup: 'Chest',
+        max1RM: 120,
+        records: [],
+        gifUrl: null,
+        lastTrainedAt: '2026-03-05T10:00:00.000Z',
+      },
+    ]
+    const snapshots = {
       bench: {
         currentBest1RM: 120,
         previousBest1RM: 110,
         lastIncreaseAt: '2026-03-05T10:00:00.000Z',
         lastIncreaseSessionId: 'workout-1',
       },
+    }
+    mockLoadStrengthInputs.mockResolvedValue({
+      profile: overrideProfile,
+      strengthGender: 'male',
+      bodyweightKg: 90,
+      exercises,
+      sessions: [],
+      best1RMSnapshotByExerciseId: snapshots,
     })
-    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue(null)
 
-    const overrideProfile = { id: 'override', gender: 'male', weight_kg: 90 } as any
     const context = await loadStrengthScoreDeltaContext('user-1', {
       profileOverride: overrideProfile,
     })
 
-    expect(context.profile).toBe(overrideProfile)
-    expect(context.strengthGender).toBe('male')
-    expect(context.exercises).toHaveLength(1)
-    expect(mockDatabase.profiles.getByIdOrNull).not.toHaveBeenCalled()
-    expect(mockDatabase.dailyLog.getLatestWeightEntry).toHaveBeenCalledWith('user-1')
-    expect(mockDatabase.stats.getStrengthScoreSourceData).toHaveBeenCalledWith('user-1')
-    expect(mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs).toHaveBeenCalledWith('user-1')
-  })
-
-  test('loadStrengthScoreDeltaContext resolves profile override weight from latest daily log', async () => {
-    mockDatabase.dailyLog.getLatestWeightEntry.mockResolvedValue({
-      user_id: 'user-1',
-      log_date: '2026-03-05',
-      weight_kg: 95,
-    } as any)
-    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
-      exercises: [
-        {
-          exerciseId: 'bench',
-          exerciseName: 'Bench Press (Barbell)',
-          muscleGroup: 'Chest',
-          max1RM: 120,
-          records: [],
-          lastTrainedAt: '2026-03-05T10:00:00.000Z',
-        },
-      ],
+    expect(mockLoadStrengthInputs).toHaveBeenCalledWith('user-1', {
+      profileOverride: overrideProfile,
+    })
+    expect(context).toEqual({
+      profile: overrideProfile,
+      strengthGender: 'male',
+      exercises,
+      best1RMSnapshotByExerciseId: snapshots,
       sessions: [],
-    } as any)
-    mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
-      bench: {
-        currentBest1RM: 120,
-        previousBest1RM: 110,
-        lastIncreaseAt: '2026-03-05T10:00:00.000Z',
-        lastIncreaseSessionId: 'workout-1',
-      },
     })
 
-    const context = await loadStrengthScoreDeltaContext('user-1', {
-      profileOverride: {
-        id: 'user-1',
-        gender: 'male',
-        weight_kg: 90,
-      } as any,
-    })
-
-    expect(context.profile?.weight_kg).toBe(95)
-    expect(mockDatabase.profiles.getByIdOrNull).not.toHaveBeenCalled()
-    expect(mockDatabase.dailyLog.getLatestWeightEntry).toHaveBeenCalledWith('user-1')
+    await loadStrengthScoreDeltaContext('user-2')
+    expect(mockLoadStrengthInputs).toHaveBeenLastCalledWith('user-2', undefined)
   })
 
   test('loadAndCalculateStrengthScoreDelta keeps posted and latest flows aligned', async () => {
-    mockDatabase.profiles.getByIdOrNull.mockResolvedValue({
-      id: 'user-1',
-      gender: 'male',
-      weight_kg: 90,
-    } as any)
-    mockDatabase.stats.getStrengthScoreSourceData.mockResolvedValue({
+    mockLoadStrengthInputs.mockResolvedValue({
+      profile: { id: 'user-1', gender: 'male', weight_kg: 90 },
+      strengthGender: 'male',
+      bodyweightKg: 90,
       exercises: [
         {
           exerciseId: 'bench',
@@ -271,6 +219,7 @@ describe('strength score delta service', () => {
           max1RM: 130,
           sessionCount: 2,
           records: [],
+          gifUrl: null,
           lastTrainedAt: '2026-03-05T10:00:00.000Z',
         },
         {
@@ -280,6 +229,7 @@ describe('strength score delta service', () => {
           max1RM: 170,
           sessionCount: 3,
           records: [],
+          gifUrl: null,
           lastTrainedAt: '2026-03-05T10:00:00.000Z',
         },
       ],
@@ -288,19 +238,19 @@ describe('strength score delta service', () => {
         { sessionId: 'workout-older', exerciseBests: { squat: 170 } },
         { sessionId: 'workout-123', exerciseBests: { bench: 130, squat: 160 } },
       ],
-    } as any)
-    mockDatabase.stats.getExerciseCurrentAndPreviousBest1RMs.mockResolvedValue({
-      bench: {
-        currentBest1RM: 130,
-        previousBest1RM: 120,
-        lastIncreaseAt: '2026-03-05T10:00:00.000Z',
-        lastIncreaseSessionId: 'workout-123',
-      },
-      squat: {
-        currentBest1RM: 170,
-        previousBest1RM: 165,
-        lastIncreaseAt: '2026-03-01T10:00:00.000Z',
-        lastIncreaseSessionId: 'workout-older',
+      best1RMSnapshotByExerciseId: {
+        bench: {
+          currentBest1RM: 130,
+          previousBest1RM: 120,
+          lastIncreaseAt: '2026-03-05T10:00:00.000Z',
+          lastIncreaseSessionId: 'workout-123',
+        },
+        squat: {
+          currentBest1RM: 170,
+          previousBest1RM: 165,
+          lastIncreaseAt: '2026-03-01T10:00:00.000Z',
+          lastIncreaseSessionId: 'workout-older',
+        },
       },
     })
 

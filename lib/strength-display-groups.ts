@@ -1,7 +1,8 @@
 import {
-  EXERCISE_MUSCLE_MAPPING,
-  getExerciseNameMap,
-} from './exercise-standards-config'
+  getStrengthExerciseTier,
+  muscleToStrengthGroup,
+  resolveExerciseSpecificMuscle,
+} from '../supabase/functions/_shared/strength-core'
 import {
   getOverallStrengthGroupLevelProgress,
   type OverallStrengthGroup,
@@ -33,7 +34,8 @@ export interface SpecificMuscleGroupData<TExercise> {
   averageScore: number
 }
 
-const exerciseNameMap = getExerciseNameMap()
+export { resolveExerciseSpecificMuscle }
+
 const REPRESENTATIVE_ANCHOR_EXERCISE_DECAY = 0.75
 const REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR = 0.95
 const REPRESENTATIVE_SUPPORT_MAX_UPLIFT = 1
@@ -52,57 +54,10 @@ export const DISPLAY_STRENGTH_GROUP_ORDER: DisplayStrengthGroup[] = [
   'Core',
 ]
 
-function mapMuscleToDisplayGroup(
-  muscle: string | null | undefined,
-): DisplayStrengthGroup | null {
-  if (!muscle) return null
-
-  switch (muscle) {
-    case 'Quads':
-    case 'Hamstrings':
-    case 'Glutes':
-    case 'Calves':
-    case 'Adductors':
-      return 'Legs'
-    case 'Back':
-    case 'Lats':
-    case 'Traps':
-    case 'Lower Back':
-      return 'Back'
-    case 'Chest':
-      return 'Chest'
-    case 'Shoulders':
-      return 'Shoulders'
-    case 'Biceps':
-    case 'Triceps':
-    case 'Forearms':
-      return 'Arms'
-    case 'Abs':
-    case 'Core':
-      return 'Core'
-    default:
-      return null
-  }
-}
-
-export function resolveExerciseSpecificMuscle(
-  exerciseName: string,
-  fallbackMuscle: string | null | undefined,
-): string | null {
-  const canonicalName = exerciseNameMap.get(exerciseName)?.name ?? exerciseName
-
-  return (
-    EXERCISE_MUSCLE_MAPPING[canonicalName] ??
-    EXERCISE_MUSCLE_MAPPING[exerciseName] ??
-    fallbackMuscle ??
-    null
-  )
-}
-
 export function resolveDatabaseMuscleToDisplayGroup(
   muscleName: string | null | undefined,
 ): DisplayStrengthGroup | null {
-  return mapMuscleToDisplayGroup(muscleName)
+  return muscleToStrengthGroup(muscleName)
 }
 
 function calculateWeightedAverage(
@@ -140,7 +95,7 @@ export function buildDisplayStrengthGroupData<
       exercise.exerciseName,
       exercise.muscleGroup,
     )
-    const group = mapMuscleToDisplayGroup(specificMuscle)
+    const group = muscleToStrengthGroup(specificMuscle)
     if (!group) return
     groupedExercises.get(group)?.push(exercise)
   })
@@ -195,8 +150,7 @@ export function buildSpecificMuscleGroupData<
       exercise.muscleGroup,
     )
 
-    const config = exerciseNameMap.get(exercise.exerciseName)
-    const tier = config?.tier ?? 3
+    const tier = getStrengthExerciseTier(exercise.exerciseName)
     const representativeScore = toLevelScore(
       strengthInfo.level,
       strengthInfo.progress,

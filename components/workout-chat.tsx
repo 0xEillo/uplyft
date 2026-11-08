@@ -31,6 +31,16 @@ import {
   convertAiPlanToRoutine,
   convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
+import {
+  type ExerciseSuggestion,
+  type FoodLogConfidence,
+  type FoodLogPayload,
+  getVisibleAssistantMessageText,
+  parseAssistantMessage,
+  parseExerciseSuggestions,
+  parseRepRange,
+  parseRepTargets,
+} from '@/lib/ai/assistant-message'
 import { trimChatMessagesForRequest } from '@/lib/ai/chat-history'
 import {
   ParsedWorkoutDisplay,
@@ -57,6 +67,10 @@ import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import {
+  createRoutineWithTemplate,
+  type RoutineTemplateExercise,
+} from '@/lib/routines/routine-template'
 import {
   resolveCalorieGoal,
 } from '@/lib/nutrition'
@@ -170,32 +184,12 @@ type StreamingResponseResult = {
   interrupted: boolean
 }
 
-type ParsedRepTargets = {
-  repsMin: number | null
-  repsMax: number | null
-}
-
-type FoodLogAction = 'log' | 'update_last'
-type FoodLogConfidence = 'low' | 'medium' | 'high'
-type FoodLogSource = 'text' | 'photo' | 'voice' | 'manual' | 'correction'
-type StatsTrend = 'up' | 'down' | 'flat'
 type ChatEquipmentPreference =
   | 'full_gym'
   | 'home_minimal'
   | 'dumbbells_only'
   | 'bodyweight'
   | 'barbell_only'
-
-interface FoodLogPayload {
-  action: FoodLogAction
-  summary: string
-  calories: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
-  confidence: FoodLogConfidence
-  source: FoodLogSource
-}
 
 interface DailyLogSummaryState {
   logDate: string
@@ -213,60 +207,6 @@ interface DailyLogSummaryState {
   }
 }
 
-const parseRepTargets = (reps: string): ParsedRepTargets => {
-  const rangeMatch = reps.match(/(\d+)\s*[-–]\s*(\d+)/)
-  if (rangeMatch) {
-    return {
-      repsMin: parseInt(rangeMatch[1], 10),
-      repsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-
-  const singleRep = parseInt(reps, 10)
-  if (!Number.isNaN(singleRep)) {
-    return {
-      repsMin: singleRep,
-      repsMax: singleRep,
-    }
-  }
-
-  return {
-    repsMin: null,
-    repsMax: null,
-  }
-}
-
-interface StatsReportMetric {
-  id: string
-  label: string
-  value: string
-  delta?: string
-  trend?: StatsTrend
-}
-
-interface StatsReportLift {
-  exercise: string
-  value: string
-  delta?: string
-  trend?: StatsTrend
-}
-
-interface StatsReportMuscle {
-  muscle_group: string
-  percentage: number
-}
-
-interface StatsReportPayload {
-  version: number
-  title?: string
-  period_label?: string
-  summary?: string
-  highlights: StatsReportMetric[]
-  top_lifts: StatsReportLift[]
-  muscle_balance: StatsReportMuscle[]
-  focus_areas: string[]
-}
-
 interface PlanningState {
   isActive: boolean
   step: 'wizard' | 'none'
@@ -275,41 +215,12 @@ interface PlanningState {
 }
 
 // Exercise suggestion for add exercise callback
-export interface ExerciseSuggestion {
-  name: string
-  sets: number
-  reps: string
-  notes?: string
-}
+export type { ExerciseSuggestion } from '@/lib/ai/assistant-message'
 
 function getExerciseSuggestionKey(suggestion: ExerciseSuggestion): string {
   return `${suggestion.name.trim().toLowerCase()}|${
     suggestion.sets
   }|${suggestion.reps.trim().toLowerCase()}`
-}
-
-function parseRepRangeFromSuggestion(
-  reps: string,
-): {
-  targetRepsMin: number | null
-  targetRepsMax: number | null
-} {
-  const trimmed = reps.trim()
-  const rangeMatch = trimmed.match(/(\d+)\s*[-–]\s*(\d+)/)
-  if (rangeMatch) {
-    return {
-      targetRepsMin: parseInt(rangeMatch[1], 10),
-      targetRepsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-
-  const singleMatch = trimmed.match(/(\d+)/)
-  if (singleMatch) {
-    const repsValue = parseInt(singleMatch[1], 10)
-    return { targetRepsMin: repsValue, targetRepsMax: repsValue }
-  }
-
-  return { targetRepsMin: null, targetRepsMax: null }
 }
 
 function normalizeWizardGoal(goal?: string | null): string | undefined {
@@ -573,10 +484,6 @@ export interface WorkoutChatProps {
 
 const MAX_IMAGES = 10
 
-const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
-const FOOD_LOG_BLOCK_REGEX = /<food_log>([\s\S]*?)<\/food_log>/i
-const STATS_REPORT_BLOCK_REGEX = /<stats_report>([\s\S]*?)<\/stats_report>/i
-
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
 
@@ -602,70 +509,6 @@ function getWelcomeMessage(coachId: string, userName?: string): string {
   }
 }
 
-// Parse exercise suggestions from AI response
-function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
-  const suggestions: ExerciseSuggestion[] = []
-
-  // 1. Try to parse JSON block first (Most robust)
-  // Match either code-blocked JSON or raw JSON array in text
-  const jsonMatch = content.match(JSON_BLOCK_REGEX)
-
-  if (jsonMatch && jsonMatch[1]) {
-    try {
-      const parsed = JSON.parse(jsonMatch[1])
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item) => {
-          if (item.name && (item.sets || item.reps)) {
-            suggestions.push({
-              name: item.name,
-              sets:
-                typeof item.sets === 'number'
-                  ? item.sets
-                  : parseInt(item.sets || '3'),
-              reps: item.reps?.toString() || '10',
-            })
-          }
-        })
-
-        // If we successfully parsed JSON, return immediately
-        if (suggestions.length > 0) return suggestions
-      }
-    } catch {
-      // Incomplete JSON during streaming is expected
-    }
-  }
-
-  // 2. Fallback to Regex patterns for plain text responses
-  const patterns = [
-    // Bullet/Plain/Bold style: Name - Sets x Reps
-    /(?:^|\n)[\s⋅•·\.-]*\**([^*\n]+?)\**\s*[-–:]\s*(\d+)\s*(?:sets?\s*[x×]\s*|x\s*)(\d+(?:-\d+)?)\s*(?:reps?)?/gi,
-
-    // Numbered Loop style: 1. Name: 3x10
-    /^\d+\.\s*([^:\n]+):\s*(\d+)\s*[x×]\s*(\d+(?:-\d+)?)/gim,
-
-    // Narrative style: "Add Bench Press - 3 sets x 10"
-    /(?:Add|Try|Include)\s+([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*)\s*[-–]\s*(\d+)\s*sets?\s*[x×]\s*(\d+(?:-\d+)?)/gi,
-  ]
-
-  for (const pattern of patterns) {
-    let match
-    while ((match = pattern.exec(content)) !== null) {
-      const name = match[1].trim()
-      const sets = parseInt(match[2], 10)
-      const reps = match[3]
-
-      // Avoid duplicates
-      if (
-        !suggestions.some((s) => s.name.toLowerCase() === name.toLowerCase())
-      ) {
-        suggestions.push({ name, sets, reps })
-      }
-    }
-  }
-
-  return suggestions
-}
-
 const getLocalDateString = (): string => {
   const now = new Date()
   const year = now.getFullYear()
@@ -673,30 +516,6 @@ const getLocalDateString = (): string => {
   const day = `${now.getDate()}`.padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-
-const stripFoodLogBlock = (content: string): string =>
-  content
-    .replace(/<food_log>[\s\S]*?<\/food_log>/gi, '')
-    .replace(/<food_log>[\s\S]*$/i, '')
-    .trim()
-
-const stripStatsReportBlock = (content: string): string =>
-  content
-    .replace(/<stats_report>[\s\S]*?<\/stats_report>/gi, '')
-    .replace(/<stats_report>[\s\S]*$/i, '')
-    .trim()
-
-const getVisibleAssistantMessageText = (content: string): string =>
-  stripStatsReportBlock(stripFoodLogBlock(content))
-    .replace(JSON_BLOCK_REGEX, '')
-    .replace(/```(?:json|).*/gs, '')
-    .replace(/\[\s*\{.*/gs, '')
-    .replace(/\{\s*"exercises".*/gs, '')
-    .replace(/\{\s*"title".*/gs, '')
-    .trim()
-
-const formatAssistantMessageForDisplay = (content: string): string =>
-  getVisibleAssistantMessageText(content)
 
 function createCoachMarkdownStyle(
   colors: ReturnType<typeof useThemedColors>,
@@ -840,154 +659,6 @@ const getStructuredPlanIntroText = ({
   }
 
   return ''
-}
-
-const toNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-const toStatsTrend = (value: unknown): StatsTrend | undefined => {
-  if (value === 'up' || value === 'down' || value === 'flat') return value
-  return undefined
-}
-
-const parseStatsReportPayload = (
-  content: string,
-): StatsReportPayload | null => {
-  const match = content.match(STATS_REPORT_BLOCK_REGEX)
-  if (!match?.[1]) return null
-
-  try {
-    const parsed = JSON.parse(match[1]) as Record<string, unknown>
-    const highlights = Array.isArray(parsed.highlights)
-      ? parsed.highlights.reduce<StatsReportMetric[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const label = toNonEmptyString(row.label)
-          const value = toNonEmptyString(row.value)
-          if (!label || !value) return acc
-          acc.push({
-            id: toNonEmptyString(row.id) || label.toLowerCase(),
-            label,
-            value,
-            delta: toNonEmptyString(row.delta) || undefined,
-            trend: toStatsTrend(row.trend),
-          })
-          return acc
-        }, [])
-      : []
-
-    const topLifts = Array.isArray(parsed.top_lifts)
-      ? parsed.top_lifts.reduce<StatsReportLift[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const exercise = toNonEmptyString(row.exercise)
-          const value = toNonEmptyString(row.value)
-          if (!exercise || !value) return acc
-          acc.push({
-            exercise,
-            value,
-            delta: toNonEmptyString(row.delta) || undefined,
-            trend: toStatsTrend(row.trend),
-          })
-          return acc
-        }, [])
-      : []
-
-    const muscleBalance = Array.isArray(parsed.muscle_balance)
-      ? parsed.muscle_balance.reduce<StatsReportMuscle[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const muscleGroup = toNonEmptyString(row.muscle_group)
-          const percentageRaw = Number(row.percentage)
-          if (!muscleGroup || !Number.isFinite(percentageRaw)) return acc
-          acc.push({
-            muscle_group: muscleGroup,
-            percentage: Math.max(0, Math.min(100, Math.round(percentageRaw))),
-          })
-          return acc
-        }, [])
-      : []
-
-    const focusAreas = Array.isArray(parsed.focus_areas)
-      ? parsed.focus_areas
-          .map((item) => toNonEmptyString(item))
-          .filter((item): item is string => Boolean(item))
-      : []
-
-    if (
-      highlights.length === 0 &&
-      topLifts.length === 0 &&
-      muscleBalance.length === 0
-    ) {
-      return null
-    }
-
-    return {
-      version:
-        typeof parsed.version === 'number' && Number.isFinite(parsed.version)
-          ? parsed.version
-          : 1,
-      title: toNonEmptyString(parsed.title) || undefined,
-      period_label: toNonEmptyString(parsed.period_label) || undefined,
-      summary: toNonEmptyString(parsed.summary) || undefined,
-      highlights: highlights.slice(0, 4),
-      top_lifts: topLifts.slice(0, 3),
-      muscle_balance: muscleBalance.slice(0, 6),
-      focus_areas: focusAreas.slice(0, 4),
-    }
-  } catch {
-    console.warn('[WorkoutChat] Failed to parse <stats_report> payload block')
-    return null
-  }
-}
-
-const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
-  const match = content.match(FOOD_LOG_BLOCK_REGEX)
-  if (!match?.[1]) return null
-
-  try {
-    const parsed = JSON.parse(match[1])
-    const action: FoodLogAction =
-      parsed?.action === 'update_last' ? 'update_last' : 'log'
-    const confidence: FoodLogConfidence =
-      parsed?.confidence === 'low' || parsed?.confidence === 'high'
-        ? parsed.confidence
-        : 'medium'
-    const source: FoodLogSource =
-      parsed?.source === 'photo' ||
-      parsed?.source === 'voice' ||
-      parsed?.source === 'manual' ||
-      parsed?.source === 'correction'
-        ? parsed.source
-        : 'text'
-
-    const summary = (parsed?.summary || '').toString().trim()
-    if (!summary) return null
-
-    const toSafe = (value: unknown) => {
-      const num = Number(value)
-      if (!Number.isFinite(num)) return 0
-      return Math.max(0, Number(num.toFixed(1)))
-    }
-
-    const payload = {
-      action,
-      summary,
-      calories: toSafe(parsed?.calories),
-      protein_g: toSafe(parsed?.protein_g),
-      carbs_g: toSafe(parsed?.carbs_g),
-      fat_g: toSafe(parsed?.fat_g),
-      confidence,
-      source,
-    }
-
-    return payload
-  } catch {
-    return null
-  }
 }
 
 const roundMacro = (value: number): number => Math.round(value)
@@ -2505,8 +2176,9 @@ export function WorkoutChat({
         )
 
         if (!alreadyExists) {
-          const { targetRepsMin, targetRepsMax } = parseRepRangeFromSuggestion(
+          const { targetRepsMin, targetRepsMax } = parseRepRange(
             suggestion.reps,
+            { single: 'anywhere' },
           )
 
           const newExercise: StructuredExerciseDraft = {
@@ -3403,22 +3075,9 @@ export function WorkoutChat({
     }[]
   }
 
-  type SavedRoutineTemplate = {
-    id: string
-    name: string
-    exercises: {
-      id: string
-      name: string
-      orderIndex: number
-      sets: {
-        setNumber: number
-        repsMin: number | null
-        repsMax: number | null
-        restSeconds: number | null
-      }[]
-    }[]
-  }
-
+  // Resolve exercise names to system exercises, then write the routine via
+  // the shared template writer (which deletes the routine if a later step
+  // fails).
   const createRoutineFromTemplate = async (
     userId: string,
     routineData: RoutineTemplateInput,
@@ -3426,112 +3085,41 @@ export function WorkoutChat({
       programId?: string
       notes?: string
     },
-  ): Promise<SavedRoutineTemplate> => {
-    let createdRoutineId: string | null = null
+  ): Promise<{ id: string; name: string }> => {
+    const exerciseNames = routineData.exercises.map((exercise) => exercise.name)
+    const { data: dbExercises, error: resolveError } = await supabase
+      .from('exercises')
+      .select('id, name')
+      .in('name', exerciseNames)
+      .is('created_by', null)
 
-    try {
-      const routine = await database.workoutRoutines.create(
-        userId,
-        routineData.title || 'AI Generated Routine',
-        {
-          notes:
-            options?.notes ??
-            routineData.description ??
-            'Generated from AI Chat',
-          programId: options?.programId ?? undefined,
-        },
-      )
-      createdRoutineId = routine.id
+    if (resolveError) {
+      throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
+    }
 
-      const exerciseNames = routineData.exercises.map((exercise) => exercise.name)
-      const { data: dbExercises, error: resolveError } = await supabase
-        .from('exercises')
-        .select('id, name')
-        .in('name', exerciseNames)
-        .is('created_by', null)
-
-      if (resolveError) {
-        throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
+    const exerciseIdMap = new Map<string, string>()
+    dbExercises?.forEach((exercise) => {
+      if (exercise.name) {
+        exerciseIdMap.set(exercise.name.toLowerCase(), exercise.id)
       }
+    })
 
-      const exerciseIdMap = new Map<string, string>()
-      dbExercises?.forEach((exercise) => {
-        if (exercise.name) {
-          exerciseIdMap.set(exercise.name.toLowerCase(), exercise.id)
-        }
-      })
-
-      const routineExercisesToInsert = routineData.exercises.reduce<
-        {
-          routine_id: string
-          exercise_id: string
-          order_index: number
-          notes: null
-        }[]
-      >((acc, exercise, index) => {
-        const dbId = exerciseIdMap.get(exercise.name.toLowerCase())
-        if (!dbId) {
-          console.warn(`Could not find DB exercise for: ${exercise.name}`)
-          return acc
-        }
-
-        acc.push({
-          routine_id: routine.id,
-          exercise_id: dbId,
-          order_index: index,
-          notes: null,
-        })
+    const templateExercises = routineData.exercises.reduce<
+      RoutineTemplateExercise[]
+    >((acc, exercise, index) => {
+      const dbId = exerciseIdMap.get(exercise.name.toLowerCase())
+      if (!dbId) {
+        console.warn(`Could not find DB exercise for: ${exercise.name}`)
         return acc
-      }, [])
-
-      if (routineExercisesToInsert.length === 0) {
-        throw new Error('No valid exercises found in the database.')
       }
 
-      const { data: insertedExercises, error: insertedExercisesError } =
-        await supabase
-          .from('workout_routine_exercises')
-          .insert(routineExercisesToInsert)
-          .select('id, order_index, exercise:exercises(name)')
-
-      if (insertedExercisesError || !insertedExercises) {
-        throw new Error(
-          `Failed to create routine exercises: ${
-            insertedExercisesError?.message || 'Unknown error'
-          }`,
-        )
-      }
-
-      const insertedExerciseIdByOrderIndex = new Map<number, string>()
-      insertedExercises.forEach((exercise) => {
-        insertedExerciseIdByOrderIndex.set(exercise.order_index, exercise.id)
-      })
-
-      const routineSets = routineData.exercises.reduce<
-        {
-          routine_exercise_id: string
-          set_number: number
-          reps_min: number | null
-          reps_max: number | null
-          rest_seconds: number | null
-        }[]
-      >((acc, exercise, exerciseIndex) => {
-        const routineExerciseId = insertedExerciseIdByOrderIndex.get(
-          exerciseIndex,
-        )
-        if (!routineExerciseId) {
-          return acc
-        }
-
-        exercise.sets.forEach((set, setIndex) => {
-          let repsMin =
-            set.repsMin !== undefined && set.repsMin !== null
-              ? set.repsMin
-              : null
-          let repsMax =
-            set.repsMax !== undefined && set.repsMax !== null
-              ? set.repsMax
-              : null
+      acc.push({
+        exercise_id: dbId,
+        order_index: index,
+        notes: null,
+        sets: exercise.sets.map((set, setIndex) => {
+          let repsMin = set.repsMin ?? null
+          let repsMax = set.repsMax ?? null
 
           if (repsMin === null && repsMax === null && set.reps) {
             const parsedTargets = parseRepTargets(set.reps)
@@ -3539,77 +3127,35 @@ export function WorkoutChat({
             repsMax = parsedTargets.repsMax
           }
 
-          acc.push({
-            routine_exercise_id: routineExerciseId,
+          return {
             set_number: setIndex + 1,
             reps_min: repsMin,
             reps_max: repsMax,
             rest_seconds: set.restSeconds ?? null,
-          })
-        })
+          }
+        }),
+      })
+      return acc
+    }, [])
 
-        return acc
-      }, [])
-
-      if (routineSets.length > 0) {
-        const { error: setsError } = await supabase
-          .from('workout_routine_sets')
-          .insert(routineSets)
-
-        if (setsError) {
-          throw setsError
-        }
-      }
-
-      return {
-        id: routine.id,
-        name: routine.name,
-        exercises: routineData.exercises
-          .map((exercise, index) => {
-            const routineExerciseId = insertedExerciseIdByOrderIndex.get(index)
-            if (!routineExerciseId) {
-              return null
-            }
-
-            return {
-              id: routineExerciseId,
-              name: exercise.name,
-              orderIndex: index,
-              sets: exercise.sets.map((set, setIndex) => {
-                const parsedTargets =
-                  set.repsMin !== undefined || set.repsMax !== undefined
-                    ? {
-                        repsMin: set.repsMin ?? null,
-                        repsMax: set.repsMax ?? null,
-                      }
-                    : parseRepTargets(set.reps || '')
-
-                return {
-                  setNumber: setIndex + 1,
-                  repsMin: parsedTargets.repsMin,
-                  repsMax: parsedTargets.repsMax,
-                  restSeconds: set.restSeconds ?? null,
-                }
-              }),
-            }
-          })
-          .filter(
-            (
-              exercise,
-            ): exercise is SavedRoutineTemplate['exercises'][number] =>
-              Boolean(exercise),
-          ),
-      }
-    } catch (error) {
-      if (createdRoutineId) {
-        try {
-          await database.workoutRoutines.delete(createdRoutineId)
-        } catch (cleanupError) {
-          console.error('Failed to cleanup orphaned routine:', cleanupError)
-        }
-      }
-      throw error
+    if (templateExercises.length === 0) {
+      throw new Error('No valid exercises found in the database.')
     }
+
+    const { routine } = await createRoutineWithTemplate(
+      userId,
+      {
+        name: routineData.title || 'AI Generated Routine',
+        notes:
+          options?.notes ?? routineData.description ?? 'Generated from AI Chat',
+        image_path: null,
+        tint_color: null,
+        program_id: options?.programId ?? null,
+      },
+      templateExercises,
+    )
+
+    return { id: routine.id, name: routine.name }
   }
 
   const buildRoutineTemplateFromProgramRoutine = (
@@ -3662,19 +3208,9 @@ export function WorkoutChat({
               name: ex.name,
               sets: ex.sets.map((s) => {
                 // Parse reps range string to min/max
-                let repsMin: number | undefined
-                let repsMax: number | undefined
-                const rangeMatch = s.reps.match(/(\d+)[-–](\d+)/)
-                if (rangeMatch) {
-                  repsMin = parseInt(rangeMatch[1])
-                  repsMax = parseInt(rangeMatch[2])
-                } else {
-                  const singleRep = parseInt(s.reps)
-                  if (!isNaN(singleRep)) {
-                    repsMin = singleRep
-                    repsMax = singleRep
-                  }
-                }
+                const { targetRepsMin, targetRepsMax } = parseRepRange(s.reps)
+                const repsMin = targetRepsMin ?? undefined
+                const repsMax = targetRepsMax ?? undefined
 
                 return {
                   type: s.type,
@@ -4236,8 +3772,11 @@ export function WorkoutChat({
 
                         // Regular messages show with coach avatar
                         // Hide partial JSON blocks while streaming
+                        const parsedMessage = parseAssistantMessage(
+                          message.content,
+                        )
                         const foodLogPayload = NUTRITION_FEATURES_ENABLED
-                          ? parseFoodLogPayload(message.content)
+                          ? parsedMessage.foodLog
                           : null
 
                         // Calculate progress for chart rings
@@ -4315,16 +3854,10 @@ export function WorkoutChat({
 
                         const calCircumference = 28 * 2 * Math.PI
                         const smallCircumference = 16 * 2 * Math.PI
-                        const displayContent = formatAssistantMessageForDisplay(
-                          message.content,
-                        )
-
-                        const exerciseSuggestions = parseExerciseSuggestions(
-                          message.content,
-                        )
-                        const statsReportPayload = parseStatsReportPayload(
-                          message.content,
-                        )
+                        const displayContent = parsedMessage.visibleText
+                        const exerciseSuggestions =
+                          parsedMessage.exerciseSuggestions
+                        const statsReportPayload = parsedMessage.statsReport
 
                         const coachText =
                           statsReportPayload && displayContent

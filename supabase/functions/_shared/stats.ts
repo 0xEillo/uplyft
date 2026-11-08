@@ -33,11 +33,6 @@ export interface StrengthSeries {
   series: StrengthSeriesPoint[]
 }
 
-export interface StrengthScorePoint {
-  date: string
-  strengthScore: number
-}
-
 export interface MuscleGroupDistributionItem {
   muscleGroup: string
   volume: number
@@ -164,83 +159,6 @@ export async function getExerciseStrengthProgressByName(
     exerciseName: displayName,
     series,
   }
-}
-
-export async function getStrengthScoreProgress(
-  supabase: SupabaseClient,
-  userId: string,
-  options: { daysBack?: number; maxSessions?: number } = {},
-): Promise<StrengthScorePoint[]> {
-  const daysBack = clampDaysBack(options.daysBack)
-  const maxSessions = Math.min(
-    Math.max(options.maxSessions ?? DEFAULT_MAX_SESSIONS, 20),
-    DEFAULT_MAX_SESSIONS,
-  )
-
-  let query = supabase
-    .from('workout_sessions')
-    .select(
-      `
-        id,
-        created_at,
-        workout_exercises!inner (
-          exercise_id,
-          sets!inner (reps, weight)
-        )
-      `,
-    )
-    .eq('user_id', userId)
-    .not('workout_exercises.sets.weight', 'is', null)
-    .not('workout_exercises.sets.reps', 'is', null)
-    .gt('workout_exercises.sets.reps', 0)
-    .order('created_at', { ascending: true })
-    .limit(maxSessions)
-
-  if (daysBack) {
-    const cutoff = new Date()
-    cutoff.setUTCDate(cutoff.getUTCDate() - daysBack)
-    query = query.gte('created_at', cutoff.toISOString())
-  }
-
-  const { data, error } = await query
-  if (error) throw error
-
-  const sessions = (data as WorkoutSessionRow[]) ?? []
-  if (sessions.length === 0) return []
-
-  const bestByExercise = new Map<string, number>()
-  const series: StrengthScorePoint[] = []
-
-  sessions.forEach((session) => {
-    session.workout_exercises?.forEach((we) => {
-      const exerciseId = we.exercise_id ?? we.exercise?.id
-      if (!exerciseId) return
-
-      we.sets?.forEach((set) => {
-        if (typeof set.weight !== 'number' || typeof set.reps !== 'number') {
-          return
-        }
-        const est1RM = calculateEpley1RM(set.weight, set.reps)
-        const currentBest = bestByExercise.get(exerciseId) ?? 0
-        if (est1RM > currentBest) {
-          bestByExercise.set(exerciseId, est1RM)
-        }
-      })
-    })
-
-    if (bestByExercise.size > 0) {
-      const strengthScore = Array.from(bestByExercise.values()).reduce(
-        (sum, val) => sum + val,
-        0,
-      )
-      series.push({
-        date: session.created_at,
-        strengthScore: Math.round(strengthScore),
-      })
-    }
-  })
-
-  return series
 }
 
 export async function getMuscleGroupDistribution(

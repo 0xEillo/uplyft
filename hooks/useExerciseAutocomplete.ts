@@ -305,26 +305,6 @@ export function getExerciseSuggestion(
   return group?.primary ?? null
 }
 
-/**
- * Parse rep range from string like "10-12" or "10".
- */
-export function parseRepRange(
-  reps: string,
-): { targetRepsMin: number | null; targetRepsMax: number | null } {
-  const rangeMatch = reps.match(/(\d+)[-–](\d+)/)
-  if (rangeMatch) {
-    return {
-      targetRepsMin: parseInt(rangeMatch[1], 10),
-      targetRepsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-  const singleRep = parseInt(reps, 10)
-  if (!isNaN(singleRep)) {
-    return { targetRepsMin: singleRep, targetRepsMax: singleRep }
-  }
-  return { targetRepsMin: null, targetRepsMax: null }
-}
-
 interface UseExerciseAutocompleteOptions {
   text: string
   cursorPosition: number

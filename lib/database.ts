@@ -9,16 +9,14 @@ import {
 } from '@/lib/exercise-strength'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
 import {
-  getExerciseNameMap,
-  getLeaderboardExercises,
-  isRepBasedExercise,
-} from '@/lib/exercise-standards-config'
-import {
   calculateStrengthScoreHistory,
   toLegacyStrengthScore,
-  type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
-import { estimateOneRepMaxKg, getStrengthGender } from '@/lib/strength-progress'
+import { loadStrengthInputs } from '@/lib/strength-inputs'
+import {
+  createRoutineWithTemplate,
+  type RoutineTemplateExercise,
+} from '@/lib/routines/routine-template'
 import { normalizeExerciseName } from '@/lib/utils/formatters'
 import type {
     DailyLogConfidence,
@@ -44,7 +42,6 @@ import type {
     WorkoutCommentLike,
     WorkoutLike,
     WorkoutRoutine,
-    WorkoutRoutineExercise,
     WorkoutRoutineWithDetails,
     WorkoutSession,
     WorkoutSessionWithDetails,
@@ -318,82 +315,11 @@ const syncProfileWeightCacheFromDailyLog = async (userId: string) => {
 const PROFILE_FEED_SELECT =
   'id, user_tag, display_name, avatar_url, overall_strength_points, overall_strength_score, overall_strength_level, overall_strength_progress, overall_strength_updated_at'
 
-type OnboardingStrengthBest = {
-  exerciseId: string
-  exerciseName: string
-  muscleGroup: string | null
-  max1RM: number
-  recordedAt: string
-}
-
-// Loaded here rather than via lib/onboarding-strength.ts, which imports this
-// module. Mirrors getOnboardingStrengthSnapshot.
-const getOnboardingStrengthBest = async (
-  userId: string,
-): Promise<OnboardingStrengthBest | null> => {
-  const { data, error } = await supabase
-    .from('onboarding_strength_snapshots')
-    .select(
-      'exercise_id, estimated_1rm_kg, created_at, updated_at, exercise:exercises!inner (name, muscle_group)',
-    )
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (error || !data) return null
-  const exercise = (Array.isArray(data.exercise)
-    ? data.exercise[0]
-    : data.exercise) as { name: string; muscle_group: string | null } | undefined
-  const max1RM = Math.round(Number(data.estimated_1rm_kg))
-  if (!exercise || !(max1RM > 0)) return null
-
-  return {
-    exerciseId: data.exercise_id,
-    exerciseName: exercise.name,
-    muscleGroup: exercise.muscle_group,
-    max1RM,
-    recordedAt: data.updated_at ?? data.created_at,
-  }
-}
-
-// Same rules as mergeOnboardingStrengthSnapshotIntoExerciseData: the
-// onboarding estimate raises an existing lift's best, or adds the lift.
-const mergeOnboardingBestIntoStrengthExercises = <
-  T extends {
-    exerciseId: string
-    exerciseName: string
-    muscleGroup: string | null
-    max1RM: number
-    lastTrainedAt: string | null
-  },
->(
-  exercises: T[],
-  best: OnboardingStrengthBest | null,
-): T[] => {
-  if (!best) return exercises
-  const index = exercises.findIndex((e) => e.exerciseId === best.exerciseId)
-  if (index === -1) {
-    return [
-      ...exercises,
-      {
-        exerciseId: best.exerciseId,
-        exerciseName: best.exerciseName,
-        muscleGroup: best.muscleGroup,
-        max1RM: best.max1RM,
-        lastTrainedAt: best.recordedAt,
-      } as T,
-    ]
-  }
-  return exercises.map((exercise, i) =>
-    i === index
-      ? { ...exercise, max1RM: Math.max(exercise.max1RM, best.max1RM) }
-      : exercise,
-  )
-}
-
 const refreshProfileStrengthCache = async (userId: string) => {
-  const profile = await database.profiles.getByIdOrNull(userId)
-  const strengthGender = getStrengthGender(profile?.gender ?? null)
-  const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+  // Same inputs as every strength screen: onboarding lift included, and
+  // bodyweight from the latest daily log, else profiles.weight_kg.
+  const { strengthGender, bodyweightKg, exercises, sessions } =
+    await loadStrengthInputs(userId)
 
   const cacheBase = {
     overall_strength_points: null,
@@ -403,28 +329,7 @@ const refreshProfileStrengthCache = async (userId: string) => {
     overall_strength_updated_at: new Date().toISOString(),
   }
 
-  if (!strengthGender || !bodyweightKg || bodyweightKg <= 0) {
-    const { error } = await supabase
-      .from('profiles')
-      .update(cacheBase)
-      .eq('id', userId)
-
-    if (error) throw error
-    return cacheBase
-  }
-
-  const [sourceData, onboardingBest] = await Promise.all([
-    database.stats.getStrengthScoreSourceData(userId),
-    getOnboardingStrengthBest(userId),
-  ])
-  const { sessions } = sourceData
-  // Match the Progress screen, which counts the onboarding lift too.
-  const exercises = mergeOnboardingBestIntoStrengthExercises(
-    sourceData.exercises,
-    onboardingBest,
-  )
-
-  if (exercises.length === 0) {
+  if (!strengthGender || !bodyweightKg || exercises.length === 0) {
     const { error } = await supabase
       .from('profiles')
       .update(cacheBase)
@@ -1167,18 +1072,6 @@ export const database = {
       })[]
     },
 
-    async isFollowing(followerId: string, followeeId: string) {
-      const { data, error } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('follower_id', followerId)
-        .eq('followee_id', followeeId)
-        .maybeSingle()
-
-      if (error && error.code !== 'PGRST116') throw error
-      return !!data
-    },
-
     async getCounts(userId: string) {
       const [followerRes, followingRes] = await Promise.all([
         supabase.rpc('follower_count', { target_user: userId }),
@@ -1321,29 +1214,6 @@ export const database = {
       if (error) throw error
     },
 
-    async listByWorkout(workoutId: string) {
-      const { data, error } = await supabase
-        .from('workout_likes')
-        .select('*')
-        .eq('workout_id', workoutId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      return (data || []) as WorkoutLike[]
-    },
-
-    async listByUser(userId: string, limit = 50, offset = 0) {
-      const { data, error } = await supabase
-        .from('workout_likes')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
-
-      if (error) throw error
-      return (data || []) as WorkoutLike[]
-    },
-
     async hasLiked(workoutId: string, userId: string) {
       const { data, error } = await supabase
         .from('workout_likes')
@@ -1356,53 +1226,6 @@ export const database = {
       return !!data
     },
 
-    async getCount(workoutId: string) {
-      const { count, error } = await supabase
-        .from('workout_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('workout_id', workoutId)
-
-      if (error) throw error
-      return count ?? 0
-    },
-
-    async getRecentLikers(workoutId: string, limit = 3) {
-      const { data, error } = await supabase
-        .from('workout_likes')
-        .select(
-          `
-          profile:profiles (
-            id,
-            user_tag,
-            display_name,
-            avatar_url
-          )
-        `,
-        )
-        .eq('workout_id', workoutId)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (error) throw error
-      return (data || [])
-        .map((row: any) => row.profile)
-        .filter(Boolean) as Partial<Profile>[]
-    },
-
-    async getLikedWorkoutIds(workoutIds: string[], userId: string) {
-      if (!workoutIds.length) {
-        return [] as string[]
-      }
-
-      const { data, error } = await supabase
-        .from('workout_likes')
-        .select('workout_id')
-        .eq('user_id', userId)
-        .in('workout_id', workoutIds)
-
-      if (error) throw error
-      return (data || []).map((row: { workout_id: string }) => row.workout_id)
-    },
   },
 
   // Workout comment operations
@@ -1435,35 +1258,6 @@ export const database = {
       return data as WorkoutComment
     },
 
-    async update(commentId: string, userId: string, content: string) {
-      const trimmed = content.trim()
-      if (!trimmed) {
-        throw new Error('Comment content cannot be empty')
-      }
-
-      const { data, error } = await supabase
-        .from('workout_comments')
-        .update({
-          content: trimmed,
-        })
-        .eq('id', commentId)
-        .eq('user_id', userId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data as WorkoutComment
-    },
-
-    async delete(commentId: string) {
-      const { error } = await supabase
-        .from('workout_comments')
-        .delete()
-        .eq('id', commentId)
-
-      if (error) throw error
-    },
-
     async listByWorkout(workoutId: string, limit = 50, offset = 0) {
       const { data, error } = await supabase
         .from('workout_comments')
@@ -1474,32 +1268,6 @@ export const database = {
 
       if (error) throw error
       return (data || []) as WorkoutComment[]
-    },
-
-    async listWithProfilesByWorkout(workoutId: string, limit = 50, offset = 0) {
-      const { data: commentsData, error } = await supabase
-        .from('workout_comments')
-        .select('*')
-        .eq('workout_id', workoutId)
-        .order('created_at', { ascending: true })
-        .range(offset, offset + limit - 1)
-
-      if (error) throw error
-      if (!commentsData || commentsData.length === 0) return []
-
-      const uniqueUserIds = [...new Set(commentsData.map((c) => c.user_id))]
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', uniqueUserIds)
-
-      if (profilesError) throw profilesError
-
-      const profileMap = new Map(profilesData?.map((p) => [p.id, p]) || [])
-      return commentsData.map((c) => ({
-        ...c,
-        profile: profileMap.get(c.user_id) as Profile,
-      }))
     },
 
     /**
@@ -1563,15 +1331,6 @@ export const database = {
       return result
     },
 
-    async getCount(workoutId: string) {
-      const { count, error } = await supabase
-        .from('workout_comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('workout_id', workoutId)
-
-      if (error) throw error
-      return count ?? 0
-    },
   },
 
   // Workout comment like operations
@@ -1598,18 +1357,6 @@ export const database = {
         .eq('user_id', userId)
 
       if (error) throw error
-    },
-
-    async hasLiked(commentId: string, userId: string) {
-      const { data, error } = await supabase
-        .from('workout_comment_likes')
-        .select('comment_id')
-        .eq('comment_id', commentId)
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      if (error && error.code !== 'PGRST116') throw error
-      return !!data
     },
 
     async getCounts(commentIds: string[]) {
@@ -1670,34 +1417,6 @@ export const database = {
       return data as WorkoutSocialStats
     },
 
-    async getStatsForWorkouts(workoutIds: string[]) {
-      if (workoutIds.length === 0) {
-        return [] as WorkoutSocialStats[]
-      }
-
-      const { data, error } = await supabase
-        .from('workout_social_stats')
-        .select('*')
-        .in('workout_id', workoutIds)
-
-      if (error) throw error
-
-      // Ensure we return zeros for workouts missing from the view
-      const statsMap = new Map<string, WorkoutSocialStats>()
-      ;(data as WorkoutSocialStats[] | null)?.forEach((row) => {
-        statsMap.set(row.workout_id, row)
-      })
-
-      return workoutIds.map((id) => {
-        const stat = statsMap.get(id)
-        if (stat) return stat
-        return {
-          workout_id: id,
-          like_count: 0,
-          comment_count: 0,
-        } as WorkoutSocialStats
-      })
-    },
   },
 
   // Exercise operations
@@ -1738,17 +1457,6 @@ export const database = {
       return fallbackExercise as Exercise
     },
 
-    async findByNames(names: string[]) {
-      if (!names || names.length === 0) return []
-      const { data, error } = await supabase
-        .from('exercises')
-        .select(EXERCISE_COLUMNS)
-        .in('name', names)
-
-      if (error) throw error
-      return data as Exercise[]
-    },
-
     async getAll() {
       const { data, error } = await supabase
         .from('exercises')
@@ -1757,50 +1465,6 @@ export const database = {
 
       if (error) throw error
       return data as Exercise[]
-    },
-
-    async getMuscleGroups() {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select('muscle_group')
-        .not('muscle_group', 'is', null)
-        .order('muscle_group', { ascending: true })
-
-      if (error) throw error
-      const groups = Array.from(
-        new Set(
-          (data || [])
-            .map((row) => row.muscle_group)
-            .filter((group): group is string => Boolean(group)),
-        ),
-      )
-      return groups
-    },
-
-    async getEquipment() {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select('equipment')
-        .not('equipment', 'is', null)
-        .order('equipment', { ascending: true })
-
-      if (error) throw error
-      const equipment = Array.from(
-        new Set(
-          (data || [])
-            .map((row) => row.equipment)
-            .filter((item): item is string => Boolean(item)),
-        ),
-      )
-      return equipment
-    },
-
-    async getRecent(userId: string, limit?: number) {
-      const { exercises } = await database.exercises.getRecentWithUsage(
-        userId,
-        limit,
-      )
-      return exercises
     },
 
     /**
@@ -1893,118 +1557,6 @@ export const database = {
       })
 
       return { recentIds, usageCounts }
-    },
-
-    async getMostFrequentMuscleGroups(userId: string, limit = 4) {
-      // Get recent workout sessions for the user to analyze muscle usage
-      const { data: sessions, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          workout_exercises!inner (
-            exercise:exercises!inner (
-              muscle_group
-            )
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20) // Analyze last 20 workouts
-
-      if (error) throw error
-
-      const muscleCounts = new Map<string, number>()
-
-      type MuscleQueryResult = {
-        workout_exercises?: { exercise?: { muscle_group: string } }[]
-      }
-      ;((sessions as unknown) as MuscleQueryResult[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          const muscle = we.exercise?.muscle_group
-          if (muscle) {
-            muscleCounts.set(muscle, (muscleCounts.get(muscle) || 0) + 1)
-          }
-        })
-      })
-
-      // Sort by frequency
-      return Array.from(muscleCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([muscle]) => muscle)
-    },
-
-    async getExercisesWithData(userId: string) {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select(
-          `
-          ${EXERCISE_COLUMNS},
-          workout_exercises!inner (
-            id,
-            session_id
-          )
-        `,
-        )
-        .eq('workout_exercises.session_id', 'workout_sessions.id')
-
-      if (error) {
-        // If the query fails, try a different approach
-        const { data: sessions, error: sessionsError } = await supabase
-          .from('workout_sessions')
-          .select(
-            `
-            workout_exercises!inner (
-              exercise:exercises!inner (${EXERCISE_COLUMNS})
-            )
-          `,
-          )
-          .eq('user_id', userId)
-
-        if (sessionsError) throw sessionsError
-
-        // Extract unique exercises
-        const exerciseMap = new Map<string, Exercise>()
-        type ExerciseSessionResult = {
-          workout_exercises?: { exercise?: Exercise }[]
-        }
-        ;((sessions as unknown) as ExerciseSessionResult[])?.forEach(
-          (session) => {
-            session.workout_exercises?.forEach((we) => {
-              const exercise = we.exercise
-              if (exercise && !exerciseMap.has(exercise.id)) {
-                exerciseMap.set(exercise.id, exercise)
-              }
-            })
-          },
-        )
-
-        const exercises = Array.from(exerciseMap.values()).sort((a, b) =>
-          a.name.localeCompare(b.name),
-        )
-        return exercises as Exercise[]
-      }
-
-      // Remove duplicates and sort
-      const uniqueExercises = data
-        .filter(
-          (ex, index, self) => index === self.findIndex((e) => e.id === ex.id),
-        )
-        .sort((a, b) => a.name.localeCompare(b.name))
-
-      return uniqueExercises as Exercise[]
-    },
-
-    async findByName(name: string) {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select(EXERCISE_COLUMNS)
-        .ilike('name', `%${name}%`)
-        .limit(10)
-
-      if (error) throw error
-      return data as Exercise[]
     },
 
     async getOrCreate(name: string, userId: string) {
@@ -2563,39 +2115,6 @@ export const database = {
       })) as FeedWorkout[]
     },
 
-    async getWorkoutsByDateRange(userId: string, startDate: Date, endDate: Date) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          *,
-          routine:workout_routines (id, name),
-          workout_exercises!inner (
-            *,
-            exercise:exercises (${EXERCISE_COLUMNS}),
-            sets!inner (*)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .eq('is_processing', false)
-        .gte('date', startDate.toISOString())
-        .lte('date', endDate.toISOString())
-        .order('date', { ascending: false })
-
-      if (error) {
-        throwIfPrivacyViolation(error)
-      }
-
-      if (!data || data.length === 0) {
-        return []
-      }
-
-      await hydrateMissingWorkoutExerciseRelations(data)
-
-      return data as WorkoutSessionWithDetails[]
-    },
-
     async getWeeklyProgressStats(
       userId: string,
       previousWeekStart: Date,
@@ -2616,19 +2135,6 @@ export const database = {
         duration_seconds: Number(row.duration_seconds) || 0,
         volume_kg: Number(row.volume_kg) || 0,
       }))
-    },
-
-    async getThisWeekCount(userId: string, startOfWeek: Date) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_processing', false)
-        .gte('date', startOfWeek.toISOString())
-        .order('date', { ascending: true })
-
-      if (error) throw error
-      return data?.length || 0
     },
 
     async getWeeklyWorkoutCount(
@@ -3000,84 +2506,6 @@ export const database = {
 
   // Stats and analytics
   stats: {
-    // Key exercises for strength standards tracking (main compound lifts only)
-    // Imported from centralized configuration to ensure consistency with strength standards
-    LEADERBOARD_EXERCISES: getLeaderboardExercises(),
-    STANDARDS_EXERCISE_NAME_MAP: getExerciseNameMap(),
-
-    async getExerciseMaxWeight(
-      userId: string,
-      exerciseName: string,
-      beforeDate?: string,
-    ) {
-      const query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          workout_exercises!inner (
-            exercise:exercises!inner (name),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .eq('workout_exercises.exercise.name', exerciseName)
-        .not('workout_exercises.sets.weight', 'is', null)
-
-      if (beforeDate) {
-        query.lt('date', beforeDate)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      interface ExerciseMaxWeightRow {
-        workout_exercises?: {
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Find max weight for each rep count
-      const maxWeights: Record<number, number> = {}
-      ;(data as ExerciseMaxWeightRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.reps && set.weight) {
-              if (!maxWeights[set.reps] || set.weight > maxWeights[set.reps]) {
-                maxWeights[set.reps] = set.weight
-              }
-            }
-          })
-        })
-      })
-
-      return maxWeights
-    },
-
-    async getExerciseHistory(userId: string, exerciseName: string) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          date,
-          workout_exercises!inner (
-            exercise:exercises!inner (name),
-            sets (*)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .eq('workout_exercises.exercise.name', exerciseName)
-        .order('date', { ascending: true })
-
-      if (error) throw error
-      return data
-    },
-
     async getExerciseHistoryById(userId: string, exerciseId: string) {
       const { data, error } = await supabase
         .from('workout_sessions')
@@ -3122,719 +2550,6 @@ export const database = {
         }
       }
       return doneExercises
-    },
-
-    async getExerciseWeightProgress(
-      userId: string,
-      exerciseId: string,
-      daysBack?: number,
-    ) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          created_at,
-          workout_exercises!inner (
-            exercise_id,
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .eq('workout_exercises.exercise_id', exerciseId)
-        .not('workout_exercises.sets.weight', 'is', null)
-        .not('workout_exercises.sets.reps', 'is', null)
-        .gt('workout_exercises.sets.reps', 0)
-        .order('created_at', { ascending: true })
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      interface WeightProgressRow {
-        id: string
-        created_at: string
-        workout_exercises?: {
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Transform data to show running personal best estimated 1RM over time
-      let runningMax = 0
-      const progressData = (data as WeightProgressRow[])?.map((session) => {
-        // Find max estimated 1RM in this session using Epley formula
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.weight && set.reps) {
-              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-              if (estimated1RM > runningMax) {
-                runningMax = estimated1RM
-              }
-            }
-          })
-        })
-
-        return {
-          date: session.created_at,
-          maxWeight: runningMax, // Show cumulative PR estimated 1RM
-        }
-      })
-
-      return progressData || []
-    },
-
-    async getExerciseMax1RMsBeforeDate(
-      userId: string,
-      beforeCreatedAtISO: string,
-      beforeDate: string,
-      excludeSessionId?: string,
-    ): Promise<Record<string, number>> {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          workout_exercises!inner (
-            exercise_id,
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .or(
-          `date.lt.${beforeDate},and(date.eq.${beforeDate},created_at.lt.${beforeCreatedAtISO})`,
-        )
-        .not('workout_exercises.sets.weight', 'is', null)
-        .not('workout_exercises.sets.reps', 'is', null)
-        .gt('workout_exercises.sets.reps', 0)
-
-      if (excludeSessionId) {
-        query = query.neq('id', excludeSessionId)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      interface ExerciseMax1RMBeforeRow {
-        workout_exercises?: {
-          exercise_id: string
-          sets?: {
-            reps: number | null
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      const max1RMByExerciseId: Record<string, number> = {}
-
-      ;(data as ExerciseMax1RMBeforeRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((workoutExercise) => {
-          workoutExercise.sets?.forEach((set) => {
-            if (!set.weight || !set.reps || set.weight <= 0 || set.reps <= 0) {
-              return
-            }
-
-            const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-            const existing =
-              max1RMByExerciseId[workoutExercise.exercise_id] || 0
-            if (estimated1RM > existing) {
-              max1RMByExerciseId[workoutExercise.exercise_id] = estimated1RM
-            }
-          })
-        })
-      })
-
-      return max1RMByExerciseId
-    },
-
-    async getTotalVolume(userId: string, dateFrom?: Date) {
-      const query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          workout_exercises (
-            sets (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-
-      if (dateFrom) {
-        query.gte('date', dateFrom.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      interface TotalVolumeRow {
-        workout_exercises?: {
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Calculate total volume
-      let totalVolume = 0
-      ;(data as TotalVolumeRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            const reps = set.reps || 0
-            if (!reps) return
-
-            const weight =
-              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
-
-            totalVolume += reps * weight
-          })
-        })
-      })
-
-      return totalVolume
-    },
-
-    async getStrengthScoreProgress(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          created_at,
-          workout_exercises!inner (
-            exercise_id,
-            exercise:exercises (name),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .not('workout_exercises.sets.weight', 'is', null)
-        .not('workout_exercises.sets.reps', 'is', null)
-        .gt('workout_exercises.sets.reps', 0)
-        .order('created_at', { ascending: true })
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      interface StrengthScoreRow {
-        id: string
-        created_at: string
-        workout_exercises?: {
-          exercise_id: string
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Calculate strength score for each workout
-      // Strength Score = sum of all-time best estimated 1RMs across all exercises
-      // Maintains running personal bests as we iterate through workouts chronologically
-      const allTimeBests = new Map<string, number>()
-      const progressData = (data as StrengthScoreRow[])?.map((session) => {
-        // Update personal bests based on this session's performance
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.weight && set.reps) {
-              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-
-              const currentBest = allTimeBests.get(we.exercise_id) || 0
-              if (estimated1RM > currentBest) {
-                allTimeBests.set(we.exercise_id, estimated1RM)
-              }
-            }
-          })
-        })
-
-        // Sum all personal bests to get cumulative strength score
-        const strengthScore = Array.from(allTimeBests.values()).reduce(
-          (sum, val) => sum + val,
-          0,
-        )
-
-        return {
-          date: session.created_at,
-          strengthScore: Math.round(strengthScore), // Round to whole number
-        }
-      })
-
-      return progressData || []
-    },
-
-    async getVolumeProgress(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          created_at,
-          workout_exercises!inner (
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true })
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      interface VolumeProgressRow {
-        id: string
-        created_at: string
-        workout_exercises?: {
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Calculate total volume for each workout session
-      const progressData = (data as VolumeProgressRow[])?.map((session) => {
-        let totalVolume = 0
-
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            const reps = set.reps || 0
-            if (!reps) return
-
-            const weight =
-              typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
-
-            // Volume = reps * weight
-            totalVolume += reps * weight
-          })
-        })
-
-        return {
-          date: session.created_at,
-          volume: totalVolume,
-        }
-      })
-
-      return progressData || []
-    },
-
-    async getMuscleGroupDistribution(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          workout_exercises!inner (
-            exercise:exercises!inner (muscle_group),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .not('workout_exercises.exercise.muscle_group', 'is', null)
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Calculate volume per muscle group
-      const muscleGroupVolumes = new Map<string, number>()
-
-      type VolumeSessionResult = {
-        workout_exercises?: {
-          exercise?: { muscle_group: string }
-          sets?: { reps: number | null }[]
-        }[]
-      }
-      ;((data as unknown) as VolumeSessionResult[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          const muscleGroup = we.exercise?.muscle_group
-          if (!muscleGroup) return
-
-          we.sets?.forEach((set) => {
-            const reps = set.reps || 0
-            if (!reps) return
-
-            // const weight =
-            //   typeof set.weight === 'number' && set.weight > 0 ? set.weight : 1
-
-            const volume = reps // Muscle balance based on reps only
-            const currentVolume = muscleGroupVolumes.get(muscleGroup) || 0
-            muscleGroupVolumes.set(muscleGroup, currentVolume + volume)
-          })
-        })
-      })
-
-      // Calculate total volume
-      const totalVolume = Array.from(muscleGroupVolumes.values()).reduce(
-        (sum, vol) => sum + vol,
-        0,
-      )
-
-      // Convert to array with percentages
-      const distribution = Array.from(muscleGroupVolumes.entries())
-        .map(([muscleGroup, volume]) => ({
-          muscleGroup,
-          volume: Math.round(volume),
-          percentage:
-            totalVolume > 0 ? Math.round((volume / totalVolume) * 100) : 0,
-        }))
-        .sort((a, b) => b.volume - a.volume) // Sort by volume descending
-
-      return distribution
-    },
-
-    async getWeeklyVolumeData(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          created_at,
-          workout_exercises!inner (
-            exercise:exercises!inner (muscle_group),
-            sets!inner (reps)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .not('workout_exercises.exercise.muscle_group', 'is', null)
-        .order('created_at', { ascending: true })
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Group by week (Sunday start)
-      const weeklyData = new Map<string, Map<string, number>>()
-
-      type WeeklyVolumeSession = {
-        id: string
-        created_at: string
-        workout_exercises?: {
-          exercise?: { muscle_group: string }
-          sets?: { reps: number | null }[]
-        }[]
-      }
-      ;((data as unknown) as WeeklyVolumeSession[])?.forEach((session) => {
-        const sessionDate = new Date(session.created_at)
-
-        // Get Sunday of the week
-        const dayOfWeek = sessionDate.getDay()
-        const weekStart = new Date(sessionDate)
-        weekStart.setDate(sessionDate.getDate() - dayOfWeek)
-        weekStart.setHours(0, 0, 0, 0)
-        const weekKey = weekStart.toISOString().split('T')[0]
-
-        if (!weeklyData.has(weekKey)) {
-          weeklyData.set(weekKey, new Map<string, number>())
-        }
-
-        const weekMuscleGroups = weeklyData.get(weekKey)!
-
-        session.workout_exercises?.forEach((we) => {
-          const muscleGroup = we.exercise?.muscle_group
-          if (!muscleGroup) return
-
-          we.sets?.forEach((set) => {
-            if (set.reps) {
-              const currentSets = weekMuscleGroups.get(muscleGroup) || 0
-              weekMuscleGroups.set(muscleGroup, currentSets + 1)
-            }
-          })
-        })
-      })
-
-      // Convert to array format
-      return Array.from(weeklyData.entries())
-        .map(([weekStart, muscleGroups]) => ({
-          weekStart,
-          muscleGroups: Array.from(muscleGroups.entries())
-            .map(([name, sets]) => ({ name, sets }))
-            .sort((a, b) => b.sets - a.sets),
-        }))
-        .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
-    },
-
-    async getSessionStats(userId: string, daysBack?: number) {
-      let query = supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          workout_exercises!inner (
-            sets!inner (reps)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-
-      // Filter by date range if specified
-      if (daysBack) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack)
-        query = query.gte('created_at', cutoffDate.toISOString())
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let totalSets = 0
-      const totalWorkouts = data?.length || 0
-
-      type SessionStatsResult = {
-        id: string
-        workout_exercises?: {
-          sets?: { reps: number | null }[]
-        }[]
-      }
-      ;((data as unknown) as SessionStatsResult[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.reps) {
-              totalSets++
-            }
-          })
-        })
-      })
-
-      return {
-        totalSets,
-        totalWorkouts,
-        avgSetsPerWorkout:
-          totalWorkouts > 0 ? Math.round(totalSets / totalWorkouts) : 0,
-      }
-    },
-
-    async getUserMax1RMs(userId: string) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          workout_exercises!inner (
-            exercise_id,
-            exercise:exercises!inner (id, name, muscle_group, gif_url),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-
-      if (error) throw error
-
-      // Calculate max 1RM for each exercise
-      const exerciseMax1RMs = new Map<
-        string,
-        {
-          name: string
-          muscleGroup: string | null
-          max1RM: number
-          gifUrl: string | null
-        }
-      >()
-
-      type Max1RMSessionResult = {
-        workout_exercises?: {
-          exercise_id: string
-          exercise?: {
-            id: string
-            name: string
-            muscle_group: string
-            gif_url: string | null
-          }
-          sets?: { reps: number | null; weight: number | null }[]
-        }[]
-      }
-      ;((data as unknown) as Max1RMSessionResult[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          const exercise = we.exercise
-          if (!exercise) return
-
-          we.sets?.forEach((set) => {
-            if (!set.reps || set.reps <= 0) return
-
-            const isRepBased = isRepBasedExercise(exercise.name)
-            if (!isRepBased && (!set.weight || set.weight <= 0)) return
-
-            const estimated1RM = isRepBased ? set.reps : estimateOneRepMaxKg(set.weight!, set.reps)
-
-            const current = exerciseMax1RMs.get(we.exercise_id)
-            if (!current || estimated1RM > current.max1RM) {
-                exerciseMax1RMs.set(we.exercise_id, {
-                  name: exercise.name,
-                  muscleGroup: exercise.muscle_group,
-                  max1RM: Math.round(estimated1RM),
-                  gifUrl: exercise.gif_url,
-                })
-            }
-          })
-        })
-      })
-
-      return Array.from(exerciseMax1RMs.entries()).map(
-        ([exerciseId, data]) => ({
-          exerciseId,
-          exerciseName: data.name,
-          muscleGroup: data.muscleGroup,
-          max1RM: data.max1RM,
-          gifUrl: data.gifUrl,
-        }),
-      )
-    },
-
-    async getExerciseCurrentAndPreviousBest1RMs(
-      userId: string,
-    ): Promise<
-      Record<
-        string,
-        {
-          currentBest1RM: number
-          previousBest1RM: number
-          lastIncreaseAt: string | null
-          lastIncreaseSessionId: string | null
-        }
-      >
-    > {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          created_at,
-          date,
-          workout_exercises!inner (
-            exercise_id,
-            exercise:exercises!inner (name),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .not('workout_exercises.sets.reps', 'is', null)
-        .gt('workout_exercises.sets.reps', 0)
-        .order('date', { ascending: true })
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      interface Best1RMSnapshotRow {
-        id: string
-        created_at: string
-        date: string
-        workout_exercises?: {
-          exercise_id: string
-          exercise?:
-            | {
-                name: string
-              }
-            | {
-                name: string
-              }[]
-          sets?: {
-            reps: number | null
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      const bestByExerciseId: Record<
-        string,
-        {
-          currentBest1RM: number
-          previousBest1RM: number
-          lastIncreaseAt: string | null
-          lastIncreaseSessionId: string | null
-        }
-      > = {}
-
-      ;(data as Best1RMSnapshotRow[])?.forEach((session) => {
-        // First, calculate the max 1RM achieved IN THIS SESSION for each exercise
-        const sessionMaxByExercise: Record<string, number> = {}
-
-        session.workout_exercises?.forEach((workoutExercise) => {
-          const exercise = Array.isArray(workoutExercise.exercise)
-            ? workoutExercise.exercise[0]
-            : workoutExercise.exercise
-          if (!exercise) return
-
-          workoutExercise.sets?.forEach((set) => {
-            const estimated1RM = getExerciseStrengthMetric(exercise.name, set)
-            if (estimated1RM === null) return
-            const currentSessionMax =
-              sessionMaxByExercise[workoutExercise.exercise_id] || 0
-            if (estimated1RM > currentSessionMax) {
-              sessionMaxByExercise[workoutExercise.exercise_id] = estimated1RM
-            }
-          })
-        })
-
-        // Now update the global bests based on session bests
-        Object.entries(sessionMaxByExercise).forEach(([exerciseId, sessionBest]) => {
-          if (!bestByExerciseId[exerciseId]) {
-            bestByExerciseId[exerciseId] = {
-              currentBest1RM: 0,
-              previousBest1RM: 0,
-              lastIncreaseAt: null,
-              lastIncreaseSessionId: null,
-            }
-          }
-
-          const current = bestByExerciseId[exerciseId]
-
-          if (sessionBest > current.currentBest1RM) {
-            current.previousBest1RM = current.currentBest1RM
-            current.currentBest1RM = sessionBest
-            current.lastIncreaseAt = session.created_at
-            current.lastIncreaseSessionId = session.id
-          }
-        })
-      })
-
-      return bestByExerciseId
     },
 
     async getExerciseRecordsByWeight(userId: string, exerciseId: string) {
@@ -3923,246 +2638,6 @@ export const database = {
           estimated1RM: record.estimated1RM,
         }))
         .sort((a, b) => b.weight - a.weight)
-    },
-
-    async getMajorCompoundLiftsData(userId: string) {
-      const { exercises } = await this.getStrengthScoreSourceData(userId)
-      return exercises
-    },
-
-    /**
-     * Loads every strength-standards lift the user has logged, plus a
-     * per-workout history of their bests used to replay the strength score.
-     */
-    async getStrengthScoreSourceData(userId: string) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          id,
-          date,
-          created_at,
-          workout_exercises!inner (
-            exercise_id,
-            exercise:exercises!inner (id, name, muscle_group, gif_url),
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .not('workout_exercises.sets.reps', 'is', null)
-        .gt('workout_exercises.sets.reps', 0)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      interface CompoundLiftSessionRow {
-        id: string
-        date: string
-        created_at: string
-        workout_exercises?: {
-          exercise_id: string
-          exercise?:
-            | {
-                id: string
-                name: string
-                muscle_group: string | null
-                gif_url: string | null
-              }
-            | {
-                id: string
-                name: string
-                muscle_group: string | null
-                gif_url: string | null
-              }[]
-          sets?: {
-            reps: number | null
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      const exerciseMap = new Map<
-        string,
-        {
-          exerciseName: string
-          muscleGroup: string | null
-          gifUrl: string | null
-          max1RM: number
-          lastTrainedAt: string | null
-          sessionCount: number
-          recordsByWeight: Map<
-            number,
-            { maxReps: number; date: string; estimated1RM: number }
-          >
-        }
-      >()
-      const sessionHistory: (StrengthHistorySession & {
-        performedAt: number
-        createdAt: number
-      })[] = []
-
-      ;((data as unknown) as CompoundLiftSessionRow[]).forEach((session) => {
-        const sessionBests: Record<string, number> = {}
-
-        session.workout_exercises?.forEach((workoutExercise) => {
-          const exercise = Array.isArray(workoutExercise.exercise)
-            ? workoutExercise.exercise[0]
-            : workoutExercise.exercise
-          if (!exercise) return
-
-          if (!this.LEADERBOARD_EXERCISES.includes(exercise.name)) {
-            return
-          }
-
-          if (!exerciseMap.has(workoutExercise.exercise_id)) {
-            const canonicalGifUrl =
-              this.STANDARDS_EXERCISE_NAME_MAP.get(exercise.name)?.gifUrl ?? null
-            exerciseMap.set(workoutExercise.exercise_id, {
-              exerciseName: exercise.name,
-              muscleGroup: exercise.muscle_group,
-              gifUrl: exercise.gif_url || canonicalGifUrl,
-              max1RM: 0,
-              lastTrainedAt: session.created_at,
-              sessionCount: 0,
-              recordsByWeight: new Map(),
-            })
-          }
-
-          const current = exerciseMap.get(workoutExercise.exercise_id)
-          if (!current) return
-
-          if (
-            !current.lastTrainedAt ||
-            new Date(session.created_at).getTime() >
-              new Date(current.lastTrainedAt).getTime()
-          ) {
-            current.lastTrainedAt = session.created_at
-          }
-
-          workoutExercise.sets?.forEach((set) => {
-            if (!set.reps || set.reps <= 0) {
-              return
-            }
-
-            const isRepBased = isRepBasedExercise(exercise.name)
-            
-            if (!isRepBased && (!set.weight || set.weight <= 0)) {
-              return
-            }
-
-            const estimated1RM = isRepBased ? set.reps : estimateOneRepMaxKg(set.weight!, set.reps)
-            const rounded1RM = Math.round(estimated1RM)
-            if (rounded1RM > current.max1RM) {
-              current.max1RM = rounded1RM
-            }
-            if (rounded1RM > (sessionBests[workoutExercise.exercise_id] ?? 0)) {
-              sessionBests[workoutExercise.exercise_id] = rounded1RM
-            }
-
-            const weightKey = isRepBased ? 0 : set.weight!
-            const existingRecord = current.recordsByWeight.get(weightKey)
-            if (!existingRecord || set.reps > existingRecord.maxReps) {
-              current.recordsByWeight.set(weightKey, {
-                maxReps: set.reps,
-                date: session.date || session.created_at,
-                estimated1RM: rounded1RM,
-              })
-            }
-          })
-        })
-
-        const exerciseIds = Object.keys(sessionBests)
-        if (exerciseIds.length === 0) return
-        exerciseIds.forEach((exerciseId) => {
-          const tracked = exerciseMap.get(exerciseId)
-          if (tracked) tracked.sessionCount += 1
-        })
-        const createdAt = new Date(session.created_at).getTime()
-        const performedAt = new Date(session.date || session.created_at).getTime()
-        sessionHistory.push({
-          sessionId: session.id,
-          exerciseBests: sessionBests,
-          performedAt: Number.isFinite(performedAt) ? performedAt : createdAt,
-          createdAt,
-        })
-      })
-
-      const exercises = Array.from(exerciseMap.entries()).map(([exerciseId, value]) => ({
-        exerciseId,
-        exerciseName: value.exerciseName,
-        muscleGroup: value.muscleGroup,
-        max1RM: value.max1RM,
-        lastTrainedAt: value.lastTrainedAt,
-        sessionCount: value.sessionCount,
-        gifUrl: value.gifUrl,
-        records: Array.from(value.recordsByWeight.entries())
-          .map(([weight, record]) => ({
-            weight,
-            maxReps: record.maxReps,
-            date: record.date,
-            estimated1RM: record.estimated1RM,
-          }))
-          .sort((a, b) => b.weight - a.weight),
-      }))
-
-      const sessions: StrengthHistorySession[] = sessionHistory
-        .sort(
-          (a, b) => a.performedAt - b.performedAt || a.createdAt - b.createdAt,
-        )
-        .map(({ sessionId, exerciseBests }) => ({ sessionId, exerciseBests }))
-
-      return { exercises, sessions }
-    },
-
-    async getAllUsersMax1RMs(exerciseId: string) {
-      const { data, error } = await supabase
-        .from('workout_sessions')
-        .select(
-          `
-          user_id,
-          workout_exercises!inner (
-            exercise_id,
-            sets!inner (reps, weight)
-          )
-        `,
-        )
-        .eq('workout_exercises.exercise_id', exerciseId)
-        .not('workout_exercises.sets.weight', 'is', null)
-
-      if (error) throw error
-
-      interface AllUsers1RMRow {
-        user_id: string
-        workout_exercises?: {
-          sets?: {
-            reps: number
-            weight: number | null
-          }[]
-        }[]
-      }
-
-      // Calculate max 1RM for each user for this exercise
-      const userMax1RMs = new Map<string, number>()
-
-      ;(data as AllUsers1RMRow[])?.forEach((session) => {
-        session.workout_exercises?.forEach((we) => {
-          we.sets?.forEach((set) => {
-            if (set.reps && set.weight) {
-              // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
-              const estimated1RM = estimateOneRepMaxKg(set.weight, set.reps)
-
-              const currentMax = userMax1RMs.get(session.user_id) || 0
-              if (estimated1RM > currentMax) {
-                userMax1RMs.set(session.user_id, estimated1RM)
-              }
-            }
-          })
-        })
-      })
-
-      // Return array of all max 1RMs (without user IDs for privacy)
-      return Array.from(userMax1RMs.values())
     },
 
     /**
@@ -4402,120 +2877,6 @@ export const database = {
       }
 
       return data
-    },
-
-    /**
-     * Get weight history for a user
-     */
-    async getWeightHistory(userId: string, daysBack?: number) {
-      const history = await database.dailyLog.getWeightHistory(userId, daysBack)
-      return history
-        .map((entry) => ({
-          created_at: `${entry.log_date}T12:00:00`,
-          weight_kg: coerceBodyweightKg(entry.weight_kg),
-        }))
-        .filter((entry) => entry.weight_kg !== null)
-    },
-
-    /**
-     * Get an entry with all its images
-     */
-    async getEntry(entryId: string) {
-      const { data, error } = await supabase
-        .from('body_log_entries')
-        .select(
-          `
-          id,
-          user_id,
-          created_at,
-          weight_kg,
-          body_fat_percentage,
-          bmi,
-          muscle_mass_kg,
-          analysis_summary,
-          body_log_images (
-            id,
-            entry_id,
-            user_id,
-            file_path,
-            sequence,
-            created_at
-          )
-        `,
-        )
-        .eq('id', entryId)
-        .single()
-
-      if (error) throw error
-
-      const weightByDate = await getDailyWeightsByDate(data.user_id, [data.created_at])
-      const logDate = normalizeDailyLogDate(data.created_at)
-
-      // Transform body_log_images to images for consistency
-      return {
-        ...data,
-        weight_kg:
-          coerceBodyweightKg(weightByDate.get(logDate)) ??
-          coerceBodyweightKg(data.weight_kg),
-        images: data?.body_log_images || [],
-      }
-    },
-
-    /**
-     * Get all entries for a user with their images
-     */
-    async getAllEntries(userId: string) {
-      const { data, error } = await supabase
-        .from('body_log_entries')
-        .select(
-          `
-          id,
-          user_id,
-          created_at,
-          weight_kg,
-          body_fat_percentage,
-          bmi,
-          muscle_mass_kg,
-          analysis_summary,
-          body_log_images (
-            id,
-            entry_id,
-            user_id,
-            file_path,
-            sequence,
-            created_at
-          )
-        `,
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const weightByDate = await getDailyWeightsByDate(
-        userId,
-        (data ?? []).map((entry) => entry.created_at),
-      )
-
-      // Transform body_log_images to images for consistency
-      const transformedData = data?.map(
-        (entry: BodyLogEntryQueryResult): BodyLogEntryWithImages => ({
-          id: entry.id,
-          user_id: entry.user_id,
-          created_at: entry.created_at,
-          weight_kg:
-            coerceBodyweightKg(
-              weightByDate.get(normalizeDailyLogDate(entry.created_at)),
-            ) ?? coerceBodyweightKg(entry.weight_kg),
-          body_fat_percentage: entry.body_fat_percentage,
-          bmi: entry.bmi,
-          muscle_mass_kg: entry.muscle_mass_kg,
-          analysis_summary: entry.analysis_summary,
-          images: entry.body_log_images || [],
-        }),
-      )
-
-      return transformedData
     },
 
     /**
@@ -5478,97 +3839,36 @@ export const database = {
       // Get the workout with all details
       const workout = await database.workoutSessions.getById(workoutId)
 
-      // Create the routine using workout notes/type as the name
-      const routineName = workout.notes || workout.type || 'New Routine'
-      const { data: routine, error: routineError } = await supabase
-        .from('workout_routines')
-        .insert({
-          user_id: userId,
-          name: routineName,
-          notes: workout.notes,
-        })
-        .select()
-        .single()
-
-      if (routineError) throw routineError
-
-      const workoutExercises = workout.workout_exercises || []
-
-      // Insert routine exercises
-      const routineExercises = workoutExercises.map((we, index) => {
-        const orderIndex =
+      // Template only - no reps/weight/rest yet
+      const exercises: RoutineTemplateExercise[] = (
+        workout.workout_exercises || []
+      ).map((we, index) => ({
+        exercise_id: we.exercise_id,
+        order_index:
           typeof we.order_index === 'number' && !Number.isNaN(we.order_index)
             ? we.order_index
-            : index
-
-        return {
-          routine_id: routine.id,
-          exercise_id: we.exercise_id,
-          order_index: orderIndex,
-          notes: we.notes,
-        }
-      })
-
-      const {
-        data: insertedExercises,
-        error: exercisesError,
-      } = await supabase
-        .from('workout_routine_exercises')
-        .insert(routineExercises)
-        .select()
-
-      if (exercisesError) throw exercisesError
-
-      const insertedExerciseByOrder = new Map<number, string>()
-      insertedExercises?.forEach((exercise: WorkoutRoutineExercise) => {
-        if (
-          typeof exercise.order_index === 'number' &&
-          !Number.isNaN(exercise.order_index)
-        ) {
-          insertedExerciseByOrder.set(exercise.order_index, exercise.id)
-        }
-      })
-
-      // Insert routine sets (template only - no reps/weight/rest yet)
-      const routineSets = workoutExercises.flatMap((we, weIndex) => {
-        const orderIndex =
-          typeof we.order_index === 'number' && !Number.isNaN(we.order_index)
-            ? we.order_index
-            : weIndex
-        const routineExerciseId = insertedExerciseByOrder.get(orderIndex)
-        if (!routineExerciseId) {
-          console.warn(
-            '[database.workoutRoutines.createFromWorkout] Missing inserted exercise for order index',
-            {
-              routineId: routine.id,
-              orderIndex,
-              workoutExerciseId: we.id,
-            },
-          )
-          return []
-        }
-
-        const sets = we.sets || []
-
-        return sets.map((set) => ({
-          routine_exercise_id: routineExerciseId,
+            : index,
+        notes: we.notes,
+        sets: (we.sets || []).map((set) => ({
           set_number: set.set_number,
           reps_min: null,
           reps_max: null,
           // Future UI will map parsed/set rest to this field; keep nullable for now
           rest_seconds: null,
-        }))
-      })
+        })),
+      }))
 
-      if (routineSets.length > 0) {
-        const { error: setsError } = await supabase
-          .from('workout_routine_sets')
-          .insert(routineSets)
+      // Create the routine using workout notes/type as the name
+      const { routine } = await createRoutineWithTemplate(
+        userId,
+        {
+          name: workout.notes || workout.type || 'New Routine',
+          notes: workout.notes,
+        },
+        exercises,
+      )
 
-        if (setsError) throw setsError
-      }
-
-      return routine as WorkoutRoutine
+      return routine
     },
 
     /**
@@ -5776,32 +4076,6 @@ export const database = {
         .update({ read: true })
         .eq('recipient_id', userId)
         .eq('read', false)
-
-      if (error) throw error
-    },
-
-    /**
-     * Get unread notification count for a user
-     */
-    async getUnreadCount(userId: string): Promise<number> {
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('recipient_id', userId)
-        .eq('read', false)
-
-      if (error) throw error
-      return count || 0
-    },
-
-    /**
-     * Delete a notification
-     */
-    async delete(notificationId: string) {
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId)
 
       if (error) throw error
     },
@@ -6023,76 +4297,33 @@ export const database = {
       // Get the explore routine with exercises
       const exploreRoutine = await this.getRoutineById(routineId)
 
+      type ExploreExerciseWithExercise = ExploreRoutineExercise & {
+        exercise: Exercise
+      }
+      const exercises: RoutineTemplateExercise[] = (
+        exploreRoutine.exercises || []
+      ).map((ex: ExploreExerciseWithExercise) => ({
+        exercise_id: ex.exercise_id,
+        order_index: ex.order_index,
+        notes: ex.notes,
+        sets: Array.from({ length: Math.max(0, ex.sets) }, (_, index) => ({
+          set_number: index + 1,
+          reps_min: ex.reps_min,
+          reps_max: ex.reps_max,
+        })),
+      }))
+
       // Create user's personal routine
-      const { data: routine, error: routineError } = await supabase
-        .from('workout_routines')
-        .insert({
-          user_id: userId,
+      const { routine } = await createRoutineWithTemplate(
+        userId,
+        {
           name: exploreRoutine.name,
           notes: exploreRoutine.description,
           image_path: exploreRoutine.image_url ?? null,
           program_id: programId ?? null,
-        })
-        .select()
-        .single()
-
-      if (routineError) throw routineError
-
-      // Insert routine exercises
-      if (exploreRoutine.exercises && exploreRoutine.exercises.length > 0) {
-        type ExploreExerciseWithExercise = ExploreRoutineExercise & {
-          exercise: Exercise
-        }
-        const routineExercises = exploreRoutine.exercises.map(
-          (ex: ExploreExerciseWithExercise) => ({
-            routine_id: routine.id,
-            exercise_id: ex.exercise_id,
-            order_index: ex.order_index,
-            notes: ex.notes,
-          }),
-        )
-
-        const {
-          data: insertedExercises,
-          error: exercisesError,
-        } = await supabase
-          .from('workout_routine_exercises')
-          .insert(routineExercises)
-          .select()
-
-        if (exercisesError) throw exercisesError
-
-        // Create sets for each exercise
-        const routineSets: {
-          routine_exercise_id: string
-          set_number: number
-          reps_min: number | null
-          reps_max: number | null
-        }[] = []
-        exploreRoutine.exercises.forEach((ex: ExploreExerciseWithExercise) => {
-          const insertedEx = insertedExercises?.find(
-            (ie: WorkoutRoutineExercise) => ie.order_index === ex.order_index,
-          )
-          if (!insertedEx) return
-
-          for (let setNum = 1; setNum <= ex.sets; setNum++) {
-            routineSets.push({
-              routine_exercise_id: insertedEx.id,
-              set_number: setNum,
-              reps_min: ex.reps_min,
-              reps_max: ex.reps_max,
-            })
-          }
-        })
-
-        if (routineSets.length > 0) {
-          const { error: setsError } = await supabase
-            .from('workout_routine_sets')
-            .insert(routineSets)
-
-          if (setsError) throw setsError
-        }
-      }
+        },
+        exercises,
+      )
 
       return routine
     },

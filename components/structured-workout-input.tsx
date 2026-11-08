@@ -4,6 +4,11 @@ import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { type ExerciseHistoricalBests } from '@/lib/services/exerciseHistoryService'
 import { exerciseLookup } from '@/lib/services/exerciseLookup'
 import { formatWeightInputValue } from '@/lib/utils/weight-input-format'
+import {
+    formatDurationDigits as formatDurationInputValue,
+    resolveLoggingMode,
+    secondsToDurationDigits,
+} from '@/lib/exercise-logging-mode'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { hapticAsync } from '@/lib/haptics'
@@ -123,36 +128,8 @@ interface WorkoutSetRowProps {
   canDelete: boolean
 }
 
-// Note: keep tokens specific. Ambiguous substrings like "row", "hang", "walk",
-// "hold" leak into rep-based lifts (T-bar Row, Hang Clean, Walking Lunge, Pause Hold).
-// Match concrete cardio / static-hold names instead.
-const TIMED_EXERCISE_PATTERN =
-  /\b(plank|wall sit|dead hang|l-?sit|sprint|run|jog|skip(?:ping)?|cycling|rowing machine|rower|stairmaster|stair climber|elliptical|treadmill|swim(?:ming)?|battle rope|jump rope|ski erg(?:ometer)?|assault bike|air bike|exercise bike|spin bike|farmer'?s? walk|farmer'?s? carry|suitcase carry|overhead carry|waiter walk|waiter carry|isometric hold|bear crawl|crab walk)\b/i
-
 function getExerciseLoggingType(exercise: Pick<ExerciseData, 'name' | 'loggingType'>): 'reps' | 'duration' {
-  if (exercise.loggingType === 'duration') return 'duration'
-  if (exercise.loggingType === 'reps') return 'reps'
-  return TIMED_EXERCISE_PATTERN.test(exercise.name) ? 'duration' : 'reps'
-}
-
-function formatDurationInputValue(value?: string | null): string {
-  const digits = (value ?? '').replace(/\D/g, '')
-  if (!digits) return ''
-  const seconds = Number.parseInt(digits.slice(-2), 10) || 0
-  const minutes = Number.parseInt(digits.slice(0, -2) || '0', 10) || 0
-  const totalSeconds = minutes * 60 + seconds
-  const displayMinutes = Math.floor(totalSeconds / 60)
-  const displaySeconds = totalSeconds % 60
-  return `${displayMinutes}:${displaySeconds.toString().padStart(2, '0')}`
-}
-
-function secondsToDurationDigits(seconds?: number | null): string | null {
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
-    return null
-  }
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}${secs.toString().padStart(2, '0')}`
+  return resolveLoggingMode({ name: exercise.name, explicitMode: exercise.loggingType })
 }
 
 function normalizeExerciseLoggingTypes(exercises: ExerciseData[]): ExerciseData[] {

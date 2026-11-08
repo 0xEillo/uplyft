@@ -1,10 +1,5 @@
 import { useAuth } from '@/contexts/auth-context'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
-import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
-import {
-  getOnboardingStrengthSnapshot,
-  mergeOnboardingStrengthSnapshotIntoExerciseData,
-} from '@/lib/onboarding-strength'
 import { database } from '@/lib/database'
 import {
   resolveCachedStrengthPoints,
@@ -24,8 +19,6 @@ import {
 import {
     getStrengthGender,
     getLevelIntensity as getStrengthLevelIntensity,
-    scoreToLevelProgress,
-    toLevelScore,
 } from '@/lib/strength-progress'
 import {
     getStrengthStandard,
@@ -84,13 +77,6 @@ export interface OverallLevelData {
   groupBreakdown: Record<OverallStrengthGroup, OverallStrengthGroupBreakdown>
 }
 
-export interface GroupLevelData {
-  group: ExerciseGroup
-  level: StrengthLevel
-  progress: number
-  averageScore: number
-  exercises: ExerciseData[]
-}
 export function useStrengthData() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -107,28 +93,19 @@ export function useStrengthData() {
     if (!user?.id) return
 
     try {
+      // Includes the onboarding lift (merged by the loader).
       const strengthContext = await loadStrengthScoreDeltaContext<ExerciseData>(
         user.id,
       )
-      const onboardingStrengthSnapshot = await getOnboardingStrengthSnapshot(
-        user.id,
-      )
-      const mergedStrengthContext =
-        mergeOnboardingStrengthSnapshotIntoExerciseData({
-          exercises: strengthContext.exercises,
-          best1RMSnapshotByExerciseId:
-            strengthContext.best1RMSnapshotByExerciseId,
-          snapshot: onboardingStrengthSnapshot,
-        })
 
       setProfile(strengthContext.profile)
       setStrengthSessions(strengthContext.sessions)
       setBest1RMSnapshotByExerciseId(
-        mergedStrengthContext.best1RMSnapshotByExerciseId,
+        strengthContext.best1RMSnapshotByExerciseId,
       )
 
       // Sort by max1RM descending
-      const sorted = [...mergedStrengthContext.exercises].sort(
+      const sorted = [...strengthContext.exercises].sort(
         (a, b) => b.max1RM - a.max1RM,
       )
       setExerciseData(sorted)
@@ -176,55 +153,6 @@ export function useStrengthData() {
     },
     [profile?.gender, profile?.weight_kg],
   )
-
-  // Calculate levels by exercise group (Push/Pull/Lower)
-  const groupLevels = useMemo((): Map<ExerciseGroup, GroupLevelData> => {
-    const result = new Map<ExerciseGroup, GroupLevelData>()
-
-    if (!coerceBodyweightKg(profile?.weight_kg) || exerciseData.length === 0) {
-      return result
-    }
-
-    // Group exercises by ExerciseGroup
-    const groupedExercises = new Map<ExerciseGroup, ExerciseData[]>()
-    
-    exerciseData.forEach((exercise) => {
-      const group = getExerciseGroup(exercise.exerciseName)
-      if (!groupedExercises.has(group)) {
-        groupedExercises.set(group, [])
-      }
-      groupedExercises.get(group)?.push(exercise)
-    })
-
-    // Calculate stats for each group
-    groupedExercises.forEach((exercises, group) => {
-      let totalScore = 0
-      let count = 0
-
-      exercises.forEach((exercise) => {
-        const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-        if (info) {
-          totalScore += toLevelScore(info.level, info.progress)
-          count++
-        }
-      })
-
-      if (count > 0) {
-        const averageScore = totalScore / count
-        const { level, progress } = scoreToLevelProgress(averageScore)
-
-        result.set(group, {
-          group,
-          level,
-          progress,
-          averageScore,
-          exercises,
-        })
-      }
-    })
-
-    return result
-  }, [exerciseData, profile, getStrengthInfo])
 
   const overallLevel = useMemo((): OverallLevelData | null => {
     if (
@@ -336,7 +264,6 @@ export function useStrengthData() {
     overallLevel,
     muscleGroups,
     displayMuscleGroups,
-    groupLevels,
     best1RMSnapshotByExerciseId,
   }
 }

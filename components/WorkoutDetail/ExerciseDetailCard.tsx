@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/theme-context'
 import { kgToPreferred, useUnit } from '@/contexts/unit-context'
 import { useProfile } from '@/contexts/profile-context'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
+import { formatSetDuration, resolveLoggingMode } from '@/lib/exercise-logging-mode'
 import {
   estimateOneRepMaxKg,
   getProgressDeltaPoints,
@@ -54,26 +55,15 @@ interface ExerciseDetailCardProps {
   workoutUserId?: string | null
 }
 
-// Note: keep tokens specific. Ambiguous substrings like "row", "hang", "walk",
-// "hold" leak into rep-based lifts (T-bar Row, Hang Clean, Walking Lunge, Pause Hold).
-// Match concrete cardio / static-hold names instead.
-const TIMED_EXERCISE_NAME_PATTERN =
-  /\b(plank|wall sit|dead hang|l-?sit|sprint|run|jog|skip(?:ping)?|cycling|rowing machine|rower|stairmaster|stair climber|elliptical|treadmill|swim(?:ming)?|battle rope|jump rope|ski erg(?:ometer)?|assault bike|air bike|exercise bike|spin bike|farmer'?s? walk|farmer'?s? carry|suitcase carry|overhead carry|waiter walk|waiter carry|isometric hold|bear crawl|crab walk)\b/i
-
 function formatWeightRepsText(
   weightKg: number | null,
   reps: number | null,
   durationSeconds: number | null | undefined,
   weightUnit: 'kg' | 'lb',
 ): string {
-  if (
-    typeof durationSeconds === 'number' &&
-    Number.isFinite(durationSeconds) &&
-    durationSeconds > 0
-  ) {
-    const mins = Math.floor(durationSeconds / 60)
-    const secs = Math.floor(durationSeconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  const durationText = formatSetDuration(durationSeconds)
+  if (durationText) {
+    return durationText
   }
 
   const hasWeight =
@@ -131,21 +121,12 @@ export function ExerciseDetailCard({
       : 'Custom Exercise'
   const exerciseName = exercise?.name || fallbackExerciseName
   const exercisePressId = exercise?.id || workoutExercise.exercise_id || null
-  const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(exerciseName)
   const isTimedExercise =
-    isTimedExerciseName ||
-    (setEntries.some(
-      ({ set }) =>
-        typeof set.duration_seconds === 'number' && set.duration_seconds > 0,
-    ) &&
-      setEntries.every(({ set }) => {
-        const hasDuration =
-          typeof set.duration_seconds === 'number' && set.duration_seconds > 0
-        const hasStrengthData =
-          (typeof set.weight === 'number' && set.weight > 0) ||
-          (typeof set.reps === 'number' && set.reps > 0)
-        return hasDuration || !hasStrengthData
-      }))
+    resolveLoggingMode({
+      name: exerciseName,
+      sets: setEntries.map(({ set }) => set),
+      strengthDataRule: 'positive',
+    }) === 'duration'
 
   const strengthProgress = useMemo(() => {
     if (!exercise || setEntries.length === 0) return null

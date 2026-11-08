@@ -28,6 +28,7 @@ import {
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
+import { formatDurationClock } from '@/lib/exercise-logging-mode'
 import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -56,20 +57,6 @@ const SONG_OVERLAY_DARK = { backgroundColor: 'rgba(0, 0, 0, 0.55)' }
 const SONG_OVERLAY_LIGHT = { backgroundColor: 'rgba(255, 255, 255, 0.9)' }
 
 // Helper functions for compact formatting
-function formatDurationCompact(seconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(seconds))
-  const hours = Math.floor(safeSeconds / 3600)
-  const mins = Math.floor((safeSeconds % 3600) / 60)
-  const secs = safeSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${mins
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
 function formatVolumeCompact(
   volumeKg: number,
   targetUnit: 'kg' | 'lb',
@@ -477,7 +464,7 @@ export const FeedCard = memo(function FeedCard({
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Time</Text>
             <Text style={styles.statValue}>
-              {formatDurationCompact(stats.durationSeconds || 0)}
+              {formatDurationClock(stats.durationSeconds || 0)}
             </Text>
           </View>
           <View style={styles.statItem}>

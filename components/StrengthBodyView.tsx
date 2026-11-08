@@ -42,6 +42,7 @@ import {
   getStrengthLevelTargetPerformance,
   LEVEL_POINT_ANCHORS,
 } from "@/lib/overall-strength-score";
+import { muscleToStrengthGroup } from "@/supabase/functions/_shared/strength-core";
 import {
   buildDisplayStrengthGroupData,
   DISPLAY_STRENGTH_GROUP_ORDER,
@@ -132,31 +133,8 @@ interface PriorityExerciseRecommendation extends TrackedExerciseWithProgress {
 function mapMuscleToFocusGroup(
   muscleGroup: string | null | undefined,
 ): FocusGroup | null {
-  if (!muscleGroup) return null;
-
-  switch (muscleGroup) {
-    case "Quads":
-    case "Hamstrings":
-    case "Glutes":
-    case "Calves":
-    case "Adductors":
-      return "Legs";
-    case "Back":
-    case "Lats":
-    case "Traps":
-    case "Lower Back":
-      return "Back";
-    case "Chest":
-      return "Chest";
-    case "Shoulders":
-      return "Shoulders";
-    case "Biceps":
-    case "Triceps":
-    case "Forearms":
-      return "Arms";
-    default:
-      return null;
-  }
+  const group = muscleToStrengthGroup(muscleGroup);
+  return group === "Core" ? null : group;
 }
 
 export function StrengthBodyView({
