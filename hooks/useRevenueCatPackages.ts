@@ -57,20 +57,3 @@ export function useRevenueCatPackages(offerings: PurchasesOffering | null) {
   }, [offerings])
 }
 
-export function calculateYearlySavings(
-  monthly: PurchasesPackage | null,
-  yearly: PurchasesPackage | null,
-) {
-  if (!monthly || !yearly) return null
-  const monthlyPrice = monthly.product.price
-  const yearlyPrice = yearly.product.price
-  if (!monthlyPrice || monthlyPrice <= 0 || !yearlyPrice || yearlyPrice <= 0)
-    return null
-
-  const annualizedMonthly = monthlyPrice * 12
-  if (annualizedMonthly <= 0) return null
-
-  const savings = ((annualizedMonthly - yearlyPrice) / annualizedMonthly) * 100
-  return Math.max(0, Math.round(savings))
-}
-

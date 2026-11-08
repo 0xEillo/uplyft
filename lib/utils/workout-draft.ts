@@ -1,17 +1,13 @@
 import type { WorkoutSong } from '@/types/music'
 import { MMKV } from 'react-native-mmkv'
 
-export const PENDING_POST_KEY = '@pending_workout_post'
-export const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
+const PENDING_POST_KEY = '@pending_workout_post'
+const PLACEHOLDER_WORKOUT_KEY = '@placeholder_workout'
 const PENDING_POST_PROCESSING_KEY = '@pending_workout_post_processing'
 const WORKOUT_DRAFT_SNAPSHOT_KEY = '@workout_draft_snapshot'
 const WORKOUT_DRAFT_OPS_KEY = '@workout_draft_ops'
 
 const storage = new MMKV({ id: 'workout-draft' })
-const IS_DEV =
-  typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'boolean'
-    ? ((globalThis as { __DEV__?: boolean }).__DEV__ as boolean)
-    : process.env.NODE_ENV !== 'production'
 const DEBUG_DRAFT_LOGS = false // IS_DEV && process.env.NODE_ENV !== 'test'
 
 function logDraft(_event: string, _payload?: Record<string, unknown>) {
@@ -32,7 +28,6 @@ export interface StructuredSetDraft {
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
-  isCompleted?: boolean
 }
 
 export interface StructuredExerciseDraft {
@@ -200,11 +195,6 @@ export function draftHasContent(draft?: WorkoutDraft | null): boolean {
     hasRoutineSelection ||
     hasTimerState
   )
-}
-
-export async function hasStoredDraft(): Promise<boolean> {
-  const draft = await loadDraft()
-  return draftHasContent(draft)
 }
 
 export async function loadDraft(): Promise<WorkoutDraft | null> {
@@ -415,7 +405,7 @@ export async function savePlaceholderWorkout(
   storage.set(PLACEHOLDER_WORKOUT_KEY, JSON.stringify(placeholder))
 }
 
-export async function clearPlaceholderWorkout(): Promise<void> {
+async function clearPlaceholderWorkout(): Promise<void> {
   removeKey(PLACEHOLDER_WORKOUT_KEY)
 }
 

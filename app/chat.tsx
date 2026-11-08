@@ -1,18 +1,20 @@
-import { useProfile } from '@/contexts/profile-context'
+import { AiOrb } from '@/components/ai-orb'
+import { BlurredHeader } from '@/components/blurred-header'
+import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { Paywall } from '@/components/paywall'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
-import { parseRepRange } from '@/hooks/useExerciseAutocomplete'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { getCoach } from '@/lib/coaches'
+import { parseRepRange } from '@/lib/ai/assistant-message'
+import { AI_COACH_NAME } from '@/lib/ai-coach'
 import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
+import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  Image,
   Keyboard,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,6 +28,7 @@ import {
   WorkoutContext,
 } from '@/components/workout-chat'
 
+const PAYWALL_SOURCE = 'chat_free_limit'
 
 export default function ChatScreen() {
   const colors = useThemedColors()
@@ -34,18 +37,30 @@ export default function ChatScreen() {
     returnToTab?: string
     generate?: string
   }>()
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
   const [headerHeight, setHeaderHeight] = useState(0)
+
+  // AI chat is free with a daily message cap for non-Pro users (enforced by
+  // the chat edge function). When the cap is hit, offer the paywall.
+  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
+  const [paywallVisible, setPaywallVisible] = useState(false)
+
+  const handleFreeLimitReached = useCallback(() => {
+    Keyboard.dismiss()
+    trackPaywallShown('ai_chat', PAYWALL_SOURCE)
+    setPaywallVisible(true)
+  }, [trackPaywallShown])
+
+  const handlePaywallClose = useCallback(() => {
+    trackPaywallDismissed('ai_chat', PAYWALL_SOURCE)
+    setPaywallVisible(false)
+  }, [trackPaywallDismissed])
 
   const styles = useMemo(() => createStyles(colors, insets), [colors, insets])
 
   // RN's KeyboardAvoidingView frame is parent-relative, but the keyboard event
-  // ships absolute screen Y. We therefore have to tell the inner KAV how far
-  // its parent (the chat container under the header) sits from the top of the
-  // screen, otherwise the input gets covered by the keyboard.
-  const chatKeyboardOffset =
-    Platform.OS === 'ios' ? insets.top + headerHeight : 0
+  // ships absolute screen Y, so the inner KAV needs its parent's screen Y. The
+  // chat now fills the screen from the top (the header floats over it).
+  const chatKeyboardOffset = 0
 
   const {
     session,
@@ -212,48 +227,6 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.page}>
-      <View
-        style={styles.header}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
-        <View style={styles.headerLeft}>
-          <Image source={coach.image} style={styles.headerAvatar} />
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {coach.name}
-            </Text>
-            <Text style={styles.headerSubtitle} numberOfLines={1}>
-              Your coach
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={handleOpenSettings}
-            style={styles.headerIconButton}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Chat settings"
-          >
-            <Ionicons
-              name="settings-outline"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.headerIconButton}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Close chat"
-          >
-            <Ionicons name="close" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <View style={styles.chatContainer}>
         <WorkoutChat
           persistence={{ kind: 'main' }}
@@ -264,8 +237,55 @@ export default function ChatScreen() {
           onClose={handleClose}
           keyboardVerticalOffsetOverride={chatKeyboardOffset}
           autoOpenActions={shouldAutoOpenActions}
+          onFreeLimitReached={handleFreeLimitReached}
+          contentInsetTop={insets.top + headerHeight}
         />
       </View>
+
+      {/* Floats over the messages: they scroll underneath and show through a
+          blur. The fade zone below the header is long enough that the blur
+          stays at full strength behind the title row and only fades out
+          below it. */}
+      <BlurredHeader intensity={35} fadeExtension={72}>
+        <View
+          style={styles.header}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        >
+          <LiquidGlassSurface style={styles.headerGlassButton}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.headerIconButton}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close chat"
+            >
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
+
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {AI_COACH_NAME}
+          </Text>
+
+          {/* AI orb doubles as the entry point to chat settings. */}
+          <TouchableOpacity
+            onPress={handleOpenSettings}
+            style={styles.headerIconButton}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Chat settings"
+          >
+            <AiOrb size={44} />
+          </TouchableOpacity>
+        </View>
+      </BlurredHeader>
+
+      <Paywall
+        visible={paywallVisible}
+        onClose={handlePaywallClose}
+        title="Keep chatting with Rep AI"
+        feature="ai_chat"
+      />
     </View>
   )
 }
@@ -277,62 +297,40 @@ const createStyles = (
   StyleSheet.create({
     page: {
       flex: 1,
-      backgroundColor: colors.surfaceSheet,
-      paddingTop: insets.top,
+      backgroundColor: colors.bg,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      paddingTop: 6,
+      paddingBottom: 8,
       gap: 12,
     },
-    headerLeft: {
-      flex: 1,
-      flexDirection: 'row',
+    headerGlassButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
       alignItems: 'center',
-      gap: 12,
-      minWidth: 0,
     },
-    headerAvatar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+    headerIconButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    headerTextWrap: {
+    headerTitle: {
       flex: 1,
-      minWidth: 0,
-    },
-    headerName: {
-      fontSize: 16,
+      textAlign: 'center',
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,
       letterSpacing: -0.2,
     },
-    headerSubtitle: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 1,
-    },
-    headerRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    headerIconButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.surfaceSubtle,
-    },
     chatContainer: {
       flex: 1,
-      overflow: 'hidden',
     },
   })

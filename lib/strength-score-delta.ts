@@ -1,16 +1,14 @@
-import { database } from '@/lib/database'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
+import { loadStrengthInputs } from '@/lib/strength-inputs'
 import {
   calculateOverallStrengthScoreDeltaForSession,
   getLatestStrengthIncreaseSession,
   type OverallStrengthBest1RMSnapshot,
   type OverallStrengthExerciseInput,
   type OverallStrengthScoreDeltaForSessionResult,
+  type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
-import {
-  getStrengthGender,
-  type StrengthGender,
-} from '@/lib/strength-progress'
+import type { StrengthGender } from '@/lib/strength-progress'
 import type { Profile } from '@/types/database.types'
 
 export const STRENGTH_SCORE_DELTA_SEMANTICS = {
@@ -28,6 +26,8 @@ export interface StrengthScoreDeltaContext<
   strengthGender: StrengthGender | null
   exercises: TExercise[]
   best1RMSnapshotByExerciseId: Record<string, OverallStrengthBest1RMSnapshot>
+  /** Per-workout history used to replay the displayed score. */
+  sessions?: StrengthHistorySession[]
 }
 
 export interface StrengthScoreDeltaResult
@@ -42,27 +42,6 @@ interface ResolveBaselineSessionInput {
   postedWorkoutSessionId?: string | null
   exercises: OverallStrengthExerciseInput[]
   best1RMSnapshotByExerciseId: Record<string, OverallStrengthBest1RMSnapshot>
-}
-
-async function resolveProfileForStrengthScore(
-  userId: string,
-  profile: Profile | null,
-): Promise<Profile | null> {
-  if (!profile) return profile
-
-  const latestWeightEntry = await database.dailyLog
-    .getLatestWeightEntry(userId)
-    .catch(() => null)
-  const latestWeightKg = coerceBodyweightKg(latestWeightEntry?.weight_kg)
-
-  if (latestWeightKg === null) {
-    return profile
-  }
-
-  return {
-    ...profile,
-    weight_kg: latestWeightKg,
-  }
 }
 
 function findLatestIncreaseAtForSession(
@@ -131,8 +110,13 @@ export function calculateStrengthScoreDelta(
   },
 ): StrengthScoreDeltaResult | null {
   const { semantics, context, postedWorkoutSessionId, now } = input
-  const { profile, strengthGender, exercises, best1RMSnapshotByExerciseId } =
-    context
+  const {
+    profile,
+    strengthGender,
+    exercises,
+    best1RMSnapshotByExerciseId,
+    sessions,
+  } = context
   const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
 
   if (
@@ -163,6 +147,7 @@ export function calculateStrengthScoreDelta(
     exercises,
     best1RMSnapshotByExerciseId,
     baselineSessionId,
+    sessions,
     now,
   })
 
@@ -178,6 +163,11 @@ export function calculateStrengthScoreDelta(
   }
 }
 
+/**
+ * Loads the strength score inputs (see lib/strength-inputs.ts). Every app
+ * screen that shows a strength score loads through here, so they all count
+ * the onboarding lift and use the same bodyweight.
+ */
 export async function loadStrengthScoreDeltaContext<
   TExercise extends OverallStrengthExerciseInput = OverallStrengthExerciseInput,
 >(
@@ -186,25 +176,19 @@ export async function loadStrengthScoreDeltaContext<
     profileOverride?: Profile
   },
 ): Promise<StrengthScoreDeltaContext<TExercise>> {
-  const hasProfileOverride = options?.profileOverride !== undefined
-  const profilePromise = hasProfileOverride
-    ? Promise.resolve(options?.profileOverride ?? null)
-    : database.profiles.getByIdOrNull(userId)
-
-  const [rawProfile, exercises, snapshots] = await Promise.all([
-    profilePromise,
-    database.stats.getMajorCompoundLiftsData(userId),
-    database.stats.getExerciseCurrentAndPreviousBest1RMs(userId),
-  ])
-  const profile = hasProfileOverride
-    ? await resolveProfileForStrengthScore(userId, rawProfile ?? null)
-    : rawProfile ?? null
+  const inputs = await loadStrengthInputs(
+    userId,
+    options?.profileOverride === undefined
+      ? undefined
+      : { profileOverride: options.profileOverride },
+  )
 
   return {
-    profile,
-    strengthGender: getStrengthGender(profile?.gender ?? null),
-    exercises: exercises as unknown as TExercise[],
-    best1RMSnapshotByExerciseId: snapshots,
+    profile: inputs.profile,
+    strengthGender: inputs.strengthGender,
+    exercises: inputs.exercises as unknown as TExercise[],
+    best1RMSnapshotByExerciseId: inputs.best1RMSnapshotByExerciseId,
+    sessions: inputs.sessions,
   }
 }
 

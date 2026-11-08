@@ -5,20 +5,27 @@ export interface MuscleBodyMapping {
   slug: BodyPartSlug
   side: 'front' | 'back'
   bodyHalf: 'upper' | 'lower'
+  /** Other parts highlighted with it, e.g. traps so Back shows the whole upper back. */
+  extraSlugs?: BodyPartSlug[]
 }
 
-export const BODY_HALF_CONFIG = {
+const BODY_HALF_CONFIG = {
   upper: { scale: 0.52, offsetY: 42 },
   lower: { scale: 0.36, offsetY: -26 },
 }
 
-export const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
+const MUSCLE_TO_BODY_PARTS: Record<string, MuscleBodyMapping> = {
   // Upper body muscles
   Chest: { slug: 'chest', side: 'front', bodyHalf: 'upper' },
   Shoulders: { slug: 'deltoids', side: 'front', bodyHalf: 'upper' },
   Triceps: { slug: 'triceps', side: 'back', bodyHalf: 'upper' },
   Biceps: { slug: 'biceps', side: 'front', bodyHalf: 'upper' },
-  Back: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
+  Back: {
+    slug: 'upper-back',
+    side: 'back',
+    bodyHalf: 'upper',
+    extraSlugs: ['trapezius'],
+  },
   Lats: { slug: 'upper-back', side: 'back', bodyHalf: 'upper' },
   Traps: { slug: 'trapezius', side: 'back', bodyHalf: 'upper' },
   Abs: { slug: 'abs', side: 'front', bodyHalf: 'upper' },
@@ -47,7 +54,9 @@ const muscleChipRenderData = EXERCISE_MUSCLE_FILTER_GROUPS.map(
 
     return {
       group,
-      bodyData: [{ slug: mapping.slug, intensity: 1 }],
+      bodyData: [mapping.slug, ...(mapping.extraSlugs ?? [])].map(
+        (slug) => ({ slug, intensity: 1 }),
+      ),
       side: mapping.side,
       scale: BODY_HALF_CONFIG[mapping.bodyHalf].scale,
       offsetY: BODY_HALF_CONFIG[mapping.bodyHalf].offsetY,

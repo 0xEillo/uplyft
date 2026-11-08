@@ -1,4 +1,5 @@
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
+import { useRestTimerRemainingSeconds } from '@/contexts/rest-timer-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
   DEFAULT_TOOLBAR_BUTTONS,
@@ -18,6 +19,8 @@ import {
     TouchableOpacity,
     UIManager,
     View,
+    type StyleProp,
+    type TextStyle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -39,7 +42,6 @@ interface EditorToolbarProps {
   isProcessingImage: boolean
   isLoading: boolean
   isRestTimerActive?: boolean
-  restTimerRemaining?: number
   scanButtonRef?: RefObject<View | null>
   micButtonRef?: RefObject<View | null>
   timerButtonRef?: RefObject<View | null>
@@ -100,6 +102,18 @@ function ToolbarPlusIcon({
   )
 }
 
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+/** Subscribes to the rest countdown so only this label re-renders per tick. */
+function RestTimerRemainingText({ style }: { style: StyleProp<TextStyle> }) {
+  const remainingSeconds = useRestTimerRemainingSeconds()
+  return <Text style={style}>{formatTime(remainingSeconds)}</Text>
+}
+
 export function EditorToolbar({
   onScanWorkout,
   onMicPress,
@@ -111,7 +125,6 @@ export function EditorToolbar({
   isProcessingImage,
   isLoading,
   isRestTimerActive,
-  restTimerRemaining,
   scanButtonRef,
   micButtonRef,
   timerButtonRef,
@@ -283,10 +296,8 @@ export function EditorToolbar({
       onPress: onStopwatchPress,
       active: Boolean(isRestTimerActive),
       renderContent: () =>
-        isRestTimerActive && restTimerRemaining !== undefined ? (
-          <Text style={styles.timerText}>
-            {formatTime(restTimerRemaining)}
-          </Text>
+        isRestTimerActive ? (
+          <RestTimerRemainingText style={styles.timerText} />
         ) : (
           <Ionicons
             name="stopwatch-outline"
@@ -427,12 +438,6 @@ export function EditorToolbar({
     inputRange: [0, 0.55, 1],
     outputRange: [0, 0, 1],
   })
-  function formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
   return (
     <Animated.View
       style={[

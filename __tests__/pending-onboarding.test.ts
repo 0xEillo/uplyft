@@ -78,7 +78,6 @@ describe('pending onboarding profile sync', () => {
       commitment_mode: 'specific_days',
       experience_level: 'intermediate',
       bio: 'Cutting phase',
-      coach: 'ross',
       strength_snapshot: {
         exerciseName: 'Bench Press',
         workingWeightKg: 60,
@@ -104,7 +103,6 @@ describe('pending onboarding profile sync', () => {
         commitment_frequency: null,
         experience_level: 'intermediate',
         bio: 'Cutting phase',
-        coach: 'ross',
       }),
     )
     expect(mockPersistOnboardingWeight).toHaveBeenCalledWith('user-1', 82.5)

@@ -7,7 +7,7 @@ const BUCKET_NAME = 'routine-images'
  * These images should NOT be available for users to select for their own routines.
  * Add the file names (without extension) here.
  */
-export const RESERVED_ROUTINE_IMAGES = [
+const RESERVED_ROUTINE_IMAGES = [
   // PPL Program routines
   'Push',
   'Pull',
@@ -54,13 +54,6 @@ export function generateRandomTintColor(): string {
   return ROUTINE_TINT_COLORS[randomIndex]
 }
 
-/**
- * Get a tint color by index (for fallback when no stored color)
- */
-export function getTintColorByIndex(index: number): string {
-  return ROUTINE_TINT_COLORS[index % ROUTINE_TINT_COLORS.length]
-}
-
 export interface RoutineImage {
   name: string
   path: string
@@ -70,7 +63,7 @@ export interface RoutineImage {
 /**
  * List all available routine images from the storage bucket
  */
-export async function listRoutineImages(): Promise<RoutineImage[]> {
+async function listRoutineImages(): Promise<RoutineImage[]> {
   try {
     const { data: files, error } = await supabase.storage
       .from(BUCKET_NAME)
@@ -147,25 +140,3 @@ export function getRoutineImageUrl(imagePath: string | null | undefined): string
   return data.publicUrl
 }
 
-/**
- * Check if a routine image exists in storage
- */
-export async function routineImageExists(imagePath: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .list('', {
-        search: imagePath,
-      })
-
-    if (error) {
-      console.error('Error checking routine image:', error)
-      return false
-    }
-
-    return data?.some((file) => file.name === imagePath) ?? false
-  } catch (error) {
-    console.error('Error in routineImageExists:', error)
-    return false
-  }
-}

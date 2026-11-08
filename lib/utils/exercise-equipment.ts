@@ -52,10 +52,6 @@ function normalizeToken(value: string) {
   return value.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
 }
 
-function toTitleCase(value: string) {
-  return value.replace(/\b\w/g, (char) => char.toUpperCase())
-}
-
 export function normalizeExerciseEquipment(
   value: string | null | undefined,
 ): ExerciseEquipment | null {
@@ -120,21 +116,7 @@ export function getExerciseEquipmentLabel(value: ExerciseEquipment) {
   return EXERCISE_EQUIPMENT_LABELS[value]
 }
 
-export function formatExerciseEquipmentLabel(
-  value: string | null | undefined,
-): string | null {
-  if (!value) return null
-
-  const normalized = normalizeExerciseEquipment(value)
-  if (normalized) {
-    return getExerciseEquipmentLabel(normalized)
-  }
-
-  const token = normalizeToken(value)
-  return token ? toTitleCase(token) : null
-}
-
-export function getNormalizedExerciseEquipment(
+function getNormalizedExerciseEquipment(
   exercise: Pick<Exercise, 'equipment' | 'equipments'>,
 ): ExerciseEquipment[] {
   const normalizedEquipment = new Set<ExerciseEquipment>()

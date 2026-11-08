@@ -30,16 +30,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BlurredHeader } from '@/components/blurred-header'
 import { BodyLogProcessingModal } from '@/components/BodyLogProcessingModal'
 import { BodyMetricInfoModal } from '@/components/BodyMetricInfoModal'
-import { LockedResultsOverlay } from '@/components/LockedResultsOverlay'
-import { Paywall } from '@/components/paywall'
 import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
-import { useProfile } from '@/contexts/profile-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useUnit } from '@/contexts/unit-context'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
     getBMIExplanation,
@@ -55,7 +50,7 @@ import {
     type BodyLogEntryWithImages,
     type BodyLogImage,
 } from '@/lib/body-log/metadata'
-import { getCoach } from '@/lib/coaches'
+import { AiOrb } from '@/components/ai-orb'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { normalizeImageUris } from '@/lib/utils/image-normalization'
@@ -250,9 +245,6 @@ export default function BodyLogDetailScreen() {
   const colors = useThemedColors()
   const { formatWeight, weightUnit } = useUnit()
   const { user } = useAuth()
-  const { coachId } = useProfile()
-  const { isProMember } = useSubscription()
-  const coach = getCoach(coachId)
   const router = useRouter()
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
@@ -272,10 +264,7 @@ export default function BodyLogDetailScreen() {
   // Modal states
   const [infoModalVisible, setInfoModalVisible] = useState(false)
   const [weightModalVisible, setWeightModalVisible] = useState(false)
-  const [paywallVisible, setPaywallVisible] = useState(false)
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
   const [isRunningBodyScan, setIsRunningBodyScan] = useState(false)
-  const [showTeaserResults, setShowTeaserResults] = useState(false)
   const [showProcessingModal, setShowProcessingModal] = useState(false)
   const [processingComplete, setProcessingComplete] = useState(false)
   const [selectedMetric, setSelectedMetric] = useState<{
@@ -972,7 +961,7 @@ export default function BodyLogDetailScreen() {
     // Check if body scan has already been run for this entry
     const alreadyScanned = entry.body_fat_percentage !== null || entry.bmi !== null
     
-    if (alreadyScanned && isProMember) {
+    if (alreadyScanned) {
       haptic('light')
       Alert.alert(
         'Body Scan Already Completed',
@@ -1007,22 +996,11 @@ export default function BodyLogDetailScreen() {
 
     haptic('medium') // Mapping heavy to medium for non-intrusive feel
 
-    // Start processing modal for both flows
+    // Start processing modal
     setProcessingComplete(false)
     setShowProcessingModal(true)
 
-    // For free users: Show teaser flow (fake processing, then locked results)
-    if (!isProMember) {
-      // Simulate slightly variable processing time (3.5-5 seconds) for realism
-      // This makes it feel like it's actually doing something complex
-      const teaserTime = 3500 + Math.random() * 1500
-      setTimeout(() => {
-        setProcessingComplete(true)
-      }, teaserTime)
-      return
-    }
-
-    // For Pro users: Run actual body scan
+    // Run body scan
     setIsRunningBodyScan(true)
 
     try {
@@ -1114,40 +1092,6 @@ export default function BodyLogDetailScreen() {
     } finally {
       setIsRunningBodyScan(false)
     }
-  }
-
-  // Handle teaser processing completion
-  const handleTeaserProcessingComplete = async () => {
-    setShowProcessingModal(false)
-    setProcessingComplete(false)
-    
-    // Set realistic mock metrics for the teaser
-    setMetrics({
-      weight_kg: entry?.weight_kg ?? 75,
-      body_fat_percentage: 14.2,
-      bmi: 23.5,
-      lean_mass_kg: 64.3,
-      fat_mass_kg: 10.7,
-      score_v_taper: 82,
-      score_chest: 78,
-      score_shoulders: 85,
-      score_abs: 72,
-      score_arms: 80,
-      score_back: 84,
-      score_legs: 76,
-    })
-
-    // Trigger success haptic even for teaser for tactile feedback
-    hapticSuccess()
-    // Show the locked results overlay
-    setShowTeaserResults(true)
-  }
-
-  // Handle unlock button press (opens paywall)
-  const handleUnlockResults = async () => {
-    haptic('light')
-    trackPaywallShown('body_scan', 'body_log_locked_results')
-    setPaywallVisible(true)
   }
 
   const handleDelete = async () => {
@@ -1536,7 +1480,7 @@ export default function BodyLogDetailScreen() {
                 {entry?.analysis_summary && (
                   <View style={[styles.coachNotes, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
                     <View style={styles.coachNotesHead}>
-                      <Image source={coach.image} style={styles.coachAvatar} contentFit="cover" />
+                      <AiOrb size={22} />
                       <Text style={[styles.coachNotesTitle, { color: colors.textSecondary }]}>Coach Notes</Text>
                     </View>
                     <Text style={[styles.coachNotesText, { color: colors.textPrimary }]}>{entry.analysis_summary}</Text>
@@ -1545,13 +1489,6 @@ export default function BodyLogDetailScreen() {
               </View>
             )}
 
-            {showTeaserResults && (
-              <View style={[styles.sectionContainer, { marginTop: -20, marginBottom: 40 }]}>
-                <View style={styles.resultsWrapper}>
-                  <LockedResultsOverlay onUnlock={handleUnlockResults} />
-                </View>
-              </View>
-            )}
          </Animated.ScrollView>
 
          {/* Dynamic Action Dock */}
@@ -1635,25 +1572,13 @@ export default function BodyLogDetailScreen() {
             gender={userGender}
             />
         )}
-        <Paywall
-        visible={paywallVisible}
-        onClose={() => {
-          trackPaywallDismissed('body_scan', 'body_log_locked_results')
-          setPaywallVisible(false)
-        }}
-        feature="body_scan"
-      />
         <BodyLogProcessingModal
         visible={showProcessingModal}
         imageUri={imageUrls[0] ?? null}
         isComplete={processingComplete}
             onComplete={() => {
-              if (!isProMember) {
-                handleTeaserProcessingComplete()
-              } else {
-                setShowProcessingModal(false)
-                setProcessingComplete(false)
-              }
+              setShowProcessingModal(false)
+              setProcessingComplete(false)
             }}
         />
 
@@ -2524,12 +2449,6 @@ const createStyles = (colors: Colors) =>
     alignItems: 'center',
     gap: 8,
   },
-  analysisSummaryCoachAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
   analysisSummaryTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -2890,11 +2809,6 @@ const createStyles = (colors: Colors) =>
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  coachAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
   },
   coachNotesTitle: {
     fontSize: 11,

@@ -67,7 +67,6 @@ export default function TrialOfferScreen() {
     commitment_mode: CommitmentMode
     experience_level: ExperienceLevel | null
     bio: string | null
-    coach: string | null
     strength_snapshot?: OnboardingStrengthSnapshotInput | null
   }
 
@@ -95,7 +94,6 @@ export default function TrialOfferScreen() {
         commitment_frequency: CommitmentFrequency | null
         experience_level: ExperienceLevel | null
         bio: string | null
-        coach?: string | null
         is_guest?: boolean
       } = {
         id: userId,
@@ -117,7 +115,6 @@ export default function TrialOfferScreen() {
             : null,
         experience_level: onboardingData.experience_level,
         bio: onboardingData.bio,
-        coach: onboardingData.coach,
         is_guest: true,
       }
 

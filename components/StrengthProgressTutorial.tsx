@@ -50,7 +50,7 @@ const LEVEL_ORDER: StrengthLevel[] = [
 ]
 
 const SAMPLE_LEVEL: StrengthLevel = 'Intermediate'
-const SAMPLE_SCORE = 485 // Intermediate range: 400–600, scale 0–1000
+const SAMPLE_SCORE = 4853 // Intermediate range: 4000–6000, scale 0–10000
 
 // 3 tiers only: simpler to read. Weak (gray), mid (green), strong (purple).
 // Clear pattern: core/arms weaker, big compounds stronger.

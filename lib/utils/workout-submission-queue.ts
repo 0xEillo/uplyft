@@ -4,7 +4,6 @@ import * as Crypto from 'expo-crypto'
 import { isApiError } from '@/lib/api/errors'
 import { postWorkout, type WorkoutResponse } from '@/lib/api/post-workout'
 import { database } from '@/lib/database'
-import { supabase } from '@/lib/supabase'
 import { uploadWorkoutImage } from '@/lib/utils/image-upload'
 import {
   emitWorkoutComposerSessionRestored,
@@ -44,7 +43,7 @@ import type { WorkoutSong } from '@/types/music'
 
 export type SubmitWorkoutErrorCode = 'IMAGE_UPLOAD'
 
-export class SubmitWorkoutError extends Error {
+class SubmitWorkoutError extends Error {
   readonly code: SubmitWorkoutErrorCode
   readonly originalError?: unknown
 

@@ -1,85 +1,49 @@
 import {
-  GENERATED_EXERCISES_WITH_STANDARDS,
-  GENERATED_EXERCISE_MUSCLE_MAPPING,
-  GENERATED_EXERCISE_TIER_WEIGHTS,
-} from './generated-strength-standards.ts'
+  LEVEL_POINT_ANCHORS,
+  OVERALL_STRENGTH_SCORE_CAP,
+  STRENGTH_LEVEL_ORDER,
+  STRENGTH_STANDARDS_EXERCISES,
+  calculateExerciseStrengthPoints,
+  calculateOverallStrengthScore,
+  calculateStrengthScoreHistory,
+  calculateStrengthScoreProjectionForExerciseTarget,
+  estimateOneRepMaxKg,
+  getStandardsLadder,
+  getStrengthStandard,
+  getStrengthStandardsConfig,
+  isRepBasedStrengthExercise,
+  normaliseExerciseName,
+  resolveExerciseSpecificMuscle,
+  resolveExerciseStrengthGroup,
+  toLegacyStrengthScore,
+  type ExerciseTier,
+  type OverallStrengthGroup,
+  type OverallStrengthGroupBreakdown,
+  type OverallStrengthScoreResult,
+  type StrengthGender,
+  type StrengthLevel,
+  type StrengthStandardsConfig,
+} from './strength-core.ts'
+import {
+  buildStrengthInputsFromRows,
+  getBestSetFromRecords,
+  ONBOARDING_STRENGTH_SNAPSHOT_SELECT,
+  parseOnboardingStrengthSnapshotRow,
+  resolveStrengthBodyweightKg,
+  STRENGTH_SESSIONS_SELECT,
+  type OnboardingStrengthSnapshotRow,
+  type StrengthInputExercise,
+  type StrengthInputs,
+  type StrengthSessionRow,
+} from './strength-inputs.ts'
 import { getLatestDailyWeightKg } from './daily-weight.ts'
 import type { SupabaseClient } from './supabase.ts'
 
-export type StrengthLevel =
-  | 'Untrained'
-  | 'Beginner'
-  | 'Novice'
-  | 'Intermediate'
-  | 'Advanced'
-  | 'Elite'
-  | 'World Class'
+// Scoring lives in strength-core.ts, shared with the app. This module loads a
+// user's data and builds the chat tools' views of it.
+export type { OverallStrengthGroup, StrengthGender, StrengthLevel }
 
-export type StrengthGender = 'male' | 'female'
-
-export type OverallStrengthGroup =
-  | 'Legs'
-  | 'Back'
-  | 'Chest'
-  | 'Shoulders'
-  | 'Arms'
-  | 'Core'
-
-interface StrengthStandard {
-  level: StrengthLevel
-  multiplier: number
-  color: string
-  description: string
-}
-
-interface ExerciseStandardsConfig {
-  id: string
-  name: string
-  aliases?: readonly string[]
-  gifUrl?: string | null
-  male: readonly StrengthStandard[]
-  female: readonly StrengthStandard[]
-  tier?: 1 | 2 | 3
-  isRepBased?: boolean
-}
-
-interface SetRow {
-  reps: number | null
-  weight: number | null
-}
-
-interface WorkoutExerciseRow {
-  exercise_id?: string | null
-  exercise?:
-    | {
-        id?: string | null
-        name?: string | null
-        muscle_group?: string | null
-      }
-    | null
-  sets?: SetRow[] | null
-}
-
-interface WorkoutSessionRow {
-  created_at: string
-  workout_exercises?: WorkoutExerciseRow[] | null
-}
-
-interface ProfileStrengthRow {
-  gender: string | null
-  weight_kg: number | null
-}
-
-export interface LifterLevelGroupBreakdown {
-  group: OverallStrengthGroup
-  weight: number
-  topExerciseScore: number
-  decayFactor: number
-  effectiveScore: number
-  weightedContribution: number
-  lastTrainedAt: string | null
-  trackedExerciseCount: number
-}
+export type LifterLevelGroupBreakdown = OverallStrengthGroupBreakdown
 
 export interface LifterLevelDetails {
   points: number
@@ -99,7 +63,8 @@ export interface ExerciseRankDetails {
   muscleGroup: string | null
   lastTrainedAt: string | null
   isRepBased: boolean
-  tier: 1 | 2 | 3
+  tier: ExerciseTier
+  sessionCount: number | null
   level: StrengthLevel
   nextLevel: StrengthLevel | null
   progress: number
@@ -131,7 +96,7 @@ export interface ExerciseStandardsLookup {
   gender: StrengthGender
   bodyweightKg: number
   isRepBased: boolean
-  tier: 1 | 2 | 3
+  tier: ExerciseTier
   levels: ExerciseStandardsLadderEntry[]
 }
 
@@ -146,6 +111,7 @@ export interface UserStrengthProfile {
 }
 
 export interface StrengthProfileCacheUpdate {
+  overall_strength_points: number | null
   overall_strength_score: number | null
   overall_strength_level: StrengthLevel | null
   overall_strength_progress: number | null
@@ -166,7 +132,7 @@ export interface LifterPointTargetCandidate {
   muscleGroup: string | null
   targetGroup: OverallStrengthGroup | null
   isRepBased: boolean
-  tier: 1 | 2 | 3
+  tier: ExerciseTier
   currentValue: number
   currentMetric: 'estimated_1rm_kg' | 'reps'
   targetValue: number
@@ -210,86 +176,8 @@ interface SupportedExerciseSnapshot {
   bestSetWeightKg: number | null
   bestSetReps: number | null
   isRepBased: boolean
-  tier: 1 | 2 | 3
-}
-
-const OVERALL_STRENGTH_SCORE_CAP = 1000
-const SECONDARY_EXERCISE_DECAY = 0.5
-
-const LEVEL_POINT_ANCHORS: Record<StrengthLevel, number> = {
-  Untrained: 0,
-  Beginner: 100,
-  Novice: 200,
-  Intermediate: 400,
-  Advanced: 600,
-  Elite: 825,
-  'World Class': OVERALL_STRENGTH_SCORE_CAP,
-}
-
-const SCORE_LEVEL_STEPS: { level: StrengthLevel; score: number }[] = [
-  { level: 'Untrained', score: LEVEL_POINT_ANCHORS.Untrained },
-  { level: 'Beginner', score: LEVEL_POINT_ANCHORS.Beginner },
-  { level: 'Novice', score: LEVEL_POINT_ANCHORS.Novice },
-  { level: 'Intermediate', score: LEVEL_POINT_ANCHORS.Intermediate },
-  { level: 'Advanced', score: LEVEL_POINT_ANCHORS.Advanced },
-  { level: 'Elite', score: LEVEL_POINT_ANCHORS.Elite },
-  { level: 'World Class', score: LEVEL_POINT_ANCHORS['World Class'] },
-]
-
-const OVERALL_GROUP_WEIGHTS: Record<OverallStrengthGroup, number> = {
-  Legs: 0.24,
-  Back: 0.24,
-  Chest: 0.19,
-  Shoulders: 0.19,
-  Arms: 0.09,
-  Core: 0.05,
-}
-
-const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
-  'Untrained',
-  'Beginner',
-  'Novice',
-  'Intermediate',
-  'Advanced',
-  'Elite',
-  'World Class',
-]
-
-const exerciseNameMap = buildExerciseNameMap()
-const exerciseMuscleMapping =
-  GENERATED_EXERCISE_MUSCLE_MAPPING as Record<string, string | undefined>
-
-function buildExerciseNameMap(): Map<string, ExerciseStandardsConfig> {
-  const map = new Map<string, ExerciseStandardsConfig>()
-
-  ;(GENERATED_EXERCISES_WITH_STANDARDS as readonly ExerciseStandardsConfig[]).forEach((config) => {
-    map.set(normaliseName(config.name), config)
-    config.aliases?.forEach((alias) => {
-      map.set(normaliseName(alias), config)
-    })
-  })
-
-  return map
-}
-
-function normaliseName(name: string): string {
-  return name.trim().toLowerCase()
-}
-
-function clampStrengthProgress(progress: number): number {
-  if (!Number.isFinite(progress)) return 0
-  return Math.max(0, Math.min(100, progress))
-}
-
-function clampScore(score: number): number {
-  if (!Number.isFinite(score)) return 0
-  return Math.max(0, Math.min(OVERALL_STRENGTH_SCORE_CAP, score))
-}
-
-function asDateOrNull(value: string | null | undefined): Date | null {
-  if (!value) return null
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+  tier: ExerciseTier
+  sessionCount?: number | null
 }
 
 function getStrengthGender(
@@ -297,43 +185,6 @@ function getStrengthGender(
 ): StrengthGender | null {
   return gender === 'male' || gender === 'female' ? gender : null
 }
-
-function getExerciseConfig(
-  exerciseName: string,
-): ExerciseStandardsConfig | null {
-  return exerciseNameMap.get(normaliseName(exerciseName)) ?? null
-}
-
-function hasStrengthStandards(exerciseName: string): boolean {
-  return getExerciseConfig(exerciseName) !== null
-}
-
-function getStandardsLadder(
-  exerciseName: string,
-  gender: StrengthGender,
-): readonly StrengthStandard[] | null {
-  const config = getExerciseConfig(exerciseName)
-  if (!config) return null
-
-  return gender === 'male' ? config.male : config.female
-}
-
-function isRepBasedExercise(exerciseName: string): boolean {
-  return getExerciseConfig(exerciseName)?.isRepBased ?? false
-}
-
-function estimateOneRepMaxKg(weightKg: number, reps: number): number {
-  if (!Number.isFinite(weightKg) || !Number.isFinite(reps)) {
-    return 0
-  }
-
-  if (weightKg <= 0 || reps <= 0) {
-    return 0
-  }
-
-  return weightKg * (1 + reps / 30)
-}
-
 function roundTo(value: number, decimals = 1): number {
   const factor = 10 ** decimals
   return Math.round(value * factor) / factor
@@ -343,345 +194,19 @@ function roundUpToIncrement(value: number, increment: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0
   return Math.ceil(value / increment) * increment
 }
-
-function getStrengthStandard(input: {
-  exerciseName: string
-  gender: StrengthGender
-  bodyweightKg: number
-  oneRepMax: number
-}): {
-  level: StrengthLevel
-  nextLevel: StrengthStandard | null
-  progress: number
-} | null {
-  const { exerciseName, gender, bodyweightKg, oneRepMax } = input
-  const config = getExerciseConfig(exerciseName)
-  if (!config) return null
-
-  const standards = gender === 'male' ? config.male : config.female
-  const ratio = config.isRepBased ? oneRepMax : oneRepMax / bodyweightKg
-
-  let currentLevel = standards[0]
-  let nextLevel: StrengthStandard | null = null
-  let levelIndex = -1
-
-  for (let i = standards.length - 1; i >= 0; i -= 1) {
-    if (ratio >= standards[i].multiplier) {
-      currentLevel = standards[i]
-      levelIndex = i
-      nextLevel = i < standards.length - 1 ? standards[i + 1] : null
-      break
-    }
-  }
-
-  let progress = 100
-
-  if (levelIndex === -1 && standards.length > 0) {
-    nextLevel = standards[0]
-    const nextThreshold = nextLevel.multiplier
-    progress = nextThreshold > 0 ? (ratio / nextThreshold) * 100 : 0
-  } else if (nextLevel) {
-    const currentThreshold = currentLevel.multiplier
-    const nextThreshold = nextLevel.multiplier
-    const range = nextThreshold - currentThreshold
-    const currentProgress = ratio - currentThreshold
-    progress = range > 0 ? (currentProgress / range) * 100 : 0
-  }
-
+function toLifterLevelDetails(
+  result: OverallStrengthScoreResult,
+): LifterLevelDetails {
   return {
-    level: levelIndex === -1 ? 'Untrained' : currentLevel.level,
-    nextLevel,
-    progress: clampStrengthProgress(progress),
-  }
-}
-
-function interpolatePointsFromStandards(
-  ratio: number,
-  standards: readonly StrengthStandard[],
-): number {
-  if (!Number.isFinite(ratio) || ratio <= 0 || standards.length === 0) {
-    return 0
-  }
-
-  const first = standards[0]
-  if (ratio < first.multiplier) {
-    const beginnerPoints = LEVEL_POINT_ANCHORS.Beginner
-    return first.multiplier > 0 ? (ratio / first.multiplier) * beginnerPoints : 0
-  }
-
-  for (let i = 0; i < standards.length - 1; i += 1) {
-    const current = standards[i]
-    const next = standards[i + 1]
-
-    if (ratio < next.multiplier) {
-      const lowPoints = LEVEL_POINT_ANCHORS[current.level]
-      const highPoints = LEVEL_POINT_ANCHORS[next.level]
-      const range = next.multiplier - current.multiplier
-      const progress = range > 0 ? (ratio - current.multiplier) / range : 0
-      return lowPoints + progress * (highPoints - lowPoints)
-    }
-  }
-
-  return OVERALL_STRENGTH_SCORE_CAP
-}
-
-function calculateExerciseStrengthPoints(input: {
-  exerciseName: string
-  gender: StrengthGender
-  bodyweightKg: number
-  performanceValue: number
-}): number | null {
-  const { exerciseName, gender, bodyweightKg, performanceValue } = input
-
-  if (
-    !hasStrengthStandards(exerciseName) ||
-    !Number.isFinite(bodyweightKg) ||
-    !Number.isFinite(performanceValue) ||
-    bodyweightKg <= 0 ||
-    performanceValue <= 0
-  ) {
-    return null
-  }
-
-  const standards = getStandardsLadder(exerciseName, gender)
-  if (!standards || standards.length === 0) return null
-
-  const ratio = isRepBasedExercise(exerciseName)
-    ? performanceValue
-    : performanceValue / bodyweightKg
-
-  return clampScore(interpolatePointsFromStandards(ratio, standards))
-}
-
-function scoreToOverallLevelProgress(score: number): {
-  level: StrengthLevel
-  nextLevel: StrengthLevel | null
-  progress: number
-} {
-  const safeScore = clampScore(score)
-
-  for (let i = SCORE_LEVEL_STEPS.length - 1; i >= 0; i -= 1) {
-    const current = SCORE_LEVEL_STEPS[i]
-    if (safeScore < current.score) continue
-
-    const next = SCORE_LEVEL_STEPS[i + 1]
-    if (!next) {
-      return { level: current.level, nextLevel: null, progress: 100 }
-    }
-
-    const range = next.score - current.score
-    const progress =
-      range > 0 ? ((safeScore - current.score) / range) * 100 : 100
-
-    return {
-      level: current.level,
-      nextLevel: next.level,
-      progress: clampStrengthProgress(progress),
-    }
-  }
-
-  return {
-    level: 'Untrained',
-    nextLevel: 'Beginner',
-    progress: 0,
-  }
-}
-
-function resolveSpecificMuscleName(
-  exerciseName: string,
-  fallbackMuscle: string | null | undefined,
-): string | null {
-  const config = getExerciseConfig(exerciseName)
-  const canonicalName = config?.name ?? exerciseName
-
-  return (
-    exerciseMuscleMapping[canonicalName] ??
-    exerciseMuscleMapping[exerciseName] ??
-    fallbackMuscle ??
-    null
-  )
-}
-
-function toOverallGroup(
-  specificMuscle: string | null,
-): OverallStrengthGroup | null {
-  if (!specificMuscle) return null
-
-  switch (specificMuscle) {
-    case 'Quads':
-    case 'Hamstrings':
-    case 'Glutes':
-    case 'Calves':
-    case 'Adductors':
-      return 'Legs'
-    case 'Back':
-    case 'Lats':
-    case 'Traps':
-    case 'Lower Back':
-      return 'Back'
-    case 'Chest':
-      return 'Chest'
-    case 'Shoulders':
-      return 'Shoulders'
-    case 'Biceps':
-    case 'Triceps':
-    case 'Forearms':
-      return 'Arms'
-    case 'Abs':
-    case 'Core':
-      return 'Core'
-    default:
-      return null
-  }
-}
-
-function calculateOverallStrengthScore(input: {
-  gender: StrengthGender
-  bodyweightKg: number
-  exercises: SupportedExerciseSnapshot[]
-  now?: Date
-}): LifterLevelDetails {
-  const { gender, bodyweightKg, exercises } = input
-
-  const groupState: Record<
-    OverallStrengthGroup,
-    {
-      exerciseScores: number[]
-      lastTrainedAt: string | null
-      trackedExerciseCount: number
-    }
-  > = {
-    Legs: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Back: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Chest: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Shoulders: {
-      exerciseScores: [],
-      lastTrainedAt: null,
-      trackedExerciseCount: 0,
-    },
-    Arms: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-    Core: { exerciseScores: [], lastTrainedAt: null, trackedExerciseCount: 0 },
-  }
-
-  let liftsTracked = 0
-
-  exercises.forEach((exercise) => {
-    const points = calculateExerciseStrengthPoints({
-      exerciseName: exercise.exerciseName,
-      gender,
-      bodyweightKg,
-      performanceValue: exercise.max1RM,
-    })
-
-    if (points === null) return
-
-    const specificMuscle = resolveSpecificMuscleName(
-      exercise.exerciseName,
-      exercise.muscleGroup,
-    )
-    const overallGroup = toOverallGroup(specificMuscle)
-    if (!overallGroup) return
-
-    liftsTracked += 1
-
-    const weightedPoints =
-      points * GENERATED_EXERCISE_TIER_WEIGHTS[exercise.tier]
-
-    const state = groupState[overallGroup]
-    state.trackedExerciseCount += 1
-    state.exerciseScores.push(weightedPoints)
-
-    const currentLast = asDateOrNull(state.lastTrainedAt)
-    const nextLast = asDateOrNull(exercise.lastTrainedAt)
-    if (!currentLast || (nextLast && nextLast.getTime() > currentLast.getTime())) {
-      state.lastTrainedAt = nextLast ? nextLast.toISOString() : state.lastTrainedAt
-    }
-  })
-
-  const groupBreakdown = {} as Record<
-    OverallStrengthGroup,
-    LifterLevelGroupBreakdown
-  >
-  let totalScore = 0
-
-  ;(Object.keys(OVERALL_GROUP_WEIGHTS) as OverallStrengthGroup[]).forEach(
-    (group) => {
-      const weight = OVERALL_GROUP_WEIGHTS[group]
-      const state = groupState[group]
-
-      const sortedScores = [...state.exerciseScores].sort((a, b) => b - a)
-      const topExerciseScore = sortedScores[0] ?? 0
-      const weights = sortedScores.map((_, index) =>
-        Math.pow(SECONDARY_EXERCISE_DECAY, index),
-      )
-      const totalWeight = weights.reduce((sum, value) => sum + value, 0)
-      const groupRawScore =
-        totalWeight > 0
-          ? sortedScores.reduce(
-              (sum, score, index) => sum + score * weights[index],
-              0,
-            ) / totalWeight
-          : 0
-
-      const decayFactor = 1
-      const effectiveScore = groupRawScore
-      const weightedContribution = effectiveScore * weight
-      totalScore += weightedContribution
-
-      groupBreakdown[group] = {
-        group,
-        weight,
-        topExerciseScore: clampScore(topExerciseScore),
-        decayFactor,
-        effectiveScore: clampScore(effectiveScore),
-        weightedContribution,
-        lastTrainedAt: state.lastTrainedAt,
-        trackedExerciseCount: state.trackedExerciseCount,
-      }
-    },
-  )
-
-  const cappedScore = clampScore(totalScore)
-  const roundedScore = Math.round(cappedScore)
-  const { level, nextLevel, progress } =
-    scoreToOverallLevelProgress(cappedScore)
-
-  const trainedGroups = (Object.keys(groupBreakdown) as OverallStrengthGroup[])
-    .map((group) => groupBreakdown[group])
-    .filter((group) => group.trackedExerciseCount > 0)
-
-  const weakestGroup =
-    trainedGroups.length >= 2
-      ? trainedGroups.reduce((weakest, current) =>
-          current.effectiveScore < weakest.effectiveScore ? current : weakest,
-        ).group
-      : null
-
-  return {
-    points: roundedScore,
+    points: result.score,
     maxPoints: OVERALL_STRENGTH_SCORE_CAP,
-    level,
-    nextLevel,
-    progress,
-    liftsTracked,
-    weakestGroup,
-    groupBreakdown,
+    level: result.level,
+    nextLevel: result.nextLevel,
+    progress: result.progress,
+    liftsTracked: result.liftsTracked,
+    weakestGroup: result.weakestGroup,
+    groupBreakdown: result.groupBreakdown,
   }
-}
-
-function calculatePreciseOverallPoints(result: LifterLevelDetails): number {
-  return clampScore(
-    (Object.keys(result.groupBreakdown) as OverallStrengthGroup[]).reduce(
-      (sum, group) => sum + result.groupBreakdown[group].weightedContribution,
-      0,
-    ),
-  )
-}
-
-function sameCanonicalExerciseName(left: string, right: string): boolean {
-  const leftConfig = getExerciseConfig(left)
-  const rightConfig = getExerciseConfig(right)
-  return (leftConfig?.name ?? left) === (rightConfig?.name ?? right)
 }
 
 function buildSnapshotFromRank(
@@ -698,6 +223,7 @@ function buildSnapshotFromRank(
     bestSetReps: rank.bestSetReps,
     isRepBased: rank.isRepBased,
     tier: rank.tier,
+    sessionCount: rank.sessionCount,
   }
 }
 
@@ -714,53 +240,21 @@ function projectExercisePerformance(input: {
   rawPointsGained: number
   pointsGained: number
 } | null {
-  const { gender, bodyweightKg, exercises, exercise, targetValue } = input
-  const now = input.now ?? new Date()
-
-  if (!Number.isFinite(targetValue) || targetValue <= 0) return null
-
-  const existingIndex = exercises.findIndex(
-    (candidate) =>
-      candidate.exerciseId === exercise.exerciseId ||
-      sameCanonicalExerciseName(candidate.exerciseName, exercise.exerciseName),
-  )
-  const existingExercise =
-    existingIndex >= 0 ? exercises[existingIndex] : null
-  const projectedValue = Math.max(existingExercise?.max1RM ?? 0, targetValue)
-  const projectedExercise: SupportedExerciseSnapshot = {
-    ...(existingExercise ?? exercise),
-    max1RM: projectedValue,
-    lastTrainedAt: now.toISOString(),
-  }
-  const projectedExercises =
-    existingIndex >= 0
-      ? exercises.map((candidate, index) =>
-          index === existingIndex ? projectedExercise : candidate,
-        )
-      : [...exercises, projectedExercise]
-
-  const currentResult = calculateOverallStrengthScore({
-    gender,
-    bodyweightKg,
-    exercises,
-    now,
+  const projection = calculateStrengthScoreProjectionForExerciseTarget({
+    gender: input.gender,
+    bodyweightKg: input.bodyweightKg,
+    exercises: input.exercises,
+    exercise: input.exercise,
+    targetPerformance: input.targetValue,
+    now: input.now ?? new Date(),
   })
-  const projectedResult = calculateOverallStrengthScore({
-    gender,
-    bodyweightKg,
-    exercises: projectedExercises,
-    now,
-  })
+  if (!projection) return null
 
   return {
-    currentResult,
-    projectedResult,
-    rawPointsGained: Math.max(
-      0,
-      calculatePreciseOverallPoints(projectedResult) -
-        calculatePreciseOverallPoints(currentResult),
-    ),
-    pointsGained: Math.max(0, projectedResult.points - currentResult.points),
+    currentResult: toLifterLevelDetails(projection.currentResult),
+    projectedResult: toLifterLevelDetails(projection.projectedResult),
+    rawPointsGained: projection.rawPointsGained,
+    pointsGained: projection.pointsGained,
   }
 }
 
@@ -778,17 +272,17 @@ function buildExerciseRanks(input: {
 
   return exercises
     .map((exercise) => {
-      const strengthInfo = getStrengthStandard({
-        exerciseName: exercise.exerciseName,
+      const strengthInfo = getStrengthStandard(
+        exercise.exerciseName,
         gender,
         bodyweightKg,
-        oneRepMax: exercise.max1RM,
-      })
+        exercise.max1RM,
+      )
       const scorePoints = calculateExerciseStrengthPoints({
         exerciseName: exercise.exerciseName,
         gender,
         bodyweightKg,
-        performanceValue: exercise.max1RM,
+        estimated1RMKg: exercise.max1RM,
       })
 
       if (!strengthInfo || scorePoints === null) {
@@ -817,6 +311,7 @@ function buildExerciseRanks(input: {
         lastTrainedAt: exercise.lastTrainedAt,
         isRepBased: exercise.isRepBased,
         tier: exercise.tier,
+        sessionCount: exercise.sessionCount ?? null,
         level: strengthInfo.level,
         nextLevel: strengthInfo.nextLevel?.level ?? null,
         progress: strengthInfo.progress,
@@ -849,7 +344,7 @@ export function getExerciseStandardsForProfile(input: {
   bodyweightKg: number
 }): ExerciseStandardsLookup | null {
   const { exerciseName, gender, bodyweightKg } = input
-  const config = getExerciseConfig(exerciseName)
+  const config = getStrengthStandardsConfig(exerciseName)
 
   if (
     !config ||
@@ -941,12 +436,12 @@ function getExerciseLevelAtValue(input: {
   nextLevel: StrengthLevel | null
   progress: number
 } {
-  const standard = getStrengthStandard({
-    exerciseName: input.exerciseName,
-    gender: input.gender,
-    bodyweightKg: input.bodyweightKg,
-    oneRepMax: input.value,
-  })
+  const standard = getStrengthStandard(
+    input.exerciseName,
+    input.gender,
+    input.bodyweightKg,
+    input.value,
+  )
 
   return {
     level: standard?.level ?? 'Untrained',
@@ -955,9 +450,8 @@ function getExerciseLevelAtValue(input: {
   }
 }
 
-function buildUnloggedSnapshot(config: ExerciseStandardsConfig): SupportedExerciseSnapshot {
-  const specificMuscle =
-    exerciseMuscleMapping[config.name] ?? null
+function buildUnloggedSnapshot(config: StrengthStandardsConfig): SupportedExerciseSnapshot {
+  const specificMuscle = resolveExerciseSpecificMuscle(config.name, null)
 
   return {
     exerciseId: config.id,
@@ -977,9 +471,9 @@ function exerciseMatchesQuery(
   exercise: Pick<SupportedExerciseSnapshot, 'exerciseName' | 'canonicalExerciseName'>,
   query: string,
 ): boolean {
-  const normalizedQuery = normaliseName(query)
-  const name = normaliseName(exercise.exerciseName)
-  const canonical = normaliseName(exercise.canonicalExerciseName)
+  const normalizedQuery = normaliseExerciseName(query)
+  const name = normaliseExerciseName(exercise.exerciseName)
+  const canonical = normaliseExerciseName(exercise.canonicalExerciseName)
   return name.includes(normalizedQuery) || canonical.includes(normalizedQuery)
 }
 
@@ -995,7 +489,7 @@ function buildPointTargetCandidatePool(input: {
     tracked.map((candidate) => candidate.exercise.canonicalExerciseName),
   )
 
-  const unlogged = (GENERATED_EXERCISES_WITH_STANDARDS as readonly ExerciseStandardsConfig[])
+  const unlogged = STRENGTH_STANDARDS_EXERCISES
     .filter((config) => !trackedCanonical.has(config.name))
     .filter((config) => (config.tier ?? 3) <= 2)
     .map((config) => ({
@@ -1007,10 +501,10 @@ function buildPointTargetCandidatePool(input: {
   if (!input.exerciseName?.trim()) return pool
 
   const exactMatches = pool.filter((candidate) => {
-    const normalizedInput = normaliseName(input.exerciseName as string)
+    const normalizedInput = normaliseExerciseName(input.exerciseName as string)
     return (
-      normaliseName(candidate.exercise.exerciseName) === normalizedInput ||
-      normaliseName(candidate.exercise.canonicalExerciseName) === normalizedInput
+      normaliseExerciseName(candidate.exercise.exerciseName) === normalizedInput ||
+      normaliseExerciseName(candidate.exercise.canonicalExerciseName) === normalizedInput
     )
   })
   if (exactMatches.length > 0) return exactMatches
@@ -1173,11 +667,10 @@ export function calculateLifterPointTargets(input: {
       })
       if (!target) return null
 
-      const specificMuscle = resolveSpecificMuscleName(
+      const targetGroup = resolveExerciseStrengthGroup(
         exercise.exerciseName,
         exercise.muscleGroup,
       )
-      const targetGroup = toOverallGroup(specificMuscle)
       const exerciseLevel = getExerciseLevelAtValue({
         exerciseName: exercise.exerciseName,
         gender,
@@ -1259,7 +752,7 @@ export function calculateLifterPointTargets(input: {
             : 'No exercise target can reach that point target.',
         }),
     requestedPoints,
-    currentPoints: currentResult.points,
+    currentPoints: currentResult.score,
     currentLevel: currentResult.level,
     currentNextLevel: currentResult.nextLevel,
     currentProgress: currentResult.progress,
@@ -1287,113 +780,99 @@ function getMissingRequirements(input: {
   return missing
 }
 
-async function loadSupportedExercises(
+function toSupportedExerciseSnapshot(
+  exercise: StrengthInputExercise,
+): SupportedExerciseSnapshot {
+  const config = getStrengthStandardsConfig(exercise.exerciseName)
+  const bestSet = getBestSetFromRecords(exercise)
+  return {
+    exerciseId: exercise.exerciseId,
+    exerciseName: exercise.exerciseName,
+    canonicalExerciseName: config?.name ?? exercise.exerciseName,
+    muscleGroup: exercise.muscleGroup,
+    max1RM: exercise.max1RM,
+    lastTrainedAt: exercise.lastTrainedAt,
+    bestSetWeightKg: bestSet.weightKg,
+    bestSetReps: bestSet.reps,
+    isRepBased: isRepBasedStrengthExercise(exercise.exerciseName),
+    tier: config?.tier ?? 3,
+    // Undefined for an onboarding-only lift, so it counts as established.
+    ...(exercise.sessionCount === undefined
+      ? {}
+      : { sessionCount: exercise.sessionCount }),
+  }
+}
+
+export interface UserStrengthInputs extends StrengthInputs {
+  gender: StrengthGender | null
+  /** Latest daily-log weight, else profiles.weight_kg. */
+  bodyweightKg: number | null
+}
+
+/**
+ * Loads a user's strength score inputs. Same rows, shaping, onboarding merge
+ * and bodyweight rule as the app's loader (lib/strength-inputs.ts).
+ */
+export async function loadUserStrengthInputs(
   supabase: SupabaseClient,
   userId: string,
-): Promise<SupportedExerciseSnapshot[]> {
-  const { data, error } = await supabase
-    .from('workout_sessions')
-    .select(
-      `
-        created_at,
-        workout_exercises!inner (
-          exercise_id,
-          exercise:exercises!inner (id, name, muscle_group),
-          sets!inner (reps, weight)
-        )
-      `,
-    )
-    .eq('user_id', userId)
-    .not('workout_exercises.sets.reps', 'is', null)
-    .gt('workout_exercises.sets.reps', 0)
+): Promise<UserStrengthInputs> {
+  const [profileResult, sessionsResult, latestDailyWeightKg, onboardingResult] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('gender, weight_kg')
+        .eq('id', userId)
+        .single(),
+      supabase
+        .from('workout_sessions')
+        .select(STRENGTH_SESSIONS_SELECT)
+        .eq('user_id', userId)
+        .not('workout_exercises.sets.reps', 'is', null)
+        .gt('workout_exercises.sets.reps', 0)
+        .order('created_at', { ascending: true }),
+      getLatestDailyWeightKg(supabase, userId),
+      supabase
+        .from('onboarding_strength_snapshots')
+        .select(ONBOARDING_STRENGTH_SNAPSHOT_SELECT)
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ])
 
-  if (error) throw error
+  if (profileResult.error) throw profileResult.error
+  if (sessionsResult.error) throw sessionsResult.error
 
-  const byExerciseId = new Map<string, SupportedExerciseSnapshot>()
-  const sessions = (data as WorkoutSessionRow[]) ?? []
+  const profile = profileResult.data as {
+    gender: string | null
+    weight_kg: number | string | null
+  } | null
+  const onboarding = onboardingResult.error
+    ? null
+    : parseOnboardingStrengthSnapshotRow(
+        onboardingResult.data as OnboardingStrengthSnapshotRow | null,
+      )
 
-  sessions.forEach((session) => {
-    session.workout_exercises?.forEach((workoutExercise) => {
-      const exerciseId = workoutExercise.exercise_id ?? workoutExercise.exercise?.id
-      const exerciseName = workoutExercise.exercise?.name
-      if (!exerciseId || !exerciseName || !hasStrengthStandards(exerciseName)) {
-        return
-      }
-
-      const isRepBased = isRepBasedExercise(exerciseName)
-      const config = getExerciseConfig(exerciseName)
-      const tier = config?.tier ?? 3
-      const canonicalExerciseName = config?.name ?? exerciseName
-
-      if (!byExerciseId.has(exerciseId)) {
-        byExerciseId.set(exerciseId, {
-          exerciseId,
-          exerciseName,
-          canonicalExerciseName,
-          muscleGroup: workoutExercise.exercise?.muscle_group ?? null,
-          max1RM: 0,
-          lastTrainedAt: session.created_at,
-          bestSetWeightKg: null,
-          bestSetReps: null,
-          isRepBased,
-          tier,
-        })
-      }
-
-      const current = byExerciseId.get(exerciseId)
-      if (!current) return
-
-      const currentLast = asDateOrNull(current.lastTrainedAt)
-      const nextLast = asDateOrNull(session.created_at)
-      if (!currentLast || (nextLast && nextLast.getTime() > currentLast.getTime())) {
-        current.lastTrainedAt = nextLast ? nextLast.toISOString() : current.lastTrainedAt
-      }
-
-      workoutExercise.sets?.forEach((set) => {
-        if (!set.reps || set.reps <= 0) {
-          return
-        }
-
-        if (!isRepBased && (!set.weight || set.weight <= 0)) {
-          return
-        }
-
-        const performanceValue = isRepBased
-          ? set.reps
-          : estimateOneRepMaxKg(set.weight as number, set.reps)
-
-        if (performanceValue > current.max1RM) {
-          current.max1RM = Math.round(performanceValue)
-          current.bestSetWeightKg = isRepBased ? null : set.weight
-          current.bestSetReps = set.reps
-        }
-      })
-    })
-  })
-
-  return Array.from(byExerciseId.values()).filter((exercise) => exercise.max1RM > 0)
+  return {
+    gender: getStrengthGender(profile?.gender ?? null),
+    bodyweightKg: resolveStrengthBodyweightKg({
+      latestDailyWeightKg,
+      profileWeightKg: profile?.weight_kg,
+    }),
+    ...buildStrengthInputsFromRows({
+      sessionRows: (sessionsResult.data as unknown as StrengthSessionRow[]) ?? [],
+      onboarding,
+    }),
+  }
 }
 
 export async function buildUserStrengthProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserStrengthProfile> {
-  const [{ data: profile, error: profileError }, supportedExercises, latestWeightKg] =
-    await Promise.all([
-      supabase
-        .from('profiles')
-        .select('gender')
-        .eq('id', userId)
-        .single(),
-      loadSupportedExercises(supabase, userId),
-      getLatestDailyWeightKg(supabase, userId),
-    ])
+  const inputs = await loadUserStrengthInputs(supabase, userId)
+  const { gender, bodyweightKg, sessions } = inputs
+  const supportedExercises = inputs.exercises.map(toSupportedExerciseSnapshot)
 
-  if (profileError) throw profileError
-
-  const typedProfile = profile as Omit<ProfileStrengthRow, 'weight_kg'>
-  const gender = getStrengthGender(typedProfile?.gender ?? null)
-  const bodyweightKg = latestWeightKg
   const missingRequirements = getMissingRequirements({
     gender,
     bodyweightKg,
@@ -1421,11 +900,14 @@ export async function buildUserStrengthProfile(
 
   const overallLevel =
     supportedExercises.length > 0
-      ? calculateOverallStrengthScore({
-          gender: resolvedGender,
-          bodyweightKg: resolvedBodyweightKg,
-          exercises: supportedExercises,
-        })
+      ? toLifterLevelDetails(
+          calculateStrengthScoreHistory({
+            gender: resolvedGender,
+            bodyweightKg: resolvedBodyweightKg,
+            exercises: supportedExercises,
+            sessions,
+          }).result,
+        )
       : null
 
   return {
@@ -1446,7 +928,11 @@ export async function refreshUserStrengthProfileCache(
   const strengthProfile = await buildUserStrengthProfile(supabase, userId)
   const cacheUpdate: StrengthProfileCacheUpdate = strengthProfile.overallLevel
     ? {
-        overall_strength_score: strengthProfile.overallLevel.points,
+        overall_strength_points: strengthProfile.overallLevel.points,
+        // Old 0-1000 scale for app versions before 1.0.33.
+        overall_strength_score: toLegacyStrengthScore(
+          strengthProfile.overallLevel.points,
+        ),
         overall_strength_level: strengthProfile.overallLevel.level,
         overall_strength_progress: Math.round(
           strengthProfile.overallLevel.progress,
@@ -1454,6 +940,7 @@ export async function refreshUserStrengthProfileCache(
         overall_strength_updated_at: new Date().toISOString(),
       }
     : {
+        overall_strength_points: null,
         overall_strength_score: null,
         overall_strength_level: null,
         overall_strength_progress: null,

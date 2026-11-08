@@ -1,8 +1,10 @@
 import { clampStrengthProgress, type StrengthLevel } from './strength-standards'
 
+export { estimateOneRepMaxKg } from '../supabase/functions/_shared/strength-core'
+
 export type StrengthGender = 'male' | 'female'
 
-export const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
+const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
   'Untrained',
   'Beginner',
   'Novice',
@@ -12,7 +14,7 @@ export const STRENGTH_LEVEL_ORDER: StrengthLevel[] = [
   'World Class',
 ]
 
-export const STRENGTH_LEVEL_SCORES: Record<StrengthLevel, number> = {
+const STRENGTH_LEVEL_SCORES: Record<StrengthLevel, number> = {
   Untrained: 0,
   Beginner: 1,
   Novice: 2,
@@ -83,17 +85,6 @@ export function getLevelIntensity(level: StrengthLevel): number {
   return STRENGTH_LEVEL_SCORES[level] + 1
 }
 
-export function estimateOneRepMaxKg(weightKg: number, reps: number): number {
-  if (!Number.isFinite(weightKg) || !Number.isFinite(reps)) {
-    return 0
-  }
-
-  if (weightKg <= 0 || reps <= 0) {
-    return 0
-  }
-
-  return weightKg * (1 + reps / 30)
-}
 
 /**
  * Calculates a safe average level from a list of exercises.

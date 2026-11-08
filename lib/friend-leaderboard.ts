@@ -1,3 +1,4 @@
+import { resolveCachedStrengthPoints } from '@/lib/overall-strength-score'
 import type { StrengthLevel } from '@/lib/strength-standards'
 
 const LEADERBOARD_LEVEL_COLORS: Record<StrengthLevel, string> = {
@@ -15,6 +16,7 @@ export type LeaderboardProfileFields = {
   display_name: string | null
   user_tag: string | null
   avatar_url: string | null
+  overall_strength_points?: number | null
   overall_strength_score: number | null
   overall_strength_level: StrengthLevel | null
 }
@@ -44,7 +46,7 @@ export function isLeaderboardEligible(followingCount: number): boolean {
   return followingCount > 1
 }
 
-export const DEV_MOCK_LEADERBOARD_USER_ID_PREFIX = 'dev-mock-lb-'
+const DEV_MOCK_LEADERBOARD_USER_ID_PREFIX = 'dev-mock-lb-'
 
 export function isDevMockLeaderboardUserId(userId: string): boolean {
   return userId.startsWith(DEV_MOCK_LEADERBOARD_USER_ID_PREFIX)
@@ -57,6 +59,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
     display_name: 'Alex Carter',
     user_tag: 'alexc',
     avatar_url: null,
+    overall_strength_points: 12400,
     overall_strength_score: 1240,
     overall_strength_level: 'Elite',
   },
@@ -65,6 +68,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
     display_name: 'Sam Rivera',
     user_tag: 'samr',
     avatar_url: null,
+    overall_strength_points: 9820,
     overall_strength_score: 982,
     overall_strength_level: 'Advanced',
   },
@@ -73,6 +77,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
     display_name: 'Jordan Lee',
     user_tag: 'jordanl',
     avatar_url: null,
+    overall_strength_points: 8100,
     overall_strength_score: 810,
     overall_strength_level: 'Intermediate',
   },
@@ -81,6 +86,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
     display_name: 'Riley Brooks',
     user_tag: 'rileyb',
     avatar_url: null,
+    overall_strength_points: 5400,
     overall_strength_score: 540,
     overall_strength_level: 'Novice',
   },
@@ -89,6 +95,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
     display_name: 'Casey Kim',
     user_tag: 'caseyk',
     avatar_url: null,
+    overall_strength_points: 3200,
     overall_strength_score: 320,
     overall_strength_level: 'Beginner',
   },
@@ -103,7 +110,7 @@ export const DEV_MOCK_LEADERBOARD_FOLLOWEES: LeaderboardProfileFields[] = [
 ]
 
 /** Fallback score so your row lands mid-pack in the dev mock. */
-export const DEV_MOCK_LEADERBOARD_FALLBACK_SCORE = 647
+export const DEV_MOCK_LEADERBOARD_FALLBACK_SCORE = 6470
 export const DEV_MOCK_LEADERBOARD_FALLBACK_LEVEL: StrengthLevel = 'Novice'
 
 export function shouldUseDevMockLeaderboard(followingCount: number): boolean {
@@ -133,7 +140,7 @@ export function buildFriendLeaderboardEntries(
       displayName: followee.display_name || 'Athlete',
       userTag: followee.user_tag || 'athlete',
       avatarUrl: followee.avatar_url,
-      score: followee.overall_strength_score,
+      score: resolveCachedStrengthPoints(followee),
       level: followee.overall_strength_level,
       isCurrentUser: false,
     })),
@@ -151,7 +158,7 @@ export function buildFriendLeaderboardEntries(
   }))
 }
 
-export const LEADERBOARD_DEFAULT_VISIBLE = 3
+const LEADERBOARD_DEFAULT_VISIBLE = 3
 export const LEADERBOARD_MAX_VISIBLE = 10
 
 export function getVisibleLeaderboardEntries(

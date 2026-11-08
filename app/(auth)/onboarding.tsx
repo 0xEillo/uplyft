@@ -18,7 +18,8 @@ import { useProfile } from '@/contexts/profile-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { getWeeklyCommitmentTarget } from '@/lib/commitment'
-import { COACH_OPTIONS, DEFAULT_COACH_ID } from '@/lib/coaches'
+import { AiOrb } from '@/components/ai-orb'
+import { AI_COACH_NAME } from '@/lib/ai-coach'
 import { database } from '@/lib/database'
 import { requestTrackingPermissionDetailed } from '@/lib/facebook-sdk'
 import { haptic } from '@/lib/haptics'
@@ -39,7 +40,6 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Picker } from '@react-native-picker/picker'
-import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -53,7 +53,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextStyle,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -79,7 +78,6 @@ type OnboardingData = {
   experience_level: ExperienceLevel | null
   equipment: string[]
   bio: string
-  coach: string
   strength_snapshot: OnboardingStrengthSnapshotInput | null
 }
 
@@ -111,8 +109,6 @@ type StrengthIntroPhase =
 // Map step numbers to their human-readable names
 // Three section interstitials are inserted to group the onboarding flow.
 const STEP_NAMES: { [key: number]: string } = {
-  1: 'coach_selection',
-  2: 'coach_greeting',
   3: 'name_entry',
   4: 'chat_feature_intro',
   5: 'section_goals',
@@ -137,6 +133,10 @@ const STEP_NAMES: { [key: number]: string } = {
 
 // Total number of steps in the onboarding flow
 const TOTAL_STEPS = 24
+
+// Steps 1-2 (coach selection + greeting) were removed; the flow starts at the
+// name entry step. Step numbers are kept stable for analytics.
+const FIRST_STEP = 3
 
 const BODY_HALF_CONFIG = {
   upper: { scale: 0.52, offsetY: 42 },
@@ -210,85 +210,22 @@ const calculateAgeFromBirthDate = (
   return age >= 0 ? age : null
 }
 
-const FadeInWords = ({
-  text,
-  style,
-  delay = 150,
-}: {
-  text: string
-  style: TextStyle
-  delay?: number
-}) => {
-  const words = text.split(' ')
-  const anims = useRef(words.map(() => new Animated.Value(0))).current
-
-  useEffect(() => {
-    // Add initial delay before starting the animation
-    const timeout = setTimeout(() => {
-      Animated.stagger(
-        80,
-        anims.map((anim) =>
-          Animated.spring(anim, {
-            toValue: 1,
-            friction: 10,
-            tension: 60,
-            useNativeDriver: true,
-          }),
-        ),
-      ).start()
-    }, delay)
-
-    return () => clearTimeout(timeout)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animations are stable refs, run only on mount
-  }, [])
-
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-      {words.map((word, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            opacity: anims[i],
-            transform: [
-              {
-                translateY: anims[i].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [10, 0],
-                }),
-              },
-            ],
-            marginRight: 8,
-            marginBottom: 4,
-          }}
-        >
-          <Text style={style}>{word}</Text>
-        </Animated.View>
-      ))}
-    </View>
-  )
-}
-
 // Animated Chat Mockup Component
 const AnimatedChatMockup = ({
   colors,
-  coach,
   userName,
 }: {
   colors: ReturnType<typeof useThemedColors>
-  coach: typeof COACH_OPTIONS[0]
   userName: string
 }) => {
-  // Get the coach's first name for personalized messages
-  const coachFirstName = coach?.name.split(' ').pop() || 'Coach'
   const name = userName?.trim() || 'there'
 
-  // Chat messages with personalized coach name and more natural conversation
   const chatMessages = [
     {
       role: 'coach',
       content: `Hey ${name}! Great session yesterday. How are the muscles feeling? Ready for more? 🔥`,
     },
-    { role: 'user', content: 'Feeling good coach! Ready to crush it today.' },
+    { role: 'user', content: 'Feeling good! Ready to crush it today.' },
     {
       role: 'coach',
       content: `That's what I like to hear. Today we're hitting Upper Body. I've tweaked your Bench Press targets based on that last PR! 😉`,
@@ -378,14 +315,11 @@ const AnimatedChatMockup = ({
             { borderBottomColor: colors.border },
           ]}
         >
-          <Image
-            source={coach?.image}
-            style={chatMockupStyles.coachAvatarImage}
-          />
+          <AiOrb size={28} />
           <Text
             style={[chatMockupStyles.chatTitle, { color: colors.textPrimary }]}
           >
-            {coachFirstName}
+            {AI_COACH_NAME}
           </Text>
         </View>
 
@@ -425,10 +359,7 @@ const AnimatedChatMockup = ({
                 ]}
               >
                 {isCoach && (
-                  <Image
-                    source={coach?.image}
-                    style={chatMockupStyles.messageAvatarImage}
-                  />
+                  <AiOrb size={20} />
                 )}
                 <View
                   style={[
@@ -620,16 +551,6 @@ const chatMockupStyles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  coachAvatarImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  messageAvatarImage: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
   },
 })
 
@@ -1093,7 +1014,7 @@ const FinalPlanStepContent = ({
 export default function OnboardingScreen() {
   const { signInAnonymously, user } = useAuth()
   const { refreshProfile } = useProfile()
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(FIRST_STEP)
   const [strengthIntroPhase, setStrengthIntroPhase] = useState<
     StrengthIntroPhase
   >('select')
@@ -1117,7 +1038,6 @@ export default function OnboardingScreen() {
     experience_level: null,
     equipment: [],
     bio: '',
-    coach: DEFAULT_COACH_ID,
     strength_snapshot: null,
   })
   const colors = useThemedColors()
@@ -1150,17 +1070,6 @@ export default function OnboardingScreen() {
       setStrengthIntroPhase('select')
     }
   }, [step, strengthIntroPhase])
-
-  // Preload coach images on mount
-  useEffect(() => {
-    const preloadImages = async () => {
-      const imageAssets = COACH_OPTIONS.map((coach) =>
-        Asset.fromModule(coach.image).downloadAsync(),
-      )
-      await Promise.all(imageAssets)
-    }
-    preloadImages()
-  }, [])
 
   // Request ATT permission during the "preparing your plan" loading screen.
   // This keeps it in an engaged moment while still happening before signup/purchase events.
@@ -1282,9 +1191,6 @@ export default function OnboardingScreen() {
     const stepMetadata: Record<string, any> = {}
 
     switch (step) {
-      case 1:
-        stepMetadata.coach_id = data.coach
-        break
       case 3:
         stepMetadata.name_provided = !!data.name
         break
@@ -1462,7 +1368,6 @@ export default function OnboardingScreen() {
                   : null,
               experience_level: data.experience_level,
               bio: data.bio.trim() || null,
-              coach: data.coach,
             }
 
             const { error } = await supabase
@@ -1477,7 +1382,7 @@ export default function OnboardingScreen() {
                 data.strength_snapshot,
               )
 
-              // Refresh profile context so chat has the correct coach data
+              // Refresh profile context so the app has the new profile data
               await refreshProfile()
             }
           }
@@ -1494,7 +1399,6 @@ export default function OnboardingScreen() {
             commitment: data.commitment,
             experience_level: data.experience_level,
             bio: data.bio,
-            coach: data.coach,
           })
 
           router.replace('/(tabs)')
@@ -1515,7 +1419,7 @@ export default function OnboardingScreen() {
     // Strong haptic for back navigation
     haptic('medium')
 
-    if (step > 1) {
+    if (step > FIRST_STEP) {
       if (step === 17) {
         setStep(11)
         return
@@ -1544,10 +1448,6 @@ export default function OnboardingScreen() {
 
   const canProceed = () => {
     switch (step) {
-      case 1:
-        return true // Coach selection
-      case 2:
-        return true // Greeting
       case 3:
         return data.name.trim() !== ''
       case 4:
@@ -1591,98 +1491,6 @@ export default function OnboardingScreen() {
 
   const renderStep = () => {
     switch (step) {
-      case 1:
-        return (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Pick your personal trainer.</Text>
-            </View>
-
-            <View style={styles.stepContent}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
-              >
-                {COACH_OPTIONS.map((coach) => (
-                  <HapticButton
-                    key={coach.id}
-                    style={[
-                      styles.card,
-                      data.coach === coach.id && styles.cardSelected,
-                    ]}
-                    onPress={() => {
-                      setData({ ...data, coach: coach.id })
-                    }}
-                    hapticIntensity="light"
-                  >
-                    <View style={styles.coachContent}>
-                      <View style={styles.coachAvatar}>
-                        <Image
-                          source={coach.image}
-                          style={styles.coachImage}
-                          resizeMode="cover"
-                        />
-                        <View style={styles.emojiBadge}>
-                          <Text style={styles.emojiText}>
-                            {coach.id === 'ross'
-                              ? '📋'
-                              : coach.id === 'kino'
-                              ? '😤'
-                              : '💪'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.textContainer}>
-                        <Text style={styles.cardTitle}>{coach.name}</Text>
-                        <Text style={styles.cardSubtitle}>
-                          {coach.description}
-                        </Text>
-                      </View>
-                    </View>
-                  </HapticButton>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        )
-      case 2:
-        // Greeting Step
-        const activeCoachGreeting = COACH_OPTIONS.find(
-          (c) => c.id === data.coach,
-        )
-        const coachGreetingName =
-          activeCoachGreeting?.name.split(' ')[1] ||
-          activeCoachGreeting?.name ||
-          'Coach'
-
-        return (
-          <View style={styles.stepContainer}>
-            <View
-              style={[
-                styles.stepContent,
-                { justifyContent: 'center', paddingBottom: 60 },
-              ]}
-            >
-              <View style={styles.greetingAvatarContainer}>
-                <Image
-                  source={activeCoachGreeting?.image}
-                  style={styles.greetingAvatar}
-                  resizeMode="cover"
-                />
-                <View style={styles.greetingBadge}>
-                  <Ionicons name="chatbubble-ellipses" size={14} color="#FFF" />
-                </View>
-              </View>
-              <FadeInWords
-                text={`Hi there! I'm ${coachGreetingName}, your new AI Coach.`}
-                style={styles.greetingText}
-              />
-
-              {/* Second coach message - delayed */}
-            </View>
-          </View>
-        )
       case 3:
         return (
           <View style={styles.stepContainer}>
@@ -1707,10 +1515,6 @@ export default function OnboardingScreen() {
         )
       case 4:
         // Chat Feature Intro Step
-        // Get the selected coach for the animated mockup
-        const selectedCoachForMockup =
-          COACH_OPTIONS.find((c) => c.id === data.coach) || COACH_OPTIONS[0]
-
         return (
           <View style={styles.chatIntroContainer}>
             <View style={styles.chatIntroHeader}>
@@ -1723,7 +1527,6 @@ export default function OnboardingScreen() {
             {/* Animated Chat Mockup */}
             <AnimatedChatMockup
               colors={colors}
-              coach={selectedCoachForMockup}
               userName={data.name}
             />
           </View>
@@ -2891,7 +2694,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.headerProgressBarFill,
                   {
-                    width: `${(step / TOTAL_STEPS) * 100}%`,
+                    width: `${((step - FIRST_STEP + 1) / (TOTAL_STEPS - FIRST_STEP + 1)) * 100}%`,
                     backgroundColor: colors.brandPrimary,
                   },
                 ]}
@@ -2972,9 +2775,7 @@ export default function OnboardingScreen() {
                 hapticIntensity="medium"
               >
                 <Text style={styles.nextButtonText}>
-                  {step === 2
-                    ? "Let's Go"
-                    : step === 4
+                  {step === 4
                     ? "Let's Get Started!"
                     : step === 11 && strengthIntroPhase === 'rating'
                     ? 'Continue'
@@ -3240,41 +3041,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) => {
       alignItems: 'flex-start',
     },
 
-    // Coach Specific
-    coachContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: '100%',
-    },
-    coachAvatar: {
-      marginRight: 16,
-      position: 'relative',
-    },
-    coachImage: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.textSecondary,
-    },
-    emojiBadge: {
-      position: 'absolute',
-      bottom: -4,
-      right: -4,
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      width: 24,
-      height: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
-    },
-    emojiText: {
-      fontSize: 14,
-    },
     textContainer: {
       flex: 1,
     },
@@ -3554,50 +3320,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) => {
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 24,
-    },
-    // Greeting Styles
-    greetingAvatarContainer: {
-      marginBottom: 24,
-      position: 'relative',
-      alignSelf: 'flex-start',
-    },
-    greetingAvatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.textSecondary,
-    },
-    greetingBadge: {
-      position: 'absolute',
-      bottom: 0,
-      right: 0,
-      backgroundColor: '#8B5CF6', // Purple like Messenger/AI
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: colors.bg,
-    },
-    greetingText: {
-      fontSize: 34,
-      fontWeight: '800',
-      color: colors.textPrimary,
-      lineHeight: 42,
-      letterSpacing: -0.5,
-    },
-    coachMessageContainer: {
-      marginTop: 32,
-      paddingTop: 24,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    coachSecondaryText: {
-      fontSize: 22,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      lineHeight: 30,
     },
     // Chat Intro Step Styles
     chatIntroContainer: {

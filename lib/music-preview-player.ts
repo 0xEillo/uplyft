@@ -79,7 +79,7 @@ export async function stopMusicPreview(): Promise<void> {
   }
 }
 
-export async function playMusicPreview(song: WorkoutSong): Promise<void> {
+async function playMusicPreview(song: WorkoutSong): Promise<void> {
   const token = activeToken + 1
   activeToken = token
 

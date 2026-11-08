@@ -28,6 +28,7 @@ import {
 } from 'react-native'
 
 import { WorkoutSongPreview } from '@/components/workout-song-preview'
+import { formatDurationClock } from '@/lib/exercise-logging-mode'
 import { LevelBadge } from '@/components/LevelBadge'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -36,25 +37,26 @@ import { database } from '@/lib/database'
 import { toggleMusicPreview } from '@/lib/music-preview-player'
 import type { Profile, WorkoutSessionWithDetails } from '@/types/database.types'
 import type { WorkoutSong } from '@/types/music'
+import type {
+  WorkoutRecordHighlight,
+  WorkoutRecordHighlightsState,
+} from '@/hooks/useWorkoutRecordHighlights'
 
 import { ExerciseMediaThumbnail } from './ExerciseMedia'
 import { PostWorkoutCelebration } from '@/components/post-workout-celebration'
 
+const PREVIEW_LIMIT = 5
+const SKELETON_ROW_WIDTHS = [60, 80, 70, 75, 65]
+const skeletonRowWidths = Array.from(
+  { length: PREVIEW_LIMIT },
+  (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
+)
+const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
+const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
+const SONG_OVERLAY_DARK = { backgroundColor: 'rgba(0, 0, 0, 0.55)' }
+const SONG_OVERLAY_LIGHT = { backgroundColor: 'rgba(255, 255, 255, 0.9)' }
+
 // Helper functions for compact formatting
-function formatDurationCompact(seconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(seconds))
-  const hours = Math.floor(safeSeconds / 3600)
-  const mins = Math.floor((safeSeconds % 3600) / 60)
-  const secs = safeSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${mins
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
 function formatVolumeCompact(
   volumeKg: number,
   targetUnit: 'kg' | 'lb',
@@ -104,7 +106,6 @@ export interface FeedCardProps {
   userName: string
   userAvatar: string
   userLevel?: Profile['overall_strength_level']
-  coachAvatarSource?: number
   timeAgo: string
   workoutTitle: string
   workoutDescription?: string | null
@@ -127,7 +128,6 @@ export interface FeedCardProps {
   isLiked?: boolean
   onLike?: () => void
   onComment?: () => void
-  onCoachPress?: () => void
   onEdit?: () => void
   onDelete?: () => void
   onCreateRoutine?: () => void
@@ -136,6 +136,9 @@ export interface FeedCardProps {
   recentLikers?: Partial<Profile>[]
   comments?: CommentPreview[]
   currentUserAvatar?: string | null
+  // Records page (only shown when stats.records > 0)
+  recordHighlights?: WorkoutRecordHighlightsState
+  onRecordsRequested?: () => void
 }
 
 /**
@@ -146,7 +149,6 @@ export const FeedCard = memo(function FeedCard({
   userName,
   userAvatar,
   userLevel,
-  coachAvatarSource,
   timeAgo,
   workoutTitle,
   workoutDescription,
@@ -168,7 +170,6 @@ export const FeedCard = memo(function FeedCard({
   isLiked = false,
   onLike,
   onComment,
-  onCoachPress,
   onEdit,
   onDelete,
   onCreateRoutine,
@@ -177,6 +178,8 @@ export const FeedCard = memo(function FeedCard({
   recentLikers = [],
   comments = [],
   currentUserAvatar,
+  recordHighlights,
+  onRecordsRequested,
 }: FeedCardProps): ReactElement {
   const colors = useThemedColors()
   const { isDark } = useTheme()
@@ -267,10 +270,14 @@ export const FeedCard = memo(function FeedCard({
     )
   }
 
-  // Calculate carousel width (screen width - card padding * 2)
-  // Card padding is 14 horizontal
-  const cardPadding = 14
-  const carouselWidth = windowWidth - cardPadding * 2
+  // The carousel bleeds past the card's horizontal padding so media runs
+  // edge to edge; text slides re-apply the padding themselves.
+  const cardPadding = 20
+  const carouselWidth = windowWidth
+
+  const carouselRef = useRef<ScrollView>(null)
+  const showRecordsSlide =
+    !isPending && stats.records > 0 && !!onRecordsRequested
 
   const handleCarouselScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -283,7 +290,7 @@ export const FeedCard = memo(function FeedCard({
 
   // Image loading states and animations
   const [imageModalVisible, setImageModalVisible] = useState(false)
-  const [imageLoading, setImageLoading] = useState(true)
+  const [imageLoading, setImageLoading] = useState(Boolean(coverImageUrl))
   const [fullscreenImageLoading, setFullscreenImageLoading] = useState(true)
 
   // Skeleton shimmer animation for pending state
@@ -293,20 +300,15 @@ export const FeedCard = memo(function FeedCard({
     .current
   const [analyzingDots, setAnalyzingDots] = useState('')
 
-  const styles = createStyles(colors, isDark)
-  const songOverlayStyle = {
-    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.9)',
-  }
+  // Memoized so the useMemo blocks below (which depend on styles) actually
+  // cache across renders instead of being rebuilt every time.
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
+  const songOverlayStyle = isDark ? SONG_OVERLAY_DARK : SONG_OVERLAY_LIGHT
 
-  const PREVIEW_LIMIT = 5
-  const SKELETON_ROW_WIDTHS = [60, 80, 70, 75, 65]
-  const skeletonRowWidths = Array.from(
-    { length: PREVIEW_LIMIT },
-    (_, index) => SKELETON_ROW_WIDTHS[index % SKELETON_ROW_WIDTHS.length],
+  const displayedExercises = useMemo(
+    () => exercises.slice(0, PREVIEW_LIMIT),
+    [exercises],
   )
-  const ROW_HEIGHT = 60 // 48 (thumb) + 12 (padding)
-  const MIN_CONTENT_HEIGHT = ROW_HEIGHT * PREVIEW_LIMIT
-  const displayedExercises = exercises.slice(0, PREVIEW_LIMIT)
   const hiddenExerciseCount = Math.max(
     0,
     totalExerciseCount - displayedExercises.length,
@@ -437,6 +439,18 @@ export const FeedCard = memo(function FeedCard({
     setShowShareScreen(false)
   }
 
+  // Slide order: [photo, exercises, records] when the photo leads, otherwise
+  // [exercises, records, artwork?].
+  const recordsSlideIndex = mediaFirst ? 2 : 1
+
+  const handleRecordsStatPress = () => {
+    onRecordsRequested?.()
+    carouselRef.current?.scrollTo({
+      x: recordsSlideIndex * carouselWidth,
+      animated: true,
+    })
+  }
+
   // Memoize stats section to keep it fixed
   const statsContent = useMemo(
     () => {
@@ -450,7 +464,7 @@ export const FeedCard = memo(function FeedCard({
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Time</Text>
             <Text style={styles.statValue}>
-              {formatDurationCompact(stats.durationSeconds || 0)}
+              {formatDurationClock(stats.durationSeconds || 0)}
             </Text>
           </View>
           <View style={styles.statItem}>
@@ -459,14 +473,30 @@ export const FeedCard = memo(function FeedCard({
               {formatVolumeCompact(stats.volume || 0, weightUnit)}
             </Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Records</Text>
-            <Text style={styles.statValue}>{stats.records}</Text>
-          </View>
+          {showRecordsSlide ? (
+            <Pressable
+              onPress={handleRecordsStatPress}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.statItem,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Text style={styles.statLabel}>Records</Text>
+              <Text style={styles.statValue}>{stats.records}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Records</Text>
+              <Text style={styles.statValue}>{stats.records}</Text>
+            </View>
+          )}
         </Pressable>
       )
     },
     [
+      showRecordsSlide,
+      handleRecordsStatPress,
       isPending,
       onCardPress,
       styles.statsContainer,
@@ -488,7 +518,13 @@ export const FeedCard = memo(function FeedCard({
         <Pressable
           onPress={onCardPress}
           disabled={!onCardPress || isPending}
-          style={[styles.exercisesContainer, { minHeight: MIN_CONTENT_HEIGHT }]}
+          style={[
+            styles.exercisesContainer,
+            // Only reserve the full preview height when it is needed: while the
+            // skeleton is showing, or when the info slide shares a carousel with
+            // a photo. Otherwise short workouts leave a large empty gap.
+            (isPending || coverImageUrl) && { minHeight: MIN_CONTENT_HEIGHT },
+          ]}
         >
           {/* Skeleton Rows (when pending) */}
           {isPending && (
@@ -607,14 +643,12 @@ export const FeedCard = memo(function FeedCard({
       isDark,
       hiddenExerciseCount,
       styles,
-      PREVIEW_LIMIT,
-      skeletonRowWidths,
-      MIN_CONTENT_HEIGHT,
+      coverImageUrl,
     ],
   )
 
   const mediaSlide = coverImageUrl ? (
-    <View style={{ width: carouselWidth }}>
+    <View key="media" style={{ width: carouselWidth }}>
       <TouchableOpacity
         style={styles.workoutImageContainer}
         onPress={() => setImageModalVisible(true)}
@@ -653,7 +687,12 @@ export const FeedCard = memo(function FeedCard({
 
   const infoSlide = (
     <View
-      style={{ width: carouselWidth, alignSelf: 'flex-start' }}
+      key="info"
+      style={{
+        width: carouselWidth,
+        alignSelf: 'flex-start',
+        paddingHorizontal: cardPadding,
+      }}
       onLayout={(event) => {
         const { height } = event.nativeEvent.layout
         if (Math.abs(height - infoHeight) > 2) {
@@ -664,6 +703,143 @@ export const FeedCard = memo(function FeedCard({
       {infoContent}
     </View>
   )
+
+  const formatRecordWeight = (kg: number): string => {
+    const converted = weightUnit === 'lb' ? kg * 2.20462 : kg
+    return `${converted.toLocaleString(undefined, {
+      maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
+    })} ${weightUnit}`
+  }
+
+  const formatRecordDelta = (record: WorkoutRecordHighlight): string | null => {
+    if (record.delta === null || record.delta <= 0) return null
+    if (record.type === 'reps') {
+      return `${record.delta} ${record.delta === 1 ? 'rep' : 'reps'}`
+    }
+    return formatRecordWeight(record.delta)
+  }
+
+  const RECORDS_PREVIEW_LIMIT = 5
+  const recordRows =
+    recordHighlights?.status === 'ready' ? recordHighlights.highlights : null
+  const hiddenRecordCount = recordRows
+    ? Math.max(0, recordRows.length - RECORDS_PREVIEW_LIMIT)
+    : 0
+
+  const recordsSlide = showRecordsSlide ? (
+    <Pressable
+      key="records"
+      onPress={onCardPress}
+      disabled={!onCardPress}
+      style={{
+        width: carouselWidth,
+        alignSelf: 'flex-start',
+        paddingHorizontal: cardPadding,
+      }}
+    >
+      {recordRows === null ? (
+        recordHighlights?.status === 'error' ? (
+          <View style={styles.recordsMessage}>
+            <Text style={styles.recordsMessageText}>
+              Couldn&apos;t load records. Tap to view the workout.
+            </Text>
+          </View>
+        ) : (
+          Array.from({ length: 3 }, (_, index) => (
+            <View key={`record-skeleton-${index}`} style={styles.exerciseRow}>
+              <View style={styles.exerciseNameContainer}>
+                <View
+                  style={[
+                    styles.exerciseThumbnail,
+                    { backgroundColor: isDark ? '#2a2a2a' : '#eee' },
+                  ]}
+                />
+                <View style={styles.recordInfo}>
+                  <View
+                    style={[
+                      styles.recordSkeletonBar,
+                      { width: `${[42, 36, 40][index]}%` },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.recordSkeletonBar,
+                      { width: '55%', height: 10, opacity: 0.6 },
+                    ]}
+                  />
+                </View>
+              </View>
+              <View style={[styles.recordSkeletonBar, { width: 44 }]} />
+            </View>
+          ))
+        )
+      ) : (
+        <>
+          {recordRows.slice(0, RECORDS_PREVIEW_LIMIT).map((record) => (
+            <View
+              key={record.exerciseId}
+              style={styles.exerciseRow}
+              accessibilityLabel={`${record.exerciseName}, ${formatRecordWeight(record.weightKg)} for ${record.reps} reps`}
+            >
+              <View style={styles.exerciseNameContainer}>
+                <ExerciseMediaThumbnail
+                  gifUrl={record.gifUrl}
+                  style={styles.exerciseThumbnail}
+                  isCustom={record.isCustom}
+                />
+                <View style={styles.recordInfo}>
+                  <Text style={styles.recordSetText} numberOfLines={1}>
+                    {formatRecordWeight(record.weightKg)} × {record.reps}
+                  </Text>
+                  <Text style={styles.recordKindText} numberOfLines={1}>
+                    {record.exerciseName}
+                  </Text>
+                </View>
+              </View>
+              {formatRecordDelta(record) ? (
+                <View style={styles.recordDelta}>
+                  <Ionicons
+                    name="arrow-up"
+                    size={12}
+                    color={colors.statusSuccess}
+                  />
+                  <Text style={styles.recordDeltaText}>
+                    {formatRecordDelta(record)}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.recordNewPill}>
+                  <Text style={styles.recordNewText}>New</Text>
+                </View>
+              )}
+            </View>
+          ))}
+          {hiddenRecordCount > 0 && (
+            <TouchableOpacity
+              onPress={onCardPress}
+              activeOpacity={0.7}
+              style={styles.seeMoreButton}
+            >
+              <Text style={styles.seeMoreText}>
+                See {hiddenRecordCount} more
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.brandPrimary}
+              />
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </Pressable>
+  ) : null
+
+  const carouselSlides = (
+    mediaFirst
+      ? [mediaSlide, infoSlide, recordsSlide]
+      : [infoSlide, recordsSlide, mediaSlide]
+  ).filter((slide): slide is ReactElement => slide !== null)
 
   return (
     <View style={[styles.card, isFirst && { borderTopWidth: 0 }]}>
@@ -701,38 +877,42 @@ export const FeedCard = memo(function FeedCard({
                 />
               )}
             </View>
-            {(displayRoutine || (workoutSong && !isPending)) && (
-              <View style={styles.headerSubtitle}>
-                {displayRoutine && (
-                  <Text
-                    style={styles.routineLink}
-                    numberOfLines={1}
-                    onPress={onRoutinePress}
-                  >
-                    {displayRoutine.name} ›
+            <View style={styles.headerSubtitle}>
+              <Text style={styles.timeAgo} numberOfLines={1}>
+                {timeAgo}
+              </Text>
+              {(displayRoutine || (workoutSong && !isPending)) && (
+                <Text style={styles.subtitleSeparator}> • </Text>
+              )}
+              {displayRoutine && (
+                <Text
+                  style={styles.routineLink}
+                  numberOfLines={1}
+                  onPress={onRoutinePress}
+                >
+                  {displayRoutine.name} ›
+                </Text>
+              )}
+              {displayRoutine && workoutSong && !isPending && (
+                <Text style={styles.subtitleSeparator}> • </Text>
+              )}
+              {workoutSong && !isPending && (
+                <TouchableOpacity
+                  style={styles.headerMusicContainer}
+                  onPress={() => toggleMusicPreview(workoutSong)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="musical-note"
+                    size={12}
+                    color={colors.textPrimary}
+                  />
+                  <Text style={styles.headerMusicText} numberOfLines={1}>
+                    {workoutSong.artistName} • {workoutSong.trackName}
                   </Text>
-                )}
-                {displayRoutine && workoutSong && !isPending && (
-                  <Text style={styles.subtitleSeparator}> • </Text>
-                )}
-                {workoutSong && !isPending && (
-                  <TouchableOpacity
-                    style={styles.headerMusicContainer}
-                    onPress={() => toggleMusicPreview(workoutSong)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="musical-note"
-                      size={12}
-                      color={colors.textPrimary}
-                    />
-                    <Text style={styles.headerMusicText} numberOfLines={1}>
-                      {workoutSong.artistName} • {workoutSong.trackName}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -750,23 +930,8 @@ export const FeedCard = memo(function FeedCard({
             </Text>
           </Animated.View>
         ) : (
-          (onCoachPress || onEdit || onDelete || onCreateRoutine) && (
+          (onEdit || onDelete || onCreateRoutine) && (
             <View style={styles.headerActions}>
-              {onCoachPress && coachAvatarSource ? (
-                <TouchableOpacity
-                  onPress={onCoachPress}
-                  style={styles.coachButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={coachAvatarSource}
-                    style={styles.coachAvatar}
-                    contentFit="cover"
-                    transition={100}
-                  />
-                </TouchableOpacity>
-              ) : null}
               {(onEdit || onDelete || onCreateRoutine) && (
                 <View style={{ zIndex: 10 }}>
                   <TouchableOpacity
@@ -853,34 +1018,28 @@ export const FeedCard = memo(function FeedCard({
       )}
 
       {/* Carousel or Exercises */}
-      {coverImageUrl ? (
-        <View>
+      {carouselSlides.length > 1 ? (
+        <View style={{ marginHorizontal: -cardPadding }}>
           <ScrollView
+            ref={carouselRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={handleCarouselScroll}
+            onScrollBeginDrag={onRecordsRequested}
             scrollEventThrottle={16}
             decelerationRate="fast"
             snapToInterval={carouselWidth}
-            contentContainerStyle={{ width: carouselWidth * 2 }}
+            contentContainerStyle={{
+              width: carouselWidth * carouselSlides.length,
+            }}
           >
-            {mediaFirst ? (
-              <>
-                {mediaSlide}
-                {infoSlide}
-              </>
-            ) : (
-              <>
-                {infoSlide}
-                {mediaSlide}
-              </>
-            )}
+            {carouselSlides}
           </ScrollView>
 
           {/* Pagination Dots */}
           <View style={styles.pagination}>
-            {[0, 1].map((_, index) => (
+            {carouselSlides.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -963,9 +1122,6 @@ export const FeedCard = memo(function FeedCard({
                 />
               </TouchableOpacity>
             )}
-
-            <View style={{ flex: 1 }} />
-            <Text style={styles.bottomTimeAgo}>{timeAgo}</Text>
           </View>
 
           {/* Liked By Section */}
@@ -1173,7 +1329,7 @@ function createStyles(
   return StyleSheet.create({
     card: {
       backgroundColor: colors.bg,
-      paddingHorizontal: 14,
+      paddingHorizontal: 20,
       paddingTop: 18,
       paddingBottom: 0,
     },
@@ -1194,16 +1350,16 @@ function createStyles(
       justifyContent: 'center',
     },
     avatar: {
-      width: 41,
-      height: 41,
-      borderRadius: 21,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: colors.brandPrimary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     avatarText: {
       color: colors.surface,
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '600',
     },
     userNameRow: {
@@ -1220,14 +1376,9 @@ function createStyles(
       color: colors.textPrimary,
     },
     timeAgo: {
-      fontSize: 13,
-      color: colors.textTertiary,
-      marginTop: 2,
-    },
-    bottomTimeAgo: {
       fontSize: 12,
       color: colors.textTertiary,
-      fontWeight: '400',
+      flexShrink: 0,
     },
     headerMusicContainer: {
       flexDirection: 'row',
@@ -1274,7 +1425,7 @@ function createStyles(
       marginBottom: 12, // Moved from contents to ensure player matches height correctly
     },
     titleRowContainerNoDescription: {
-      marginBottom: 4,
+      marginBottom: 10,
     },
     titleContent: {
       flex: 1,
@@ -1287,7 +1438,9 @@ function createStyles(
     },
     workoutTitle: {
       fontSize: 22,
-      fontWeight: '600',
+      fontWeight: '700',
+      letterSpacing: -0.4,
+      lineHeight: 27,
       color: colors.textPrimary,
       marginBottom: 6,
     },
@@ -1483,10 +1636,7 @@ function createStyles(
       width: '100%',
       aspectRatio: 1,
       marginBottom: 12,
-      borderRadius: 12,
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.surfaceSubtle,
     },
     workoutImage: {
@@ -1556,8 +1706,8 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 6,
-      paddingHorizontal: 12,
+      paddingVertical: 7,
+      paddingHorizontal: 0,
     },
     exerciseNameContainer: {
       flex: 1,
@@ -1569,19 +1719,20 @@ function createStyles(
     exerciseThumbnail: {
       width: 48,
       height: 48,
-      borderRadius: 12,
+      borderRadius: 24,
       backgroundColor: '#f0f0f0', // Keep light background for white GIFs even in dark mode
     },
     exerciseNameSimple: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '500',
       color: colors.textPrimary,
       flex: 1,
     },
     setsText: {
       fontSize: 14,
-      fontWeight: '400',
-      color: colors.textSecondary,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      fontVariant: ['tabular-nums'],
     },
     seeMoreButton: {
       flexDirection: 'row',
@@ -1601,15 +1752,15 @@ function createStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 2,
-      marginBottom: 10,
+      marginTop: 0,
+      marginBottom: 14,
     },
     statsContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
-      gap: 28,
-      paddingVertical: 10,
+      gap: 32,
+      paddingVertical: 0,
       paddingHorizontal: 0,
     },
     statsRowMusic: {
@@ -1625,17 +1776,18 @@ function createStyles(
     },
     statItem: {
       alignItems: 'flex-start',
-      gap: 4,
+      gap: 2,
     },
     statLabel: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '500',
       color: colors.textTertiary,
     },
     statValue: {
-      fontSize: 15,
+      fontSize: 17,
       fontWeight: '600',
       color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     skeletonBar: {
       height: 14,
@@ -1684,7 +1836,8 @@ function createStyles(
       justifyContent: 'flex-start',
       gap: 16,
       paddingVertical: 10,
-      paddingHorizontal: 4,
+      paddingHorizontal: 0,
+      marginLeft: -8,
       marginTop: 4,
     },
     commentsListContainer: {
@@ -1819,21 +1972,58 @@ function createStyles(
       gap: 10,
       marginLeft: 12,
     },
-    coachButton: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceSubtle,
-    },
-    coachAvatar: {
-      width: '100%',
-      height: '100%',
-    },
     menuButton: {
       padding: 4,
+    },
+    recordInfo: {
+      flex: 1,
+      gap: 4,
+    },
+    recordSetText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    recordKindText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textTertiary,
+    },
+    recordDelta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    recordDeltaText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    recordNewPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    recordNewText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    recordSkeletonBar: {
+      height: 13,
+      borderRadius: 6,
+      backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
+    },
+    recordsMessage: {
+      paddingVertical: 24,
+      alignItems: 'center',
+    },
+    recordsMessageText: {
+      fontSize: 13,
+      color: colors.textTertiary,
     },
     paginationDot: {
       height: 6,

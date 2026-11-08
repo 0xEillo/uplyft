@@ -120,21 +120,6 @@ const MUSCLE_TO_BODY_PARTS: Record<
   Calves: { slug: 'calves', side: 'back', bodyHalf: 'lower' },
 }
 
-export const MUSCLE_OPTIONS = [
-  { label: 'Push', value: 'Push', description: 'Chest, Shoulders, Triceps' },
-  { label: 'Pull', value: 'Pull', description: 'Back, Biceps' },
-  { label: 'Full Body', value: 'Full Body', description: 'Hit everything' },
-  { label: 'Upper Body', value: 'Upper Body', description: 'Torso & Arms' },
-  { label: 'Lower Body', value: 'Lower Body', description: 'Legs & Core' },
-  { label: 'Chest', value: 'Chest', description: 'Pectorals' },
-  { label: 'Back', value: 'Back', description: 'Lats & Traps' },
-  { label: 'Shoulders', value: 'Shoulders', description: 'Deltoids' },
-  { label: 'Arms', value: 'Arms', description: 'Biceps & Triceps' },
-  { label: 'Core', value: 'Core', description: 'Abs & Obliques' },
-]
-
-export const EQUIPMENT_OPTIONS: any[] = []
-
 const LOCATION_OPTS = ['Gym', 'Home']
 const WORKOUT_TYPES = [
   'Strength',

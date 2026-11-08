@@ -9,6 +9,7 @@ import { WeeklyStatsCard } from '@/components/Profile/WeeklyStatsCard'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProfile } from '@/contexts/profile-context'
 import { useScrollToTop } from '@/contexts/scroll-to-top-context'
 import { useBottomAccessoryVisibility } from '@/contexts/bottom-accessory-visibility-context'
 import { useTheme } from '@/contexts/theme-context'
@@ -16,17 +17,14 @@ import { useThemedColors } from '@/hooks/useThemedColors'
 import { useUserLevel } from '@/hooks/useUserLevel'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database } from '@/lib/database'
-import {
-  calculateTotalVolume,
-  calculateWorkoutStats,
-  formatVolume,
-} from '@/lib/utils/workout-stats'
+import { reuseUnchangedItems } from '@/lib/utils/reuse-unchanged-items'
+import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
@@ -39,8 +37,26 @@ import {
   View,
 } from 'react-native'
 
+const workoutKeyExtractor = (item: WorkoutSessionWithDetails) => item.id
+
+// Stable component type so FlashList doesn't remount separators every render.
+const FeedSeparator = memo(function FeedSeparator() {
+  const colors = useThemedColors()
+  return <View style={{ height: 8, backgroundColor: colors.separator }} />
+})
+
+const getStartOfWeek = () => {
+  // Start of week (Sunday), local time
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay())
+  startOfWeek.setHours(0, 0, 0, 0)
+  return startOfWeek
+}
+
 export default function ProfileScreen() {
   const { user } = useAuth()
+  const { profile: contextProfile } = useProfile()
   const { trackEvent } = useAnalytics()
   const router = useRouter()
   const { isDark } = useTheme()
@@ -64,7 +80,9 @@ export default function ProfileScreen() {
     [scrollY, bottomAccessoryVisibility],
   )
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark])
-  const [profile, setProfile] = useState<any>(null)
+  // Seeded from the already-loaded profile context so the header renders
+  // immediately; refreshed from the server on focus.
+  const [profile, setProfile] = useState<any>(contextProfile ?? null)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [workoutCount, setWorkoutCount] = useState(0)
@@ -94,7 +112,6 @@ export default function ProfileScreen() {
 
   // This week stats
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
-  const [, setWeeklyVolume] = useState(0)
   const [currentStreak, setCurrentStreak] = useState(0)
   const [weeklyActivity, setWeeklyActivity] = useState<boolean[]>(
     new Array(7).fill(false),
@@ -104,8 +121,26 @@ export default function ProfileScreen() {
     if (!user) return
 
     try {
-      // Load profile - signInAnonymously should have created one for anonymous users
-      const profileData = await database.profiles.getByIdOrNull(user.id)
+      const startOfWeek = getStartOfWeek()
+
+      // One parallel wave. Previously the profile was fetched first, then the
+      // stats, then the last 100 full workouts (every exercise and set) just
+      // to work out which days this week had a workout.
+      const [
+        profileData,
+        counts,
+        totalWorkouts,
+        weekDates,
+        streakResult,
+        latestRoutineName,
+      ] = await Promise.all([
+        database.profiles.getByIdOrNull(user.id),
+        database.follows.getCounts(user.id),
+        database.workoutSessions.getTotalCount(user.id),
+        database.workoutSessions.getDatesSince(user.id, startOfWeek),
+        database.stats.calculateStreak(user.id),
+        database.workoutRoutines.getLatestActiveName(user.id),
+      ])
 
       if (!profileData) {
         console.error('[Profile] Profile not found for user:', user.id)
@@ -113,84 +148,53 @@ export default function ProfileScreen() {
       }
 
       setProfile(profileData)
-
-      // Calculate start of week (Sunday)
-      const now = new Date()
-      const startOfWeek = new Date(now)
-      startOfWeek.setDate(now.getDate() - now.getDay())
-      startOfWeek.setHours(0, 0, 0, 0)
-
-      // Load stats
-      const [counts, totalWorkouts, weekCount, streakResult, routinesData] =
-        await Promise.all([
-        database.follows.getCounts(user.id),
-        database.workoutSessions.getTotalCount(user.id),
-        database.workoutSessions.getThisWeekCount(user.id, startOfWeek),
-        database.stats.calculateStreak(user.id),
-        database.workoutRoutines.getAll(user.id),
-        ])
-
       setFollowerCount(counts.followers)
       setFollowingCount(counts.following)
       setWorkoutCount(totalWorkouts)
-      setWeeklyWorkouts(weekCount)
+      setWeeklyWorkouts(weekDates.length)
       setCurrentStreak(streakResult.currentStreak)
-
-      // Set latest weight
       setLatestWeight(profileData.weight_kg ?? null)
+      setActiveRoutineName(latestRoutineName)
 
-      // Set active routine
-      const activeRoutines = routinesData.filter((r) => !r.is_archived)
-      if (activeRoutines.length > 0) {
-        setActiveRoutineName(activeRoutines[0].name)
-      }
-
-      // Calculate weekly volume and activity
-      const weekWorkouts = await database.workoutSessions.getRecent(
-        user.id,
-        100,
-      )
-      const weeklyWorkoutsList = weekWorkouts.filter((w) => {
-        const workoutDate = new Date(w.date)
-        return workoutDate >= startOfWeek
-      })
-
-      // Sum up all volume (weight * reps) for this week
-      let totalVolume = 0
       const activity = new Array(7).fill(false)
-
-      weeklyWorkoutsList.forEach((workout) => {
-        totalVolume += calculateTotalVolume(workout, 'kg')
-        const dayIndex = new Date(workout.date).getDay()
-        activity[dayIndex] = true
+      weekDates.forEach((date) => {
+        activity[new Date(date).getDay()] = true
       })
-
-      setWeeklyVolume(totalVolume)
-      setWeeklyActivity(activity)
+      setWeeklyActivity((prev) =>
+        prev.every((value, index) => value === activity[index]) ? prev : activity,
+      )
     } catch (error) {
       console.error('Error loading profile data:', error)
     }
   }, [user])
+
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
+  const isLoadingMoreRef = useRef(false)
 
   const loadWorkouts = useCallback(
     async (showLoading = false, loadMore = false) => {
       if (!user) return
 
       // Prevent concurrent load-more operations
-      if (loadMore && isLoadingMore) {
+      if (loadMore && isLoadingMoreRef.current) {
         return
       }
 
       try {
         if (loadMore) {
+          isLoadingMoreRef.current = true
           setIsLoadingMore(true)
         } else if (showLoading) {
           setIsLoading(true)
         }
 
-        const currentOffset = loadMore ? offset : 0
+        const currentOffset = loadMore ? offsetRef.current : 0
         const limit = 10
-        const data = await database.workoutSessions.getRecent(
+        // Includes like/comment counts, so cards show real social stats and
+        // skip the comment-preview request when a workout has no comments.
+        const data = await database.workoutSessions.getProfileFeed(
+          user.id,
           user.id,
           limit,
           currentOffset,
@@ -210,19 +214,21 @@ export default function ProfileScreen() {
           setOffset(currentOffset + data.length)
           setHasMore(hasMoreWorkouts)
         } else {
-          // Initial load or refresh
-          setWorkouts(data)
+          // Initial load or refresh. Keep unchanged workouts' object identity
+          // so re-focusing the tab doesn't re-render every card.
+          setWorkouts((prev) => reuseUnchangedItems(prev, data))
           setOffset(data.length)
           setHasMore(hasMoreWorkouts)
         }
       } catch (error) {
         console.error('Error loading workouts:', error)
       } finally {
+        if (loadMore) isLoadingMoreRef.current = false
         setIsLoading(false)
         setIsLoadingMore(false)
       }
     },
-    [user, isLoadingMore, offset],
+    [user],
   )
 
   const handleLoadMore = useCallback(() => {
@@ -245,6 +251,20 @@ export default function ProfileScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [trackEvent]),
   )
+
+  // Stable callback so memoized feed cards don't all re-render whenever the
+  // screen does. Mirrors deletingWorkoutId in a ref to stay stable.
+  const deletingWorkoutIdRef = useRef<string | null>(null)
+  const handleDeleteWorkout = useCallback((workoutId: string) => {
+    if (deletingWorkoutIdRef.current === workoutId) {
+      deletingWorkoutIdRef.current = null
+      setWorkouts((prev) => prev.filter((w) => w.id !== workoutId))
+      setDeletingWorkoutId(null)
+    } else {
+      deletingWorkoutIdRef.current = workoutId
+      setDeletingWorkoutId(workoutId)
+    }
+  }, [])
 
   const renderWorkoutItem = useCallback(
     ({
@@ -350,18 +370,19 @@ export default function ProfileScreen() {
           isNew={false}
           isDeleting={workout.id === deletingWorkoutId}
           isFirst={index === 0}
-          onDeleteWorkout={() => {
-            if (workout.id === deletingWorkoutId) {
-              setWorkouts((prev) => prev.filter((w) => w.id !== workout.id))
-              setDeletingWorkoutId(null)
-            } else {
-              setDeletingWorkoutId(workout.id)
-            }
-          }}
+          onDeleteWorkout={handleDeleteWorkout}
         />
       )
     },
-    [viewMode, weightUnit, deletingWorkoutId, styles, colors, router],
+    [
+      viewMode,
+      weightUnit,
+      deletingWorkoutId,
+      styles,
+      colors,
+      router,
+      handleDeleteWorkout,
+    ],
   )
 
   const renderFooter = useCallback(() => {
@@ -379,24 +400,261 @@ export default function ProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
   }, [isLoading, colors, styles])
 
-  // Animation interpolations for the cover photo
-  const coverTranslateY = scrollY.interpolate({
-    inputRange: [-400, 0, 400],
-    outputRange: [-400, 0, 200], // Pin to top on pull-down, parallax on scroll-up
-    extrapolateRight: 'clamp',
-  })
+  // Animation interpolations for the cover photo. Memoized: creating new
+  // interpolation nodes every render re-attaches the animated styles.
+  const coverAnimatedStyle = useMemo(
+    () => ({
+      transform: [
+        {
+          translateY: scrollY.interpolate({
+            inputRange: [-400, 0, 400],
+            outputRange: [-400, 0, 200], // Pin to top on pull-down, parallax on scroll-up
+            extrapolateRight: 'clamp',
+          }),
+        },
+        {
+          scale: scrollY.interpolate({
+            inputRange: [-400, 0],
+            outputRange: [1.3, 1],
+            extrapolate: 'clamp',
+          }),
+        },
+      ],
+      opacity: scrollY.interpolate({
+        inputRange: [0, 300],
+        outputRange: [1, 0.7],
+        extrapolate: 'clamp',
+      }),
+    }),
+    [scrollY],
+  )
 
-  const coverScale = scrollY.interpolate({
-    inputRange: [-400, 0],
-    outputRange: [1.3, 1],
-    extrapolate: 'clamp',
-  })
+  const openWorkoutCalendar = useCallback(
+    () => router.push('/workout-calendar'),
+    [router],
+  )
 
-  const coverOpacity = scrollY.interpolate({
-    inputRange: [0, 300],
-    outputRange: [1, 0.7],
-    extrapolate: 'clamp',
-  })
+  // Memoized: rebuilding this tree on every screen render (scroll-driven
+  // state, load-more spinner, delete animation) was wasted work.
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.profileHeader}>
+        {/* Cover Photo Section */}
+        <Animated.View
+          style={[styles.coverContainer, coverAnimatedStyle]}
+        >
+          {profile?.avatar_url ? (
+            <Animated.Image
+              source={{ uri: profile.avatar_url }}
+              style={styles.coverImage}
+              blurRadius={1} // Even tinier blur
+            />
+          ) : (
+            <View style={[styles.coverImage, styles.coverPlaceholder]} />
+          )}
+          {/* Uniform overlay */}
+          <View
+            style={[
+              styles.coverGradient,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(0,0,0,0.7)'
+                  : 'rgba(255,255,255,0.65)',
+              },
+            ]}
+          />
+          {/* Bottom fade to background */}
+          <LinearGradient
+            colors={[
+              isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
+              isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+              colors.bg,
+            ]}
+            locations={[0, 0.6, 1]}
+            style={styles.coverBottomGradient}
+          />
+        </Animated.View>
+
+        {/* Profile Section with Avatar and Info */}
+        <View style={styles.profileSection}>
+          {/* Avatar and Name Row */}
+          <View style={styles.profileTop}>
+            {/* Avatar */}
+            <TouchableOpacity
+              onPress={() => router.push('/edit-profile')}
+            >
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Ionicons
+                    name="person"
+                    size={42}
+                    color={colors.surface}
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Name and Stats */}
+            <View style={styles.nameContainer}>
+              <TouchableOpacity
+                onPress={() => router.push('/edit-profile')}
+              >
+                <View style={styles.nameRow}>
+                  <Text style={styles.displayName}>
+                    {profile?.display_name || (profile?.user_tag ? `@${profile.user_tag}` : 'User')}
+                  </Text>
+                  {userLevel && (
+                    <LevelBadge
+                      level={userLevel}
+                      size="medium"
+                      style={styles.levelBadge}
+                      onPress={() => setShowLevelSheet(true)}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Stats Row - title above number, all on one line */}
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <Text style={styles.statLabel}>Workouts</Text>
+                  <Text style={styles.statNumber}>{workoutCount}</Text>
+                </View>
+                <View style={styles.statSeparator} />
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() => {
+                    if (user?.id) {
+                      router.push({
+                        pathname: '/followers/[userId]',
+                        params: { userId: user.id },
+                      })
+                    }
+                  }}
+                >
+                  <Text style={styles.statLabel}>Followers</Text>
+                  <Text style={styles.statNumber}>{followerCount}</Text>
+                </TouchableOpacity>
+                <View style={styles.statSeparator} />
+                <TouchableOpacity
+                  style={styles.stat}
+                  onPress={() => {
+                    if (user?.id) {
+                      router.push({
+                        pathname: '/following/[userId]',
+                        params: { userId: user.id },
+                      })
+                    }
+                  }}
+                >
+                  <Text style={styles.statLabel}>Following</Text>
+                  <Text style={styles.statNumber}>{followingCount}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Profile Description */}
+          {profile?.profile_description ? (
+            <Text
+              style={styles.profileDescription}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {profile.profile_description}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Dashboard Carousel Section */}
+        <ProfileDashboard
+          activeRoutineName={activeRoutineName}
+          latestWeight={latestWeight}
+        />
+
+        <WeeklyStatsCard
+          streak={currentStreak}
+          workouts={weeklyWorkouts}
+          activity={weeklyActivity}
+          onPress={openWorkoutCalendar}
+          showChevron={false}
+        />
+
+        {/* Workouts Header */}
+        <View style={styles.workoutsHeader}>
+          <Text style={styles.workoutsTitle}>Recent Activity</Text>
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              onPress={() => setViewMode('feed')}
+              style={[
+                styles.toggleButton,
+                viewMode === 'feed' && styles.toggleButtonActive,
+              ]}
+            >
+              <Ionicons
+                name="reorder-four-outline"
+                size={20}
+                color={
+                  viewMode === 'feed'
+                    ? colors.surface
+                    : colors.textSecondary
+                }
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('grid')}
+              style={[
+                styles.toggleButton,
+                viewMode === 'grid' && styles.toggleButtonActive,
+              ]}
+            >
+              <Ionicons
+                name="apps-outline"
+                size={18}
+                color={
+                  viewMode === 'grid'
+                    ? colors.surface
+                    : colors.textSecondary
+                }
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    ),
+    [
+      styles,
+      coverAnimatedStyle,
+      profile,
+      isDark,
+      colors,
+      router,
+      userLevel,
+      workoutCount,
+      followerCount,
+      followingCount,
+      user?.id,
+      activeRoutineName,
+      latestWeight,
+      currentStreak,
+      weeklyWorkouts,
+      weeklyActivity,
+      openWorkoutCalendar,
+      viewMode,
+    ],
+  )
+
+  const renderSeparator = viewMode === 'feed' ? FeedSeparator : undefined
+  const getItemType = useCallback(() => viewMode, [viewMode])
+  const contentContainerStyle = useMemo(
+    () => [styles.feedContent, viewMode === 'grid' && styles.gridContent],
+    [styles, viewMode],
+  )
 
   return (
     <View collapsable={false} style={styles.container}>
@@ -448,226 +706,15 @@ export default function ProfileScreen() {
           ref={flatListRef}
           data={workouts}
           renderItem={renderWorkoutItem}
-          estimatedItemSize={viewMode === 'grid' ? 180 : 360}
-          getItemType={() => viewMode}
-          ItemSeparatorComponent={() =>
-            viewMode === 'feed' ? (
-              <View
-                style={{
-                  height: 8,
-                  backgroundColor: colors.separator,
-                }}
-              />
-            ) : null
-          }
-          keyExtractor={(item: WorkoutSessionWithDetails) => item.id}
-          ListHeaderComponent={
-            <View style={styles.profileHeader}>
-              {/* Cover Photo Section */}
-              <Animated.View
-                style={[
-                  styles.coverContainer,
-                  {
-                    transform: [
-                      { translateY: coverTranslateY },
-                      { scale: coverScale },
-                    ],
-                    opacity: coverOpacity,
-                  },
-                ]}
-              >
-                {profile?.avatar_url ? (
-                  <Animated.Image
-                    source={{ uri: profile.avatar_url }}
-                    style={styles.coverImage}
-                    blurRadius={1} // Even tinier blur
-                  />
-                ) : (
-                  <View style={[styles.coverImage, styles.coverPlaceholder]} />
-                )}
-                {/* Uniform overlay */}
-                <View
-                  style={[
-                    styles.coverGradient,
-                    {
-                      backgroundColor: isDark
-                        ? 'rgba(0,0,0,0.7)'
-                        : 'rgba(255,255,255,0.65)',
-                    },
-                  ]}
-                />
-                {/* Bottom fade to background */}
-                <LinearGradient
-                  colors={[
-                    isDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)',
-                    isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
-                    colors.bg,
-                  ]}
-                  locations={[0, 0.6, 1]}
-                  style={styles.coverBottomGradient}
-                />
-              </Animated.View>
-
-              {/* Profile Section with Avatar and Info */}
-              <View style={styles.profileSection}>
-                {/* Avatar and Name Row */}
-                <View style={styles.profileTop}>
-                  {/* Avatar */}
-                  <TouchableOpacity
-                    onPress={() => router.push('/edit-profile')}
-                  >
-                    {profile?.avatar_url ? (
-                      <Image
-                        source={{ uri: profile.avatar_url }}
-                        style={styles.avatar}
-                      />
-                    ) : (
-                      <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                        <Ionicons
-                          name="person"
-                          size={42}
-                          color={colors.surface}
-                        />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-
-                  {/* Name and Stats */}
-                  <View style={styles.nameContainer}>
-                    <TouchableOpacity
-                      onPress={() => router.push('/edit-profile')}
-                    >
-                      <View style={styles.nameRow}>
-                        <Text style={styles.displayName}>
-                          {profile?.display_name || (profile?.user_tag ? `@${profile.user_tag}` : 'User')}
-                        </Text>
-                        {userLevel && (
-                          <LevelBadge
-                            level={userLevel}
-                            size="medium"
-                            style={styles.levelBadge}
-                            onPress={() => setShowLevelSheet(true)}
-                          />
-                        )}
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Stats Row - title above number, all on one line */}
-                    <View style={styles.statsRow}>
-                      <View style={styles.stat}>
-                        <Text style={styles.statLabel}>Workouts</Text>
-                        <Text style={styles.statNumber}>{workoutCount}</Text>
-                      </View>
-                      <View style={styles.statSeparator} />
-                      <TouchableOpacity
-                        style={styles.stat}
-                        onPress={() => {
-                          if (user?.id) {
-                            router.push({
-                              pathname: '/followers/[userId]',
-                              params: { userId: user.id },
-                            })
-                          }
-                        }}
-                      >
-                        <Text style={styles.statLabel}>Followers</Text>
-                        <Text style={styles.statNumber}>{followerCount}</Text>
-                      </TouchableOpacity>
-                      <View style={styles.statSeparator} />
-                      <TouchableOpacity
-                        style={styles.stat}
-                        onPress={() => {
-                          if (user?.id) {
-                            router.push({
-                              pathname: '/following/[userId]',
-                              params: { userId: user.id },
-                            })
-                          }
-                        }}
-                      >
-                        <Text style={styles.statLabel}>Following</Text>
-                        <Text style={styles.statNumber}>{followingCount}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Profile Description */}
-                {profile?.profile_description ? (
-                  <Text
-                    style={styles.profileDescription}
-                    numberOfLines={3}
-                    ellipsizeMode="tail"
-                  >
-                    {profile.profile_description}
-                  </Text>
-                ) : null}
-              </View>
-
-              {/* Dashboard Carousel Section */}
-              <ProfileDashboard
-                activeRoutineName={activeRoutineName}
-                latestWeight={latestWeight}
-              />
-
-              <WeeklyStatsCard
-                streak={currentStreak}
-                workouts={weeklyWorkouts}
-                activity={weeklyActivity}
-                onPress={() => router.push('/workout-calendar')}
-                showChevron={false}
-              />
-
-              {/* Workouts Header */}
-              <View style={styles.workoutsHeader}>
-                <Text style={styles.workoutsTitle}>Recent Activity</Text>
-                <View style={styles.viewToggle}>
-                  <TouchableOpacity
-                    onPress={() => setViewMode('feed')}
-                    style={[
-                      styles.toggleButton,
-                      viewMode === 'feed' && styles.toggleButtonActive,
-                    ]}
-                  >
-                    <Ionicons
-                      name="reorder-four-outline"
-                      size={20}
-                      color={
-                        viewMode === 'feed'
-                          ? colors.surface
-                          : colors.textSecondary
-                      }
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setViewMode('grid')}
-                    style={[
-                      styles.toggleButton,
-                      viewMode === 'grid' && styles.toggleButtonActive,
-                    ]}
-                  >
-                    <Ionicons
-                      name="apps-outline"
-                      size={18}
-                      color={
-                        viewMode === 'grid'
-                          ? colors.surface
-                          : colors.textSecondary
-                      }
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          }
+          getItemType={getItemType}
+          ItemSeparatorComponent={renderSeparator}
+          keyExtractor={workoutKeyExtractor}
+          ListHeaderComponent={listHeader}
           key={viewMode}
           numColumns={viewMode === 'grid' ? 3 : 1}
           contentInsetAdjustmentBehavior="automatic"
           automaticallyAdjustContentInsets
-          contentContainerStyle={[
-            styles.feedContent,
-            viewMode === 'grid' && styles.gridContent,
-          ]}
+          contentContainerStyle={contentContainerStyle}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}

@@ -99,7 +99,11 @@ const PatchedBodyHighlighter = ({
             return (
               <Path
                 key={path}
-                onPress={() => onBodyPartPress?.(bodyPart)}
+                onPress={
+                  onBodyPartPress
+                    ? () => onBodyPartPress(bodyPart)
+                    : undefined
+                }
                 id={bodyPart.slug}
                 fill={dataCommonPath ? getColorToFill(bodyPart) : bodyPart.color}
                 d={path}
@@ -114,7 +118,11 @@ const PatchedBodyHighlighter = ({
             return (
               <Path
                 key={path}
-                onPress={() => onBodyPartPress?.(bodyPart, 'left')}
+                onPress={
+                  onBodyPartPress
+                    ? () => onBodyPartPress(bodyPart, 'left')
+                    : undefined
+                }
                 id={bodyPart.slug}
                 fill={isOnlyRight ? '#3f3f3f' : getColorToFill(bodyPart)}
                 d={path}
@@ -129,7 +137,11 @@ const PatchedBodyHighlighter = ({
             return (
               <Path
                 key={path}
-                onPress={() => onBodyPartPress?.(bodyPart, 'right')}
+                onPress={
+                  onBodyPartPress
+                    ? () => onBodyPartPress(bodyPart, 'right')
+                    : undefined
+                }
                 id={bodyPart.slug}
                 fill={isOnlyLeft ? '#3f3f3f' : getColorToFill(bodyPart)}
                 d={path}

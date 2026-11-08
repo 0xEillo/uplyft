@@ -43,7 +43,7 @@ export function SettingsCard({ children, tone = 'default', style }: SettingsCard
  * Hairline divider. Indented to align with row text.
  * Exposed for the rare case where callers need manual control.
  */
-export function SettingsDivider() {
+function SettingsDivider() {
   const colors = useThemedColors()
   return (
     <View
@@ -57,7 +57,7 @@ export function SettingsDivider() {
 }
 
 /** Matches icon (22) + gap (16) + row padding (16) = 54. Tuned visually to 50. */
-export const ROW_DIVIDER_INSET = 50
+const ROW_DIVIDER_INSET = 50
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({

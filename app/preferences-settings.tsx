@@ -18,7 +18,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { getCoach } from '@/lib/coaches'
 import { database } from '@/lib/database'
 import { Profile } from '@/types/database.types'
 import { useRouter } from 'expo-router'
@@ -114,15 +113,6 @@ export default function PreferencesSettingsScreen() {
             }
           />
           <SettingsRow
-            icon="person-outline"
-            title="AI Coach"
-            description={getCoach(profile?.coach).name}
-            onPress={() => router.push('/coach-selection')}
-            rightContent={
-              <Text style={styles.inlineButtonText}>Change</Text>
-            }
-          />
-          <SettingsRow
             icon="color-palette-outline"
             title="Theme"
             description="App appearance"
@@ -170,10 +160,5 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: FontSize.sm,
       fontWeight: FontWeight.semibold,
       color: colors.brandPrimary,
-    },
-    inlineButtonText: {
-      fontSize: FontSize.sm,
-      fontWeight: FontWeight.semibold,
-      color: colors.textSecondary,
     },
   })

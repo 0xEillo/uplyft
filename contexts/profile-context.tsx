@@ -15,14 +15,11 @@ import { useAuth } from './auth-context'
 interface ProfileContextType {
   profile: Profile | null
   isLoading: boolean
-  coachId: string
   updateProfile: (updates: Partial<Profile>) => Promise<void>
   refreshProfile: () => Promise<void>
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined)
-
-const DEFAULT_COACH_ID = 'ross'
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
@@ -98,15 +95,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     await loadProfile()
   }, [loadProfile])
 
-  // Convenience getter for coach ID
-  const coachId = profile?.coach || DEFAULT_COACH_ID
-
   return (
     <ProfileContext.Provider
       value={{
         profile,
         isLoading,
-        coachId,
         updateProfile,
         refreshProfile,
       }}

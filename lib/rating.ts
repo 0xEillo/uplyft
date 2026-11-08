@@ -9,7 +9,7 @@ const LAST_PROMPT_WORKOUT_COUNT_KEY = '@rating_prompt_last_shown_workout_count'
 /**
  * Check if the user has already rated the app
  */
-export async function hasUserRated(): Promise<boolean> {
+async function hasUserRated(): Promise<boolean> {
   try {
     const value = await AsyncStorage.getItem(HAS_RATED_KEY)
     return value === 'true'
@@ -33,7 +33,7 @@ export async function markUserAsRated(): Promise<void> {
 /**
  * Get the workout count when the rating prompt was last shown
  */
-export async function getLastPromptWorkoutCount(): Promise<number | null> {
+async function getLastPromptWorkoutCount(): Promise<number | null> {
   try {
     const value = await AsyncStorage.getItem(LAST_PROMPT_WORKOUT_COUNT_KEY)
     return value ? parseInt(value, 10) : null

@@ -20,7 +20,6 @@ import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { LiveActivityProvider } from '@/contexts/live-activity-context'
 import { NotificationProvider } from '@/contexts/notification-context'
-import { PostsProvider } from '@/contexts/posts-context'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { RestTimerProvider } from '@/contexts/rest-timer-context'
 import { SubscriptionProvider } from '@/contexts/subscription-context'
@@ -238,14 +237,6 @@ function RootLayoutNav() {
             name="strength-stats"
             options={{ presentation: 'card', animation: 'default' }}
           />
-          <Stack.Screen
-            name="strength-pro-tour"
-            options={{
-              presentation: 'card',
-              animation: 'slide_from_bottom',
-              gestureEnabled: true,
-            }}
-          />
 
 
           <Stack.Screen
@@ -420,10 +411,7 @@ function RootLayoutNav() {
             name="chat-settings"
             options={
               Platform.OS === 'ios'
-                ? {
-                    ...getNativeFormSheetOptions([0.72, 0.95]),
-                    sheetInitialDetentIndex: 1,
-                  }
+                ? getNativeFormSheetOptions([0.62, 0.95])
                 : transparentModalFallback
             }
           />
@@ -460,15 +448,13 @@ export default function RootLayout() {
                   <SubscriptionProvider>
                     <NotificationProvider>
                       <AnalyticsProvider>
-                        <PostsProvider>
-                          <LiveActivityProvider>
-                            <WorkoutComposerProvider>
-                              <RestTimerProvider>
-                                <RootLayoutNav />
-                              </RestTimerProvider>
-                            </WorkoutComposerProvider>
-                          </LiveActivityProvider>
-                        </PostsProvider>
+                        <LiveActivityProvider>
+                          <WorkoutComposerProvider>
+                            <RestTimerProvider>
+                              <RootLayoutNav />
+                            </RestTimerProvider>
+                          </WorkoutComposerProvider>
+                        </LiveActivityProvider>
                       </AnalyticsProvider>
                     </NotificationProvider>
                   </SubscriptionProvider>

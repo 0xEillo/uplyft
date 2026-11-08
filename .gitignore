@@ -45,3 +45,10 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Supabase CLI local cache
+supabase/.temp/
+
+# EAS local credentials
+credentials.json
+credentials/

@@ -80,6 +80,7 @@ export const AnalyticsEvents = {
   AI_CHAT_RESPONSE_RECEIVED: 'AI Chat Response Received',
   AI_CHAT_ERROR: 'AI Chat Error',
   AI_CHAT_CLOSED: 'AI Chat Closed',
+  AI_CHAT_MESSAGE_FEEDBACK: 'AI Chat Message Feedback',
 
   // Body Scanning
   BODY_SCAN_INTRO_VIEWED: 'Body Scan Intro Viewed',
@@ -337,6 +338,11 @@ export interface AIChatProperties extends BaseEventProperties {
   error_message?: string
 }
 
+export interface AIChatFeedbackProperties extends BaseEventProperties {
+  message_id: string
+  rating: 'up' | 'down' | 'cleared'
+}
+
 export interface BodyScanProperties extends BaseEventProperties {
   scan_id?: string
   processing_time?: number
@@ -426,7 +432,7 @@ export interface PaywallProperties extends BaseEventProperties {
 }
 
 /**
- * Human-readable labels for each `PaywallFeature`. ProTease prefixes with
+ * Human-readable labels for each `PaywallFeature`. Paywall titles prefix with
  * “Unlock ” for the paywall title. Keep concise.
  */
 export const PAYWALL_FEATURE_LABELS: Record<PaywallFeature, string> = {
@@ -569,6 +575,7 @@ export type EventPropertiesMap = {
   [AnalyticsEvents.AI_CHAT_MESSAGE_SENT]: AIChatProperties
   [AnalyticsEvents.AI_CHAT_RESPONSE_RECEIVED]: AIChatProperties
   [AnalyticsEvents.AI_CHAT_ERROR]: AIChatProperties
+  [AnalyticsEvents.AI_CHAT_MESSAGE_FEEDBACK]: AIChatFeedbackProperties
   [AnalyticsEvents.BODY_SCAN_STARTED]: BodyScanProperties
   [AnalyticsEvents.BODY_SCAN_COMPLETED]: BodyScanProperties
   [AnalyticsEvents.BODY_SCAN_FAILED]: BodyScanProperties

@@ -1,4 +1,4 @@
-export { SettingsCard, SettingsDivider } from './settings-card'
+export { SettingsCard,  } from './settings-card'
 export { SettingsRow } from './settings-row'
 export type { SettingsRowProps } from './settings-row'
 export { SettingsScreen } from './settings-screen'

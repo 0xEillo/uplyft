@@ -113,19 +113,6 @@ function sanitizeMessages(value: unknown): CoachChatMessage[] {
   return sanitized
 }
 
-export function hasMeaningfulCoachChatSnapshot(
-  snapshot: CoachChatSnapshot | null | undefined,
-): boolean {
-  if (!snapshot) return false
-
-  return (
-    snapshot.messages.length > 0 ||
-    snapshot.input.trim().length > 0 ||
-    snapshot.selectedImages.length > 0 ||
-    snapshot.savedAssistantMessageIds.length > 0
-  )
-}
-
 export function sanitizeCoachChatSnapshot(
   value: unknown,
 ): CoachChatSnapshot | null {
@@ -183,11 +170,21 @@ export function mergeExternalMessages(
     next.push(message)
   }
 
-  return next.sort((a, b) => {
-    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
-    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
-    return aTime - bTime
-  })
+  // Locally created messages don't all carry createdAt. Give an unstamped
+  // message the time of the message before it (and break ties by position) so
+  // sorting never moves it away from the conversation it belongs to.
+  let previousTime = 0
+  return next
+    .map((message, index) => {
+      const parsed = message.createdAt
+        ? new Date(message.createdAt).getTime()
+        : Number.NaN
+      const time = Number.isNaN(parsed) ? previousTime : parsed
+      previousTime = time
+      return { message, time, index }
+    })
+    .sort((a, b) => a.time - b.time || a.index - b.index)
+    .map(({ message }) => message)
 }
 
 function readCollection(userId: string): PersistedCoachChatCollection | null {
@@ -264,19 +261,6 @@ export async function saveCoachChatSnapshot(
     ...sanitizedSnapshot,
     savedAt: Date.now(),
   }
-  writeCollection(userId, collection)
-}
-
-export async function clearCoachChatSnapshot(
-  userId: string | undefined,
-  descriptor: CoachChatPersistenceDescriptor,
-): Promise<void> {
-  if (!userId) return
-
-  const collection = readCollection(userId)
-  if (!collection) return
-
-  delete collection.snapshots[getCoachChatPersistenceScopeKey(descriptor)]
   writeCollection(userId, collection)
 }
 

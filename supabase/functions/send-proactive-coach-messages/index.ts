@@ -1,7 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
-import { generateText } from 'npm:ai'
+import { generateText } from 'npm:ai@7.0.162'
 import type { CommitmentDay } from '../_shared/commitment.ts'
-import { getCoach } from '../_shared/coaches.ts'
 import {
   addDays,
   diffDays,
@@ -17,8 +16,13 @@ import {
 } from '../_shared/retention.ts'
 import { GEMINI_MODEL, openrouter } from '../_shared/openrouter.ts'
 import { createServiceClient } from '../_shared/supabase.ts'
-import { buildSystemPrompt } from '../chat/system-prompt.ts'
+import { buildUserSnapshot, SYSTEM_PROMPT } from '../chat/prompt.ts'
 import { buildUserContextSummary } from '../chat/user-context.ts'
+
+// There is a single AI persona now. `coach_id` is still a required column on
+// proactive_coach_messages, so record a fixed id.
+const AI_COACH_ID = 'rep_ai'
+const AI_COACH_NAME = 'Rep AI'
 
 type ProactiveTriggerType =
   | 'workout_day_morning'
@@ -45,7 +49,6 @@ type PreferenceRow = {
         commitment: string[] | null
         commitment_frequency: string | null
         expo_push_token: string | null
-        coach: string | null
       }
     | null
 }
@@ -342,7 +345,7 @@ Deno.serve(async (req) => {
 
     const { data: profileRows, error: profileError } = await supabase
       .from('profiles')
-      .select('id, display_name, commitment, commitment_frequency, expo_push_token, coach')
+      .select('id, display_name, commitment, commitment_frequency, expo_push_token')
       .in(
         'id',
         prefRows.map((pref) => pref.user_id),
@@ -413,7 +416,6 @@ Deno.serve(async (req) => {
     const queued: {
       userId: string
       triggerType: ProactiveTriggerType
-      coachId: string
       body: string
       dryRun: boolean
     }[] = []
@@ -492,25 +494,35 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const coach = getCoach(pref.profile?.coach)
       const body = dryRun
         ? `[dry run] ${trigger.type}`
         : (
             await generateText({
               model: openrouter.chat(GEMINI_MODEL),
-              system:
-                buildSystemPrompt(
-                  await buildUserContextSummary(pref.user_id, supabase),
-                  'kg',
-                  coach.systemPrompt,
-                ) +
-                '\n\n' +
-                buildProactiveInstruction({
-                  trigger,
-                  displayName: pref.profile?.display_name ?? '',
-                }),
-              prompt: 'Write the proactive coach opener now.',
-              maxTokens: 180,
+              // Same static prompt and snapshot layout as the chat function,
+              // so these calls share its cached prefix.
+              instructions: SYSTEM_PROMPT,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: buildUserSnapshot(
+                        await buildUserContextSummary(pref.user_id, supabase),
+                      ),
+                    },
+                    {
+                      type: 'text',
+                      text: `${buildProactiveInstruction({
+                        trigger,
+                        displayName: pref.profile?.display_name ?? '',
+                      })}\n\nWrite the proactive opener now.`,
+                    },
+                  ],
+                },
+              ],
+              maxOutputTokens: 180,
               maxRetries: 1,
             })
           ).text.trim()
@@ -518,7 +530,6 @@ Deno.serve(async (req) => {
       queued.push({
         userId: pref.user_id,
         triggerType: trigger.type,
-        coachId: coach.id,
         body,
         dryRun,
       })
@@ -530,7 +541,7 @@ Deno.serve(async (req) => {
         .insert({
           user_id: pref.user_id,
           trigger_type: trigger.type,
-          coach_id: coach.id,
+          coach_id: AI_COACH_ID,
           body,
           metadata: {
             ...trigger.metadata,
@@ -558,7 +569,7 @@ Deno.serve(async (req) => {
           actors: [],
           read: false,
           metadata: {
-            title: coach.name,
+            title: AI_COACH_NAME,
             body: truncatePushBody(body),
             route: '/chat',
             source: 'proactive_coach_scheduler',

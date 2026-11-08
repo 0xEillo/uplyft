@@ -1,5 +1,9 @@
 import { useMemo } from 'react'
 
+import {
+  type ExerciseUsageCounts,
+  matchesAllQueryTokens,
+} from '@/lib/utils/exercise-usage-ranking'
 import { fuzzySearchExercises } from '@/lib/utils/fuzzy-search'
 
 import { Exercise } from '@/types/database.types'
@@ -63,6 +67,7 @@ function rankAutocompleteMatches(
   matches: Exercise[],
   normalizedInput: string,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): Exercise[] {
   if (matches.length <= 1) return matches
 
@@ -75,6 +80,8 @@ function rankAutocompleteMatches(
   type Ranked = {
     exercise: Exercise
     originalIndex: number
+    strongMatch: boolean
+    usageCount: number
     startsWithInput: boolean
     tokenStartsWithInput: boolean
     baseFrequency: number
@@ -91,6 +98,8 @@ function rankAutocompleteMatches(
     return {
       exercise,
       originalIndex,
+      strongMatch: matchesAllQueryTokens(exercise.name, normalizedInput),
+      usageCount: usageCounts?.[exercise.id] ?? 0,
       startsWithInput: nameLower.startsWith(normalizedInput),
       tokenStartsWithInput: tokens.some((token) =>
         token.startsWith(normalizedInput),
@@ -102,6 +111,15 @@ function rankAutocompleteMatches(
   })
 
   ranked.sort((a, b) => {
+    // Every typed word matches the start of a word in the name.
+    if (a.strongMatch !== b.strongMatch) {
+      return a.strongMatch ? -1 : 1
+    }
+    // Among equally good matches, the user's most-performed exercises win
+    // (e.g. "ben" → "Bench Press (Dumbbell)" for someone who always does DB).
+    if (a.usageCount !== b.usageCount) {
+      return b.usageCount - a.usageCount
+    }
     if (a.startsWithInput !== b.startsWithInput) {
       return a.startsWithInput ? -1 : 1
     }
@@ -130,7 +148,7 @@ function rankAutocompleteMatches(
  * Detect if current line looks like an exercise name.
  * Used to determine if the "Convert to Structured" button should be shown.
  */
-export function detectExerciseName(text: string, cursorPos: number): boolean {
+function detectExerciseName(text: string, cursorPos: number): boolean {
   if (!text) return false
 
   const textBeforeCursor = text.substring(0, cursorPos)
@@ -162,10 +180,11 @@ export function detectExerciseName(text: string, cursorPos: number): boolean {
  * Get exercise suggestions and related variations based on current input.
  * Returns null if no valid suggestions are available.
  */
-export function getExerciseAutocompleteGroup(
+function getExerciseAutocompleteGroup(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): ExerciseAutocompleteGroup | null {
   if (!text || !exercises.length) return null
 
@@ -205,19 +224,24 @@ export function getExerciseAutocompleteGroup(
     fuzzyMatches,
     normalizedInput,
     exercises,
+    usageCounts,
   )
 
   if (!matches.length) return null
 
   const firstMatch = matches[0]
-  
-  // Only show inline primary suggestion if it's a prefix match
-  // Otherwise the ghost text overlay won't align with what the user typed (e.g. typos)
-  const isPrefixMatch = firstMatch.name.toLowerCase().startsWith(normalizedInput)
-  
+
+  // Inline ghost text must be a prefix match, otherwise it won't align with
+  // what the user typed (e.g. typos). Use the highest-ranked prefix match so a
+  // frequently-used non-prefix match (e.g. "Incline Bench Press") ranked first
+  // doesn't suppress the completion.
+  const prefixMatch = matches.find((ex) =>
+    ex.name.toLowerCase().startsWith(normalizedInput),
+  )
+
   const primary =
-    isPrefixMatch && firstMatch.name.toLowerCase() !== normalizedInput
-      ? { name: firstMatch.name, inputLength: trimmedPrefix.length }
+    prefixMatch && prefixMatch.name.toLowerCase() !== normalizedInput
+      ? { name: prefixMatch.name, inputLength: trimmedPrefix.length }
       : null
 
   const firstParts = getExerciseNameParts(firstMatch.name)
@@ -270,109 +294,24 @@ export function getExerciseSuggestion(
   text: string,
   cursorPos: number,
   exercises: Exercise[],
+  usageCounts?: ExerciseUsageCounts,
 ): ExerciseSuggestion | null {
-  const group = getExerciseAutocompleteGroup(text, cursorPos, exercises)
+  const group = getExerciseAutocompleteGroup(
+    text,
+    cursorPos,
+    exercises,
+    usageCounts,
+  )
   return group?.primary ?? null
-}
-
-/**
- * Parse text around cursor to extract exercise name and sets.
- * Used for converting free-form text to structured workout format.
- */
-export function parseExerciseFromText(
-  text: string,
-  cursorPos: number,
-): {
-  exerciseName: string
-  sets: { weight?: string; reps?: string }[]
-  startLineIndex: number
-  endLineIndex: number
-} | null {
-  const lines = text.split('\n')
-  const textBeforeCursor = text.substring(0, cursorPos)
-  const linesBefore = textBeforeCursor.split('\n')
-  const currentLineIndex = linesBefore.length - 1
-
-  // Get exercise name (current line or previous line if current is empty)
-  let exerciseName = lines[currentLineIndex]?.trim() || ''
-  let startIndex = currentLineIndex
-
-  // If current line is empty, look at previous line
-  if (!exerciseName && currentLineIndex > 0) {
-    exerciseName = lines[currentLineIndex - 1]?.trim() || ''
-    startIndex = currentLineIndex - 1
-  }
-
-  if (!exerciseName) return null
-
-  // Extract sets from following lines (until empty line or end)
-  const sets: { weight?: string; reps?: string }[] = []
-  for (let i = startIndex + 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) break // Stop at empty line
-
-    // Try to parse set: "weight x reps"
-    const setMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+)/i)
-    if (setMatch) {
-      sets.push({
-        weight: setMatch[1],
-        reps: setMatch[2],
-      })
-    } else {
-      // If line doesn't match set pattern, stop
-      break
-    }
-  }
-
-  return {
-    exerciseName,
-    sets: sets.length > 0 ? sets : [{ weight: '', reps: '' }],
-    startLineIndex: startIndex,
-    endLineIndex: startIndex + sets.length,
-  }
-}
-
-/**
- * Parse rep range from string like "10-12" or "10".
- */
-export function parseRepRange(
-  reps: string,
-): { targetRepsMin: number | null; targetRepsMax: number | null } {
-  const rangeMatch = reps.match(/(\d+)[-–](\d+)/)
-  if (rangeMatch) {
-    return {
-      targetRepsMin: parseInt(rangeMatch[1], 10),
-      targetRepsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-  const singleRep = parseInt(reps, 10)
-  if (!isNaN(singleRep)) {
-    return { targetRepsMin: singleRep, targetRepsMax: singleRep }
-  }
-  return { targetRepsMin: null, targetRepsMax: null }
 }
 
 interface UseExerciseAutocompleteOptions {
   text: string
   cursorPosition: number
   exercises: Exercise[]
+  /** Exercise id → number of workouts it was performed in. */
+  usageCounts?: ExerciseUsageCounts
   isInputFocused: boolean
-}
-
-/**
- * Hook for exercise autocomplete functionality.
- * Returns the current suggestion based on input state.
- */
-export function useExerciseAutocomplete({
-  text,
-  cursorPosition,
-  exercises,
-  isInputFocused,
-}: UseExerciseAutocompleteOptions): ExerciseSuggestion | null {
-  return useMemo(() => {
-    if (!isInputFocused) return null
-    return getExerciseSuggestion(text, cursorPosition, exercises)
-  }, [text, cursorPosition, exercises, isInputFocused])
 }
 
 /**
@@ -382,12 +321,18 @@ export function useExerciseAutocompleteGroup({
   text,
   cursorPosition,
   exercises,
+  usageCounts,
   isInputFocused,
 }: UseExerciseAutocompleteOptions): ExerciseAutocompleteGroup | null {
   return useMemo(() => {
     if (!isInputFocused) return null
-    return getExerciseAutocompleteGroup(text, cursorPosition, exercises)
-  }, [text, cursorPosition, exercises, isInputFocused])
+    return getExerciseAutocompleteGroup(
+      text,
+      cursorPosition,
+      exercises,
+      usageCounts,
+    )
+  }, [text, cursorPosition, exercises, usageCounts, isInputFocused])
 }
 
 /**

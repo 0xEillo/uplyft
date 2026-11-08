@@ -75,7 +75,9 @@ export function FriendLeaderboardRow({
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <Text style={styles.rank}>{getRankLabel(entry.rank)}</Text>
+      <Text style={[styles.rank, entry.rank <= 3 && styles.rankMedal]}>
+        {getRankLabel(entry.rank)}
+      </Text>
       {renderAvatar()}
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
@@ -121,6 +123,10 @@ const createStyles = (
       fontWeight: '700',
       textAlign: 'center',
       color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    rankMedal: {
+      fontSize: 20,
     },
     avatar: {
       width: compact ? 34 : 40,
@@ -146,32 +152,33 @@ const createStyles = (
       fontWeight: isCurrentUser ? '700' : '600',
       color: colors.textPrimary,
     },
+    // Level colour lives on the level name; the numbers stay neutral so the
+    // rows don't compete with each other or with the hero.
     meta: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '500',
-      color: colors.textTertiary,
+      color: pointsColor,
       marginTop: 2,
     },
+    // Value and "pts" sit inline on one baseline, matching the "You" block.
     pointsBlock: {
-      alignItems: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'flex-end',
+      gap: 3,
       minWidth: compact ? 56 : 64,
     },
     pointsValue: {
-      fontSize: compact ? 20 : 24,
-      fontWeight: '800',
-      color: pointsColor,
-      letterSpacing: -0.6,
+      fontSize: compact ? 17 : 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      letterSpacing: -0.3,
       fontVariant: ['tabular-nums'],
-      lineHeight: compact ? 22 : 26,
     },
     pointsLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: pointsColor,
-      opacity: 0.72,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      marginTop: 1,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textTertiary,
     },
   })
 }

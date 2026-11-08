@@ -11,7 +11,7 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 6 // 6 days (refresh before expiry)
 const BODY_LOG_UPLOAD_COMPRESS = 0.82
 
 // Image transform sizes
-export const IMAGE_SIZES = {
+const IMAGE_SIZES = {
   thumbnail: { width: 400, height: 400 },
   hero: { width: 800, height: 1000 },
   full: null, // no transform
@@ -98,7 +98,7 @@ async function setCachedUrl(
 /**
  * Clear cached URLs for a file path (all sizes)
  */
-export async function invalidateCachedUrls(filePath: string): Promise<void> {
+async function invalidateCachedUrls(filePath: string): Promise<void> {
   const sizes: ImageSize[] = ['thumbnail', 'hero', 'full']
 
   for (const size of sizes) {
@@ -110,61 +110,6 @@ export async function invalidateCachedUrls(filePath: string): Promise<void> {
       // Ignore
     }
   }
-}
-
-/**
- * Clear all body log URL caches
- */
-export async function clearAllBodyLogCache(): Promise<void> {
-  memoryCache.clear()
-
-  try {
-    const keys = await AsyncStorage.getAllKeys()
-    const bodyLogKeys = keys.filter((k) => k.startsWith(CACHE_PREFIX))
-    if (bodyLogKeys.length > 0) {
-      await AsyncStorage.multiRemove(bodyLogKeys)
-    }
-  } catch {
-    // Ignore
-  }
-}
-
-/**
- * Get a signed URL with optional image transform
- * Uses caching to avoid repeated Supabase calls
- */
-export async function getBodyLogImageUrl(
-  filePath: string,
-  size: ImageSize = 'full',
-): Promise<string> {
-  // Check cache first
-  const cached = await getCachedUrl(filePath, size)
-  if (cached) {
-    return cached
-  }
-
-  // Generate new signed URL
-  const transform = IMAGE_SIZES[size]
-
-  const { data, error } = await supabase.storage
-    .from(BODY_LOG_BUCKET)
-    .createSignedUrl(filePath, SIGNED_URL_EXPIRY, {
-      transform: transform
-        ? {
-            width: transform.width,
-            height: transform.height,
-            resize: 'cover',
-          }
-        : undefined,
-    })
-
-  if (error) throw error
-  if (!data?.signedUrl) throw new Error('Failed to get signed URL')
-
-  // Cache the result
-  await setCachedUrl(filePath, size, data.signedUrl)
-
-  return data.signedUrl
 }
 
 /**

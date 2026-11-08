@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.223.0/http/server.ts'
 import { z } from 'https://esm.sh/zod@3.25.76'
 // @ts-ignore: Remote import for Deno edge runtime
-import { generateObject } from 'npm:ai'
+import { generateObject } from 'npm:ai@7.0.162'
 import { openrouter, GEMINI_MODEL } from '../_shared/openrouter.ts'
 
 import { errorResponse, handleCors, jsonResponse } from '../_shared/cors.ts'

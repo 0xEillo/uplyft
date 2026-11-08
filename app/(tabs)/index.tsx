@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
@@ -51,6 +51,7 @@ import {
 } from '@/hooks/usePushNotifications'
 import { useSubmitWorkout } from '@/hooks/useSubmitWorkout'
 import { useThemedColors } from '@/hooks/useThemedColors'
+import { useWeeklyProgress } from '@/hooks/useWeeklyProgress'
 import { database } from '@/lib/database'
 import { scoreToOverallLevelProgress } from '@/lib/overall-strength-score'
 import {
@@ -69,6 +70,7 @@ import {
     shouldHydratePostedWorkout,
     shouldInsertPostedWorkoutImmediately,
 } from '@/lib/utils/posted-workout-optimizations'
+import { reuseUnchangedItems } from '@/lib/utils/reuse-unchanged-items'
 import { runAfterInteractions } from '@/lib/utils/run-after-interactions'
 import { peekPendingWorkoutPlaceholder } from '@/lib/utils/workout-submission-queue'
 import { WorkoutSessionWithDetails } from '@/types/database.types'
@@ -201,6 +203,18 @@ const CardDeleteAnimation = {
   },
 }
 
+const feedKeyExtractor = (item: FeedItem) =>
+  item.type === 'workout' ? `workout-${item.workout.id}` : `app-post-${item.post.id}`
+
+const getFeedItemType = (item: FeedItem) => item.type
+
+// Stable component type: an inline arrow here made FlashList remount every
+// separator on each parent render.
+const FeedSeparator = memo(function FeedSeparator() {
+  const colors = useThemedColors()
+  return <View style={{ height: 8, backgroundColor: colors.separator }} />
+})
+
 // --- Scroll Animations ---
 
 export default function FeedScreen() {
@@ -278,6 +292,7 @@ export default function FeedScreen() {
   const [currentStreak, setCurrentStreak] = useState(0)
   const [isOffline, setIsOffline] = useState(false)
   const [userWorkoutCount, setUserWorkoutCount] = useState(0)
+  const [hasLoadedWorkoutCount, setHasLoadedWorkoutCount] = useState(false)
   const [showGuestSignInPrompt, setShowGuestSignInPrompt] = useState(false)
   const [guestSignInPromptMilestone, setGuestSignInPromptMilestone] = useState<
     number | null
@@ -309,6 +324,12 @@ export default function FeedScreen() {
     isProfileLoading,
   })
   const { processPendingWorkout, isProcessingPending } = useSubmitWorkout()
+  // Owned here (not inside WeeklySnapshot) so the snapshot moving from the
+  // loading view into the list header doesn't refetch. The token stays null
+  // until the workout count is known so its first arrival doesn't refetch.
+  const weeklyProgress = useWeeklyProgress(
+    hasLoadedWorkoutCount ? userWorkoutCount : null,
+  )
   const isCelebrationUiVisible = isCelebrationVisible
   const hasPendingPlaceholder = useMemo(
     () => workouts.some((workout: WorkoutWithPending) => workout.isPending),
@@ -493,6 +514,7 @@ export default function FeedScreen() {
     try {
       const count = await database.workoutSessions.getCountByUserId(user.id)
       setUserWorkoutCount(count)
+      setHasLoadedWorkoutCount(true)
     } catch (error) {
       console.error('Error loading workout count:', error)
     }
@@ -521,23 +543,35 @@ export default function FeedScreen() {
     loadAppPostState()
   }, [loadAppPostState])
 
+  // Latest values for loadWorkouts, read through refs so its identity stays
+  // stable. It is a useFocusEffect dependency, and every identity change used
+  // to re-run the focus effect (streak + count requests, analytics event).
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
+  const isInitialLoadRef = useRef(isInitialLoad)
+  isInitialLoadRef.current = isInitialLoad
+  const workoutsLengthRef = useRef(workouts.length)
+  workoutsLengthRef.current = workouts.length
+  const isLoadingMoreRef = useRef(false)
+
   const loadWorkouts = useCallback(
     async (showLoading = false, loadMore = false) => {
       if (!user) return
 
       // Prevent concurrent load-more operations (but allow initial loads)
-      if (loadMore && isLoadingMore) {
+      if (loadMore && isLoadingMoreRef.current) {
         return
       }
 
       try {
         if (loadMore) {
+          isLoadingMoreRef.current = true
           setIsLoadingMore(true)
         } else if (showLoading) {
           setIsLoading(true)
         }
 
-        const currentOffset = loadMore ? offset : 0
+        const currentOffset = loadMore ? offsetRef.current : 0
         const limit = 10
         const data = await database.workoutSessions.getSocialFeed(
           user.id,
@@ -569,7 +603,7 @@ export default function FeedScreen() {
           const placeholder = await peekPendingWorkoutPlaceholder()
 
           // Use animation when updating existing list
-          if (!isInitialLoad && workouts.length > 0) {
+          if (!isInitialLoadRef.current && workoutsLengthRef.current > 0) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
           }
 
@@ -581,7 +615,8 @@ export default function FeedScreen() {
               )
             : data
 
-          setWorkouts(workoutsWithPlaceholder)
+          // Keep unchanged workouts' object identity so their cards don't re-render
+          setWorkouts((prev) => reuseUnchangedItems(prev, workoutsWithPlaceholder))
           setOffset(data.length)
           setHasMore(hasMoreWorkouts)
           setIsInitialLoad(false)
@@ -612,12 +647,12 @@ export default function FeedScreen() {
           }
         }
       } finally {
+        if (loadMore) isLoadingMoreRef.current = false
         setIsLoading(false)
         setIsLoadingMore(false)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- isLoadingMore/workouts.length intentionally omitted to prevent infinite re-renders
-    [user, isInitialLoad, offset],
+    [user],
   )
 
   const handlePendingPost = useCallback(async () => {
@@ -918,7 +953,7 @@ export default function FeedScreen() {
   ])
 
   const handleRefresh = useCallback(async () => {
-    if (!user || isRefreshing) return
+    if (!user || isRefreshing || isLoading) return
 
     trackEvent(AnalyticsEvents.FEED_REFRESHED)
     setIsRefreshing(true)
@@ -933,7 +968,7 @@ export default function FeedScreen() {
     } finally {
       setIsRefreshing(false)
     }
-  }, [user, isRefreshing, loadWorkouts, trackEvent, handlePendingPost])
+  }, [user, isRefreshing, isLoading, loadWorkouts, trackEvent, handlePendingPost])
 
   const handleLoadMore = useCallback(() => {
     if (!isLoadingMore && hasMore && !isLoading) {
@@ -973,7 +1008,7 @@ export default function FeedScreen() {
       }
 
       // Only load on initial mount, don't reload on every focus
-      if (isInitialLoad) {
+      if (isInitialLoadRef.current) {
         loadWorkouts(true)
       } else {
         // When returning from create-post, check for placeholder
@@ -997,14 +1032,13 @@ export default function FeedScreen() {
     }, [
       handlePendingPost,
       loadWorkouts,
-      isInitialLoad,
       scrollFeedToTop,
       trackEvent,
       loadUserWorkoutCount,
     ]),
   )
 
-  const styles = createStyles(colors)
+  const styles = useMemo(() => createStyles(colors), [colors])
   const handleInvitePromptDismiss = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     advanceInvitePrompt()
@@ -1066,6 +1100,11 @@ export default function FeedScreen() {
     [deletingWorkoutId, trackEvent],
   )
 
+  const handleAppPostCtaPress = useCallback(
+    (post: AppPost) => handleAppPostCta(post.id),
+    [handleAppPostCta],
+  )
+
   const renderFeedItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => {
       if (item.type === 'app_post') {
@@ -1073,7 +1112,7 @@ export default function FeedScreen() {
           <AppPostCard
             post={item.post}
             isFirst={index === 0}
-            onCtaPress={(post) => handleAppPostCta(post.id)}
+            onCtaPress={handleAppPostCtaPress}
             onDismiss={handleAppPostDismiss}
           />
         )
@@ -1105,7 +1144,7 @@ export default function FeedScreen() {
       deletingWorkoutId,
       isProcessingPending,
       isPendingPlaceholderProcessingLatched,
-      handleAppPostCta,
+      handleAppPostCtaPress,
       handleAppPostDismiss,
       handleDeleteWorkout,
     ],
@@ -1122,6 +1161,42 @@ export default function FeedScreen() {
 
   const insets = useSafeAreaInsets()
   const headerTotalHeight = insets.top + NAVBAR_HEIGHT
+
+  const listHeader = useMemo(
+    () =>
+      isInvitePromptReady && isInvitePromptVisible ? (
+        <InviteFriendsPrompt
+          onConnect={handleInvitePromptConnect}
+          onDismiss={handleInvitePromptDismiss}
+        />
+      ) : (
+        <WeeklySnapshot progress={weeklyProgress} />
+      ),
+    [
+      isInvitePromptReady,
+      isInvitePromptVisible,
+      handleInvitePromptConnect,
+      handleInvitePromptDismiss,
+      weeklyProgress,
+    ],
+  )
+  const isFeedEmpty = feedItems.length === 0
+  const listContentContainerStyle = useMemo(
+    () => [
+      styles.feed,
+      { paddingTop: headerTotalHeight },
+      isFeedEmpty && styles.emptyFeed,
+    ],
+    [styles, headerTotalHeight, isFeedEmpty],
+  )
+  const scrollIndicatorInsets = useMemo(
+    () => ({ top: headerTotalHeight }),
+    [headerTotalHeight],
+  )
+  const listEmpty = useMemo(
+    () => (isFeedEmpty ? <FeedEmptyState isOffline={isOffline} /> : null),
+    [isFeedEmpty, isOffline],
+  )
 
   return (
     <View
@@ -1189,7 +1264,7 @@ export default function FeedScreen() {
 
       {isLoading ? (
         <View style={[styles.loadingContent, { paddingTop: headerTotalHeight }]}>
-          <WeeklySnapshot refreshToken={userWorkoutCount} />
+          <WeeklySnapshot progress={weeklyProgress} />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.brandPrimary} />
           </View>
@@ -1198,50 +1273,19 @@ export default function FeedScreen() {
         <FlashList<FeedItem>
           ref={flatListRef}
           data={feedItems}
-          estimatedItemSize={320}
-          getItemType={(item: FeedItem) => item.type}
-          ItemSeparatorComponent={() => (
-            <View
-              style={{
-                height: 8,
-                backgroundColor: colors.separator,
-              }}
-            />
-          )}
+          getItemType={getFeedItemType}
+          ItemSeparatorComponent={FeedSeparator}
           renderItem={renderFeedItem}
-          keyExtractor={(item: FeedItem) =>
-            item.type === 'workout'
-              ? `workout-${item.workout.id}`
-              : `app-post-${item.post.id}`
-          }
-          contentContainerStyle={[
-            styles.feed,
-            { paddingTop: headerTotalHeight },
-            feedItems.length === 0 && styles.emptyFeed,
-          ]}
-          scrollIndicatorInsets={{ top: headerTotalHeight }}
+          keyExtractor={feedKeyExtractor}
+          contentContainerStyle={listContentContainerStyle}
+          scrollIndicatorInsets={scrollIndicatorInsets}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           onScroll={handleFeedScroll}
           scrollEventThrottle={16}
-          ListHeaderComponent={
-            <>
-              {isInvitePromptReady && isInvitePromptVisible ? (
-                <InviteFriendsPrompt
-                  onConnect={handleInvitePromptConnect}
-                  onDismiss={handleInvitePromptDismiss}
-                />
-              ) : (
-                <WeeklySnapshot refreshToken={userWorkoutCount} />
-              )}
-            </>
-          }
-          ListEmptyComponent={
-            feedItems.length === 0 ? (
-              <FeedEmptyState isOffline={isOffline} />
-            ) : null
-          }
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
           ListFooterComponent={renderFooter}
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
@@ -1281,7 +1325,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       fontSize: 20,
       fontWeight: '600',
       color: colors.textPrimary,
-      marginLeft: 6,
     },
     largeTitleContainer: {
       paddingHorizontal: 20,

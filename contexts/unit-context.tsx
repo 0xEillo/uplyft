@@ -33,7 +33,7 @@ const numberFormatter = (options?: Intl.NumberFormatOptions) =>
     ...options,
   })
 
-export function formatWeightValue(
+function formatWeightValue(
   valueKg: number | null | undefined,
   unit: WeightUnit,
   options?: Intl.NumberFormatOptions,
@@ -139,10 +139,6 @@ export function useUnit() {
 
 export function kgToPreferred(weightKg: number, unit: WeightUnit): number {
   return unit === 'kg' ? weightKg : weightKg * KG_TO_LB
-}
-
-export function preferredToKg(weight: number, unit: WeightUnit): number {
-  return unit === 'kg' ? weight : weight / KG_TO_LB
 }
 
 export type { WeightUnit }

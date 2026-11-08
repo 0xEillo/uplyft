@@ -1,13 +1,11 @@
 import { useAuth } from '@/contexts/auth-context'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
-import { getExerciseGroup, type ExerciseGroup } from '@/lib/exercise-standards-config'
+import { database } from '@/lib/database'
 import {
-  getOnboardingStrengthSnapshot,
-  mergeOnboardingStrengthSnapshotIntoExerciseData,
-} from '@/lib/onboarding-strength'
-import type {
-  OverallStrengthGroup,
-  OverallStrengthGroupBreakdown,
+  resolveCachedStrengthPoints,
+  type OverallStrengthGroup,
+  type OverallStrengthGroupBreakdown,
+  type StrengthHistorySession,
 } from '@/lib/overall-strength-score'
 import {
   buildDisplayStrengthGroupData,
@@ -21,8 +19,6 @@ import {
 import {
     getStrengthGender,
     getLevelIntensity as getStrengthLevelIntensity,
-    scoreToLevelProgress,
-    toLevelScore,
 } from '@/lib/strength-progress'
 import {
     getStrengthStandard,
@@ -31,7 +27,7 @@ import {
 } from '@/lib/strength-standards'
 import { Profile } from '@/types/database.types'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 export interface ExerciseRecord {
   weight: number
@@ -81,19 +77,15 @@ export interface OverallLevelData {
   groupBreakdown: Record<OverallStrengthGroup, OverallStrengthGroupBreakdown>
 }
 
-export interface GroupLevelData {
-  group: ExerciseGroup
-  level: StrengthLevel
-  progress: number
-  averageScore: number
-  exercises: ExerciseData[]
-}
 export function useStrengthData() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [exerciseData, setExerciseData] = useState<ExerciseData[]>([])
   const [best1RMSnapshotByExerciseId, setBest1RMSnapshotByExerciseId] =
     useState<Record<string, ExerciseBest1RMSnapshot>>({})
+  const [strengthSessions, setStrengthSessions] = useState<
+    StrengthHistorySession[] | undefined
+  >(undefined)
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -101,27 +93,19 @@ export function useStrengthData() {
     if (!user?.id) return
 
     try {
+      // Includes the onboarding lift (merged by the loader).
       const strengthContext = await loadStrengthScoreDeltaContext<ExerciseData>(
         user.id,
       )
-      const onboardingStrengthSnapshot = await getOnboardingStrengthSnapshot(
-        user.id,
-      )
-      const mergedStrengthContext =
-        mergeOnboardingStrengthSnapshotIntoExerciseData({
-          exercises: strengthContext.exercises,
-          best1RMSnapshotByExerciseId:
-            strengthContext.best1RMSnapshotByExerciseId,
-          snapshot: onboardingStrengthSnapshot,
-        })
 
       setProfile(strengthContext.profile)
+      setStrengthSessions(strengthContext.sessions)
       setBest1RMSnapshotByExerciseId(
-        mergedStrengthContext.best1RMSnapshotByExerciseId,
+        strengthContext.best1RMSnapshotByExerciseId,
       )
 
       // Sort by max1RM descending
-      const sorted = [...mergedStrengthContext.exercises].sort(
+      const sorted = [...strengthContext.exercises].sort(
         (a, b) => b.max1RM - a.max1RM,
       )
       setExerciseData(sorted)
@@ -170,55 +154,6 @@ export function useStrengthData() {
     [profile?.gender, profile?.weight_kg],
   )
 
-  // Calculate levels by exercise group (Push/Pull/Lower)
-  const groupLevels = useMemo((): Map<ExerciseGroup, GroupLevelData> => {
-    const result = new Map<ExerciseGroup, GroupLevelData>()
-
-    if (!coerceBodyweightKg(profile?.weight_kg) || exerciseData.length === 0) {
-      return result
-    }
-
-    // Group exercises by ExerciseGroup
-    const groupedExercises = new Map<ExerciseGroup, ExerciseData[]>()
-    
-    exerciseData.forEach((exercise) => {
-      const group = getExerciseGroup(exercise.exerciseName)
-      if (!groupedExercises.has(group)) {
-        groupedExercises.set(group, [])
-      }
-      groupedExercises.get(group)?.push(exercise)
-    })
-
-    // Calculate stats for each group
-    groupedExercises.forEach((exercises, group) => {
-      let totalScore = 0
-      let count = 0
-
-      exercises.forEach((exercise) => {
-        const info = getStrengthInfo(exercise.exerciseName, exercise.max1RM)
-        if (info) {
-          totalScore += toLevelScore(info.level, info.progress)
-          count++
-        }
-      })
-
-      if (count > 0) {
-        const averageScore = totalScore / count
-        const { level, progress } = scoreToLevelProgress(averageScore)
-
-        result.set(group, {
-          group,
-          level,
-          progress,
-          averageScore,
-          exercises,
-        })
-      }
-    })
-
-    return result
-  }, [exerciseData, profile, getStrengthInfo])
-
   const overallLevel = useMemo((): OverallLevelData | null => {
     if (
       !profile ||
@@ -235,6 +170,7 @@ export function useStrengthData() {
         strengthGender: getStrengthGender(profile.gender),
         exercises: exerciseData,
         best1RMSnapshotByExerciseId,
+        sessions: strengthSessions,
       },
     })
 
@@ -259,7 +195,35 @@ export function useStrengthData() {
       lastIncreaseAt,
       groupBreakdown: currentResult.groupBreakdown,
     }
-  }, [best1RMSnapshotByExerciseId, exerciseData, profile?.gender, profile?.weight_kg])
+  }, [
+    best1RMSnapshotByExerciseId,
+    exerciseData,
+    profile?.gender,
+    profile?.weight_kg,
+    strengthSessions,
+  ])
+
+  // Friends see the score cached on the profile. It can drift from the live
+  // score (formula changes, missed refreshes), so resync it when they differ.
+  const cacheSyncAttemptRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!profile?.id || !overallLevel) return
+    const liveKey = `${profile.id}:${overallLevel.score}:${overallLevel.currentLevel}`
+    const cachedScore = resolveCachedStrengthPoints(profile)
+    const inSync =
+      profile.overall_strength_points === overallLevel.score &&
+      profile.overall_strength_level === overallLevel.currentLevel
+    if (inSync || cacheSyncAttemptRef.current === liveKey) return
+
+    cacheSyncAttemptRef.current = liveKey
+    database.profiles.refreshStrengthCache(profile.id).catch((error) => {
+      console.warn('[StrengthData] Failed to resync strength cache:', {
+        error,
+        cachedScore,
+        liveScore: overallLevel.score,
+      })
+    })
+  }, [profile, overallLevel])
 
   const displayMuscleGroups = useMemo((): MuscleGroupData[] => {
     if (!overallLevel || exerciseData.length === 0) {
@@ -300,7 +264,6 @@ export function useStrengthData() {
     overallLevel,
     muscleGroups,
     displayMuscleGroups,
-    groupLevels,
     best1RMSnapshotByExerciseId,
   }
 }

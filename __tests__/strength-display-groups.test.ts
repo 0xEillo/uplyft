@@ -50,8 +50,8 @@ describe('strength display groups', () => {
       groupBreakdown: {
         Chest: { effectiveScore: 0 },
         Back: { effectiveScore: 0 },
-        Shoulders: { effectiveScore: 830 },
-        Arms: { effectiveScore: 610 },
+        Shoulders: { effectiveScore: 8300 },
+        Arms: { effectiveScore: 6100 },
         Legs: { effectiveScore: 0 },
         Core: { effectiveScore: 0 },
       },

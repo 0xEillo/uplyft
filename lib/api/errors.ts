@@ -6,6 +6,7 @@ export type ApiErrorCode =
   | 'DB_FAILED'
   | 'NETWORK'
   | 'RATE_LIMITED'
+  | 'FREE_LIMIT_REACHED'
   | 'UNKNOWN'
 
 export interface ApiErrorShape {
@@ -49,21 +50,3 @@ export function toApiErrorShape(
   }
 }
 
-export function mapApiErrorToMessage(error: ApiError): string {
-  switch (error.code) {
-    case 'ZOD_INVALID':
-      return 'Invalid request data. Please check the workout details and try again.'
-    case 'UNAUTHORIZED':
-      return 'You need to sign in again before posting workouts.'
-    case 'CONTENT_REFUSED':
-      return 'The AI could not recognize this as a workout. Add more detail and try again.'
-    case 'PARSE_FAILED':
-      return 'The AI had trouble parsing that workout. Give it another shot in a moment.'
-    case 'DB_FAILED':
-      return 'We parsed your workout but failed to save it. Please retry shortly.'
-    case 'NETWORK':
-      return 'Network error. Check your connection and retry.'
-    default:
-      return 'Unexpected error. Please try again.'
-  }
-}

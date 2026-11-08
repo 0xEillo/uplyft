@@ -1,10 +1,7 @@
-import { Paywall } from '@/components/paywall'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { useSubscription } from '@/contexts/subscription-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { useFeatureGate } from '@/utils/analytics-helpers'
 import { database } from '@/lib/database'
 import { haptic, hapticSuccess } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
@@ -56,9 +53,7 @@ export default function BodyScanFlowScreen() {
   const router = useRouter()
   const { user } = useAuth()
   const { profile } = useProfile()
-  const { isProMember } = useSubscription()
   const { weightUnit, convertInputToKg } = useUnit()
-  const { trackPaywallShown, trackPaywallDismissed } = useFeatureGate()
 
   const [step, setStep] = useState<Step>('intro')
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null])
@@ -66,7 +61,6 @@ export default function BodyScanFlowScreen() {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [isTakingPhoto, setIsTakingPhoto] = useState(false)
   const [activePhotoSlot, setActivePhotoSlot] = useState<number | null>(null)
-  const [paywallVisible, setPaywallVisible] = useState(false)
 
   const ringRotation = useRef(new Animated.Value(0)).current
   const scanLineY = useRef(new Animated.Value(0)).current
@@ -110,18 +104,10 @@ export default function BodyScanFlowScreen() {
 
   // ── Intro ─────────────────────────────────────────────────────────────────
 
-  // AI body scan is Pro-only. Non-Pro users see the marketing intro but
-  // hit the paywall immediately on CTA — no point letting them take photos
-  // they can't analyze.
   const handleGetStarted = useCallback(() => {
     haptic('medium')
-    if (!isProMember) {
-      trackPaywallShown('body_scan', 'body_scan_intro')
-      setPaywallVisible(true)
-      return
-    }
     setStep('capture')
-  }, [isProMember, trackPaywallShown])
+  }, [])
 
   // ── Capture ─────────────────────────────────────────────────────────────────
 
@@ -697,14 +683,6 @@ export default function BodyScanFlowScreen() {
         </KeyboardAvoidingView>
       )}
 
-      <Paywall
-        visible={paywallVisible}
-        onClose={() => {
-          trackPaywallDismissed('body_scan', 'body_scan_intro')
-          setPaywallVisible(false)
-        }}
-        feature="body_scan"
-      />
 
       {/* Processing step */}
       {step === 'processing' && (

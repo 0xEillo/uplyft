@@ -638,7 +638,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: 'd6328434-8f90-40eb-8f27-5cf26033e65d',
     name: 'Chest Press (Machine)',
     aliases: ['Chest Press'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'T0yTjgW.gif',
     male: [
       {
@@ -1579,7 +1579,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '25050a20-cd9d-4193-b681-dd7c1af27348',
     name: 'Shoulder Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'CggQhII.gif',
     male: [
       {
@@ -1831,7 +1831,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '62de3610-8941-4c87-aff2-31d5da85f82f',
     name: 'Lat Pulldown (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'eYnzaCm.gif',
     male: [
       {
@@ -2506,7 +2506,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: 'f270f1b1-4769-4fa0-babb-39dfa1296dcd',
     name: 'Leg Press (Machine)',
-    tier: 3,
+    tier: 2,
     gifUrl: '10Z2DXU.gif',
     male: [
       {
@@ -2843,7 +2843,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
   {
     id: '0ecd527a-c4ee-476c-9c02-293bfd4f7c46',
     name: 'Seated Row (Cable)',
-    tier: 3,
+    tier: 2,
     gifUrl: 'Tq6gbK6.gif',
     male: [
       {
@@ -4965,7 +4965,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '4075e4c0-aeb6-460d-9de7-98064e5fde4c',
     name: 'Hack Squat (Machine)',
     aliases: ['Hack Squat', 'Sled Hack Squat', 'Machine Hack Squat'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'Qa55kX1.gif',
     male: [
       {
@@ -5140,7 +5140,7 @@ export const EXERCISES_WITH_STANDARDS: ExerciseStandardsConfig[] = [
     id: '10d290b0-ada9-44f9-b52f-dfe13e224bd3',
     name: 'T Bar Row (Machine)',
     aliases: ['T Bar Row', 'T-Bar Row'],
-    tier: 3,
+    tier: 2,
     gifUrl: 'aaXr7ld.gif',
     male: [
       {
@@ -6442,8 +6442,6 @@ export function isRepBasedExercise(exerciseName: string): boolean {
   return config?.isRepBased ?? false
 }
 
-export type ExerciseGroup = 'Push' | 'Pull' | 'Lower' | 'Other'
-
 /**
  * Maps trackable exercise names to their primary muscle group for granular display
  */
@@ -6482,6 +6480,8 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
   'Bent Over Row (Dumbbell)': 'Back',
   'Seated Row': 'Back',
   'Seated Row (Machine)': 'Back',
+  'Seated Row (Cable)': 'Back',
+  'Dumbbell Row (Dumbbell)': 'Back',
   'T Bar Row (Machine)': 'Back',
 
   // Traps
@@ -6492,6 +6492,7 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 
   // Biceps
   'Bicep Curl (Dumbbell)': 'Biceps',
+  'Bicep Curl (Cable)': 'Biceps',
   'Hammer Curl (Dumbbell)': 'Biceps',
   'Incline Hammer Curl (Dumbbell)': 'Biceps',
   'Bicep Curl (Barbell)': 'Biceps',
@@ -6561,87 +6562,6 @@ export const EXERCISE_MUSCLE_MAPPING: Record<string, string> = {
 }
 
 /**
- * Maps trackable exercises back to high-level groups
- */
-const EXERCISE_GROUPS: Record<string, ExerciseGroup> = {
-  'Bench Press (Barbell)': 'Push',
-  'Incline Bench Press (Barbell)': 'Push',
-  'Decline Bench Press (Barbell)': 'Push',
-  'Bench Press (Dumbbell)': 'Push',
-  'Incline Bench Press (Dumbbell)': 'Push',
-  'Chest Press (Machine)': 'Push',
-  'Chest Press': 'Push',
-  'Barbell Decline Bench Press': 'Push',
-  'Bench Press (Smith Machine)': 'Push',
-  'Incline Bench Press (Smith Machine)': 'Push',
-  'Fly (Dumbbell)': 'Push',
-  'Seated Fly (Machine)': 'Push',
-  'Shoulder Press (Barbell)': 'Push',
-  'Shoulder Press (Smith Machine)': 'Push',
-  'Shoulder Press (Machine)': 'Push',
-  'Seated Shoulder Press (Dumbbell)': 'Push',
-  'Arnold Press (Dumbbell)': 'Push',
-  'Weighted Dip': 'Push',
-
-  'Close Grip Bench Press (Barbell)': 'Push',
-  'Pushdown (Cable)': 'Push',
-  'Rope Pushdown (Cable)': 'Push',
-  'Seated Lateral Raise (Dumbbell)': 'Push',
-  'Triceps Extension (Machine)': 'Push',
-  'Skull Crusher (Barbell)': 'Push',
-
-  'Bent Over Row (Barbell)': 'Pull',
-  'Lat Pulldown (Cable)': 'Pull',
-  'Weighted Pull-Up': 'Pull',
-  'Bicep Curl (Dumbbell)': 'Pull',
-  'Hammer Curl (Dumbbell)': 'Pull',
-  'Incline Hammer Curl (Dumbbell)': 'Pull',
-  'Bicep Curl (Barbell)': 'Pull',
-  'Bicep Curl (Cable)': 'Pull',
-  'Bent Over Row (Dumbbell)': 'Pull',
-  'Seated Row': 'Pull',
-  'Seated Row (Machine)': 'Pull',
-  'Rope Face Pulls (Cable)': 'Pull',
-  'Reverse Fly (Dumbbell)': 'Pull',
-  'Shrug (Barbell)': 'Pull',
-  'Shrug (Dumbbell)': 'Pull',
-  'Shrug (Smith Machine)': 'Pull',
-  'Rack Pull (Barbell)': 'Pull',
-  'Rope Hammer Curl (Cable)': 'Pull',
-  'Wrist Curl (Barbell)': 'Pull',
-  'Reverse Wrist Curl (Barbell)': 'Pull',
-  'Reverse Wrist Curl (Dumbbell)': 'Pull',
-
-  'Squat (Barbell)': 'Lower',
-  'Squat (Smith Machine)': 'Lower',
-  'Front Squat (Barbell)': 'Lower',
-  'Deadlift (Barbell)': 'Lower',
-  'Romanian Deadlift (Barbell)': 'Lower',
-  'Leg Press (Machine)': 'Lower',
-  'Bulgarian Split Squat (Dumbbell)': 'Lower',
-  'Hip Thrust (Barbell)': 'Lower',
-  'Barbell Hip Thrust': 'Lower',
-  'Leg Extension (Machine)': 'Lower',
-  'Standing Calf Raise (Machine)': 'Lower',
-  'Back Extension (Machine)': 'Lower',
-  Hyperextension: 'Lower',
-  'Hyperextension (Bodyweight)': 'Lower',
-  'Hyper Extension': 'Lower',
-  'Seated Leg Curl (Machine)': 'Lower',
-  'Lying Leg Curl (Machine)': 'Lower',
-  'Seated Calf Raise (Machine)': 'Lower',
-
-  // New additions
-  'Trap Bar Deadlift (Barbell)': 'Lower',
-  'Zercher Squat (Barbell)': 'Lower',
-  'Goblet Squat (Kettlebell)': 'Lower',
-  'Bulgarian Split Squat (Barbell)': 'Lower',
-  'Pendlay Row (Barbell)': 'Pull',
-  'Bicep Curl (EZ Bar)': 'Pull',
-  'Skull Crusher (EZ Bar)': 'Push',
-}
-
-/**
  * Get all exercises that count towards a specific muscle's level
  */
 export function getTrackableExercisesForMuscle(
@@ -6654,17 +6574,6 @@ export function getTrackableExercisesForMuscle(
   return EXERCISES_WITH_STANDARDS.filter((ex) =>
     exerciseNames.includes(ex.name),
   )
-}
-
-/**
- * Get the movement group (Push/Pull/Lower) for an exercise
- */
-export function getExerciseGroup(exerciseName: string): ExerciseGroup {
-  if (exerciseName in EXERCISE_GROUPS) {
-    return EXERCISE_GROUPS[exerciseName]
-  }
-
-  return 'Other'
 }
 
 /**

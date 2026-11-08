@@ -1,5 +1,5 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
-import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
+import { AiOrb } from '@/components/ai-orb'
 import { FoodScannerModal } from '@/components/food-scanner'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import {
@@ -31,6 +31,16 @@ import {
   convertAiPlanToRoutine,
   convertAiPlanToWorkout,
 } from '@/lib/ai/ai-workout-converter'
+import {
+  type ExerciseSuggestion,
+  type FoodLogConfidence,
+  type FoodLogPayload,
+  getVisibleAssistantMessageText,
+  parseAssistantMessage,
+  parseExerciseSuggestions,
+  parseRepRange,
+  parseRepTargets,
+} from '@/lib/ai/assistant-message'
 import { trimChatMessagesForRequest } from '@/lib/ai/chat-history'
 import {
   ParsedWorkoutDisplay,
@@ -38,7 +48,11 @@ import {
   parseProgramForDisplay,
   parseWorkoutForDisplay,
 } from '@/lib/ai/workoutParsing'
-import { callChatFunction, mapChatApiErrorToMessage } from '@/lib/api/chat'
+import {
+  callChatFunction,
+  isFreeChatLimitError,
+  mapChatApiErrorToMessage,
+} from '@/lib/api/chat'
 import {
   fetchUnconsumedProactiveMessages,
   markProactiveMessagesConsumed,
@@ -49,10 +63,14 @@ import {
   buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
-import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
+import { getTrainingGuidelines } from '@/lib/ai-coach'
 import { database } from '@/lib/database'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
+import {
+  createRoutineWithTemplate,
+  type RoutineTemplateExercise,
+} from '@/lib/routines/routine-template'
 import {
   resolveCalorieGoal,
 } from '@/lib/nutrition'
@@ -82,6 +100,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { FlashList, FlashListRef } from '@shopify/flash-list'
 import * as Clipboard from 'expo-clipboard'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system/legacy'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -165,32 +184,12 @@ type StreamingResponseResult = {
   interrupted: boolean
 }
 
-type ParsedRepTargets = {
-  repsMin: number | null
-  repsMax: number | null
-}
-
-type FoodLogAction = 'log' | 'update_last'
-type FoodLogConfidence = 'low' | 'medium' | 'high'
-type FoodLogSource = 'text' | 'photo' | 'voice' | 'manual' | 'correction'
-type StatsTrend = 'up' | 'down' | 'flat'
 type ChatEquipmentPreference =
   | 'full_gym'
   | 'home_minimal'
   | 'dumbbells_only'
   | 'bodyweight'
   | 'barbell_only'
-
-interface FoodLogPayload {
-  action: FoodLogAction
-  summary: string
-  calories: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
-  confidence: FoodLogConfidence
-  source: FoodLogSource
-}
 
 interface DailyLogSummaryState {
   logDate: string
@@ -208,60 +207,6 @@ interface DailyLogSummaryState {
   }
 }
 
-const parseRepTargets = (reps: string): ParsedRepTargets => {
-  const rangeMatch = reps.match(/(\d+)\s*[-–]\s*(\d+)/)
-  if (rangeMatch) {
-    return {
-      repsMin: parseInt(rangeMatch[1], 10),
-      repsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-
-  const singleRep = parseInt(reps, 10)
-  if (!Number.isNaN(singleRep)) {
-    return {
-      repsMin: singleRep,
-      repsMax: singleRep,
-    }
-  }
-
-  return {
-    repsMin: null,
-    repsMax: null,
-  }
-}
-
-interface StatsReportMetric {
-  id: string
-  label: string
-  value: string
-  delta?: string
-  trend?: StatsTrend
-}
-
-interface StatsReportLift {
-  exercise: string
-  value: string
-  delta?: string
-  trend?: StatsTrend
-}
-
-interface StatsReportMuscle {
-  muscle_group: string
-  percentage: number
-}
-
-interface StatsReportPayload {
-  version: number
-  title?: string
-  period_label?: string
-  summary?: string
-  highlights: StatsReportMetric[]
-  top_lifts: StatsReportLift[]
-  muscle_balance: StatsReportMuscle[]
-  focus_areas: string[]
-}
-
 interface PlanningState {
   isActive: boolean
   step: 'wizard' | 'none'
@@ -270,41 +215,12 @@ interface PlanningState {
 }
 
 // Exercise suggestion for add exercise callback
-export interface ExerciseSuggestion {
-  name: string
-  sets: number
-  reps: string
-  notes?: string
-}
+export type { ExerciseSuggestion } from '@/lib/ai/assistant-message'
 
 function getExerciseSuggestionKey(suggestion: ExerciseSuggestion): string {
   return `${suggestion.name.trim().toLowerCase()}|${
     suggestion.sets
   }|${suggestion.reps.trim().toLowerCase()}`
-}
-
-function parseRepRangeFromSuggestion(
-  reps: string,
-): {
-  targetRepsMin: number | null
-  targetRepsMax: number | null
-} {
-  const trimmed = reps.trim()
-  const rangeMatch = trimmed.match(/(\d+)\s*[-–]\s*(\d+)/)
-  if (rangeMatch) {
-    return {
-      targetRepsMin: parseInt(rangeMatch[1], 10),
-      targetRepsMax: parseInt(rangeMatch[2], 10),
-    }
-  }
-
-  const singleMatch = trimmed.match(/(\d+)/)
-  if (singleMatch) {
-    const repsValue = parseInt(singleMatch[1], 10)
-    return { targetRepsMin: repsValue, targetRepsMax: repsValue }
-  }
-
-  return { targetRepsMin: null, targetRepsMax: null }
 }
 
 function normalizeWizardGoal(goal?: string | null): string | undefined {
@@ -505,7 +421,7 @@ export interface WorkoutContextPr {
 
 export interface WorkoutContext {
   sessionId?: string
-  mode?: 'planning' | 'analysis'
+  mode?: 'planning'
   title: string
   notes?: string
   exercises: WorkoutContextExercise[]
@@ -560,108 +476,30 @@ export interface WorkoutChatProps {
   // When true, the ✨ quick-actions menu (Create Workout / Create Program)
   // is shown automatically on first mount (e.g. deep-link from Library).
   autoOpenActions?: boolean
+
+  // Called when the server rejects a message because a free user has used up
+  // their daily AI chat allowance (e.g. to show the paywall).
+  onFreeLimitReached?: () => void
+
+  // Extra top padding for the message list when a translucent header floats
+  // over it, so messages start below the header but scroll underneath it.
+  contentInsetTop?: number
 }
 
 const MAX_IMAGES = 10
 
-const JSON_BLOCK_REGEX = /(?:```(?:json)?\s*)?(\[\s*\{[\s\S]*?\}\s*\])(?:\s*```)?/
-const FOOD_LOG_BLOCK_REGEX = /<food_log>([\s\S]*?)<\/food_log>/i
-const STATS_REPORT_BLOCK_REGEX = /<stats_report>([\s\S]*?)<\/stats_report>/i
-
 // Storage key for tracking welcome message
 const WELCOME_MESSAGE_SEEN_KEY = 'chat_welcome_message_seen'
 
-// Check if user has unread welcome message (for badge display)
-export async function hasUnreadWelcomeMessage(
-  userId: string | undefined,
-): Promise<boolean> {
-  if (!userId) return false
-  try {
-    const storageKey = `${WELCOME_MESSAGE_SEEN_KEY}_${userId}`
-    const hasSeen = await AsyncStorage.getItem(storageKey)
-    return !hasSeen
-  } catch {
-    return false
-  }
+function formatMessageTime(createdAt: string): string {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
-// Get personalized welcome message based on coach personality
-function getWelcomeMessage(coachId: string, userName?: string): string {
+function getWelcomeMessage(userName?: string): string {
   const name = userName && userName !== 'Guest' ? ` ${userName}` : ''
-
-  switch (coachId) {
-    case 'kino':
-      return `Hey${name}. Let's plan your first workout together. Tell me what you want to train, what equipment you have, or how much time you've got, and I'll build the session with you. Tap ✨ beside the input, choose Create Workout, or just type your goal.`
-    case 'maya':
-      return `Hey${name}! Let's plan your first workout together. Tell me what you want to focus on, how long you want to train, or what equipment you have, and I'll map it out with you. Open ✨ next to the input, tap Create Workout, or send a quick goal to get started.`
-    case 'ross':
-    default:
-      return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Use ✨ beside the input → Create Workout, or type your goal when you're ready.`
-  }
-}
-
-// Parse exercise suggestions from AI response
-function parseExerciseSuggestions(content: string): ExerciseSuggestion[] {
-  const suggestions: ExerciseSuggestion[] = []
-
-  // 1. Try to parse JSON block first (Most robust)
-  // Match either code-blocked JSON or raw JSON array in text
-  const jsonMatch = content.match(JSON_BLOCK_REGEX)
-
-  if (jsonMatch && jsonMatch[1]) {
-    try {
-      const parsed = JSON.parse(jsonMatch[1])
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item) => {
-          if (item.name && (item.sets || item.reps)) {
-            suggestions.push({
-              name: item.name,
-              sets:
-                typeof item.sets === 'number'
-                  ? item.sets
-                  : parseInt(item.sets || '3'),
-              reps: item.reps?.toString() || '10',
-            })
-          }
-        })
-
-        // If we successfully parsed JSON, return immediately
-        if (suggestions.length > 0) return suggestions
-      }
-    } catch {
-      // Incomplete JSON during streaming is expected
-    }
-  }
-
-  // 2. Fallback to Regex patterns for plain text responses
-  const patterns = [
-    // Bullet/Plain/Bold style: Name - Sets x Reps
-    /(?:^|\n)[\s⋅•·\.-]*\**([^*\n]+?)\**\s*[-–:]\s*(\d+)\s*(?:sets?\s*[x×]\s*|x\s*)(\d+(?:-\d+)?)\s*(?:reps?)?/gi,
-
-    // Numbered Loop style: 1. Name: 3x10
-    /^\d+\.\s*([^:\n]+):\s*(\d+)\s*[x×]\s*(\d+(?:-\d+)?)/gim,
-
-    // Narrative style: "Add Bench Press - 3 sets x 10"
-    /(?:Add|Try|Include)\s+([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*)\s*[-–]\s*(\d+)\s*sets?\s*[x×]\s*(\d+(?:-\d+)?)/gi,
-  ]
-
-  for (const pattern of patterns) {
-    let match
-    while ((match = pattern.exec(content)) !== null) {
-      const name = match[1].trim()
-      const sets = parseInt(match[2], 10)
-      const reps = match[3]
-
-      // Avoid duplicates
-      if (
-        !suggestions.some((s) => s.name.toLowerCase() === name.toLowerCase())
-      ) {
-        suggestions.push({ name, sets, reps })
-      }
-    }
-  }
-
-  return suggestions
+  return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Tap ✨ beside the input → Create Workout, or just type your goal.`
 }
 
 const getLocalDateString = (): string => {
@@ -672,109 +510,13 @@ const getLocalDateString = (): string => {
   return `${year}-${month}-${day}`
 }
 
-const stripFoodLogBlock = (content: string): string =>
-  content
-    .replace(/<food_log>[\s\S]*?<\/food_log>/gi, '')
-    .replace(/<food_log>[\s\S]*$/i, '')
-    .trim()
-
-const stripStatsReportBlock = (content: string): string =>
-  content
-    .replace(/<stats_report>[\s\S]*?<\/stats_report>/gi, '')
-    .replace(/<stats_report>[\s\S]*$/i, '')
-    .trim()
-
-const getVisibleAssistantMessageText = (content: string): string =>
-  stripStatsReportBlock(stripFoodLogBlock(content))
-    .replace(JSON_BLOCK_REGEX, '')
-    .replace(/```(?:json|).*/gs, '')
-    .replace(/\[\s*\{.*/gs, '')
-    .replace(/\{\s*"exercises".*/gs, '')
-    .replace(/\{\s*"title".*/gs, '')
-    .trim()
-
-const WORKOUT_ANALYSIS_LABELS = [
-  'Workout Score',
-  'Overview',
-  'Top Win',
-  'Main Fix',
-  'Next Step',
-  'Summary',
-  'What Went Well',
-  'Needs Work',
-  'Exercise Notes',
-  'Next Session Focus',
-] as const
-
-function formatWorkoutAnalysisForDisplay(text: string): string {
-  const trimmed = text.trim()
-  if (!trimmed) return trimmed
-
-  const hasWorkoutAnalysisLabel = WORKOUT_ANALYSIS_LABELS.some((label) =>
-    trimmed.includes(`${label}:`),
-  )
-
-  if (!hasWorkoutAnalysisLabel) return trimmed
-
-  const lines = trimmed
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  const formatted: string[] = []
-
-  for (const line of lines) {
-    const scoreMatch = line.match(/^Workout Score:\s*(.+)$/i)
-    if (scoreMatch) {
-      formatted.push(`## Workout Score\n\n**${scoreMatch[1].trim()}**`)
-      continue
-    }
-
-    const overviewMatch = line.match(/^(Overview|Summary):\s*(.+)$/i)
-    if (overviewMatch) {
-      formatted.push(`### ${overviewMatch[1]}\n\n${overviewMatch[2].trim()}`)
-      continue
-    }
-
-    const singleBulletSectionMatch = line.match(
-      /^(Top Win|Main Fix|Next Step):\s*(.+)$/i,
-    )
-    if (singleBulletSectionMatch) {
-      formatted.push(
-        `### ${singleBulletSectionMatch[1]}\n\n- ${singleBulletSectionMatch[2].trim()}`,
-      )
-      continue
-    }
-
-    const sectionHeaderMatch = line.match(
-      /^(What Went Well|Needs Work|Exercise Notes|Next Session Focus):$/i,
-    )
-    if (sectionHeaderMatch) {
-      formatted.push(`### ${sectionHeaderMatch[1]}`)
-      continue
-    }
-
-    if (/^[•·⋅]/.test(line)) {
-      formatted.push(`- ${line.replace(/^[•·⋅]\s*/, '').trim()}`)
-      continue
-    }
-
-    formatted.push(line)
-  }
-
-  return formatted.join('\n\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-const formatAssistantMessageForDisplay = (content: string): string =>
-  formatWorkoutAnalysisForDisplay(getVisibleAssistantMessageText(content))
-
 function createCoachMarkdownStyle(
   colors: ReturnType<typeof useThemedColors>,
 ): any {
   return {
     body: {
-      fontSize: 16,
-      lineHeight: 23,
+      fontSize: 17,
+      lineHeight: 24,
       color: colors.textPrimary,
       margin: 0,
       flexDirection: 'column',
@@ -850,8 +592,8 @@ function createCoachMarkdownStyle(
       marginBottom: 14,
     },
     list_item: {
-      marginTop: 6,
-      marginBottom: 6,
+      marginTop: 4,
+      marginBottom: 4,
     },
     hr: {
       backgroundColor: colors.border,
@@ -912,154 +654,6 @@ const getStructuredPlanIntroText = ({
   return ''
 }
 
-const toNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-const toStatsTrend = (value: unknown): StatsTrend | undefined => {
-  if (value === 'up' || value === 'down' || value === 'flat') return value
-  return undefined
-}
-
-const parseStatsReportPayload = (
-  content: string,
-): StatsReportPayload | null => {
-  const match = content.match(STATS_REPORT_BLOCK_REGEX)
-  if (!match?.[1]) return null
-
-  try {
-    const parsed = JSON.parse(match[1]) as Record<string, unknown>
-    const highlights = Array.isArray(parsed.highlights)
-      ? parsed.highlights.reduce<StatsReportMetric[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const label = toNonEmptyString(row.label)
-          const value = toNonEmptyString(row.value)
-          if (!label || !value) return acc
-          acc.push({
-            id: toNonEmptyString(row.id) || label.toLowerCase(),
-            label,
-            value,
-            delta: toNonEmptyString(row.delta) || undefined,
-            trend: toStatsTrend(row.trend),
-          })
-          return acc
-        }, [])
-      : []
-
-    const topLifts = Array.isArray(parsed.top_lifts)
-      ? parsed.top_lifts.reduce<StatsReportLift[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const exercise = toNonEmptyString(row.exercise)
-          const value = toNonEmptyString(row.value)
-          if (!exercise || !value) return acc
-          acc.push({
-            exercise,
-            value,
-            delta: toNonEmptyString(row.delta) || undefined,
-            trend: toStatsTrend(row.trend),
-          })
-          return acc
-        }, [])
-      : []
-
-    const muscleBalance = Array.isArray(parsed.muscle_balance)
-      ? parsed.muscle_balance.reduce<StatsReportMuscle[]>((acc, item) => {
-          if (!item || typeof item !== 'object') return acc
-          const row = item as Record<string, unknown>
-          const muscleGroup = toNonEmptyString(row.muscle_group)
-          const percentageRaw = Number(row.percentage)
-          if (!muscleGroup || !Number.isFinite(percentageRaw)) return acc
-          acc.push({
-            muscle_group: muscleGroup,
-            percentage: Math.max(0, Math.min(100, Math.round(percentageRaw))),
-          })
-          return acc
-        }, [])
-      : []
-
-    const focusAreas = Array.isArray(parsed.focus_areas)
-      ? parsed.focus_areas
-          .map((item) => toNonEmptyString(item))
-          .filter((item): item is string => Boolean(item))
-      : []
-
-    if (
-      highlights.length === 0 &&
-      topLifts.length === 0 &&
-      muscleBalance.length === 0
-    ) {
-      return null
-    }
-
-    return {
-      version:
-        typeof parsed.version === 'number' && Number.isFinite(parsed.version)
-          ? parsed.version
-          : 1,
-      title: toNonEmptyString(parsed.title) || undefined,
-      period_label: toNonEmptyString(parsed.period_label) || undefined,
-      summary: toNonEmptyString(parsed.summary) || undefined,
-      highlights: highlights.slice(0, 4),
-      top_lifts: topLifts.slice(0, 3),
-      muscle_balance: muscleBalance.slice(0, 6),
-      focus_areas: focusAreas.slice(0, 4),
-    }
-  } catch {
-    console.warn('[WorkoutChat] Failed to parse <stats_report> payload block')
-    return null
-  }
-}
-
-const parseFoodLogPayload = (content: string): FoodLogPayload | null => {
-  const match = content.match(FOOD_LOG_BLOCK_REGEX)
-  if (!match?.[1]) return null
-
-  try {
-    const parsed = JSON.parse(match[1])
-    const action: FoodLogAction =
-      parsed?.action === 'update_last' ? 'update_last' : 'log'
-    const confidence: FoodLogConfidence =
-      parsed?.confidence === 'low' || parsed?.confidence === 'high'
-        ? parsed.confidence
-        : 'medium'
-    const source: FoodLogSource =
-      parsed?.source === 'photo' ||
-      parsed?.source === 'voice' ||
-      parsed?.source === 'manual' ||
-      parsed?.source === 'correction'
-        ? parsed.source
-        : 'text'
-
-    const summary = (parsed?.summary || '').toString().trim()
-    if (!summary) return null
-
-    const toSafe = (value: unknown) => {
-      const num = Number(value)
-      if (!Number.isFinite(num)) return 0
-      return Math.max(0, Number(num.toFixed(1)))
-    }
-
-    const payload = {
-      action,
-      summary,
-      calories: toSafe(parsed?.calories),
-      protein_g: toSafe(parsed?.protein_g),
-      carbs_g: toSafe(parsed?.carbs_g),
-      fat_g: toSafe(parsed?.fat_g),
-      confidence,
-      source,
-    }
-
-    return payload
-  } catch {
-    return null
-  }
-}
-
 const roundMacro = (value: number): number => Math.round(value)
 
 const formatFoodConfidenceLabel = (confidence: FoodLogConfidence): string => {
@@ -1093,7 +687,12 @@ export function WorkoutChat({
   onChatStarted,
   keyboardVerticalOffsetOverride,
   autoOpenActions = false,
+  onFreeLimitReached,
+  contentInsetTop = 0,
 }: WorkoutChatProps) {
+  // Ref so the send callbacks don't need this in their dependency lists.
+  const onFreeLimitReachedRef = useRef(onFreeLimitReached)
+  onFreeLimitReachedRef.current = onFreeLimitReached
   const messagesListRef = useRef<FlashListRef<Message>>(null)
   const inputRef = useRef<TextInput>(null)
   // Holds the id of the most recently sent user message so its bubble can
@@ -1101,7 +700,6 @@ export function WorkoutChat({
   // after to avoid re-animating on FlashList recycling.
   const animateOnMountUserMessageIdRef = useRef<string | null>(null)
   const imageViewerListRef = useRef<FlatList<string>>(null)
-  const autoSendMessageRef = useRef<(message: string) => void>(() => {})
   const launchCameraRef = useRef<() => Promise<void>>(async () => {})
   const launchLibraryRef = useRef<() => Promise<void>>(async () => {})
   const [messages, setMessages] = useState<Message[]>([])
@@ -1149,21 +747,15 @@ export function WorkoutChat({
   const [exerciseActionState, setExerciseActionState] = useState<
     Record<string, 'idle' | 'saving' | 'saved' | 'error'>
   >({})
-  const { coachId, profile, isLoading: isProfileLoading } = useProfile()
-  const coach = getCoach(coachId)
+  const { profile, isLoading: isProfileLoading } = useProfile()
   const [hasChatStarted, setHasChatStarted] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
     loadedDraftContext,
     setLoadedDraftContext,
   ] = useState<WorkoutContext | null>(null)
-  const [
-    handoffWorkoutContext,
-    setHandoffWorkoutContext,
-  ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
-  const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   // The actions menu is ALWAYS mounted. Visibility is driven by a shared value
   // animated on the UI thread, bypassing React's commit phase entirely. The
   // `showChatActions` state is only used for things that need JS-side awareness
@@ -1175,10 +767,6 @@ export function WorkoutChat({
   /** User closed ✨ via toggle while still in empty chat; don't auto-reopen until they start fresh. */
   const userDismissedEmptyChatActionsRef = useRef(false)
   const closeChatActionsRef = useRef<(() => void) | null>(null)
-
-  const [pendingAutoSendMessage, setPendingAutoSendMessage] = useState<
-    string | null
-  >(null)
 
   const [isFoodScannerVisible, setIsFoodScannerVisible] = useState(false)
   const [
@@ -1312,7 +900,8 @@ export function WorkoutChat({
     () =>
       ({
         ...themedColors,
-        bg: mode === 'sheet' ? themedColors.surfaceSheet : themedColors.bg,
+        // The chat screen renders on the app background (matches its header).
+        bg: themedColors.bg,
       } as any),
     [themedColors, mode],
   )
@@ -1686,7 +1275,6 @@ export function WorkoutChat({
           setIsWelcomeTyping(true)
 
           const welcomeContent = getWelcomeMessage(
-            coachId,
             profile?.display_name?.split(' ')[0], // First name only
           )
 
@@ -1727,7 +1315,6 @@ export function WorkoutChat({
     hasHydratedPersistedChat,
     hasLoadedWelcome,
     user?.id,
-    coachId,
     profile?.display_name,
     isProfileLoading,
   ])
@@ -1739,13 +1326,13 @@ export function WorkoutChat({
 
     setMessages((prev) => {
       if (prev.length > 0 && prev[0].id === 'welcome-message') {
-        const updatedContent = getWelcomeMessage(coachId, firstName)
+        const updatedContent = getWelcomeMessage(firstName)
         if (prev[0].content === updatedContent) return prev
         return [{ ...prev[0], content: updatedContent }, ...prev.slice(1)]
       }
       return prev
     })
-  }, [profile?.display_name, coachId, hasLoadedWelcome])
+  }, [profile?.display_name, hasLoadedWelcome])
 
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress
@@ -1896,9 +1483,6 @@ export function WorkoutChat({
             setIsFoodScannerVisible(true)
           } else if (pending.action === 'generate_workout') {
             void openWorkoutPlanningWizard()
-          } else if (pending.action === 'analyze_workout') {
-            setHandoffWorkoutContext(pending.workoutContext)
-            setPendingAutoSendMessage(pending.prompt)
           }
         } catch (error) {
           console.error(
@@ -1916,10 +1500,10 @@ export function WorkoutChat({
     }, [openWorkoutPlanningWizard, refreshDailyLogSummary, selectedImages.length]),
   )
 
-  // Combined context: prefer an explicitly provided workout, then handoff context,
-  // then fall back to the current draft.
+  // Combined context: prefer an explicitly provided workout, then fall back to
+  // the current draft.
   const effectiveWorkoutContext =
-    workoutContext || handoffWorkoutContext || loadedDraftContext || undefined
+    workoutContext || loadedDraftContext || undefined
 
   // Combine initial context exercises with any proposed exercises for the "current workout" state
   const currentWorkoutExercises = useMemo(
@@ -2373,7 +1957,7 @@ export function WorkoutChat({
     return {
       opacity: p,
       transform: [{ translateY: (1 - p) * 4 }],
-      maxHeight: p * 104,
+      maxHeight: p * 120,
     }
   })
 
@@ -2576,8 +2160,9 @@ export function WorkoutChat({
         )
 
         if (!alreadyExists) {
-          const { targetRepsMin, targetRepsMax } = parseRepRangeFromSuggestion(
+          const { targetRepsMin, targetRepsMax } = parseRepRange(
             suggestion.reps,
+            { single: 'anywhere' },
           )
 
           const newExercise: StructuredExerciseDraft = {
@@ -2885,6 +2470,7 @@ export function WorkoutChat({
       content: messageContent,
       images: imagesToSend.length > 0 ? imagesToSend : undefined,
       status: hiddenPrompt ? undefined : 'sending',
+      createdAt: new Date().toISOString(),
     }
 
     if (!hiddenPrompt) {
@@ -2942,12 +2528,8 @@ export function WorkoutChat({
         }
       }
 
-      // Format messages for API - keep content as string
-      const systemMessage = {
-        role: 'system',
-        content: getCoach(coachId).systemPrompt,
-      }
-
+      // Format messages for API - keep content as string. The chat edge
+      // function builds its own system prompt.
       const requestMessages = isResend
         ? messages.map((m) =>
             m.id === userMessage.id
@@ -2968,7 +2550,7 @@ export function WorkoutChat({
         })),
       )
 
-      const formattedMessages = [systemMessage, ...trimmedRequestMessages].map(
+      const formattedMessages = trimmedRequestMessages.map(
         (m) => ({
           role: m.role,
           content: m.content,
@@ -2998,11 +2580,10 @@ export function WorkoutChat({
         messages: { role: string; content: string }[]
         userId: string | undefined
         weightUnit: string
-        coachSystemPrompt?: string
         equipmentPreference?: ChatEquipmentPreference
         workoutContext?: {
           sessionId?: string
-          mode?: 'planning' | 'analysis'
+          mode?: 'planning'
           title?: string
           notes?: string
           exercises?: unknown
@@ -3046,7 +2627,6 @@ export function WorkoutChat({
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
-        coachSystemPrompt: getCoach(coachId).systemPrompt,
         equipmentPreference: equipmentPreference ?? undefined,
         dailyLogSummary: dailyLogSummary
           ? {
@@ -3163,6 +2743,9 @@ export function WorkoutChat({
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = mapChatApiErrorToMessage(error)
+      if (isFreeChatLimitError(error)) {
+        onFreeLimitReachedRef.current?.()
+      }
       setMessages((prev) => {
         const withUserStatus: Message[] = hiddenPrompt
           ? prev
@@ -3205,17 +2788,6 @@ export function WorkoutChat({
     }
   }
 
-  autoSendMessageRef.current = (message: string) => {
-    void handleSendMessage(message)
-  }
-
-  useEffect(() => {
-    if (!pendingAutoSendMessage || !effectiveWorkoutContext || isLoading) return
-
-    setPendingAutoSendMessage(null)
-    autoSendMessageRef.current(pendingAutoSendMessage)
-  }, [effectiveWorkoutContext, isLoading, pendingAutoSendMessage])
-
   const handleResendMessage = (messageId: string) => {
     if (isLoading) return
 
@@ -3252,8 +2824,6 @@ export function WorkoutChat({
     setParsedProgram(null)
     setSavedAssistantMessageIds(new Set())
     setSavingAssistantMessageIds(new Set())
-    setHandoffWorkoutContext(null)
-    setPendingAutoSendMessage(null)
     inputRef.current?.clear()
     Keyboard.dismiss()
 
@@ -3295,8 +2865,7 @@ export function WorkoutChat({
     }
     const equipmentLabel = equipmentLabels[data.equipment] || data.equipment
 
-    // Get coach-specific training guidelines
-    const trainingGuidelines = getCoachTrainingGuidelines(coachId)
+    const trainingGuidelines = getTrainingGuidelines()
 
     // Construct the hidden prompt for the AI
     const finalPrompt = buildWorkoutCreationPrompt(
@@ -3309,11 +2878,6 @@ export function WorkoutChat({
     setIsLoading(true)
 
     try {
-      const systemMessage = {
-        role: 'system',
-        content: getCoach(coachId).systemPrompt,
-      }
-
       const trimmedRequestMessages = trimChatMessagesForRequest([
         ...messages.map((message) => ({
           role: message.role,
@@ -3322,13 +2886,12 @@ export function WorkoutChat({
         { role: 'user' as const, content: finalPrompt },
       ])
 
-      const formattedMessages = [systemMessage, ...trimmedRequestMessages]
+      const formattedMessages = trimmedRequestMessages
 
       const requestBody = {
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
-        coachSystemPrompt: getCoach(coachId).systemPrompt,
       }
 
       const response = await callChatFunction(requestBody, {
@@ -3407,6 +2970,9 @@ export function WorkoutChat({
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = mapChatApiErrorToMessage(error)
+      if (isFreeChatLimitError(error)) {
+        onFreeLimitReachedRef.current?.()
+      }
       // Only add error message - don't create duplicate placeholder
       setMessages((prev) => {
         // Check if last message is an empty assistant placeholder we created
@@ -3451,22 +3017,9 @@ export function WorkoutChat({
     }[]
   }
 
-  type SavedRoutineTemplate = {
-    id: string
-    name: string
-    exercises: {
-      id: string
-      name: string
-      orderIndex: number
-      sets: {
-        setNumber: number
-        repsMin: number | null
-        repsMax: number | null
-        restSeconds: number | null
-      }[]
-    }[]
-  }
-
+  // Resolve exercise names to system exercises, then write the routine via
+  // the shared template writer (which deletes the routine if a later step
+  // fails).
   const createRoutineFromTemplate = async (
     userId: string,
     routineData: RoutineTemplateInput,
@@ -3474,112 +3027,41 @@ export function WorkoutChat({
       programId?: string
       notes?: string
     },
-  ): Promise<SavedRoutineTemplate> => {
-    let createdRoutineId: string | null = null
+  ): Promise<{ id: string; name: string }> => {
+    const exerciseNames = routineData.exercises.map((exercise) => exercise.name)
+    const { data: dbExercises, error: resolveError } = await supabase
+      .from('exercises')
+      .select('id, name')
+      .in('name', exerciseNames)
+      .is('created_by', null)
 
-    try {
-      const routine = await database.workoutRoutines.create(
-        userId,
-        routineData.title || 'AI Generated Routine',
-        {
-          notes:
-            options?.notes ??
-            routineData.description ??
-            'Generated from AI Chat',
-          programId: options?.programId ?? undefined,
-        },
-      )
-      createdRoutineId = routine.id
+    if (resolveError) {
+      throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
+    }
 
-      const exerciseNames = routineData.exercises.map((exercise) => exercise.name)
-      const { data: dbExercises, error: resolveError } = await supabase
-        .from('exercises')
-        .select('id, name')
-        .in('name', exerciseNames)
-        .is('created_by', null)
-
-      if (resolveError) {
-        throw new Error(`Failed to resolve exercises: ${resolveError.message}`)
+    const exerciseIdMap = new Map<string, string>()
+    dbExercises?.forEach((exercise) => {
+      if (exercise.name) {
+        exerciseIdMap.set(exercise.name.toLowerCase(), exercise.id)
       }
+    })
 
-      const exerciseIdMap = new Map<string, string>()
-      dbExercises?.forEach((exercise) => {
-        if (exercise.name) {
-          exerciseIdMap.set(exercise.name.toLowerCase(), exercise.id)
-        }
-      })
-
-      const routineExercisesToInsert = routineData.exercises.reduce<
-        {
-          routine_id: string
-          exercise_id: string
-          order_index: number
-          notes: null
-        }[]
-      >((acc, exercise, index) => {
-        const dbId = exerciseIdMap.get(exercise.name.toLowerCase())
-        if (!dbId) {
-          console.warn(`Could not find DB exercise for: ${exercise.name}`)
-          return acc
-        }
-
-        acc.push({
-          routine_id: routine.id,
-          exercise_id: dbId,
-          order_index: index,
-          notes: null,
-        })
+    const templateExercises = routineData.exercises.reduce<
+      RoutineTemplateExercise[]
+    >((acc, exercise, index) => {
+      const dbId = exerciseIdMap.get(exercise.name.toLowerCase())
+      if (!dbId) {
+        console.warn(`Could not find DB exercise for: ${exercise.name}`)
         return acc
-      }, [])
-
-      if (routineExercisesToInsert.length === 0) {
-        throw new Error('No valid exercises found in the database.')
       }
 
-      const { data: insertedExercises, error: insertedExercisesError } =
-        await supabase
-          .from('workout_routine_exercises')
-          .insert(routineExercisesToInsert)
-          .select('id, order_index, exercise:exercises(name)')
-
-      if (insertedExercisesError || !insertedExercises) {
-        throw new Error(
-          `Failed to create routine exercises: ${
-            insertedExercisesError?.message || 'Unknown error'
-          }`,
-        )
-      }
-
-      const insertedExerciseIdByOrderIndex = new Map<number, string>()
-      insertedExercises.forEach((exercise) => {
-        insertedExerciseIdByOrderIndex.set(exercise.order_index, exercise.id)
-      })
-
-      const routineSets = routineData.exercises.reduce<
-        {
-          routine_exercise_id: string
-          set_number: number
-          reps_min: number | null
-          reps_max: number | null
-          rest_seconds: number | null
-        }[]
-      >((acc, exercise, exerciseIndex) => {
-        const routineExerciseId = insertedExerciseIdByOrderIndex.get(
-          exerciseIndex,
-        )
-        if (!routineExerciseId) {
-          return acc
-        }
-
-        exercise.sets.forEach((set, setIndex) => {
-          let repsMin =
-            set.repsMin !== undefined && set.repsMin !== null
-              ? set.repsMin
-              : null
-          let repsMax =
-            set.repsMax !== undefined && set.repsMax !== null
-              ? set.repsMax
-              : null
+      acc.push({
+        exercise_id: dbId,
+        order_index: index,
+        notes: null,
+        sets: exercise.sets.map((set, setIndex) => {
+          let repsMin = set.repsMin ?? null
+          let repsMax = set.repsMax ?? null
 
           if (repsMin === null && repsMax === null && set.reps) {
             const parsedTargets = parseRepTargets(set.reps)
@@ -3587,77 +3069,35 @@ export function WorkoutChat({
             repsMax = parsedTargets.repsMax
           }
 
-          acc.push({
-            routine_exercise_id: routineExerciseId,
+          return {
             set_number: setIndex + 1,
             reps_min: repsMin,
             reps_max: repsMax,
             rest_seconds: set.restSeconds ?? null,
-          })
-        })
+          }
+        }),
+      })
+      return acc
+    }, [])
 
-        return acc
-      }, [])
-
-      if (routineSets.length > 0) {
-        const { error: setsError } = await supabase
-          .from('workout_routine_sets')
-          .insert(routineSets)
-
-        if (setsError) {
-          throw setsError
-        }
-      }
-
-      return {
-        id: routine.id,
-        name: routine.name,
-        exercises: routineData.exercises
-          .map((exercise, index) => {
-            const routineExerciseId = insertedExerciseIdByOrderIndex.get(index)
-            if (!routineExerciseId) {
-              return null
-            }
-
-            return {
-              id: routineExerciseId,
-              name: exercise.name,
-              orderIndex: index,
-              sets: exercise.sets.map((set, setIndex) => {
-                const parsedTargets =
-                  set.repsMin !== undefined || set.repsMax !== undefined
-                    ? {
-                        repsMin: set.repsMin ?? null,
-                        repsMax: set.repsMax ?? null,
-                      }
-                    : parseRepTargets(set.reps || '')
-
-                return {
-                  setNumber: setIndex + 1,
-                  repsMin: parsedTargets.repsMin,
-                  repsMax: parsedTargets.repsMax,
-                  restSeconds: set.restSeconds ?? null,
-                }
-              }),
-            }
-          })
-          .filter(
-            (
-              exercise,
-            ): exercise is SavedRoutineTemplate['exercises'][number] =>
-              Boolean(exercise),
-          ),
-      }
-    } catch (error) {
-      if (createdRoutineId) {
-        try {
-          await database.workoutRoutines.delete(createdRoutineId)
-        } catch (cleanupError) {
-          console.error('Failed to cleanup orphaned routine:', cleanupError)
-        }
-      }
-      throw error
+    if (templateExercises.length === 0) {
+      throw new Error('No valid exercises found in the database.')
     }
+
+    const { routine } = await createRoutineWithTemplate(
+      userId,
+      {
+        name: routineData.title || 'AI Generated Routine',
+        notes:
+          options?.notes ?? routineData.description ?? 'Generated from AI Chat',
+        image_path: null,
+        tint_color: null,
+        program_id: options?.programId ?? null,
+      },
+      templateExercises,
+    )
+
+    return { id: routine.id, name: routine.name }
   }
 
   const buildRoutineTemplateFromProgramRoutine = (
@@ -3710,19 +3150,9 @@ export function WorkoutChat({
               name: ex.name,
               sets: ex.sets.map((s) => {
                 // Parse reps range string to min/max
-                let repsMin: number | undefined
-                let repsMax: number | undefined
-                const rangeMatch = s.reps.match(/(\d+)[-–](\d+)/)
-                if (rangeMatch) {
-                  repsMin = parseInt(rangeMatch[1])
-                  repsMax = parseInt(rangeMatch[2])
-                } else {
-                  const singleRep = parseInt(s.reps)
-                  if (!isNaN(singleRep)) {
-                    repsMin = singleRep
-                    repsMax = singleRep
-                  }
-                }
+                const { targetRepsMin, targetRepsMax } = parseRepRange(s.reps)
+                const repsMin = targetRepsMin ?? undefined
+                const repsMax = targetRepsMax ?? undefined
 
                 return {
                   type: s.type,
@@ -4038,11 +3468,7 @@ export function WorkoutChat({
                           : () => {
                               haptic('light')
                               Keyboard.dismiss()
-                              if (Platform.OS === 'ios') {
-                                router.push('/chat-settings')
-                                return
-                              }
-                              setIsCoachSheetVisible(true)
+                              router.push('/chat-settings')
                             }
                       }
                       activeOpacity={0.7}
@@ -4082,8 +3508,7 @@ export function WorkoutChat({
                 isWelcomeTyping,
                 input: input.trim(),
                 mode,
-                coachId,
-                coachName: profile?.display_name ?? '',
+                userName: profile?.display_name ?? '',
               }}
               keyExtractor={(item: Message) => item.id}
               getItemType={(item: Message) => item.role}
@@ -4131,9 +3556,16 @@ export function WorkoutChat({
                           onLongPress={() => handleCopyMessage(message.content)}
                           delayLongPress={220}
                         >
-                          <Text style={styles.userMessageText}>
-                            {message.content}
-                          </Text>
+                          <View style={styles.userMessageTextRow}>
+                            <Text style={styles.userMessageText}>
+                              {message.content}
+                            </Text>
+                            {message.createdAt ? (
+                              <Text style={styles.userMessageTime}>
+                                {formatMessageTime(message.createdAt)}
+                              </Text>
+                            ) : null}
+                          </View>
                         </TouchableOpacity>
                       </View>
 
@@ -4242,7 +3674,7 @@ export function WorkoutChat({
                                 ) : messageParsedWorkout ? (
                                   <WorkoutCard
                                     workout={messageParsedWorkout}
-                                    coachImage={coach.image}
+                                    showAttribution
                                     username={profile?.display_name}
                                     isSaved={savedAssistantMessageIds.has(
                                       message.id,
@@ -4275,8 +3707,11 @@ export function WorkoutChat({
 
                         // Regular messages show with coach avatar
                         // Hide partial JSON blocks while streaming
+                        const parsedMessage = parseAssistantMessage(
+                          message.content,
+                        )
                         const foodLogPayload = NUTRITION_FEATURES_ENABLED
-                          ? parseFoodLogPayload(message.content)
+                          ? parsedMessage.foodLog
                           : null
 
                         // Calculate progress for chart rings
@@ -4354,16 +3789,10 @@ export function WorkoutChat({
 
                         const calCircumference = 28 * 2 * Math.PI
                         const smallCircumference = 16 * 2 * Math.PI
-                        const displayContent = formatAssistantMessageForDisplay(
-                          message.content,
-                        )
-
-                        const exerciseSuggestions = parseExerciseSuggestions(
-                          message.content,
-                        )
-                        const statsReportPayload = parseStatsReportPayload(
-                          message.content,
-                        )
+                        const displayContent = parsedMessage.visibleText
+                        const exerciseSuggestions =
+                          parsedMessage.exerciseSuggestions
+                        const statsReportPayload = parsedMessage.statsReport
 
                         const coachText =
                           statsReportPayload && displayContent
@@ -4408,7 +3837,6 @@ export function WorkoutChat({
                                   </View>
                                 </View>
                               )}
-
                               {foodLogPayload && (
                                 <TouchableOpacity
                                   activeOpacity={0.9}
@@ -5142,6 +4570,7 @@ export function WorkoutChat({
                                   )}
                                 </View>
                               )}
+
                             </View>
                           </>
                         )
@@ -5154,11 +4583,12 @@ export function WorkoutChat({
                 styles.messagesContent,
                 {
                   paddingTop:
-                    mode === 'sheet'
+                    contentInsetTop +
+                    (mode === 'sheet'
                       ? 16
                       : messages.length === 0 && !isLoading
                       ? 16
-                      : 80,
+                      : 80),
                 },
               ]}
               keyboardShouldPersistTaps="handled"
@@ -5206,11 +4636,7 @@ export function WorkoutChat({
                     {mode === 'fullscreen' && (
                       <View style={styles.welcomeSection}>
                         <View style={styles.coachWelcomeContainer}>
-                          <Image
-                            source={getCoach(coachId).image}
-                            style={styles.coachWelcomeImage}
-                            contentFit="cover"
-                          />
+                          <AiOrb size={120} />
                         </View>
                         <Text style={styles.welcomeDescription}>
                           Plan your next workout, dive into your stats, or talk
@@ -5253,6 +4679,12 @@ export function WorkoutChat({
                 },
               ]}
             >
+              {/* Messages fade out above the composer instead of hard-clipping. */}
+              <LinearGradient
+                pointerEvents="none"
+                colors={[`${colors.bg}00`, colors.bg]}
+                style={styles.composerFade}
+              />
               {/* Chat quick actions — opens above the composer when the user
                   taps ✨ (still inside KeyboardAvoidingView with the keyboard). */}
               {/* Always-mounted ✨ actions menu slot. Visibility is driven
@@ -5279,7 +4711,7 @@ export function WorkoutChat({
                     <View style={styles.chatActionIconWrapper}>
                       <Ionicons
                         name="flash"
-                        size={16}
+                        size={22}
                         color={colors.textPrimary}
                       />
                       <View style={styles.chatActionSparkleBadge}>
@@ -5314,7 +4746,7 @@ export function WorkoutChat({
                     <View style={styles.chatActionIconWrapper}>
                       <Ionicons
                         name="calendar-outline"
-                        size={16}
+                        size={22}
                         color={colors.textPrimary}
                       />
                       <View style={styles.chatActionSparkleBadge}>
@@ -5395,16 +4827,25 @@ export function WorkoutChat({
                       </TouchableOpacity>
                     </LiquidGlassSurface>
                   </View>
-                ) : (
-                  !hideImagePicker && (
-                    <View style={styles.addImageShadowWrapper}>
-                      <LiquidGlassSurface
-                        key={`plan-image-button-glass-${composerGlassKey}`}
-                        style={styles.addImageButtonGlass}
-                        debugLabel="plan-image-button"
-                      >
-                        <TouchableOpacity
-                          style={styles.addImageButton}
+                ) : null}
+
+                {/* Main input pill — always LiquidGlassSurface */}
+                <View style={styles.shadowWrapper}>
+                  <LiquidGlassSurface
+                    key={`plan-chat-input-glass-${composerGlassKey}`}
+                    style={styles.textInputGlass}
+                    debugLabel="plan-chat-input"
+                  >
+                  <View
+                    style={[
+                      styles.textInputContainer,
+                      isRecording && styles.textInputContainerRecording,
+                    ]}
+                  >
+                    {/* "+" opens the Create Workout / Program actions. */}
+                    {!isRecording && !isTranscribing && !hideImagePicker && (
+                      <TouchableOpacity
+                          style={styles.composerPlusButton}
                           onPress={showImagePickerActionSheet}
                           disabled={isLoading}
                           accessibilityRole="button"
@@ -5424,12 +4865,12 @@ export function WorkoutChat({
                               pointerEvents="none"
                             >
                               <Ionicons
-                                name="sparkles"
-                                size={18}
+                                name="add"
+                                size={26}
                                 color={
                                   isLoading
                                     ? colors.textPlaceholder
-                                    : colors.brandPrimary
+                                    : colors.textPrimary
                                 }
                               />
                             </AnimatedReanimated.View>
@@ -5452,24 +4893,8 @@ export function WorkoutChat({
                             </AnimatedReanimated.View>
                           </View>
                         </TouchableOpacity>
-                      </LiquidGlassSurface>
-                    </View>
-                  )
-                )}
+                    )}
 
-                {/* Main input pill — always LiquidGlassSurface */}
-                <View style={styles.shadowWrapper}>
-                  <LiquidGlassSurface
-                    key={`plan-chat-input-glass-${composerGlassKey}`}
-                    style={styles.textInputGlass}
-                    debugLabel="plan-chat-input"
-                  >
-                  <View
-                    style={[
-                      styles.textInputContainer,
-                      isRecording && styles.textInputContainerRecording,
-                    ]}
-                  >
                     {/* Content area: visualizer OR text input */}
                     {isRecording ? (
                       <RecordingIndicator colors={colors} />
@@ -5483,7 +4908,7 @@ export function WorkoutChat({
                               ? 'Make changes to your plan...'
                               : 'Ask anything'
                           }
-                          placeholderTextColor={colors.textPlaceholder}
+                          placeholderTextColor={colors.textTertiary}
                           value={input}
                           onChangeText={setInput}
                           multiline
@@ -5510,8 +4935,8 @@ export function WorkoutChat({
                           >
                             <Ionicons
                               name="mic-outline"
-                              size={19}
-                              color={colors.textPlaceholder}
+                              size={23}
+                              color={colors.textSecondary}
                             />
                           </TouchableOpacity>
                         )}
@@ -5564,13 +4989,11 @@ export function WorkoutChat({
                           />
                         )}
                       </TouchableOpacity>
-                    ) : (
+                    ) : !input.trim() && selectedImages.length === 0 ? null : (
                       <TouchableOpacity
                         style={[
                           styles.sendButton,
-                          ((!input.trim() && selectedImages.length === 0) ||
-                            isLoading) &&
-                            styles.sendButtonDisabled,
+                          isLoading && styles.sendButtonDisabled,
                         ]}
                         onPress={() => handleSendMessage()}
                         disabled={
@@ -5870,11 +5293,6 @@ export function WorkoutChat({
           />
         </>
       )}
-
-      <CoachSelectionSheet
-        visible={isCoachSheetVisible}
-        onClose={() => setIsCoachSheetVisible(false)}
-      />
     </>
   )
 }
@@ -5885,12 +5303,6 @@ function createStyles(
   isDark: boolean,
   mode: 'fullscreen' | 'sheet',
 ) {
-  const chatActionPillBg = isDark
-    ? mode === 'sheet'
-      ? colors.surfaceSubtle
-      : colors.surfaceCard
-    : '#f4f4f5'
-
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -6012,7 +5424,8 @@ function createStyles(
     },
     messagesContent: {
       flexGrow: 1,
-      padding: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       paddingBottom: 0,
       paddingTop: 16,
     },
@@ -6033,17 +5446,7 @@ function createStyles(
       paddingHorizontal: 24,
     },
     coachWelcomeContainer: {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-      elevation: 5,
       marginBottom: 8,
-    },
-    coachWelcomeImage: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
     },
     chatMessages: {
       paddingBottom: 20,
@@ -6052,28 +5455,44 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     assistantMessageContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     userMessageBubble: {
-      maxWidth: '80%',
+      maxWidth: '85%',
     },
+    // Neutral grey bubble for the user; assistant replies render as plain text.
     userMessageContent: {
-      backgroundColor: colors.textPrimary,
-      paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderRadius: 18,
-      borderBottomRightRadius: 4,
+      backgroundColor: isDark ? '#2C2C2E' : '#E9E9EB',
+      paddingVertical: 11,
+      paddingHorizontal: 15,
+      borderRadius: 22,
+      borderBottomRightRadius: 6,
+    },
+    userMessageTextRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'flex-end',
+      justifyContent: 'flex-end',
     },
     userMessageText: {
-      fontSize: 16,
-      lineHeight: 22,
-      color: isDark ? colors.bg : colors.surface,
+      fontSize: 17,
+      lineHeight: 23,
+      color: colors.textPrimary,
+      flexShrink: 1,
+    },
+    userMessageTime: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: colors.textTertiary,
+      marginLeft: 10,
+      marginBottom: 1,
+      fontVariant: ['tabular-nums'],
     },
     userMessageMetaRow: {
       flexDirection: 'row',
@@ -6094,7 +5513,8 @@ function createStyles(
       gap: 8,
     },
     assistantCoachBubbleWrap: {
-      maxWidth: '85%',
+      flex: 1,
+      maxWidth: '100%',
     },
     assistantMessageMetaRow: {
       flexDirection: 'row',
@@ -6134,11 +5554,7 @@ function createStyles(
       marginTop: 12,
     },
     assistantMessageBubble: {
-      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
-      paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderRadius: 18,
-      borderBottomLeftRadius: 4,
+      backgroundColor: 'transparent',
     },
     foodLogCard: {
       marginTop: 12,
@@ -6443,51 +5859,43 @@ function createStyles(
       marginTop: 8,
     },
     inputContainer: {
-      backgroundColor: 'transparent',
+      backgroundColor: colors.bg,
       borderTopWidth: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
     },
+    composerFade: {
+      position: 'absolute',
+      top: -24,
+      left: 0,
+      right: 0,
+      height: 24,
+    },
     chatActionsMenu: {
-      flexDirection: 'row',
-      flexWrap: 'nowrap',
+      flexDirection: 'column',
       alignItems: 'stretch',
-      justifyContent: 'center',
-      gap: 8,
       paddingTop: 4,
-      paddingBottom: 10,
-      paddingHorizontal: 2,
-      overflow: 'visible',
+      paddingBottom: 8,
+      paddingHorizontal: 16,
+      overflow: 'hidden',
     },
     chatActionSlot: {
-      flex: 1,
       minWidth: 0,
     },
-    chatActionShadow: {
-      borderRadius: 100,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
-      elevation: 4,
-    },
+    chatActionShadow: {},
     chatActionPill: {
-      borderRadius: 100,
-      overflow: 'visible',
-      backgroundColor: chatActionPillBg,
-      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     chatActionInner: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 10,
-      gap: 6,
+      justifyContent: 'flex-start',
+      paddingVertical: 12,
+      gap: 16,
     },
     chatActionIconWrapper: {
-      width: 24,
-      height: 24,
+      width: 26,
+      height: 26,
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
@@ -6500,16 +5908,15 @@ function createStyles(
       height: 15,
       borderRadius: 8,
       borderWidth: 2,
-      backgroundColor: chatActionPillBg,
-      borderColor: chatActionPillBg,
+      backgroundColor: colors.bg,
+      borderColor: colors.bg,
       justifyContent: 'center',
       alignItems: 'center',
     },
     chatActionLabel: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '400',
       color: colors.textPrimary,
-      letterSpacing: -0.15,
     },
     inputWrapper: {
       flexDirection: 'row',
@@ -6518,7 +5925,7 @@ function createStyles(
     },
     shadowWrapper: {
       flex: 1,
-      borderRadius: 20,
+      borderRadius: 26,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -6526,16 +5933,24 @@ function createStyles(
       elevation: 2,
     },
     textInputGlass: {
-      borderRadius: 20,
+      borderRadius: 26,
     },
     textInputContainer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      paddingLeft: 14,
-      paddingRight: 4,
-      paddingBottom: 4,
-      paddingTop: 4,
-      minHeight: 40,
+      paddingLeft: 6,
+      paddingRight: 8,
+      paddingBottom: 6,
+      paddingTop: 6,
+      minHeight: 52,
+    },
+    composerPlusButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 2,
     },
     textInputContainerRecording: {
       alignItems: 'center',
@@ -6543,14 +5958,14 @@ function createStyles(
     },
     input: {
       flex: 1,
-      fontSize: 16,
+      fontSize: 17,
       lineHeight: 22,
       color: colors.textPrimary,
-      minHeight: 32,
+      minHeight: 40,
       maxHeight: 120,
       textAlignVertical: 'top',
-      paddingTop: Platform.OS === 'ios' ? 5 : 0,
-      paddingBottom: Platform.OS === 'ios' ? 5 : 0,
+      paddingTop: Platform.OS === 'ios' ? 9 : 0,
+      paddingBottom: Platform.OS === 'ios' ? 9 : 0,
       marginRight: 6,
     },
     inputInnerWrapper: {
@@ -6567,14 +5982,16 @@ function createStyles(
       marginRight: 6,
     },
     micButtonInside: {
-      padding: 6,
+      width: 40,
+      height: 40,
       justifyContent: 'center',
       alignItems: 'center',
     },
     sendButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginBottom: 2,
       backgroundColor: colors.textPrimary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -6588,17 +6005,15 @@ function createStyles(
       flexDirection: 'row',
       justifyContent: 'flex-start',
       alignItems: 'flex-end',
-      marginBottom: 16,
+      marginBottom: 20,
       gap: 8,
     },
     typingIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#2C2C2E' : colors.surfaceSubtle,
-      paddingHorizontal: 16,
+      backgroundColor: 'transparent',
+      paddingHorizontal: 0,
       paddingVertical: 12,
-      borderRadius: 18,
-      borderBottomLeftRadius: 4,
       gap: 4,
     },
     loadingText: {
@@ -6681,8 +6096,8 @@ function createStyles(
       alignItems: 'center',
     },
     chatActionsTriggerIconStack: {
-      width: 22,
-      height: 22,
+      width: 26,
+      height: 26,
       alignItems: 'center',
       justifyContent: 'center',
     },

@@ -1,14 +1,14 @@
 import {
-  EXERCISE_MUSCLE_MAPPING,
-  getExerciseNameMap,
-  getTrackableExercisesForMuscle,
-} from './exercise-standards-config'
+  getStrengthExerciseTier,
+  muscleToStrengthGroup,
+  resolveExerciseSpecificMuscle,
+} from '../supabase/functions/_shared/strength-core'
 import {
   getOverallStrengthGroupLevelProgress,
   type OverallStrengthGroup,
   type OverallStrengthGroupBreakdown,
 } from './overall-strength-score'
-import type { ExerciseStandardsConfig, StrengthLevel } from './exercise-standards-config'
+import type { StrengthLevel } from './exercise-standards-config'
 import {
   scoreToLevelProgress,
   toLevelScore,
@@ -34,7 +34,8 @@ export interface SpecificMuscleGroupData<TExercise> {
   averageScore: number
 }
 
-const exerciseNameMap = getExerciseNameMap()
+export { resolveExerciseSpecificMuscle }
+
 const REPRESENTATIVE_ANCHOR_EXERCISE_DECAY = 0.75
 const REPRESENTATIVE_SUPPORT_UPLIFT_FACTOR = 0.95
 const REPRESENTATIVE_SUPPORT_MAX_UPLIFT = 1
@@ -53,93 +54,10 @@ export const DISPLAY_STRENGTH_GROUP_ORDER: DisplayStrengthGroup[] = [
   'Core',
 ]
 
-export function isDisplayStrengthGroup(
-  value: string | null | undefined,
-): value is DisplayStrengthGroup {
-  return DISPLAY_STRENGTH_GROUP_ORDER.includes(
-    value as DisplayStrengthGroup,
-  )
-}
-
-const DISPLAY_GROUP_TO_SPECIFIC_MUSCLES: Record<
-  DisplayStrengthGroup,
-  string[]
-> = {
-  Chest: ['Chest'],
-  Back: ['Back', 'Lats', 'Traps', 'Lower Back'],
-  Shoulders: ['Shoulders'],
-  Arms: ['Biceps', 'Triceps', 'Forearms'],
-  Legs: ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Adductors'],
-  Core: ['Abs', 'Core'],
-}
-
-export function mapMuscleToDisplayGroup(
-  muscle: string | null | undefined,
-): DisplayStrengthGroup | null {
-  if (!muscle) return null
-
-  switch (muscle) {
-    case 'Quads':
-    case 'Hamstrings':
-    case 'Glutes':
-    case 'Calves':
-    case 'Adductors':
-      return 'Legs'
-    case 'Back':
-    case 'Lats':
-    case 'Traps':
-    case 'Lower Back':
-      return 'Back'
-    case 'Chest':
-      return 'Chest'
-    case 'Shoulders':
-      return 'Shoulders'
-    case 'Biceps':
-    case 'Triceps':
-    case 'Forearms':
-      return 'Arms'
-    case 'Abs':
-    case 'Core':
-      return 'Core'
-    default:
-      return null
-  }
-}
-
-export function resolveExerciseSpecificMuscle(
-  exerciseName: string,
-  fallbackMuscle: string | null | undefined,
-): string | null {
-  const canonicalName = exerciseNameMap.get(exerciseName)?.name ?? exerciseName
-
-  return (
-    EXERCISE_MUSCLE_MAPPING[canonicalName] ??
-    EXERCISE_MUSCLE_MAPPING[exerciseName] ??
-    fallbackMuscle ??
-    null
-  )
-}
-
 export function resolveDatabaseMuscleToDisplayGroup(
   muscleName: string | null | undefined,
 ): DisplayStrengthGroup | null {
-  return mapMuscleToDisplayGroup(muscleName)
-}
-
-export function getTrackableExercisesForDisplayGroup(
-  group: DisplayStrengthGroup,
-): ExerciseStandardsConfig[] {
-  const seen = new Map<string, ExerciseStandardsConfig>()
-
-  DISPLAY_GROUP_TO_SPECIFIC_MUSCLES[group].forEach((muscle) => {
-    getTrackableExercisesForMuscle(muscle).forEach((exercise) => {
-      seen.set(exercise.name, exercise)
-    })
-  })
-
-  return Array.from(seen.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )
+  return muscleToStrengthGroup(muscleName)
 }
 
 function calculateWeightedAverage(
@@ -177,7 +95,7 @@ export function buildDisplayStrengthGroupData<
       exercise.exerciseName,
       exercise.muscleGroup,
     )
-    const group = mapMuscleToDisplayGroup(specificMuscle)
+    const group = muscleToStrengthGroup(specificMuscle)
     if (!group) return
     groupedExercises.get(group)?.push(exercise)
   })
@@ -232,8 +150,7 @@ export function buildSpecificMuscleGroupData<
       exercise.muscleGroup,
     )
 
-    const config = exerciseNameMap.get(exercise.exerciseName)
-    const tier = config?.tier ?? 3
+    const tier = getStrengthExerciseTier(exercise.exerciseName)
     const representativeScore = toLevelScore(
       strengthInfo.level,
       strengthInfo.progress,

@@ -76,6 +76,12 @@ interface WorkoutSessionRow {
  */
 const performanceCache = new Map<string, ExerciseLastPerformance | null>()
 
+/** In-flight last-performance requests, so concurrent callers share one query. */
+const performanceInflight = new Map<
+  string,
+  Promise<ExerciseLastPerformance | null>
+>()
+
 /** Cache for historical-bests lookups. */
 const historicalBestsCache = new Map<string, ExerciseHistoricalBests | null>()
 
@@ -88,13 +94,6 @@ const historicalBestsCache = new Map<string, ExerciseHistoricalBests | null>()
  */
 function getCacheKey(userId: string, exerciseName: string): string {
   return `${userId}:${exerciseName.toLowerCase().trim()}`
-}
-
-/**
- * Normalize exercise name for consistent matching.
- */
-function normalizeExerciseName(name: string): string {
-  return name.toLowerCase().trim()
 }
 
 /**
@@ -142,6 +141,51 @@ export async function getLastPerformanceForExercise(
     return performanceCache.get(cacheKey) ?? null
   }
 
+  const pending = performanceInflight.get(cacheKey)
+  if (!skipCache && pending) {
+    return pending
+  }
+
+  const request = fetchLastPerformance(userId, exerciseName, cacheKey)
+  performanceInflight.set(cacheKey, request)
+  try {
+    return await request
+  } finally {
+    if (performanceInflight.get(cacheKey) === request) {
+      performanceInflight.delete(cacheKey)
+    }
+  }
+}
+
+/**
+ * Synchronously read a cached last performance. Returns `undefined` when the
+ * exercise hasn't been fetched yet (vs `null` = fetched, no history).
+ */
+export function peekLastPerformanceForExercise(
+  userId: string,
+  exerciseName: string,
+): ExerciseLastPerformance | null | undefined {
+  const cacheKey = getCacheKey(userId, exerciseName)
+  if (!performanceCache.has(cacheKey)) return undefined
+  return performanceCache.get(cacheKey) ?? null
+}
+
+/**
+ * Fire-and-forget warm-up of the last-performance cache (e.g. as soon as an
+ * exercise is picked, before it is actually added to the workout).
+ */
+export function prefetchLastPerformanceForExercise(
+  userId: string,
+  exerciseName: string,
+): void {
+  void getLastPerformanceForExercise(userId, exerciseName)
+}
+
+async function fetchLastPerformance(
+  userId: string,
+  exerciseName: string,
+  cacheKey: string,
+): Promise<ExerciseLastPerformance | null> {
   try {
     // Query the most recent workout session containing this exercise
     const { data, error } = await supabase
@@ -225,76 +269,6 @@ export async function getSetPerformance(
   if (!history) return null
 
   return history.sets.find((s) => s.setNumber === setNumber) ?? null
-}
-
-/**
- * Batch fetch last performance for multiple exercises.
- * More efficient than individual calls when adding multiple exercises.
- *
- * @param userId - The user's ID
- * @param exerciseNames - Array of exercise names
- * @returns Map of exercise name (lowercase) to performance data
- */
-export async function getLastPerformanceForExercises(
-  userId: string,
-  exerciseNames: string[],
-): Promise<Map<string, ExerciseLastPerformance | null>> {
-  const results = new Map<string, ExerciseLastPerformance | null>()
-
-  // Separate cached from uncached exercises
-  const uncachedNames: string[] = []
-
-  for (const name of exerciseNames) {
-    const cacheKey = getCacheKey(userId, name)
-    if (performanceCache.has(cacheKey)) {
-      results.set(
-        normalizeExerciseName(name),
-        performanceCache.get(cacheKey) ?? null,
-      )
-    } else {
-      uncachedNames.push(name)
-    }
-  }
-
-  // Fetch uncached exercises in parallel
-  if (uncachedNames.length > 0) {
-    const fetchPromises = uncachedNames.map(async (name) => {
-      const result = await getLastPerformanceForExercise(userId, name)
-      return { name: normalizeExerciseName(name), result }
-    })
-
-    const fetchResults = await Promise.all(fetchPromises)
-    for (const { name, result } of fetchResults) {
-      results.set(name, result)
-    }
-  }
-
-  return results
-}
-
-/**
- * Clear the entire exercise history cache.
- * Call this when a user posts a new workout to ensure fresh data.
- */
-export function clearExerciseHistoryCache(): void {
-  performanceCache.clear()
-  historicalBestsCache.clear()
-}
-
-/**
- * Clear cache for a specific exercise.
- * Useful for targeted cache invalidation.
- *
- * @param userId - The user's ID
- * @param exerciseName - Name of the exercise to clear
- */
-export function clearExerciseCacheEntry(
-  userId: string,
-  exerciseName: string,
-): void {
-  const cacheKey = getCacheKey(userId, exerciseName)
-  performanceCache.delete(cacheKey)
-  historicalBestsCache.delete(cacheKey)
 }
 
 /**
@@ -397,27 +371,3 @@ export async function getHistoricalBestsForExercise(
   }
 }
 
-/**
- * Preload exercise history for frequently used exercises.
- * Call this on screen mount to improve UX by having data ready.
- *
- * This function fires off requests without awaiting them.
- * Results populate the cache in the background.
- *
- * @param userId - The user's ID
- * @param exerciseNames - Array of exercise names to preload
- */
-export function preloadExerciseHistory(
-  userId: string,
-  exerciseNames: string[],
-): void {
-  for (const name of exerciseNames) {
-    const cacheKey = getCacheKey(userId, name)
-    if (!performanceCache.has(cacheKey)) {
-      // Fire and forget - errors are logged but don't bubble up
-      getLastPerformanceForExercise(userId, name).catch((err) => {
-        console.warn('[exerciseHistoryService] Preload failed for', name, err)
-      })
-    }
-  }
-}

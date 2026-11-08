@@ -23,8 +23,3 @@ npm run start:test -- --clear   # test Supabase
 
 ## Lifecycle Emails
 - Setup guide: `docs/email-automation.md`
-
-## Reset starter app
-```bash
-npm run reset-project
-```

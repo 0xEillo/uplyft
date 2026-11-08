@@ -11,7 +11,7 @@ export interface MuscleSplitData {
  * Calculate the muscle group distribution for a workout based on volume
  * Returns an array of muscle groups with their volume and percentage
  */
-export function calculateMuscleSplit(
+function calculateMuscleSplit(
   workout: WorkoutSessionWithDetails,
 ): MuscleSplitData[] {
   if (!workout.workout_exercises || workout.workout_exercises.length === 0) {

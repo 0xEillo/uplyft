@@ -10,7 +10,7 @@ const DEFAULT_COMPRESS = 0.9
  * Re-encodes an image into a fresh JPEG so the pixel data already matches the
  * intended orientation instead of relying on EXIF metadata at render time.
  */
-export async function normalizeImageUri(
+async function normalizeImageUri(
   uri: string,
   options: NormalizeImageOptions = {},
 ): Promise<string> {

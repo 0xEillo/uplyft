@@ -1,6 +1,6 @@
 import type { DailyLogMeal } from '@/types/database.types'
 
-export const DAILY_LOG_MEAL_IMAGE_PATH_KEY = 'meal_image_path'
+const DAILY_LOG_MEAL_IMAGE_PATH_KEY = 'meal_image_path'
 
 type DailyLogMealMetadata = Record<string, unknown> | null | undefined
 

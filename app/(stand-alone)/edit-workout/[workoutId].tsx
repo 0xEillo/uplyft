@@ -13,9 +13,13 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { database, OwnershipError } from '@/lib/database'
 import { haptic } from '@/lib/haptics'
 import {
-  deleteWorkoutImage,
-  uploadWorkoutImage,
-} from '@/lib/utils/image-upload'
+  formatDurationHoursMinutes,
+  formatSetDuration,
+  resolveLoggingMode,
+} from '@/lib/exercise-logging-mode'
+import { uploadWorkoutImage } from '@/lib/utils/image-upload'
+import { applyWorkoutEditPlan } from '@/lib/workout-edit-apply'
+import { buildWorkoutEditPlan } from '@/lib/workout-edit-plan'
 import { calculateWorkoutStats, formatVolume } from '@/lib/utils/workout-stats'
 import { Exercise, WorkoutSessionWithDetails } from '@/types/database.types'
 import { Ionicons } from '@expo/vector-icons'
@@ -65,53 +69,6 @@ const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   allowsEditing: false,
   quality: IMAGE_QUALITY,
 }
-// Note: keep tokens specific. Ambiguous substrings like "row", "hang", "walk",
-// "hold" leak into rep-based lifts (T-bar Row, Hang Clean, Walking Lunge, Pause Hold).
-// Match concrete cardio / static-hold names instead.
-const TIMED_EXERCISE_NAME_PATTERN =
-  /\b(plank|wall sit|dead hang|l-?sit|sprint|run|jog|skip(?:ping)?|cycling|rowing machine|rower|stairmaster|stair climber|elliptical|treadmill|swim(?:ming)?|battle rope|jump rope|ski erg(?:ometer)?|assault bike|air bike|exercise bike|spin bike|farmer'?s? walk|farmer'?s? carry|suitcase carry|overhead carry|waiter walk|waiter carry|isometric hold|bear crawl|crab walk)\b/i
-
-function formatDurationCompact(seconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(seconds))
-  const hours = Math.floor(safeSeconds / 3600)
-  const mins = Math.floor((safeSeconds % 3600) / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${mins}m`
-  }
-  return `${mins}min`
-}
-
-function formatSetDurationInput(seconds: number | null): string {
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
-    return ''
-  }
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-function parseSetDurationInput(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-
-  if (trimmed.includes(':')) {
-    const [minutesText, secondsText = '0'] = trimmed.split(':')
-    const minutes = Number.parseInt(minutesText || '0', 10)
-    const seconds = Number.parseInt(secondsText || '0', 10)
-    if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null
-    const total = minutes * 60 + seconds
-    return total > 0 ? total : null
-  }
-
-  const digits = trimmed.replace(/\D/g, '')
-  if (!digits) return null
-  const seconds = Number.parseInt(digits.slice(-2), 10) || 0
-  const minutes = Number.parseInt(digits.slice(0, -2) || '0', 10) || 0
-  const total = minutes * 60 + seconds
-  return total > 0 ? total : null
-}
-
 export default function EditWorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>()
   const router = useRouter()
@@ -598,138 +555,30 @@ export default function EditWorkoutScreen() {
     try {
       setIsSaving(true)
 
-      // 1. Update workout session (title, notes, image, and date)
-      const updates: Record<string, any> = {}
-
-      const titleValue = editedTitle.trim()
-      const notesValue = editedNotes.trim()
-
-      // Always update title and notes (including setting to null if cleared)
-      updates.type = titleValue || null
-      updates.notes = notesValue || null
-
-      // Handle image updates - explicitly set to null if deleted
-      if (imageDeleted) {
-        updates.image_url = null
-      } else if (editedImageUrl) {
-        updates.image_url = editedImageUrl
-      }
-
-      // Handle date updates
-      if (editedDate) {
-        updates.date = editedDate.toISOString()
-      }
-
-      // Handle duration updates - calculate total seconds
-      const hours = parseInt(editedDurationHours) || 0
-      const minutes = parseInt(editedDurationMinutes) || 0
-      const seconds = parseInt(editedDurationSeconds) || 0
-      const totalDuration = hours * 3600 + minutes * 60 + seconds
-      updates.duration = totalDuration > 0 ? totalDuration : null
-
-      await database.workoutSessions.update(workoutId, user.id, updates)
-
-      // Delete old image from storage if it was replaced or deleted
-      if (
-        workout?.image_url &&
-        (imageDeleted ||
-          (editedImageUrl && editedImageUrl !== workout.image_url))
-      ) {
-        await deleteWorkoutImage(workout.image_url)
-      }
-
-      // 2. Delete exercises (and their sets will cascade delete)
-      const deleteExercisePromises = Array.from(deletedExerciseIds).map((id) =>
-        database.workoutExercises.delete(id),
-      )
-      await Promise.all(deleteExercisePromises)
-
-      // 3. Delete sets
-      const deleteSetPromises = Array.from(deletedSetIds).map((id) =>
-        database.sets.delete(id),
-      )
-      await Promise.all(deleteSetPromises)
-
-      // 4. Update edited exercises
-      const updateExercisePromises = Object.entries(editedExercises).map(
-        ([workoutExerciseId, newExerciseId]) => {
-          // Only update if the exercise hasn't been deleted
-          if (!deletedExerciseIds.has(workoutExerciseId)) {
-            return database.workoutExercises.update(
-              workoutExerciseId,
-              newExerciseId,
-            )
-          }
-          return Promise.resolve()
+      const plan = buildWorkoutEditPlan(
+        {
+          id: workoutId,
+          userId: user.id,
+          image_url: workout.image_url,
+          workout_exercises: workout.workout_exercises,
         },
-      )
-      await Promise.all(updateExercisePromises)
-
-      // 4.5 Update exercise order
-      if (workout?.workout_exercises) {
-        const orderPromises = workout.workout_exercises
-          .filter((we) => !deletedExerciseIds.has(we.id))
-          .map((we, index) => {
-            // Update the order_index in the database
-            return database.workoutExercises.updateOrder(we.id, index)
-          })
-        await Promise.all(orderPromises)
-      }
-
-      // 5. Update edited sets
-      const updateSetPromises = Object.entries(editedSets).map(
-        ([setId, values]) => {
-          // Only update if the set hasn't been deleted
-          if (!deletedSetIds.has(setId)) {
-            const updates: {
-              reps?: number | null
-              weight?: number | null
-              duration_seconds?: number | null
-            } = {}
-
-            // Parse reps if it was edited
-            if (values.reps !== undefined) {
-              const parsed = values.reps.trim()
-              if (parsed === '') {
-                updates.reps = undefined
-              } else {
-                const reps = parseFloat(parsed)
-                if (!isNaN(reps)) {
-                  updates.reps = reps
-                }
-              }
-            }
-
-            // Parse weight if it was edited
-            if (values.weight !== undefined) {
-              const weight =
-                values.weight === '' ? null : parseFloat(values.weight)
-              if (weight === null || !isNaN(weight)) {
-                // Convert from preferred unit back to kg
-                updates.weight =
-                  weight !== null ? convertInputToKg(weight) : null
-              }
-            }
-
-            // Parse duration if it was edited
-            if (values.duration_seconds !== undefined) {
-              const duration = parseSetDurationInput(values.duration_seconds)
-              updates.duration_seconds = duration
-              if (duration !== null) {
-                updates.reps = null
-                updates.weight = null
-              }
-            }
-
-            // Only update if there are valid changes
-            if (Object.keys(updates).length > 0) {
-              return database.sets.update(setId, updates)
-            }
-          }
-          return Promise.resolve()
+        {
+          title: editedTitle,
+          notes: editedNotes,
+          imageDeleted,
+          editedImageUrl,
+          date: editedDate,
+          durationHours: editedDurationHours,
+          durationMinutes: editedDurationMinutes,
+          durationSeconds: editedDurationSeconds,
+          deletedExerciseIds,
+          deletedSetIds,
+          editedExercises,
+          editedSets,
         },
+        { toKg: convertInputToKg },
       )
-      await Promise.all(updateSetPromises)
+      await applyWorkoutEditPlan(plan)
 
       await database.workoutSessions.refreshRecordCount(workoutId)
       await database.profiles.refreshStrengthCache(user.id).catch((refreshError) => {
@@ -800,7 +649,7 @@ export default function EditWorkoutScreen() {
         : ''
     }
     if (field === 'duration_seconds') {
-      return formatSetDurationInput(originalValue)
+      return formatSetDuration(originalValue)
     }
     return originalValue !== null ? String(originalValue) : ''
   }
@@ -874,22 +723,15 @@ export default function EditWorkoutScreen() {
       const defaultReps = lastSet?.reps ?? null
       const defaultWeight = lastSet?.weight || null
       const defaultDuration = lastSet?.duration_seconds ?? null
-      const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(
-        workoutExercise.exercise?.name ||
-          workoutExercise.exercise_name ||
-          '',
-      )
       const isTimedExercise =
-        isTimedExerciseName ||
-        (activeSets.some(
-          (set) =>
-            typeof set.duration_seconds === 'number' && set.duration_seconds > 0,
-        ) &&
-          activeSets.every(
-            (set) =>
-              (typeof set.duration_seconds === 'number' && set.duration_seconds > 0) ||
-              (!set.reps && !set.weight),
-          ))
+        resolveLoggingMode({
+          name:
+            workoutExercise.exercise?.name ||
+            workoutExercise.exercise_name ||
+            '',
+          sets: activeSets,
+          strengthDataRule: 'truthy',
+        }) === 'duration'
 
       // Create the new set
       const newSet = await database.sets.create(workoutExerciseId, {
@@ -1036,7 +878,7 @@ export default function EditWorkoutScreen() {
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Duration</Text>
                   <Text style={styles.statValue}>
-                    {formatDurationCompact(stats.durationSeconds)}
+                    {formatDurationHoursMinutes(stats.durationSeconds)}
                   </Text>
                 </View>
                 <View style={styles.statItem}>
@@ -1238,24 +1080,15 @@ export default function EditWorkoutScreen() {
                   const activeSets = workoutExercise.sets?.filter(
                     (s) => !deletedSetIds.has(s.id),
                   )
-                  const isTimedExerciseName = TIMED_EXERCISE_NAME_PATTERN.test(
-                    workoutExercise.exercise?.name ||
-                      workoutExercise.exercise_name ||
-                      '',
-                  )
                   const isTimedExercise =
-                    isTimedExerciseName ||
-                    ((activeSets ?? []).some(
-                      (set) =>
-                        typeof set.duration_seconds === 'number' &&
-                        set.duration_seconds > 0,
-                    ) &&
-                      (activeSets ?? []).every(
-                        (set) =>
-                          (typeof set.duration_seconds === 'number' &&
-                            set.duration_seconds > 0) ||
-                          (!set.reps && !set.weight),
-                      ))
+                    resolveLoggingMode({
+                      name:
+                        workoutExercise.exercise?.name ||
+                        workoutExercise.exercise_name ||
+                        '',
+                      sets: activeSets ?? [],
+                      strengthDataRule: 'truthy',
+                    }) === 'duration'
                   return (
                     <AnimatedReanimated.View
                       key={workoutExercise.id}

@@ -1,19 +1,19 @@
 import { FeedCard } from '@/components/feed-card'
-import type { WorkoutContext } from '@/components/workout-chat'
-import { AnalyticsEvents } from '@/constants/analytics-events'
-import { useAnalytics } from '@/contexts/analytics-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfile } from '@/contexts/profile-context'
-import { buildWorkoutAnalysisPrompt } from '@/lib/ai/workoutPrompt'
-import { setPendingChatAttachment } from '@/lib/chat-attachment-handoff'
-import { getCoach } from '@/lib/coaches'
 import { useWeightUnits } from '@/hooks/useWeightUnits'
-import { database, OwnershipError } from '@/lib/database'
-import { haptic } from '@/lib/haptics'
-import { PrService } from '@/lib/pr'
+import { useWorkoutRecordHighlights } from '@/hooks/useWorkoutRecordHighlights'
+import {
+  database,
+  OwnershipError,
+  type WorkoutCommentPreviewRow,
+} from '@/lib/database'
 import { getShowWarmupSets } from '@/lib/utils/create-post-settings'
+import {
+  loadFeedCommentPreviews,
+  peekFeedCommentPreviews,
+} from '@/lib/utils/feed-comment-previews'
 import { formatTimeAgo, formatWorkoutForDisplay } from '@/lib/utils/formatters'
-import { mapSetsToPrContext, resolvePrContextUserId } from '@/lib/utils/pr-context'
 import {
   consumeWorkoutSocialUpdate,
   subscribeWorkoutSocialUpdates,
@@ -30,26 +30,8 @@ import { usePathname, useRouter } from 'expo-router'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 
-interface PrDetailForDisplay {
-  kind: 'heaviest-weight' | 'best-1rm' | 'best-set-volume'
-  label: string
-  value: number
-  previousValue?: number
-  weight: number
-  previousReps?: number
-  currentReps: number
-  setIndices?: number[]
-  isCurrent: boolean
-}
-
-interface PrInfo {
-  exerciseId: string
-  exerciseName: string
-  prSetIndices: Set<number>
-  prLabels: string[]
-  prDetails: PrDetailForDisplay[]
-  hasCurrentPR: boolean
-}
+const EMPTY_COMMENTS: WorkoutCommentPreviewRow[] = []
+const EMPTY_LIKERS: Partial<Profile>[] = []
 
 interface AsyncPrFeedCardProps {
   workout: WorkoutSessionWithDetails & {
@@ -72,8 +54,7 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   isProcessingPending = false,
 }: AsyncPrFeedCardProps) {
   const { user, isAnonymous } = useAuth()
-  const { coachId, profile } = useProfile()
-  const { trackEvent } = useAnalytics()
+  const { profile } = useProfile()
   const router = useRouter()
   const pathname = usePathname()
   const { weightUnit } = useWeightUnits()
@@ -90,7 +71,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     (isOwnWorkout
       ? profile?.overall_strength_level ?? workout.profile?.overall_strength_level
       : workout.profile?.overall_strength_level) ?? null
-  const coach = getCoach(coachId)
 
   // Social interaction states
   const [likeCount, setLikeCount] = useState(workout.social?.likeCount ?? 0)
@@ -98,42 +78,61 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     workout.social?.commentCount ?? 0,
   )
   const [isLiked, setIsLiked] = useState(workout.social?.isLiked ?? false)
-  const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>([])
-  const [comments, setComments] = useState<any[]>([])
+  const [recentLikers, setRecentLikers] = useState<Partial<Profile>[]>(
+    EMPTY_LIKERS,
+  )
+  const viewerId = user?.id ?? null
+  // When the feed query already told us the comment count we can skip the
+  // preview request entirely for posts without comments.
+  const hasKnownSocial = workout.social != null
+  // Keyed by workout id so a recycled list cell never shows the previous
+  // workout's comments while the new preview loads.
+  const [commentsState, setCommentsState] = useState<{
+    workoutId: string
+    comments: WorkoutCommentPreviewRow[]
+  }>(() => ({
+    workoutId: workout.id,
+    comments:
+      peekFeedCommentPreviews(workout.id, viewerId, commentCount) ??
+      EMPTY_COMMENTS,
+  }))
+  const comments =
+    commentsState.workoutId === workout.id
+      ? commentsState.comments
+      : peekFeedCommentPreviews(workout.id, viewerId, commentCount) ??
+        EMPTY_COMMENTS
 
   useEffect(() => {
     if (!workout.id || workout.isPending) return
-    let isMounted = true
-    const fetchComments = async () => {
-      try {
-        const fetchedComments =
-          await database.workoutComments.listWithProfilesByWorkout(workout.id, 2)
-        const commentIds = fetchedComments.map((c) => c.id)
-        const [likeCounts, likedIds] = await Promise.all([
-          database.workoutCommentLikes.getCounts(commentIds),
-          user?.id
-            ? database.workoutCommentLikes.getLikedCommentIds(commentIds, user.id)
-            : Promise.resolve([] as string[]),
-        ])
-        const likedIdSet = new Set(likedIds)
-        if (isMounted) {
-          setComments(
-            fetchedComments.map((c) => ({
-              ...c,
-              likeCount: likeCounts[c.id] || 0,
-              isLiked: likedIdSet.has(c.id),
-            })),
-          )
-        }
-      } catch (error) {
-        console.error('Error fetching comments for feed card:', error)
-      }
+    const setForWorkout = (next: WorkoutCommentPreviewRow[]) =>
+      setCommentsState((prev) =>
+        prev.workoutId === workout.id && prev.comments === next
+          ? prev
+          : { workoutId: workout.id, comments: next },
+      )
+
+    if (hasKnownSocial && commentCount === 0) {
+      setForWorkout(EMPTY_COMMENTS)
+      return
     }
-    void fetchComments()
+    const cached = peekFeedCommentPreviews(workout.id, viewerId, commentCount)
+    if (cached) {
+      setForWorkout(cached)
+      return
+    }
+
+    let isMounted = true
+    loadFeedCommentPreviews(workout.id, viewerId, commentCount)
+      .then((fetched) => {
+        if (isMounted) setForWorkout(fetched)
+      })
+      .catch((error) => {
+        console.error('Error fetching comments for feed card:', error)
+      })
     return () => {
       isMounted = false
     }
-  }, [workout.id, workout.isPending, commentCount, user?.id])
+  }, [workout.id, workout.isPending, commentCount, viewerId, hasKnownSocial])
 
   const currentUserAsLiker = useMemo<Partial<Profile> | null>(() => {
     if (!user?.id) return null
@@ -158,7 +157,8 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   ])
 
   useEffect(() => {
-    setRecentLikers([])
+    // Functional update avoids an extra render on mount (list is already empty).
+    setRecentLikers((prev) => (prev.length === 0 ? prev : EMPTY_LIKERS))
   }, [workout.id])
 
   const applySocialUpdate = useCallback(
@@ -362,122 +362,6 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
     }
   }, [workout.routine, router])
 
-  const handleCoachPress = useCallback(async () => {
-    if (!isOwnWorkout || workout.isPending) return
-
-    const workingSetCount = (workout.workout_exercises || []).reduce(
-      (sum, exercise) =>
-        sum +
-        (exercise.sets?.filter((set) => !set.is_warmup).length ||
-          exercise.sets?.length ||
-          0),
-      0,
-    )
-
-    let workoutPrInfo: PrInfo[] = []
-    const prUserId = resolvePrContextUserId(workout.user_id, user?.id)
-    if (prUserId && workout.created_at && workout.date) {
-      try {
-        const result = await PrService.computePrsForSession({
-          sessionId: workout.id,
-          userId: prUserId,
-          createdAt: workout.created_at,
-          date: workout.date,
-          exercises: (workout.workout_exercises || []).map((exercise) => ({
-            exerciseId: exercise.exercise_id,
-            exerciseName: exercise.exercise?.name || 'Exercise',
-            sets: mapSetsToPrContext(exercise.sets),
-          })),
-        })
-
-        workoutPrInfo = result.perExercise.map((exercisePr) => ({
-          exerciseId: exercisePr.exerciseId,
-          exerciseName: exercisePr.exerciseName,
-          prSetIndices: new Set(
-            exercisePr.prs.flatMap((detail) => detail.setIndices || []),
-          ),
-          prLabels: exercisePr.prs.map((detail) => detail.label),
-          prDetails: exercisePr.prs.map((detail) => ({
-            kind: detail.kind,
-            label: detail.label,
-            value: detail.value,
-            previousValue: detail.previousValue,
-            weight: detail.weight,
-            previousReps: detail.previousReps,
-            currentReps: detail.currentReps,
-            setIndices: detail.setIndices,
-            isCurrent: detail.isCurrent,
-          })),
-          hasCurrentPR: exercisePr.prs.some((detail) => detail.isCurrent),
-        }))
-      } catch (error) {
-        console.error('Error computing PRs for coach analysis:', error)
-      }
-    }
-
-    const workoutContext: WorkoutContext = {
-      sessionId: workout.id,
-      mode: 'analysis',
-      title: workout.type || workout.notes?.split('\n')[0] || 'Workout Session',
-      notes: workout.notes || '',
-      exercises: (workout.workout_exercises || []).map((exercise) => ({
-        name: exercise.exercise?.name || exercise.exercise_name || 'Exercise',
-        setsCount: exercise.sets?.length || 0,
-        sets:
-          exercise.sets?.map((set) => {
-            const weight =
-              typeof set.weight === 'number' ? `${set.weight} kg` : undefined
-            const reps =
-              typeof set.reps === 'number' ? `${set.reps}` : undefined
-
-            return {
-              ...(weight ? { weight } : {}),
-              ...(reps ? { reps } : {}),
-            }
-          }) || [],
-      })),
-      stats: {
-        exerciseCount: (workout.workout_exercises || []).length,
-        totalSetCount,
-        workingSetCount,
-        durationSeconds: workout.duration ?? null,
-        volumeKg: calculateTotalVolume(workout, 'kg'),
-        completedAt: workout.created_at ?? null,
-      },
-      prs: workoutPrInfo.flatMap((exercisePr) =>
-        exercisePr.prDetails.map((detail) => ({
-          exerciseName: exercisePr.exerciseName,
-          kind: detail.kind,
-          label: detail.label,
-          value: detail.value,
-          previousValue: detail.previousValue,
-          weight: detail.weight,
-          currentReps: detail.currentReps,
-          isCurrent: detail.isCurrent,
-        })),
-      ),
-    }
-
-    await setPendingChatAttachment({
-      action: 'analyze_workout',
-      prompt: buildWorkoutAnalysisPrompt({
-        workoutTitle: workoutContext.title,
-        exerciseCount: workoutContext.stats?.exerciseCount,
-        totalSetCount: workoutContext.stats?.totalSetCount,
-        workingSetCount: workoutContext.stats?.workingSetCount,
-        durationSeconds: workoutContext.stats?.durationSeconds,
-      }),
-      workoutContext,
-    })
-
-    haptic('medium')
-    trackEvent(AnalyticsEvents.AI_CHAT_OPENED, {
-      source: 'feed_workout_analysis',
-      workout_id: workout.id,
-    })
-    router.push('/chat')
-  }, [isOwnWorkout, router, trackEvent, totalSetCount, user?.id, workout])
-
   const commentPreviews = useMemo(() => {
     return comments.map((c) => ({
       id: c.id,
@@ -493,12 +377,25 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
   // Check if this is a pending placeholder workout
   const isPending = workout.isPending === true
 
+  // Record details are only computed once the user shows intent to see them
+  // (swiping the card or tapping the Records stat).
+  const [recordsRequested, setRecordsRequested] = useState(false)
+  useEffect(() => {
+    setRecordsRequested(false)
+  }, [workout.id])
+  const handleRecordsRequested = useCallback(() => {
+    setRecordsRequested(true)
+  }, [])
+  const recordHighlights = useWorkoutRecordHighlights(
+    workout,
+    recordsRequested,
+  )
+
   return (
     <FeedCard
       userName={userName}
       userAvatar={avatarUrl || ''}
       userLevel={userLevel}
-      coachAvatarSource={coach.image}
       timeAgo={isPending ? 'Just now' : formatTimeAgo(workout.created_at)}
       workoutTitle={
         isPending
@@ -533,11 +430,14 @@ export const AsyncPrFeedCard = memo(function AsyncPrFeedCard({
       isLiked={isLiked}
       onLike={handleLike}
       onComment={handleComment}
-      onCoachPress={isPending || !isOwnWorkout ? undefined : handleCoachPress}
       isFirst={isFirst}
       recentLikers={recentLikers}
       comments={commentPreviews}
       currentUserAvatar={profile?.avatar_url}
+      recordHighlights={recordHighlights}
+      onRecordsRequested={
+        isPending || feedStats.records <= 0 ? undefined : handleRecordsRequested
+      }
     />
   )
 })

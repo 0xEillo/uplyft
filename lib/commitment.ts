@@ -11,7 +11,7 @@ type CommitmentInput = {
   commitmentFrequency?: string | null
 }
 
-export const COMMITMENT_DAY_VALUES: CommitmentDay[] = [
+const COMMITMENT_DAY_VALUES: CommitmentDay[] = [
   'sunday',
   'monday',
   'tuesday',
@@ -22,12 +22,7 @@ export const COMMITMENT_DAY_VALUES: CommitmentDay[] = [
   'not_sure',
 ]
 
-export const WEEKDAY_COMMITMENT_DAY_VALUES: Exclude<CommitmentDay, 'not_sure'>[] =
-  COMMITMENT_DAY_VALUES.filter(
-    (day): day is Exclude<CommitmentDay, 'not_sure'> => day !== 'not_sure',
-  )
-
-export const COMMITMENT_FREQUENCY_VALUES: CommitmentFrequency[] = [
+const COMMITMENT_FREQUENCY_VALUES: CommitmentFrequency[] = [
   '1_time',
   '2_times',
   '3_times',
@@ -76,14 +71,14 @@ const COMMITMENT_DAY_LABELS: Record<CommitmentDay, string> = {
   not_sure: 'Not sure',
 }
 
-export function isCommitmentDay(value: unknown): value is CommitmentDay {
+function isCommitmentDay(value: unknown): value is CommitmentDay {
   return (
     typeof value === 'string' &&
     COMMITMENT_DAY_VALUES.includes(value as CommitmentDay)
   )
 }
 
-export function isCommitmentFrequency(
+function isCommitmentFrequency(
   value: unknown,
 ): value is CommitmentFrequency {
   return (
@@ -92,7 +87,7 @@ export function isCommitmentFrequency(
   )
 }
 
-export function normalizeCommitmentDays(
+function normalizeCommitmentDays(
   commitment: readonly string[] | null | undefined,
 ): CommitmentDay[] {
   if (!Array.isArray(commitment)) return []
@@ -114,7 +109,7 @@ function resolveCommitmentFrequency(
   return isCommitmentFrequency(legacyValue) ? legacyValue : null
 }
 
-export function getSelectedCommitmentDays(
+function getSelectedCommitmentDays(
   commitment: readonly string[] | null | undefined,
 ): Exclude<CommitmentDay, 'not_sure'>[] {
   return normalizeCommitmentDays(commitment).filter(
@@ -126,15 +121,6 @@ export function getCommitmentMode(
   input: Pick<Profile, 'commitment' | 'commitment_frequency'> | CommitmentInput,
 ): CommitmentMode {
   return resolveCommitmentFrequency(input) ? 'frequency' : 'specific_days'
-}
-
-export function hasCommitmentSelection(
-  input: Pick<Profile, 'commitment' | 'commitment_frequency'> | CommitmentInput,
-): boolean {
-  return (
-    normalizeCommitmentDays(input.commitment).length > 0 ||
-    resolveCommitmentFrequency(input) !== null
-  )
 }
 
 export function getWeeklyCommitmentTarget(
@@ -159,13 +145,13 @@ export function getReminderCommitmentDays(
   return FREQUENCY_TO_REMINDER_DAYS[frequency]
 }
 
-export function getCommitmentFrequencyLabel(
+function getCommitmentFrequencyLabel(
   frequency: CommitmentFrequency,
 ): string {
   return COMMITMENT_FREQUENCY_LABELS[frequency]
 }
 
-export function getCommitmentDayLabel(day: CommitmentDay): string {
+function getCommitmentDayLabel(day: CommitmentDay): string {
   return COMMITMENT_DAY_LABELS[day]
 }
 
