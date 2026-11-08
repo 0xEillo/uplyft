@@ -68,6 +68,12 @@ const GRID_ITEM_WIDTH =
 const DEFERRED_CONTENT_FALLBACK_MS = 450
 const MUSCLE_HIGHLIGHT_COLORS = ['#EF4444']
 const MUSCLE_BORDER_COLOR = '#D1D5DB'
+const FAVORITE_COLOR = '#F43F5E'
+// Muscle filter circles. The body diagrams were drawn for a 78pt circle, so
+// they are scaled down to match.
+const MUSCLE_CHIP_SIZE = 71
+const MUSCLE_BODY_SCALE = (MUSCLE_CHIP_SIZE - 4) / 74
+const OVERLAY_ICON_COLOR = '#1F2937'
 
 type ExerciseItemProps = {
   exercise: Exercise
@@ -124,45 +130,42 @@ const ExerciseGridItem = memo(function ExerciseGridItem({
           isCustom={!!exercise.created_by}
         />
         {/* Overlay Icons */}
-        <View style={styles.cardOverlay}>
+        <View style={styles.cardOverlay} pointerEvents="box-none">
           <TouchableOpacity
-            style={[
-              styles.overlayIconButton,
-              isFavorited && styles.overlayIconButtonActive,
-            ]}
+            style={styles.overlayIconButton}
             onPress={(e) => {
               e.stopPropagation()
               onToggleFavorite(exercise.id)
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isFavorited ? 'Remove from favorites' : 'Add to favorites'
+            }
           >
             <Ionicons
-              name={isFavorited ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={isFavorited ? colors.brandPrimary : '#FFFFFF'}
+              name={isFavorited ? 'heart' : 'heart-outline'}
+              size={16}
+              color={isFavorited ? FAVORITE_COLOR : OVERLAY_ICON_COLOR}
             />
           </TouchableOpacity>
           {!isExploreMode && (
-            <View style={styles.cardOverlayRight}>
-              <TouchableOpacity
-                style={styles.infoButton}
-                onPress={(e) => {
-                  e.stopPropagation()
-                  onOpenInfo(exercise.id)
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name="information-circle"
-                  size={22}
-                  color={
-                    exercise.created_by || !exercise.gif_url
-                      ? '#FFFFFF'
-                      : 'rgba(0,0,0,0.6)'
-                  }
-                />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.overlayIconButton}
+              onPress={(e) => {
+                e.stopPropagation()
+                onOpenInfo(exercise.id)
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Exercise info"
+            >
+              <Ionicons
+                name="information"
+                size={18}
+                color={OVERLAY_ICON_COLOR}
+              />
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -273,9 +276,9 @@ const ExerciseListItem = memo(function ExerciseListItem({
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Ionicons
-            name={isFavorited ? 'bookmark' : 'bookmark-outline'}
-            size={22}
-            color={isFavorited ? colors.brandPrimary : colors.textTertiary}
+            name={isFavorited ? 'heart' : 'heart-outline'}
+            size={21}
+            color={isFavorited ? FAVORITE_COLOR : colors.textTertiary}
           />
         </TouchableOpacity>
         {!isExploreMode && (
@@ -365,7 +368,12 @@ const MuscleFilterChip = memo(function MuscleFilterChip({
           <View
             style={[
               styles.muscleBodyWrapper,
-              { transform: [{ translateY: chipData.offsetY }] },
+              {
+                transform: [
+                  { translateY: chipData.offsetY * MUSCLE_BODY_SCALE },
+                  { scale: MUSCLE_BODY_SCALE },
+                ],
+              },
             ]}
           >
             <Body
@@ -591,11 +599,14 @@ export default function SelectExerciseScreen() {
         ? `No exercises found for "${trimmedQuery}" with selected filters`
         : `No exercises found for "${trimmedQuery}"`
     }
+    if (showOnlyFavorites && favoriteExerciseIds.size === 0) {
+      return 'Tap the heart on an exercise to add it to your favorites'
+    }
     if (hasFilters) {
       return 'No exercises match the selected filters'
     }
     return 'Start typing to search'
-  }, [trimmedQuery, hasFilters])
+  }, [trimmedQuery, hasFilters, showOnlyFavorites, favoriteExerciseIds])
 
   // Handle keyboard events
   useEffect(() => {
@@ -1098,25 +1109,51 @@ export default function SelectExerciseScreen() {
         )}
 
         {/* Muscle Filter with Body Diagrams */}
-        {visibleMuscleChips.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.muscleFilterScrollView}
-            contentContainerStyle={styles.muscleFilterContainer}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.muscleFilterScrollView}
+          contentContainerStyle={styles.muscleFilterContainer}
+        >
+          <TouchableOpacity
+            style={[
+              styles.muscleChip,
+              {
+                borderColor: showOnlyFavorites
+                  ? FAVORITE_COLOR
+                  : 'transparent',
+                backgroundColor: showOnlyFavorites
+                  ? `${FAVORITE_COLOR}22`
+                  : colors.surfaceSubtle,
+              },
+            ]}
+            onPress={() => {
+              haptic('light')
+              setShowOnlyFavorites((value) => !value)
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Favorites"
+            accessibilityState={{ selected: showOnlyFavorites }}
           >
-            {visibleMuscleChips.map((chipData) => (
-              <MuscleFilterChip
-                key={chipData.group}
-                chipData={chipData}
-                isSelected={selectedMuscleGroupSet.has(chipData.group)}
-                onToggle={toggleMuscleGroup}
-                brandPrimary={colors.brandPrimary}
-                showBody={showMuscleBodies}
-              />
-            ))}
-          </ScrollView>
-        )}
+            <Ionicons
+              name={showOnlyFavorites ? 'heart' : 'heart-outline'}
+              size={27}
+              color={showOnlyFavorites ? FAVORITE_COLOR : colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {visibleMuscleChips.map((chipData) => (
+            <MuscleFilterChip
+              key={chipData.group}
+              chipData={chipData}
+              isSelected={selectedMuscleGroupSet.has(chipData.group)}
+              onToggle={toggleMuscleGroup}
+              brandPrimary={colors.brandPrimary}
+              showBody={showMuscleBodies}
+            />
+          ))}
+        </ScrollView>
 
         {/* Expandable Equipment Filter */}
         {isFilterVisible && (
@@ -1133,30 +1170,6 @@ export default function SelectExerciseScreen() {
               >
                 Exercises:
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: colors.surfaceSubtle,
-                  },
-                  showOnlyFavorites && {
-                    borderColor: colors.brandPrimary,
-                    backgroundColor: colors.brandPrimarySoft,
-                  },
-                ]}
-                onPress={() => setShowOnlyFavorites(!showOnlyFavorites)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    { color: colors.textSecondary },
-                    showOnlyFavorites && { color: colors.brandPrimary },
-                  ]}
-                >
-                  Favorites
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.filterChip,
@@ -1430,23 +1443,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 8,
   },
-  cardOverlayRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
   overlayIconButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  overlayIconButtonActive: {
     backgroundColor: 'rgba(255,255,255,0.92)',
-  },
-  infoButton: {
-    // No background - icon stands out on its own
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   listItemActions: {
     flexDirection: 'row',
@@ -1592,21 +1602,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 4,
     alignItems: 'center',
-    gap: 2,
+    gap: 6,
   },
   muscleChip: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: MUSCLE_CHIP_SIZE,
+    height: MUSCLE_CHIP_SIZE,
+    borderRadius: MUSCLE_CHIP_SIZE / 2,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   muscleBodyContainer: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: MUSCLE_CHIP_SIZE - 4,
+    height: MUSCLE_CHIP_SIZE - 4,
+    borderRadius: (MUSCLE_CHIP_SIZE - 4) / 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

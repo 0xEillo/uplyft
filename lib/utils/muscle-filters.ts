@@ -1,6 +1,8 @@
 export const EXERCISE_MUSCLE_FILTER_GROUPS = [
   'Chest',
   'Back',
+  'Lower Back',
+  'Traps',
   'Shoulders',
   'Biceps',
   'Triceps',
@@ -10,8 +12,6 @@ export const EXERCISE_MUSCLE_FILTER_GROUPS = [
   'Hamstrings',
   'Glutes',
   'Calves',
-  'Traps',
-  'Lower Back',
 ] as const
 
 export const EXERCISE_MUSCLE_GROUPS = [
