@@ -34,7 +34,6 @@ import { ScreenHeader } from '@/components/screen-header'
 import { SlideInView } from '@/components/slide-in-view'
 import { WeightInputModal } from '@/components/WeightInputModal'
 import { useAuth } from '@/contexts/auth-context'
-import { useProfile } from '@/contexts/profile-context'
 import { useUnit } from '@/contexts/unit-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import {
@@ -51,7 +50,7 @@ import {
     type BodyLogEntryWithImages,
     type BodyLogImage,
 } from '@/lib/body-log/metadata'
-import { getCoach } from '@/lib/coaches'
+import { AiOrb } from '@/components/ai-orb'
 import { database } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import { normalizeImageUris } from '@/lib/utils/image-normalization'
@@ -246,8 +245,6 @@ export default function BodyLogDetailScreen() {
   const colors = useThemedColors()
   const { formatWeight, weightUnit } = useUnit()
   const { user } = useAuth()
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
   const router = useRouter()
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
@@ -1483,7 +1480,7 @@ export default function BodyLogDetailScreen() {
                 {entry?.analysis_summary && (
                   <View style={[styles.coachNotes, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
                     <View style={styles.coachNotesHead}>
-                      <Image source={coach.image} style={styles.coachAvatar} contentFit="cover" />
+                      <AiOrb size={22} />
                       <Text style={[styles.coachNotesTitle, { color: colors.textSecondary }]}>Coach Notes</Text>
                     </View>
                     <Text style={[styles.coachNotesText, { color: colors.textPrimary }]}>{entry.analysis_summary}</Text>
@@ -2452,12 +2449,6 @@ const createStyles = (colors: Colors) =>
     alignItems: 'center',
     gap: 8,
   },
-  analysisSummaryCoachAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
   analysisSummaryTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -2818,11 +2809,6 @@ const createStyles = (colors: Colors) =>
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  coachAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
   },
   coachNotesTitle: {
     fontSize: 11,

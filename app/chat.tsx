@@ -1,11 +1,11 @@
+import { AiOrb } from '@/components/ai-orb'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
-import { useProfile } from '@/contexts/profile-context'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
 import { useExerciseHistory } from '@/hooks/useExerciseHistory'
 import { useThemedColors } from '@/hooks/useThemedColors'
 import { parseRepRange } from '@/lib/ai/assistant-message'
-import { getCoach } from '@/lib/coaches'
+import { AI_COACH_NAME } from '@/lib/ai-coach'
 import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import { useFeatureGate } from '@/utils/analytics-helpers'
@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
-  Image,
   Keyboard,
   Platform,
   StyleSheet,
@@ -39,8 +38,6 @@ export default function ChatScreen() {
     returnToTab?: string
     generate?: string
   }>()
-  const { coachId } = useProfile()
-  const coach = getCoach(coachId)
   const [headerHeight, setHeaderHeight] = useState(0)
 
   // AI chat is free with a daily message cap for non-Pro users (enforced by
@@ -250,10 +247,10 @@ export default function ChatScreen() {
         </LiquidGlassSurface>
 
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {coach.name}
+          {AI_COACH_NAME}
         </Text>
 
-        {/* Coach avatar doubles as the entry point to chat settings. */}
+        {/* AI orb doubles as the entry point to chat settings. */}
         <TouchableOpacity
           onPress={handleOpenSettings}
           style={styles.headerIconButton}
@@ -261,7 +258,7 @@ export default function ChatScreen() {
           accessibilityRole="button"
           accessibilityLabel="Chat settings"
         >
-          <Image source={coach.image} style={styles.headerAvatar} />
+          <AiOrb size={44} />
         </TouchableOpacity>
       </View>
 
@@ -288,7 +285,7 @@ export default function ChatScreen() {
       <Paywall
         visible={paywallVisible}
         onClose={handlePaywallClose}
-        title="Keep chatting with your coach"
+        title="Keep chatting with Rep AI"
         feature="ai_chat"
       />
     </View>
@@ -335,11 +332,6 @@ const createStyles = (
       fontWeight: '600',
       color: colors.textPrimary,
       letterSpacing: -0.2,
-    },
-    headerAvatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
     },
     chatContainer: {
       flex: 1,

@@ -32,7 +32,6 @@ export type PendingOnboardingProfileData = {
   commitment_mode: CommitmentMode
   experience_level?: ExperienceLevel | null
   bio: string | null
-  coach?: string | null
   strength_snapshot?: OnboardingStrengthSnapshotInput | null
 }
 
@@ -121,7 +120,6 @@ export async function syncOnboardingDataToProfile(
         : null,
     experience_level: onboardingData.experience_level ?? null,
     bio: onboardingData.bio,
-    coach: onboardingData.coach,
   })
 
   await persistOnboardingWeight(userId, onboardingData.weight_kg)

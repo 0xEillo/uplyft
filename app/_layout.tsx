@@ -411,10 +411,7 @@ function RootLayoutNav() {
             name="chat-settings"
             options={
               Platform.OS === 'ios'
-                ? {
-                    ...getNativeFormSheetOptions([0.72, 0.95]),
-                    sheetInitialDetentIndex: 1,
-                  }
+                ? getNativeFormSheetOptions([0.62, 0.95])
                 : transparentModalFallback
             }
           />

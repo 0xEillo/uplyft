@@ -1,5 +1,5 @@
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
-import { CoachSelectionSheet } from '@/components/coach-selection-sheet'
+import { AiOrb } from '@/components/ai-orb'
 import { FoodScannerModal } from '@/components/food-scanner'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import {
@@ -63,7 +63,7 @@ import {
   buildWorkoutModificationSuffix,
 } from '@/lib/ai/workoutPrompt'
 import { consumePendingChatAttachment } from '@/lib/chat-attachment-handoff'
-import { getCoach, getCoachTrainingGuidelines } from '@/lib/coaches'
+import { getTrainingGuidelines } from '@/lib/ai-coach'
 import { database } from '@/lib/database'
 import { consumePendingFoodLibraryChatText } from '@/lib/food-library-handoff'
 import { haptic, hapticSuccess } from '@/lib/haptics'
@@ -493,20 +493,9 @@ function formatMessageTime(createdAt: string): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
-// Get personalized welcome message based on coach personality
-
-function getWelcomeMessage(coachId: string, userName?: string): string {
+function getWelcomeMessage(userName?: string): string {
   const name = userName && userName !== 'Guest' ? ` ${userName}` : ''
-
-  switch (coachId) {
-    case 'kino':
-      return `Hey${name}. Let's plan your first workout together. Tell me what you want to train, what equipment you have, or how much time you've got, and I'll build the session with you. Tap ✨ beside the input, choose Create Workout, or just type your goal.`
-    case 'maya':
-      return `Hey${name}! Let's plan your first workout together. Tell me what you want to focus on, how long you want to train, or what equipment you have, and I'll map it out with you. Open ✨ next to the input, tap Create Workout, or send a quick goal to get started.`
-    case 'ross':
-    default:
-      return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Use ✨ beside the input → Create Workout, or type your goal when you're ready.`
-  }
+  return `Hey${name}. Let's plan your first workout together. Tell me what you're training today, how much time you have, or what equipment you're working with, and I'll build the session with you. Tap ✨ beside the input → Create Workout, or just type your goal.`
 }
 
 const getLocalDateString = (): string => {
@@ -753,8 +742,7 @@ export function WorkoutChat({
   const [exerciseActionState, setExerciseActionState] = useState<
     Record<string, 'idle' | 'saving' | 'saved' | 'error'>
   >({})
-  const { coachId, profile, isLoading: isProfileLoading } = useProfile()
-  const coach = getCoach(coachId)
+  const { profile, isLoading: isProfileLoading } = useProfile()
   const [hasChatStarted, setHasChatStarted] = useState(false)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [
@@ -763,7 +751,6 @@ export function WorkoutChat({
   ] = useState<WorkoutContext | null>(null)
   const [hasLoadedWelcome, setHasLoadedWelcome] = useState(false)
   const [isWelcomeTyping, setIsWelcomeTyping] = useState(false)
-  const [isCoachSheetVisible, setIsCoachSheetVisible] = useState(false)
   // The actions menu is ALWAYS mounted. Visibility is driven by a shared value
   // animated on the UI thread, bypassing React's commit phase entirely. The
   // `showChatActions` state is only used for things that need JS-side awareness
@@ -1283,7 +1270,6 @@ export function WorkoutChat({
           setIsWelcomeTyping(true)
 
           const welcomeContent = getWelcomeMessage(
-            coachId,
             profile?.display_name?.split(' ')[0], // First name only
           )
 
@@ -1324,7 +1310,6 @@ export function WorkoutChat({
     hasHydratedPersistedChat,
     hasLoadedWelcome,
     user?.id,
-    coachId,
     profile?.display_name,
     isProfileLoading,
   ])
@@ -1336,13 +1321,13 @@ export function WorkoutChat({
 
     setMessages((prev) => {
       if (prev.length > 0 && prev[0].id === 'welcome-message') {
-        const updatedContent = getWelcomeMessage(coachId, firstName)
+        const updatedContent = getWelcomeMessage(firstName)
         if (prev[0].content === updatedContent) return prev
         return [{ ...prev[0], content: updatedContent }, ...prev.slice(1)]
       }
       return prev
     })
-  }, [profile?.display_name, coachId, hasLoadedWelcome])
+  }, [profile?.display_name, hasLoadedWelcome])
 
   // Load workout draft on mount/focus for the chat tab (when workoutContext is not passed)
   // This ensures the AI always knows about the current workout in progress
@@ -1660,10 +1645,6 @@ export function WorkoutChat({
     let ndjsonMode: boolean | null = null
     let hasDisabledLoading = false
 
-    if (!options?.silent && assistantMessageId) {
-      setStreamingMessageId(assistantMessageId)
-    }
-
     try {
       while (true) {
         const { value, done } = await reader.read()
@@ -1805,7 +1786,6 @@ export function WorkoutChat({
         )
       }
 
-      setStreamingMessageId(null)
       return {
         content: acc,
         interrupted: true,
@@ -1820,7 +1800,6 @@ export function WorkoutChat({
           m.id === assistantMessageId ? { ...m, content: acc } : m,
         ),
       )
-      setStreamingMessageId(null)
     }
 
     const parsedWorkoutPlan = parseWorkoutForDisplay(acc)
@@ -2402,35 +2381,6 @@ export function WorkoutChat({
     showCopyToast()
   }
 
-  // Id of the assistant reply currently streaming in (isLoading flips to false
-  // on the first visible chunk, so it can't be used to detect streaming).
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null,
-  )
-
-  // Thumbs up / down on assistant replies. Session-local UI state; the rating
-  // itself is recorded as an analytics event.
-  const [messageFeedback, setMessageFeedback] = useState<
-    Record<string, 'up' | 'down'>
-  >({})
-  const handleMessageFeedback = (messageId: string, rating: 'up' | 'down') => {
-    haptic('light')
-    const isClearing = messageFeedback[messageId] === rating
-    setMessageFeedback((prev) => {
-      const next = { ...prev }
-      if (isClearing) {
-        delete next[messageId]
-      } else {
-        next[messageId] = rating
-      }
-      return next
-    })
-    trackEvent(AnalyticsEvents.AI_CHAT_MESSAGE_FEEDBACK, {
-      message_id: messageId,
-      rating: isClearing ? 'cleared' : rating,
-    })
-  }
-
   const showCopyToast = () => {
     if (copyToastVisibleHideTimeoutRef.current) {
       clearTimeout(copyToastVisibleHideTimeoutRef.current)
@@ -2573,12 +2523,8 @@ export function WorkoutChat({
         }
       }
 
-      // Format messages for API - keep content as string
-      const systemMessage = {
-        role: 'system',
-        content: getCoach(coachId).systemPrompt,
-      }
-
+      // Format messages for API - keep content as string. The chat edge
+      // function builds its own system prompt.
       const requestMessages = isResend
         ? messages.map((m) =>
             m.id === userMessage.id
@@ -2599,7 +2545,7 @@ export function WorkoutChat({
         })),
       )
 
-      const formattedMessages = [systemMessage, ...trimmedRequestMessages].map(
+      const formattedMessages = trimmedRequestMessages.map(
         (m) => ({
           role: m.role,
           content: m.content,
@@ -2629,7 +2575,6 @@ export function WorkoutChat({
         messages: { role: string; content: string }[]
         userId: string | undefined
         weightUnit: string
-        coachSystemPrompt?: string
         equipmentPreference?: ChatEquipmentPreference
         workoutContext?: {
           sessionId?: string
@@ -2677,7 +2622,6 @@ export function WorkoutChat({
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
-        coachSystemPrompt: getCoach(coachId).systemPrompt,
         equipmentPreference: equipmentPreference ?? undefined,
         dailyLogSummary: dailyLogSummary
           ? {
@@ -2916,8 +2860,7 @@ export function WorkoutChat({
     }
     const equipmentLabel = equipmentLabels[data.equipment] || data.equipment
 
-    // Get coach-specific training guidelines
-    const trainingGuidelines = getCoachTrainingGuidelines(coachId)
+    const trainingGuidelines = getTrainingGuidelines()
 
     // Construct the hidden prompt for the AI
     const finalPrompt = buildWorkoutCreationPrompt(
@@ -2930,11 +2873,6 @@ export function WorkoutChat({
     setIsLoading(true)
 
     try {
-      const systemMessage = {
-        role: 'system',
-        content: getCoach(coachId).systemPrompt,
-      }
-
       const trimmedRequestMessages = trimChatMessagesForRequest([
         ...messages.map((message) => ({
           role: message.role,
@@ -2943,13 +2881,12 @@ export function WorkoutChat({
         { role: 'user' as const, content: finalPrompt },
       ])
 
-      const formattedMessages = [systemMessage, ...trimmedRequestMessages]
+      const formattedMessages = trimmedRequestMessages
 
       const requestBody = {
         messages: formattedMessages,
         userId: user?.id,
         weightUnit,
-        coachSystemPrompt: getCoach(coachId).systemPrompt,
       }
 
       const response = await callChatFunction(requestBody, {
@@ -3526,11 +3463,7 @@ export function WorkoutChat({
                           : () => {
                               haptic('light')
                               Keyboard.dismiss()
-                              if (Platform.OS === 'ios') {
-                                router.push('/chat-settings')
-                                return
-                              }
-                              setIsCoachSheetVisible(true)
+                              router.push('/chat-settings')
                             }
                       }
                       activeOpacity={0.7}
@@ -3570,10 +3503,7 @@ export function WorkoutChat({
                 isWelcomeTyping,
                 input: input.trim(),
                 mode,
-                coachId,
-                coachName: profile?.display_name ?? '',
-                messageFeedback,
-                streamingMessageId,
+                userName: profile?.display_name ?? '',
               }}
               keyExtractor={(item: Message) => item.id}
               getItemType={(item: Message) => item.role}
@@ -3739,7 +3669,7 @@ export function WorkoutChat({
                                 ) : messageParsedWorkout ? (
                                   <WorkoutCard
                                     workout={messageParsedWorkout}
-                                    coachImage={coach.image}
+                                    showAttribution
                                     username={profile?.display_name}
                                     isSaved={savedAssistantMessageIds.has(
                                       message.id,
@@ -4636,81 +4566,6 @@ export function WorkoutChat({
                                 </View>
                               )}
 
-                              {/* Copy / thumbs actions, hidden while this
-                                  reply is still streaming in. */}
-                              {coachText &&
-                                message.id !== streamingMessageId && (
-                                  <View style={styles.assistantActionRow}>
-                                    <TouchableOpacity
-                                      style={styles.assistantActionButton}
-                                      onPress={() =>
-                                        handleCopyMessage(
-                                          displayContent || coachText,
-                                        )
-                                      }
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Copy message"
-                                    >
-                                      <Ionicons
-                                        name="copy-outline"
-                                        size={18}
-                                        color={colors.textSecondary}
-                                      />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                      style={styles.assistantActionButton}
-                                      onPress={() =>
-                                        handleMessageFeedback(message.id, 'up')
-                                      }
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Good response"
-                                      accessibilityState={{
-                                        selected:
-                                          messageFeedback[message.id] === 'up',
-                                      }}
-                                    >
-                                      <Ionicons
-                                        name={
-                                          messageFeedback[message.id] === 'up'
-                                            ? 'thumbs-up'
-                                            : 'thumbs-up-outline'
-                                        }
-                                        size={18}
-                                        color={
-                                          messageFeedback[message.id] === 'up'
-                                            ? colors.textPrimary
-                                            : colors.textSecondary
-                                        }
-                                      />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                      style={styles.assistantActionButton}
-                                      onPress={() =>
-                                        handleMessageFeedback(message.id, 'down')
-                                      }
-                                      accessibilityRole="button"
-                                      accessibilityLabel="Bad response"
-                                      accessibilityState={{
-                                        selected:
-                                          messageFeedback[message.id] === 'down',
-                                      }}
-                                    >
-                                      <Ionicons
-                                        name={
-                                          messageFeedback[message.id] === 'down'
-                                            ? 'thumbs-down'
-                                            : 'thumbs-down-outline'
-                                        }
-                                        size={18}
-                                        color={
-                                          messageFeedback[message.id] === 'down'
-                                            ? colors.textPrimary
-                                            : colors.textSecondary
-                                        }
-                                      />
-                                    </TouchableOpacity>
-                                  </View>
-                                )}
                             </View>
                           </>
                         )
@@ -4775,11 +4630,7 @@ export function WorkoutChat({
                     {mode === 'fullscreen' && (
                       <View style={styles.welcomeSection}>
                         <View style={styles.coachWelcomeContainer}>
-                          <Image
-                            source={getCoach(coachId).image}
-                            style={styles.coachWelcomeImage}
-                            contentFit="cover"
-                          />
+                          <AiOrb size={120} />
                         </View>
                         <Text style={styles.welcomeDescription}>
                           Plan your next workout, dive into your stats, or talk
@@ -5436,11 +5287,6 @@ export function WorkoutChat({
           />
         </>
       )}
-
-      <CoachSelectionSheet
-        visible={isCoachSheetVisible}
-        onClose={() => setIsCoachSheetVisible(false)}
-      />
     </>
   )
 }
@@ -5594,17 +5440,7 @@ function createStyles(
       paddingHorizontal: 24,
     },
     coachWelcomeContainer: {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-      elevation: 5,
       marginBottom: 8,
-    },
-    coachWelcomeImage: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
     },
     chatMessages: {
       paddingBottom: 20,
@@ -5673,19 +5509,6 @@ function createStyles(
     assistantCoachBubbleWrap: {
       flex: 1,
       maxWidth: '100%',
-    },
-    assistantActionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 8,
-      marginLeft: -7,
-    },
-    assistantActionButton: {
-      width: 34,
-      height: 36,
-      borderRadius: 17,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     assistantMessageMetaRow: {
       flexDirection: 'row',

@@ -3,8 +3,6 @@ import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  Image,
-  ImageSourcePropType,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,6 +10,7 @@ import {
 } from 'react-native'
 
 import { ExerciseMediaThumbnail } from '@/components/ExerciseMedia'
+import { AiOrb } from '@/components/ai-orb'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { useTheme } from '@/contexts/theme-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
@@ -20,7 +19,8 @@ import { findExerciseByName } from '@/lib/utils/exercise-matcher'
 
 interface WorkoutCardProps {
   workout: ParsedWorkoutDisplay
-  coachImage?: ImageSourcePropType
+  /** Show the "Crafted for <user>" AI attribution row. */
+  showAttribution?: boolean
   username?: string
   onStartWorkout?: () => void
   onSaveRoutine?: () => void
@@ -32,7 +32,7 @@ interface WorkoutCardProps {
 
 export function WorkoutCard({
   workout,
-  coachImage,
+  showAttribution = false,
   username,
   onStartWorkout,
   onSaveRoutine,
@@ -70,10 +70,10 @@ export function WorkoutCard({
       debugLabel="workout-card"
     >
 
-      {/* Coach attribution */}
-      {coachImage && (
+      {/* AI attribution */}
+      {showAttribution && (
         <View style={styles.coachRow}>
-          <Image source={coachImage} style={styles.coachAvatar} />
+          <AiOrb size={20} />
           <Text style={styles.coachLabel}>
             Crafted for{' '}
             <Text style={styles.coachLabelName}>{username ?? 'you'}</Text>
@@ -82,7 +82,7 @@ export function WorkoutCard({
       )}
 
       {/* Header */}
-      <View style={[styles.cardHeader, !coachImage && { paddingTop: 22 }]}>
+      <View style={[styles.cardHeader, !showAttribution && { paddingTop: 22 }]}>
         <Text style={styles.cardTitle}>{workout.title}</Text>
         <View style={styles.statsRow}>
           <View style={styles.statChip}>
@@ -381,12 +381,6 @@ const createStyles = (
       paddingHorizontal: 20,
       paddingTop: 18,
       gap: 7,
-    },
-    coachAvatar: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      opacity: 0.85,
     },
     coachLabel: {
       fontSize: 12,

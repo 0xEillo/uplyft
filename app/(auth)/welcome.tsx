@@ -3,8 +3,6 @@ import { SignInBottomSheet } from '@/components/sign-in-bottom-sheet'
 import { AnalyticsEvents } from '@/constants/analytics-events'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useThemedColors } from '@/hooks/useThemedColors'
-import { COACH_OPTIONS } from '@/lib/coaches'
-import { Asset } from 'expo-asset'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -47,19 +45,6 @@ export default function WelcomeScreen() {
       timestamp: Date.now(),
     })
   }, [trackEvent])
-
-  // Preload coach images so they're ready for onboarding
-  useEffect(() => {
-    const preloadCoachImages = async () => {
-      const imageAssets = COACH_OPTIONS.map((coach) =>
-        Asset.fromModule(coach.image).downloadAsync(),
-      )
-      await Promise.all(imageAssets)
-    }
-    preloadCoachImages().catch((error) => {
-      console.warn('[Welcome] Failed to preload coach images:', error)
-    })
-  }, [])
 
   useEffect(() => {
     const totalWidth = IMAGES.length * (ITEM_WIDTH + ITEM_SPACING)
