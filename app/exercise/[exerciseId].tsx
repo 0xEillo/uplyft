@@ -29,7 +29,6 @@ import {
   ProgressRangeButton,
   type ProgressRange,
 } from '@/components/ExerciseProgressTab'
-import { buildMockProgressSessions } from '@/components/__mockProgressSessions'
 import { ExerciseStrengthLevelCard } from '@/components/ExerciseStrengthLevelCard'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SlideInView } from '@/components/slide-in-view'
@@ -938,7 +937,7 @@ export default function ExerciseDetailScreen() {
           ) : activeTab === 'progress' ? (
             <View style={styles.tabContent}>
               <ExerciseProgressTab
-                sessions={buildMockProgressSessions()}
+                sessions={history}
                 isRepBased={isRepBasedStrengthExercise}
                 range={progressRange}
               />
