@@ -2,7 +2,7 @@
  * Client-side parser for the coach chat server's reply format.
  *
  * The format is defined by the chat edge function's system prompt
- * (supabase/functions/chat/system-prompt.ts). An assistant reply is free text
+ * (SYSTEM_PROMPT in supabase/functions/chat/prompt.ts). An assistant reply is free text
  * that may carry machine-readable blocks:
  *
  * - a trailing JSON array of exercise suggestions,

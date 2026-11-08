@@ -8,7 +8,7 @@ import {
   parseStatsReportPayload,
 } from '@/lib/ai/assistant-message'
 
-// Reply shapes taken from supabase/functions/chat/system-prompt.ts
+// Reply shapes taken from SYSTEM_PROMPT in supabase/functions/chat/prompt.ts
 // ("EXERCISE SUGGESTIONS FORMAT" and "NUTRITION LOGGING").
 const SUGGESTION_REPLY =
   "I'd suggest adding some tricep work to balance your push day. Here are a couple options:\n" +

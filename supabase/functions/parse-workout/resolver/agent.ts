@@ -1,5 +1,5 @@
 // @ts-ignore: Remote import for Deno edge runtime
-import { generateObject } from 'npm:ai'
+import { generateObject } from 'npm:ai@7.0.162'
 // @ts-ignore: Remote import for Deno edge runtime
 import { z } from 'https://esm.sh/zod@3.25.76'
 import { GEMINI_MODEL, openrouter } from '../../_shared/openrouter.ts'
