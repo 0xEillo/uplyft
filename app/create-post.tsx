@@ -304,7 +304,6 @@ export default function CreatePostScreen() {
     let setsCount = 0
     structuredData.forEach((exercise) => {
       exercise.sets.forEach((set) => {
-        if (!set.isCompleted) return
         const w = parseFloat(set.weight)
         const r = parseFloat(set.reps)
         if (!Number.isNaN(r) && r > 0) {

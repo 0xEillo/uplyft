@@ -72,7 +72,6 @@ interface SetData {
   targetRepsMin?: number | null
   targetRepsMax?: number | null
   targetRestSeconds?: number | null
-  isCompleted?: boolean
 }
 
 interface ExerciseData {
@@ -109,7 +108,6 @@ interface WorkoutSetRowProps {
   colors: ReturnType<typeof useThemedColors>
   styles: ReturnType<typeof createStyles>
   onToggleSetType: (exerciseIndex: number, setIndex: number) => void
-  onToggleComplete: (exerciseIndex: number, setIndex: number) => void
   onWeightChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onRepsChange: (exerciseIndex: number, setIndex: number, value: string) => void
   onDurationChange: (exerciseIndex: number, setIndex: number, value: string) => void
@@ -203,7 +201,6 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
   colors,
   styles,
   onToggleSetType,
-  onToggleComplete,
   onWeightChange,
   onRepsChange,
   onDurationChange,
@@ -253,7 +250,7 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       containerStyle={styles.swipeableContainer}
     >
       <View style={{ backgroundColor: colors.bg, borderRadius: 6 }}>
-        <View style={[styles.setRow, set.isCompleted && styles.setRowCompleted]}>
+        <View style={styles.setRow}>
           <View style={styles.setColSet}>
         <View style={styles.setNumberBadgeWrapper}>
           <LiquidGlassSurface
@@ -441,26 +438,6 @@ const WorkoutSetRow = React.memo(function WorkoutSetRow({
       </View>
       </>
       )}
-
-      <View style={styles.setColCheckmark}>
-        {!compactPreview && (
-          <TouchableOpacity
-            style={[
-              styles.checkmarkButton,
-              set.isCompleted && styles.checkmarkButtonCompleted
-            ]}
-            onPress={() => onToggleComplete(exerciseIndex, setIndex)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name="checkmark" 
-              size={20} 
-              color={set.isCompleted ? '#FFF' : colors.textTertiary} 
-            />
-          </TouchableOpacity>
-        )}
-      </View>
     </View>
     </View>
     </Swipeable>
@@ -614,7 +591,7 @@ interface StructuredWorkoutInputProps {
   ) => Promise<{ weight: string | null; reps: string | null } | null>
   /**
    * Callback to fetch the user's all-time historical bests for an exercise.
-   * Used to award a PR trophy on completed sets that beat an all-time record.
+   * Used to award a PR trophy on logged sets that beat an all-time record.
    * Weights in the returned data are in kg; component converts as needed.
    */
   onFetchExerciseHistoricalBests?: (
@@ -841,7 +818,7 @@ export function StructuredWorkoutInput({
   }, [exerciseIdentityKey])
 
   // Fetch historical bests for every exercise we haven't queried yet.
-  // Feeds live PR detection on completed sets.
+  // Feeds live PR detection on logged sets.
   useEffect(() => {
     if (!onFetchExerciseHistoricalBests || compactPreview) return
     let cancelled = false
@@ -1208,37 +1185,6 @@ export function StructuredWorkoutInput({
     [commitExercises],
   )
 
-  const handleToggleComplete = useCallback(
-    async (exerciseIndex: number, setIndex: number) => {
-      const currentExercises = exercisesRef.current
-      const exercise = currentExercises[exerciseIndex]
-      const set = exercise?.sets[setIndex]
-      if (!set) return
-
-      const nextCompleted = !set.isCompleted
-      await hapticAsync(nextCompleted ? 'medium' : 'light')
-
-      // Re-read after the await so concurrent edits are not dropped.
-      const latestSet = exercisesRef.current[exerciseIndex]?.sets[setIndex]
-      if (!latestSet) return
-
-      if (nextCompleted && onRestTimerStart) {
-        if (latestSet.targetRestSeconds) {
-          onRestTimerStart(latestSet.targetRestSeconds)
-        } else if (autoRestEnabled && autoRestDuration) {
-          onRestTimerStart(autoRestDuration)
-        }
-      }
-
-      commitExercises(
-        updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
-          isCompleted: nextCompleted,
-        }),
-      )
-    },
-    [commitExercises, onRestTimerStart, autoRestEnabled, autoRestDuration],
-  )
-
   const parseWorkingWeightInput = useCallback((value: string): number | null => {
     const normalized = value.trim().replace(',', '.')
     if (!normalized) return null
@@ -1594,21 +1540,17 @@ export function StructuredWorkoutInput({
         return
       }
 
-      // When moving from Reps/Duration, auto-validate the current set (mark as completed)
+      // Finishing Reps/Duration on a logged set kicks off the rest timer.
       const currentSet = exercisesRef.current[exerciseIndex]?.sets[setIndex]
-      if (currentSet && !currentSet.isCompleted) {
-        if (onRestTimerStart) {
-          if (currentSet.targetRestSeconds) {
-            onRestTimerStart(currentSet.targetRestSeconds)
-          } else if (autoRestEnabled && autoRestDuration) {
-            onRestTimerStart(autoRestDuration)
-          }
+      const hasLoggedValue = isDurationMode
+        ? Boolean(currentSet?.duration?.trim())
+        : Boolean(currentSet?.reps.trim())
+      if (currentSet && hasLoggedValue && onRestTimerStart) {
+        if (currentSet.targetRestSeconds) {
+          onRestTimerStart(currentSet.targetRestSeconds)
+        } else if (autoRestEnabled && autoRestDuration) {
+          onRestTimerStart(autoRestDuration)
         }
-        commitExercises(
-          updateSetAt(exercisesRef.current, exerciseIndex, setIndex, {
-            isCompleted: true,
-          }),
-        )
       }
 
       const nextSetIndex = setIndex + 1
@@ -1681,12 +1623,15 @@ export function StructuredWorkoutInput({
       Keyboard.dismiss()
     },
     [
+      autoRestDuration,
+      autoRestEnabled,
       compactPreview,
       debugNext,
       endFocusTransition,
       focusInput,
       focusInputWhenReady,
       handleAddSet,
+      onRestTimerStart,
       setFocusedInputState,
       startFocusTransition,
     ],
@@ -2181,11 +2126,10 @@ export function StructuredWorkoutInput({
                         <Text style={[styles.setHeaderText, styles.setColInput]}>REPS</Text>
                       </>
                     )}
-                    <View style={styles.setColCheckmark} />
                   </View>
                 )}
                 {(() => {
-                  // Compute which completed working set(s) in this exercise
+                  // Compute which logged working set(s) in this exercise
                   // produce an all-time PR vs historical bests. We pick the
                   // single best set within this session for each of the 3
                   // categories (heaviest weight / best 1RM / best set volume)
@@ -2201,7 +2145,6 @@ export function StructuredWorkoutInput({
                     let bestVolumeSet: Candidate | null = null
 
                     exercise.sets.forEach((s, idx) => {
-                      if (!s.isCompleted) return
                       if (s.isWarmup || s.isBodyWeight) return
                       const w = convertInputToKg(parseFloat(s.weight.replace(',', '.')))
                       const r = parseInt(s.reps, 10)
@@ -2279,7 +2222,6 @@ export function StructuredWorkoutInput({
                         colors={colors}
                         styles={styles}
                         onToggleSetType={handleToggleSetType}
-                        onToggleComplete={handleToggleComplete}
                         onWeightChange={handleWeightChange}
                         onRepsChange={handleRepsChange}
                         onDurationChange={handleDurationChange}
@@ -2462,11 +2404,6 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
     },
-    setColCheckmark: {
-      width: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     setRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -2475,20 +2412,6 @@ const createStyles = (
       paddingHorizontal: 4,
       paddingVertical: 4,
       borderRadius: compactPreview ? 6 : 10,
-    },
-    setRowCompleted: {
-      backgroundColor: (colors.statusSuccess || '#34C759') + '1A', // ~10% opacity green
-    },
-    checkmarkButton: {
-      width: compactPreview ? 32 : 38,
-      height: compactPreview ? 32 : 38,
-      borderRadius: compactPreview ? 8 : 10,
-      backgroundColor: colors.surfaceSubtle,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    checkmarkButtonCompleted: {
-      backgroundColor: colors.statusSuccess || '#34C759',
     },
     setNumberBadgeWrapper: {
       width: compactPreview ? 24 : 28,

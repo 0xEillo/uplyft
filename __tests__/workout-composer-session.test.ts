@@ -17,8 +17,8 @@ function makeStructuredData(): StructuredExerciseDraft[] {
       id: 'exercise-1',
       name: 'Bench Press',
       sets: [
-        { weight: '225', reps: '5', isCompleted: true },
-        { weight: '205', reps: '8', isCompleted: true },
+        { weight: '225', reps: '5' },
+        { weight: '205', reps: '8' },
       ],
     },
   ]
