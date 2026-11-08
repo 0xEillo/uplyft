@@ -480,6 +480,10 @@ export interface WorkoutChatProps {
   // Called when the server rejects a message because a free user has used up
   // their daily AI chat allowance (e.g. to show the paywall).
   onFreeLimitReached?: () => void
+
+  // Extra top padding for the message list when a translucent header floats
+  // over it, so messages start below the header but scroll underneath it.
+  contentInsetTop?: number
 }
 
 const MAX_IMAGES = 10
@@ -684,6 +688,7 @@ export function WorkoutChat({
   keyboardVerticalOffsetOverride,
   autoOpenActions = false,
   onFreeLimitReached,
+  contentInsetTop = 0,
 }: WorkoutChatProps) {
   // Ref so the send callbacks don't need this in their dependency lists.
   const onFreeLimitReachedRef = useRef(onFreeLimitReached)
@@ -4578,11 +4583,12 @@ export function WorkoutChat({
                 styles.messagesContent,
                 {
                   paddingTop:
-                    mode === 'sheet'
+                    contentInsetTop +
+                    (mode === 'sheet'
                       ? 16
                       : messages.length === 0 && !isLoading
                       ? 16
-                      : 80,
+                      : 80),
                 },
               ]}
               keyboardShouldPersistTaps="handled"

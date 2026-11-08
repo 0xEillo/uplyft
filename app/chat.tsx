@@ -1,4 +1,5 @@
 import { AiOrb } from '@/components/ai-orb'
+import { BlurredHeader } from '@/components/blurred-header'
 import { LiquidGlassSurface } from '@/components/liquid-glass-surface'
 import { Paywall } from '@/components/paywall'
 import { useWorkoutComposer } from '@/contexts/workout-composer-context'
@@ -10,12 +11,10 @@ import { haptic } from '@/lib/haptics'
 import type { StructuredExerciseDraft } from '@/lib/utils/workout-draft'
 import { useFeatureGate } from '@/utils/analytics-helpers'
 import { Ionicons } from '@expo/vector-icons'
-import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import {
   Keyboard,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -59,11 +58,9 @@ export default function ChatScreen() {
   const styles = useMemo(() => createStyles(colors, insets), [colors, insets])
 
   // RN's KeyboardAvoidingView frame is parent-relative, but the keyboard event
-  // ships absolute screen Y. We therefore have to tell the inner KAV how far
-  // its parent (the chat container under the header) sits from the top of the
-  // screen, otherwise the input gets covered by the keyboard.
-  const chatKeyboardOffset =
-    Platform.OS === 'ios' ? insets.top + headerHeight : 0
+  // ships absolute screen Y, so the inner KAV needs its parent's screen Y. The
+  // chat now fills the screen from the top (the header floats over it).
+  const chatKeyboardOffset = 0
 
   const {
     session,
@@ -230,38 +227,6 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.page}>
-      <View
-        style={styles.header}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
-        <LiquidGlassSurface style={styles.headerGlassButton}>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.headerIconButton}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Close chat"
-          >
-            <Ionicons name="close" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </LiquidGlassSurface>
-
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {AI_COACH_NAME}
-        </Text>
-
-        {/* AI orb doubles as the entry point to chat settings. */}
-        <TouchableOpacity
-          onPress={handleOpenSettings}
-          style={styles.headerIconButton}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Chat settings"
-        >
-          <AiOrb size={44} />
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.chatContainer}>
         <WorkoutChat
           persistence={{ kind: 'main' }}
@@ -273,14 +238,47 @@ export default function ChatScreen() {
           keyboardVerticalOffsetOverride={chatKeyboardOffset}
           autoOpenActions={shouldAutoOpenActions}
           onFreeLimitReached={handleFreeLimitReached}
-        />
-        {/* Messages dissolve under the header instead of hard-clipping. */}
-        <LinearGradient
-          pointerEvents="none"
-          colors={[colors.bg, `${colors.bg}00`]}
-          style={styles.headerFade}
+          contentInsetTop={insets.top + headerHeight}
         />
       </View>
+
+      {/* Floats over the messages: they scroll underneath and show through a
+          blur. The fade zone below the header is long enough that the blur
+          stays at full strength behind the title row and only fades out
+          below it. */}
+      <BlurredHeader intensity={35} fadeExtension={72}>
+        <View
+          style={styles.header}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        >
+          <LiquidGlassSurface style={styles.headerGlassButton}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.headerIconButton}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close chat"
+            >
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </LiquidGlassSurface>
+
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {AI_COACH_NAME}
+          </Text>
+
+          {/* AI orb doubles as the entry point to chat settings. */}
+          <TouchableOpacity
+            onPress={handleOpenSettings}
+            style={styles.headerIconButton}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Chat settings"
+          >
+            <AiOrb size={44} />
+          </TouchableOpacity>
+        </View>
+      </BlurredHeader>
 
       <Paywall
         visible={paywallVisible}
@@ -300,7 +298,6 @@ const createStyles = (
     page: {
       flex: 1,
       backgroundColor: colors.bg,
-      paddingTop: insets.top,
     },
     header: {
       flexDirection: 'row',
@@ -335,13 +332,5 @@ const createStyles = (
     },
     chatContainer: {
       flex: 1,
-      overflow: 'hidden',
-    },
-    headerFade: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 24,
     },
   })
