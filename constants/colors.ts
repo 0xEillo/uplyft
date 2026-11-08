@@ -31,6 +31,8 @@ const lightColors = {
 
   // Status
   statusSuccess: '#34c759',
+  // Text-safe green: #34c759 is too light for text on white.
+  statusSuccessText: '#248A3D',
   statusError: '#ff3b30',
   statusWarning: '#ff9500',
   statusInfo: '#007aff',
@@ -77,6 +79,7 @@ const darkColors = {
 
   // Status
   statusSuccess: '#5FD068',
+  statusSuccessText: '#5FD068',
   statusError: '#FF5252',
   statusWarning: '#FFB74D',
   statusInfo: '#42A5F5',

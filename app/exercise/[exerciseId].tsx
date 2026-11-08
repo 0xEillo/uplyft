@@ -2,7 +2,7 @@ import { BlurredHeader } from '@/components/blurred-header'
 import { GlassIconButton } from '@/components/glass-icon-button'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
@@ -24,8 +24,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 
 import { ExerciseMedia } from '@/components/ExerciseMedia'
-import { ExerciseRankCalculator } from '@/components/ExerciseRankCalculator'
-import { LevelBadge } from '@/components/LevelBadge'
+import {
+  ExerciseProgressTab,
+  ProgressRangeButton,
+  type ProgressRange,
+} from '@/components/ExerciseProgressTab'
+import { buildMockProgressSessions } from '@/components/__mockProgressSessions'
+import { ExerciseStrengthLevelCard } from '@/components/ExerciseStrengthLevelCard'
 import { LifterLevelsSheet } from '@/components/LifterLevelsSheet'
 import { SlideInView } from '@/components/slide-in-view'
 import { useAuth } from '@/contexts/auth-context'
@@ -35,7 +40,7 @@ import { useWeightUnits } from '@/hooks/useWeightUnits'
 import { coerceBodyweightKg } from '@/lib/bodyweight'
 import { database } from '@/lib/database'
 import { isRepBasedExercise } from '@/lib/exercise-standards-config'
-import { getStrengthGender } from '@/lib/strength-progress'
+import { estimateOneRepMaxKg, getStrengthGender } from '@/lib/strength-progress'
 import {
   getStandardsLadder,
   getStrengthStandard,
@@ -114,7 +119,7 @@ const formatLoggedSetSummary = (
   return '-'
 }
 
-type TabType = 'records' | 'history' | 'rank'
+type TabType = 'records' | 'history' | 'progress'
 
 const MUSCLE_GROUPS = [
   'Chest',
@@ -171,16 +176,7 @@ export default function ExerciseDetailScreen() {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('records')
-  const navigation = useNavigation()
-
-  // iOS 26 lets you swipe back from anywhere on the screen, and that native
-  // gesture beats the JS-driven rank rulers, so a horizontal drag on a ruler
-  // can pop the screen. Limit back-swipe to the screen edge on the Rank tab.
-  useEffect(() => {
-    navigation.setOptions({
-      fullScreenGestureEnabled: activeTab === 'rank' ? false : undefined,
-    })
-  }, [activeTab, navigation])
+  const [progressRange, setProgressRange] = useState<ProgressRange>('3M')
   const [shouldExit, setShouldExit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -374,6 +370,16 @@ export default function ExerciseDetailScreen() {
     loadData({ isRefresh: true })
   }, [loadData])
 
+  // Rank from the exact 1RM of the best set, like the strength score does.
+  // The records list rounds each estimate to whole kilos.
+  const strengthMetric = useMemo(() => {
+    const bestSet = exercisePerformance.bestSet
+    if (!bestSet || !exercise?.name) return max1RM
+    return isRepBasedExercise(exercise.name)
+      ? bestSet.reps
+      : estimateOneRepMaxKg(bestSet.weight, bestSet.reps)
+  }, [exercisePerformance.bestSet, exercise?.name, max1RM])
+
   const getStrengthInfo = useCallback(() => {
     const strengthGender = getStrengthGender(profile?.gender)
     const bodyweightKg = coerceBodyweightKg(profile?.weight_kg)
@@ -389,30 +395,33 @@ export default function ExerciseDetailScreen() {
       exercise.name,
       strengthGender,
       bodyweightKg,
-      max1RM,
+      strengthMetric,
     )
-  }, [profile, exercise, max1RM])
+  }, [profile, exercise, strengthMetric])
 
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
+    return date.toLocaleDateString(undefined, {
       day: 'numeric',
+      month: 'short',
       year: 'numeric',
     })
   }
   
-  const formatDateTime = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-      })
-  }
+  const formatHistoryDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+
+  const formatHistoryTime = (dateString: string) =>
+    new Date(dateString).toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
 
   const handleBack = () => {
     setShouldExit(true)
@@ -628,6 +637,12 @@ export default function ExerciseDetailScreen() {
 
   const styles = createStyles(colors)
   const strengthInfo = getStrengthInfo()
+  const strengthBodyweightKg = coerceBodyweightKg(profile?.weight_kg)
+  const strengthLadder = useMemo(() => {
+    const strengthGender = getStrengthGender(profile?.gender)
+    if (!exercise?.name || !strengthGender) return null
+    return getStandardsLadder(exercise.name, strengthGender)
+  }, [exercise?.name, profile?.gender])
   const isRepBasedStrengthExercise =
     !!exercise?.name && isRepBasedExercise(exercise.name)
   const exerciseLevelMilestoneLabels = useMemo(() => {
@@ -673,7 +688,12 @@ export default function ExerciseDetailScreen() {
               </Text>
             </View>
             <GlassIconButton icon="arrow-back" onPress={handleBack} color={colors.textPrimary} />
-            {isOwner ? (
+            {activeTab === 'progress' ? (
+              <ProgressRangeButton
+                range={progressRange}
+                onChange={setProgressRange}
+              />
+            ) : isOwner ? (
               <GlassIconButton
                 icon="ellipsis-horizontal"
                 onPress={handleOptionsPress}
@@ -721,24 +741,23 @@ export default function ExerciseDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
-
-
               <TouchableOpacity
                 style={[
                   styles.tab,
-                  activeTab === 'rank' && styles.activeTab,
+                  activeTab === 'progress' && styles.activeTab,
                 ]}
-                onPress={() => setActiveTab('rank')}
+                onPress={() => setActiveTab('progress')}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    activeTab === 'rank' && styles.activeTabText,
+                    activeTab === 'progress' && styles.activeTabText,
                   ]}
                 >
-                  Rank
+                  Progress
                 </Text>
               </TouchableOpacity>
+
             </View>
           </View>
         </BlurredHeader>
@@ -750,15 +769,9 @@ export default function ExerciseDetailScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            // The Rank tab fits on one screen; no vertical scroll or bounce.
-            scrollEnabled={activeTab !== 'rank'}
             contentContainerStyle={[
               styles.contentContainer,
               { paddingTop: insets.top + STICKY_HEIGHT },
-              activeTab === 'rank' && {
-                flexGrow: 1,
-                paddingBottom: insets.bottom + 8,
-              },
             ]}
             scrollIndicatorInsets={{ top: insets.top + STICKY_HEIGHT }}
             refreshControl={
@@ -772,84 +785,61 @@ export default function ExerciseDetailScreen() {
             }
           >
           {activeTab === 'records' ? (
-            <View style={styles.tabContent}>
+            <View style={[styles.tabContent, styles.statsContent]}>
               {/* Media Section */}
-              <View style={[styles.mediaContainer, !!exercise?.created_by && { backgroundColor: '#1A1A1A' }]}>
+              <View
+                style={[
+                  styles.mediaContainer,
+                  isDark && styles.mediaContainerDark,
+                  !!exercise?.created_by && { backgroundColor: '#1A1A1A' },
+                ]}
+              >
                   <ExerciseMedia 
                       gifUrl={exercise?.gif_url} 
                       mode="full" 
                       style={styles.media}
                       isCustom={!!exercise?.created_by}
                   />
+                  {/* The artwork has a white background baked in; dim it a
+                      little in dark mode so it doesn't glare. */}
+                  {isDark && !exercise?.created_by ? (
+                    <View pointerEvents="none" style={styles.mediaDarkScrim} />
+                  ) : null}
               </View>
 
-              {/* Stats Section */}
+              {/* Personal Records */}
+              <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                  {isViewingOwnStats ? 'Stats' : 'Performance Stats'}
-                </Text>
+                <Text style={styles.sectionTitle}>Personal Records</Text>
               </View>
 
-              <View style={styles.statsGrid}>
-                {strengthInfo && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.statRow, { alignItems: 'center' }]}
-                      onPress={() => setShowLevelSheet(true)}
-                      activeOpacity={0.6}
-                    >
-                      <Text style={styles.statLabel}>Levels</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.tapHint}>tap for levels</Text>
-                        <LevelBadge
-                          level={strengthInfo.level}
-                          size="medium"
-                          variant="pill"
-                        />
-                      </View>
-                    </TouchableOpacity>
-                    <View style={styles.separator} />
-
-                    {strengthInfo.nextLevel && (
-                      <>
-                        <View style={styles.statRow}>
-                          <Text style={styles.statLabel}>
-                            Next Level ({strengthInfo.nextLevel.level})
-                          </Text>
-                          <Text style={styles.statValue}>
-                            {Math.round(strengthInfo.progress || 0)}%
-                          </Text>
-                        </View>
-                        <View style={styles.separator} />
-                      </>
-                    )}
-                  </>
-                )}
-
+              <View style={styles.card}>
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>
-                    {isRepBasedStrengthExercise ? 'Best Reps' : '1RM'}
+                    {isRepBasedStrengthExercise ? 'Best Reps' : 'Best 1RM'}
                   </Text>
                   <Text style={styles.statValue}>
-                    {isRepBasedStrengthExercise
-                      ? `${Math.round(exercisePerformance.best1RM)} reps`
-                      : formatWeight(exercisePerformance.best1RM, {
-                          maximumFractionDigits: 1,
-                        })}
+                    {exercisePerformance.best1RM > 0
+                      ? isRepBasedStrengthExercise
+                        ? `${Math.round(exercisePerformance.best1RM)} reps`
+                        : formatWeight(exercisePerformance.best1RM, {
+                            maximumFractionDigits: 1,
+                          })
+                      : '–'}
                   </Text>
                 </View>
                 <View style={styles.separator} />
-                
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Heaviest Weight</Text>
                   <Text style={styles.statValue}>
-                    {formatWeight(exercisePerformance.heaviestWeight, {
-                      maximumFractionDigits: 1,
-                    })}
+                    {exercisePerformance.heaviestWeight > 0
+                      ? formatWeight(exercisePerformance.heaviestWeight, {
+                          maximumFractionDigits: 1,
+                        })
+                      : '–'}
                   </Text>
                 </View>
                 <View style={styles.separator} />
-
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Best Set</Text>
                   <Text style={styles.statValue}>
@@ -858,129 +848,181 @@ export default function ExerciseDetailScreen() {
                           exercisePerformance.bestSet.weight,
                           exercisePerformance.bestSet.reps,
                           formatWeight,
-                        )
-                      : '-'}
+                        ).replace(' x ', ' × ')
+                      : '–'}
                   </Text>
                 </View>
+                {exercisePerformance.bestSessionVolume > 0 && (
+                  <>
+                    <View style={styles.separator} />
+                    <View style={styles.statRow}>
+                      <Text style={styles.statLabel}>Best Session Volume</Text>
+                      <Text style={styles.statValue}>
+                        {formatWeight(exercisePerformance.bestSessionVolume, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </Text>
+                    </View>
+                  </>
+                )}
               </View>
 
-              {/* All Records Section */}
-              <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+              </View>
+
+              {/* Strength Level */}
+              {strengthInfo && strengthLadder && strengthBodyweightKg ? (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Strength Level</Text>
+                  </View>
+                  <ExerciseStrengthLevelCard
+                    level={strengthInfo.level}
+                    nextLevel={strengthInfo.nextLevel}
+                    progress={strengthInfo.progress}
+                    ladder={strengthLadder}
+                    bestValue={strengthMetric}
+                    bodyweightKg={strengthBodyweightKg}
+                    isRepBased={isRepBasedStrengthExercise}
+                    isViewingOwnStats={isViewingOwnStats}
+                    formatWeight={formatWeight}
+                    onOpenLevels={() => setShowLevelSheet(true)}
+                  />
+                </View>
+              ) : null}
+
+              {/* Best Sets by Weight */}
+              <View style={styles.section}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Best Sets by Weight</Text>
               </View>
 
-              <View style={styles.recordsList}>
+              <View style={styles.card}>
                 {recordsList.length === 0 ? (
-                  <Text style={styles.emptyText}>No records found for this exercise yet.</Text>
+                  <Text style={styles.emptyText}>No sets logged yet</Text>
                 ) : (
                   recordsList.map((record, index) => (
-                    <View key={index} style={styles.recordRow}>
+                    <View
+                      key={index}
+                      style={[
+                        styles.recordRow,
+                        index === recordsList.length - 1 && styles.recordRowLast,
+                      ]}
+                    >
                       <View style={styles.recordLeft}>
                         <Text style={styles.recordWeight}>
                           {formatWeight(record.weight, {
                             maximumFractionDigits: weightUnit === 'kg' ? 1 : 0,
                           })}
+                          {` × ${record.maxReps} rep${record.maxReps === 1 ? '' : 's'}`}
                         </Text>
-                        <Text style={styles.recordReps}>
-                          {record.maxReps} rep{record.maxReps !== 1 ? 's' : ''}
-                        </Text>
-                      </View>
-                      <View style={styles.recordRight}>
                         <Text style={styles.recordDate}>
                           {formatDate(record.date)}
                         </Text>
-                        {record.estimated1RM > 0 && (
-                          <Text style={styles.recordEstimate}>
-                            {isRepBasedStrengthExercise
-                              ? `Best reps: ${record.maxReps}`
-                              : `1RM: ${formatWeight(record.estimated1RM, {
-                                  maximumFractionDigits: 0,
-                                })}`}
-                          </Text>
-                        )}
                       </View>
+                      {record.estimated1RM > 0 && !isRepBasedStrengthExercise && (
+                        <View style={styles.recordRight}>
+                          <Text style={styles.recordEstimate}>
+                            {formatWeight(record.estimated1RM, {
+                              maximumFractionDigits: 0,
+                            })}
+                          </Text>
+                          <Text style={styles.recordEstimateLabel}>Est. 1RM</Text>
+                        </View>
+                      )}
                     </View>
                   ))
                 )}
               </View>
+              </View>
             </View>
-          ) : activeTab === 'rank' ? (
-            <View style={[styles.tabContent, styles.rankTabContent]}>
-              {exercise?.name ? (
-                <ExerciseRankCalculator
-                  key={`${exercise.id}-${weightUnit}`}
-                  exerciseName={exercise.name}
-                  gender={getStrengthGender(profile?.gender)}
-                  bodyweightKg={coerceBodyweightKg(profile?.weight_kg)}
-                  bestSet={exercisePerformance.bestSet}
-                  isViewingOwnStats={isViewingOwnStats}
-                />
-              ) : null}
+          ) : activeTab === 'progress' ? (
+            <View style={styles.tabContent}>
+              <ExerciseProgressTab
+                sessions={buildMockProgressSessions()}
+                isRepBased={isRepBasedStrengthExercise}
+                range={progressRange}
+              />
             </View>
           ) : (
             <View style={styles.tabContent}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Workout History</Text>
+              {history.length === 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.emptyText}>
+                    No workouts logged yet
+                  </Text>
                 </View>
-                {history.length === 0 ? (
-                    <Text style={styles.emptyText}>No history found for this exercise.</Text>
-                ) : (
-                    history.map((session, index) => (
-                        <View key={index}>
-                            <View style={styles.historyItem}>
-                                <Text style={styles.historyDate}>{formatDateTime(session.date)}</Text>
-                                <View style={styles.setsContainer}>
-                                    <View style={styles.setHeader}>
-                                        <Text style={styles.setHeaderText}>SET</Text>
-                                        <Text style={styles.setHeaderText}>WEIGHT & REPS</Text>
-                                    </View>
-                                    {(() => {
-                                      let workingSetNumber = 0
-                                      return session.sets.map((set, setIndex) => {
-                                        const isWarmup = set.is_warmup === true
-                                        if (!isWarmup) {
-                                          workingSetNumber += 1
-                                        }
-                                        const displayLabel = isWarmup
-                                          ? 'W'
-                                          : String(workingSetNumber)
-    
-                                        return (
-                                        <View key={setIndex} style={styles.setRow}>
-                                            <View style={styles.setNumberCell}>
-                                              <View
-                                                style={[
-                                                  styles.setNumberBadge,
-                                                  isWarmup && styles.warmupBadge,
-                                                ]}
-                                              >
-                                                <Text
-                                                  style={[
-                                                    styles.setNumberBadgeText,
-                                                    isWarmup && styles.warmupText,
-                                                  ]}
-                                                >
-                                                  {displayLabel}
-                                                </Text>
-                                              </View>
-                                            </View>
-                                            <Text style={styles.setDetails}>
-                                              {formatLoggedSetSummary(
-                                                set.weight,
-                                                set.reps,
-                                                formatWeight,
-                                              )}
-                                            </Text>
-                                        </View>
-                                        )
-                                      })
-                                    })()}
-                                </View>
-                            </View>
-                            {index < history.length - 1 && <View style={styles.historySeparator} />}
+              ) : (
+                history.map((session, index) => {
+                  const workingSets = session.sets.filter(
+                    (set) => !set.is_warmup,
+                  )
+                  const sessionVolume = workingSets.reduce(
+                    (sum, set) => sum + (set.weight ?? 0) * (set.reps ?? 0),
+                    0,
+                  )
+                  let workingSetNumber = 0
+                  return (
+                    <View key={index} style={styles.card}>
+                      <View style={styles.historyHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.historyDate}>
+                            {formatHistoryDate(session.date)}
+                          </Text>
+                          <Text style={styles.historyTime}>
+                            {formatHistoryTime(session.date)}
+                          </Text>
                         </View>
-                    ))
-                )}
+                        <Text style={styles.historySummary}>
+                          {workingSets.length} set
+                          {workingSets.length === 1 ? '' : 's'}
+                          {sessionVolume > 0
+                            ? ` · ${formatWeight(sessionVolume, {
+                                maximumFractionDigits: 0,
+                              })}`
+                            : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.historySets}>
+                      {session.sets.map((set, setIndex) => {
+                        const isWarmup = set.is_warmup === true
+                        if (!isWarmup) workingSetNumber += 1
+                        return (
+                          <View key={setIndex} style={styles.setRow}>
+                            <View
+                              style={[
+                                styles.setNumberBadge,
+                                isWarmup && styles.warmupBadge,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.setNumberBadgeText,
+                                  isWarmup && styles.warmupText,
+                                ]}
+                              >
+                                {isWarmup ? 'W' : workingSetNumber}
+                              </Text>
+                            </View>
+                            <Text
+                              style={[
+                                styles.setDetails,
+                                isWarmup && styles.setDetailsWarmup,
+                              ]}
+                            >
+                              {formatLoggedSetSummary(
+                                set.weight,
+                                set.reps,
+                                formatWeight,
+                              ).replace(' x ', ' × ')}
+                            </Text>
+                          </View>
+                        )
+                      })}
+                      </View>
+                    </View>
+                  )
+                })
+              )}
             </View>
           )}
           </ScrollView>
@@ -1464,41 +1506,48 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingTop: 16,
       gap: 16,
     },
-    rankTabContent: {
-      flex: 1,
+    statsContent: {
+      gap: 24,
+    },
+    section: {
+      gap: 8,
     },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 4,
     },
     sectionTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.textPrimary,
     },
-    statsGrid: {
-      backgroundColor: colors.bg,
-      borderRadius: 12,
+    card: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
     },
     statRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingVertical: 16,
+      alignItems: 'center',
+      paddingVertical: 15,
     },
     separator: {
-        height: 1,
-        backgroundColor: colors.border,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
     statLabel: {
-      fontSize: 16,
-      color: colors.textPrimary,
+      fontSize: 15,
+      color: colors.textSecondary,
     },
     statValue: {
       fontSize: 16,
-      fontWeight: '600',
-      color: colors.brandPrimary,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     infoCard: {
       flexDirection: 'row',
@@ -1570,7 +1619,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
         // Negative margins to extend edge-to-edge (counteract tabContent padding)
         marginHorizontal: -16,
         marginTop: -16,
-        marginBottom: 16,
+    },
+    mediaDarkScrim: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.22)',
+    },
+    // On a black page the white exercise artwork reads as a glaring band,
+    // so in dark mode it sits inset as a rounded tile like the cards.
+    mediaContainerDark: {
+        marginHorizontal: 0,
+        marginTop: 0,
+        borderRadius: 18,
+        overflow: 'hidden',
     },
     media: {
         width: '100%',
@@ -1590,115 +1650,102 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     historyContainer: {
     },
-    historySeparator: {
-        height: 1,
-        backgroundColor: colors.border,
-        marginVertical: 8,
-    },
     emptyText: {
         textAlign: 'center',
+        fontSize: 15,
         color: colors.textSecondary,
         paddingVertical: 24,
-    },
-    historyItem: {
-        backgroundColor: colors.bg,
-        borderRadius: 12,
-        paddingVertical: 16,
-        gap: 12
-    },
-    historyHeader: {
-    },
-    historyDate: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.textPrimary,
     },
     exerciseNameSmall: {
         fontSize: 16,
         fontWeight: '600',
         color: colors.textPrimary
     },
-    setsContainer: {
-        gap: 8
+    historySets: {
+      paddingVertical: 3,
     },
-    setHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4
+    historyHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    setHeaderText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: colors.textSecondary
+    historyDate: {
+      fontSize: 16,
+      lineHeight: 21,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    historyTime: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    historySummary: {
+      lineHeight: 21,
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
     },
     setRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-    },
-    setNumber: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        width: 30,
-        textAlign: 'center'
-    },
-    setNumberCell: {
-        width: 30,
-        alignItems: 'center',
-        justifyContent: 'center'
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 11,
     },
     setNumberBadge: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: colors.border,
-        alignItems: 'center',
-        justifyContent: 'center'
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    setNumberBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    setDetails: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    setDetailsWarmup: {
+      color: colors.textSecondary,
+      fontWeight: '500',
     },
     warmupBadge: {
         backgroundColor: `${colors.statusWarning}25`,
     },
-    setNumberBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: colors.textPrimary,
-    },
     warmupText: {
         color: colors.statusWarning,
-    },
-    setDetails: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.textPrimary
-    },
-    recordsList: {
-        backgroundColor: colors.bg,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingBottom: 8
     },
     recordRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 0,
-      borderBottomWidth: 0.5,
+      paddingVertical: 13,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
+    },
+    recordRowLast: {
+      borderBottomWidth: 0,
     },
     recordLeft: {
       gap: 3,
     },
     recordWeight: {
       fontSize: 16,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.textPrimary,
-      letterSpacing: -0.3,
-    },
-    recordReps: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      fontWeight: '500',
+      fontVariant: ['tabular-nums'],
     },
     recordRight: {
       alignItems: 'flex-end',
@@ -1706,12 +1753,19 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     recordDate: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: colors.textTertiary,
       fontWeight: '500',
     },
-    recordEstimate: {
+    recordEstimateLabel: {
       fontSize: 12,
-      color: colors.textSecondary,
+      fontWeight: '500',
+      color: colors.textTertiary,
+    },
+    recordEstimate: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     tapHint: {
       fontSize: 12,
